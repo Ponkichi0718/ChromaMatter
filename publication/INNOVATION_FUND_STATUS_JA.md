@@ -1,11 +1,11 @@
 # ChromaMatter — Snapmaker U1 Innovation Fund 応募準備状況
 
 更新日: 2026-08-20  
-対象: `ChromaMatter — AI Model Print Studio 0.8beta` r31 candidate（以下「r31候補」）。r31はr30の単一GLB seam閉立体化、strict 3MF検証、自動提案修正、公開UI整理を継承し、公開名、アイコン、実行file identityをChromaMatterへ統一します。r31 exact sourceはPython 3.13.14で`Ran 1024 tests in 100.656s: OK (skipped=1)`、1023 PASS／任意1 SKIPです。`C:\OBJAdjR31CM1`でのPyInstaller 6.20.0 clean build、built package self-test、隔離profileの日英UI smokeもPASSしました。preflight `ChromaMatter.exe`は13,986,866 bytes、FileVersion／ProductVersion `0.8beta`、InternalName `ChromaMatter`、OriginalFilename `ChromaMatter.exe`、SHA-256 `208167A225A37BAAAA473B574B2F746E46427FD0CA63FC5B7201BF3394243743`です。2026-08-20、project ownerは公開GOを出し、icon publication rightsはcreator declarationによりpassしました。当該asset scopeのowner acceptanceは独立した法的clearanceではありません。最終source-only stage `ChromaMatter_0.8beta-r31-source-public-20260820`は227 files／226 manifest recordsで、folder／archive parity、CRC、privacy、staged identity／icon／tooling 32 tests、Downloads配置、外部detached `SHA256SUMS-r31.txt`照合が全てPASSしました。release stateは`source-publication-approved`、`publication_eligible=true`のscopeは`source-only`、source publication eligibilityはtrueです。binary publication eligibilityは第三者binary再配布監査完了までfalse、Innovation Fund submission readyはpublic repository URL／handle、権利処理済みsample、Orca／U1 evidence、cover／video／community postまでfalseです。checksum値は外部detached recordだけを正本とし、canonical ZIP hash欄は`null`のままです。
+対象: `ChromaMatter — AI Model Print Studio 0.8beta` r31 candidate（以下「r31候補」）。r31はr30の単一GLB seam閉立体化、strict 3MF検証、自動提案修正、公開UI整理を継承し、公開名、アイコン、実行file identityをChromaMatterへ統一します。r31 exact sourceはPython 3.13.14で`Ran 1024 tests in 100.656s: OK (skipped=1)`、1023 PASS／任意1 SKIPです。`C:\OBJAdjR31CM1`でのPyInstaller 6.20.0 clean build、built package self-test、隔離profileの日英UI smokeもPASSしました。preflight `ChromaMatter.exe`は13,986,866 bytes、FileVersion／ProductVersion `0.8beta`、InternalName `ChromaMatter`、OriginalFilename `ChromaMatter.exe`、SHA-256 `208167A225A37BAAAA473B574B2F746E46427FD0CA63FC5B7201BF3394243743`です。2026-08-20、project ownerは公開GOを出し、icon publication rightsはcreator declarationによりpassしました。当該asset scopeのowner acceptanceは独立した法的clearanceではありません。最終source-only stage `ChromaMatter_0.8beta-r31-source-public-20260820`は227 files／226 manifest recordsで、folder／archive parity、CRC、privacy、staged identity／icon／tooling 32 tests、Downloads配置、外部detached `SHA256SUMS-r31.txt`照合が全てPASSしました。source-only repositoryはowner handle `Ponkichi0718`により[GitHub](https://github.com/Ponkichi0718/ChromaMatter)で公開済みで、release stateは`source-published`です。`publication_eligible=true`のscopeは`source-only`、source publication eligibilityはtrue、binary publication eligibilityは第三者binary再配布監査完了までfalseです。Innovation Fund submission readyは権利処理済みsample、Orca／U1 evidence、cover／video／community postまでfalseです。checksum値は外部detached recordだけを正本とし、canonical ZIP hash欄は`null`のままです。
 
 ## 結論
 
-**source-only公開はGO。Innovation Fundへの提出は「public repository＋実機で完走した権利処理済み公開デモ」が揃うまで未readyとする。EXEは第三者binary再配布監査まで公開しない。**
+**source-only repositoryは公開済み。Innovation Fundへの提出は「実機で完走した権利処理済み公開デモ」が揃うまで未readyとする。EXEは第三者binary再配布監査まで公開しない。**
 
 ChromaMatterは、Full Spectrumそのものを作り直すのではなく、**AI生成された頂点カラーOBJまたはUV baseColor付きGLBを、色・パーツ・陰影を生かしたSnapmaker Orca用Full Spectrum 3MFへ持ち込む前処理と修正の空白**を埋める。Hi3D AIのように頂点カラーOBJを出さずGLBを主経路とする生成サービスからも、同じ制作workflowへ直接入れる。これはU1に明確に結び付いた実用課題であり、Innovation Fundの「Innovation & Technical Depth」「Openness & Quality」「Practicality & Adaptability」の三軸と合う。
 
@@ -77,7 +77,7 @@ ChromaMatterは、Full Spectrumそのものを作り直すのではなく、**AI
 - r31 software preflight: 1,404 files／1,403 manifest records、fresh-extracted self-test／日英UI smoke: exit 0。ただし第三者binary再配布監査未完了のため公開対象外。1280×720は現在の対応対象外として既知制約にする
 - 非公開の大規模GLBはread-only検証だけに使い、実modelをcopy、hash記録、manifest登録、配布しない
 
-r30以前のevidenceはr31へ適用しない。r31のsource regression／clean build／built package smoke／final source-only stage／archive／privacy／identity、project ownerのpublication decision、icon creator-declaration gateはGOである。release stateは`source-publication-approved`。`publication_eligible=true`は`source-only`限定で、binary publication eligibilityは第三者binary再配布監査までfalse、Innovation Fund submission readyもfalseである。checksum値は外部detached recordだけを正本とし、canonical ZIP hash欄は自己参照回避のため`null`である。physical XP-PEN／print evidenceはpendingの既知制約で、source公開のhard gateではない。
+r30以前のevidenceはr31へ適用しない。r31のsource regression／clean build／built package smoke／final source-only stage／archive／privacy／identity、project ownerのpublication decision、icon creator-declaration gateはGOである。release stateは`source-published`で、公開先は[https://github.com/Ponkichi0718/ChromaMatter](https://github.com/Ponkichi0718/ChromaMatter)、owner handleは`Ponkichi0718`である。`publication_eligible=true`は`source-only`限定で、binary publication eligibilityは第三者binary再配布監査までfalse、Innovation Fund submission readyもfalseである。checksum値は外部detached recordだけを正本とし、canonical ZIP hash欄は自己参照回避のため`null`である。physical XP-PEN／print evidenceはpendingの既知制約で、source公開のhard gateではない。
 
 ### Development and physical evidence on note
 
@@ -158,13 +158,13 @@ r30以前のevidenceはr31へ適用しない。r31のsource regression／clean b
 | 審査軸 | 現在の強み | 応募直前に足す証拠 |
 |---|---|---|
 | Innovation & Technical Depth | 頂点色／UV baseColor GLB→canonical Full Spectrum state、part palette、3D manual correction、色保持3MF、adaptive paint性能、安全なUV seam閉立体化、実機黒補正 | r31 architecture図、GLB texture bake／1:1 seam proof／strict type=model検証とpalette／chart順序test、自動提案の素材分離／色域回帰test、実入力から3MFまでのstate追跡例、処理時間・memory計測 |
-| Openness & Quality | GPL source方針、fail-closed seam契約、r31 exact-source 1023 PASS＋任意1 SKIP、clean build／package smoke／日英UI smoke、final source-only stage／archive／privacy／identity GO | public GitHubのclean clone再試験、CI結果、signed provenance、SBOM方針、issue template |
+| Openness & Quality | GPL source方針、public GitHub、fail-closed seam契約、r31 exact-source 1023 PASS＋任意1 SKIP、clean build／package smoke／日英UI smoke、final source-only stage／archive／privacy／identity GO、公開URLからのcloneと32 tests PASS | CI結果、signed provenance、SBOM方針、issue template |
 | Practicality & Adaptability | noteに実際の失敗、再出力、U1 calibration、完成全身造形がある | 公開sampleでOrca open→slice→save→reopen→U1 printを一続きに記録。4色／16・24・32色とpart output matrix |
 | Community 20% | 継続的なnote記事と制作物がある | GitHub README、英語字幕付き短編、Snapmaker Forum投稿を同日に公開し、質問・再現報告を受け付ける |
 
 ## 未解決リスク
 
-- r31のsource regression／clean build／built package smokeとfinal source-only stage／archive／privacy／identity、owner publication decision、icon creator declarationはGO。public GitHubのclean clone／CI、第三者binary再配布監査、権利処理済みsample一式の公開は未完了。
+- r31のsource regression／clean build／built package smokeとfinal source-only stage／archive／privacy／identity、owner publication decision、icon creator declaration、public GitHubと公開URLからのclone／32 testsはGO。CI、第三者binary再配布監査、権利処理済みsample一式の公開は未完了。
 - ABS／PETG混色はβであり、素材別ライブラリと3MF profileの整合までは検証しているが、U1実機での同素材4本による色再現matrixは未完了。ABSは色数・色域が狭く、Top Coverを含む造形条件も別途検証が必要である。
 - 実機黒補正とcalibration chartを、複数black／white、16／24／32色で定量比較したmatrixがない。
 - 大規模OBJ／GLBの読込、準備、閉立体化は時間とmemoryを要し、200万面級のManual Editingはβ境界である。
@@ -173,7 +173,7 @@ r30以前のevidenceはr31へ適用しない。r31のsource regression／clean b
 - TripoAI以外の頂点カラーOBJに対する実機validationが薄い。応募では入力契約を狭く正確に書く。
 - physical XP-PEN操作と、r31 exact buildのU1一貫試験が未完了。
 - UIを簡素化した一方、初見利用者が4色選択、混色state、part palette、black correctionを理解できるonboarding evidenceがない。
-- project ownerによる現在sourceの公開承認は記録済み。公開著作権者名／handle、連絡先のGitHub metadata反映は未完了。
+- project ownerによる現在sourceの公開承認は記録済み。公開handle `Ponkichi0718`とrepository URLは反映済みで、公開連絡先のGitHub metadata反映は未完了。
 
 ## IP・ライセンス・プライバシー
 
@@ -212,9 +212,11 @@ r30以前のevidenceはr31へ適用しない。r31のsource regression／clean b
 - [x] r31 exact clean build、packaged self-test、1920×1080の日英UI smokeを完了した
 - [x] r31 preflight source／software stage、fresh extract、manifest／privacy auditを完了した
 - [x] r31 final source-only restage、Downloads配置、detached checksum、archive／CRC／privacy／identity契約を完了した
-- [ ] Public GitHubをclean cloneし、記載手順だけでtestとsample workflowを再現した
+- [x] Public GitHubをclean cloneし、source公開範囲の32 testsを再実行した
+- [ ] 権利処理済みpublic sample workflowを記載手順だけで再現した
 - [x] project ownerによる現在sourceの公開承認を記録した
-- [ ] copyright handle、公開連絡先、GPL／第三者通知のGitHub表示を確定した
+- [x] public repository URLとowner handle `Ponkichi0718`を確定した
+- [ ] 公開連絡先、GPL／第三者通知のGitHub表示を確定した
 - [ ] 応募sampleの権利記録と第三者IP確認を完了した
 - [ ] 公開sampleでOrca open→slice→save→reopenを完走した
 - [ ] 同じsampleをU1で完走し、完成写真、条件、失敗／制限を公開した
@@ -238,7 +240,7 @@ r30以前のevidenceはr31へ適用しない。r31のsource regression／clean b
 | 実機で可能性を示した証拠 | あり。ただしrevision追跡を要整理 |
 | 競合との差別化 | 可能。ただし応募文と動画で明文化必須 |
 | source quality | r30以前はprevious evidence。r31 exact full regressionは1023 PASS＋任意1 SKIP。clean build、built package smoke、1920×1080日英UI smoke、final source-only 227／226、archive／CRC／privacy／identity、Downloads配置、detached checksumはGO |
-| public release／legal | `source-publication-approved`。scopeは`source-only`。icon asset scopeはcreator declarationでowner accepted。binaryは第三者再配布監査待ち |
+| public release／legal | `source-published`。scopeは`source-only`、公開先は[GitHub](https://github.com/Ponkichi0718/ChromaMatter)。icon asset scopeはcreator declarationでowner accepted。binaryは第三者再配布監査待ち |
 | 応募asset | 作成途中 |
 
-**現時点の総合判断は「source-only releaseはGO、Innovation Fund提出物はまだ未完成」。** 中位以上を狙える題材だが、top tierを争うには、機能数を増やすよりも、original public sampleによる再現可能な一貫実証、競合との一文差別化、public repository運用品質の三つが必要である。
+**現時点の総合判断は「source-only repositoryは公開済み、Innovation Fund提出物はまだ未完成」。** 中位以上を狙える題材だが、top tierを争うには、機能数を増やすよりも、original public sampleによる再現可能な一貫実証、競合との一文差別化、public repository運用品質の三つが必要である。

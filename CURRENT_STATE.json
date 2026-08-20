@@ -4,7 +4,7 @@
   "package_version": "0.8beta",
   "edition": "AI Model Print Studio r31",
   "artifact_slug": "r31-ai-model-print-studio",
-  "status": "r31-ai-model-print-studio-source-publication-approved",
+  "status": "r31-ai-model-print-studio-source-published",
   "updated": "2026-08-20",
   "version_policy": {
     "pinned_until_explicit_user_request": true,
@@ -88,13 +88,13 @@
     "physical_print": "pending"
   },
   "release": {
-    "state": "source-publication-approved",
+    "state": "source-published",
     "target_revision": "r31-ai-model-print-studio",
-    "revision": "AI Model Print Studio r31 renames the public product to ChromaMatter and replaces its icon while retaining legacy project, settings, and schema compatibility. Exact-source regression, clean build, packaged self-test, isolated Japanese/English UI smoke, and final source-only stage/archive/privacy/identity audits passed. The project owner authorized publication on 2026-08-20 and accepted the declared icon asset scope. Source publication is approved; binary publication remains held for the third-party redistribution audit, and physical validation remains a disclosed limitation rather than a source-publication blocker.",
+    "revision": "AI Model Print Studio r31 renames the public product to ChromaMatter and replaces its icon while retaining legacy project, settings, and schema compatibility. Exact-source regression, clean build, packaged self-test, isolated Japanese/English UI smoke, and final source-only stage/archive/privacy/identity audits passed. The project owner authorized publication on 2026-08-20 and accepted the declared icon asset scope. Source-only publication is live at https://github.com/Ponkichi0718/ChromaMatter; binary publication remains held for the third-party redistribution audit, and physical validation remains a disclosed limitation rather than a source-publication blocker.",
     "public_source_default": "ChromaMatter_0.8beta-r31-source-public-20260820",
     "software_package_default": "ChromaMatter_0.8beta-r31-ai-model-print-studio",
     "current_r31_candidate_validation": {
-      "status": "source-publication-approved-binary-publication-held",
+      "status": "source-published-binary-publication-held",
       "source_full_regression": "passed on Python 3.13.14: Ran 1024 tests in 100.656s: OK (skipped=1); 1023 passed and 1 optional skip",
       "current_focused_release_identity_regression": "passed as part of the current exact r31 full regression",
       "current_focused_ui_regression": "passed as part of the current exact r31 full regression",
@@ -144,14 +144,19 @@
       "software_package_zip_sha256": null,
       "zip_hashes_and_sizes_embedded_in_canonical_documents": false,
       "downloads_placement_claimed": true,
+      "public_repository_url": "https://github.com/Ponkichi0718/ChromaMatter",
+      "public_repository_owner_handle": "Ponkichi0718",
+      "public_repository_visibility": "public",
+      "public_repository_default_branch": "main",
+      "initial_publication_commit": "a01ba4baa791809a5a6621fac35956dc65479216",
       "publication_eligible": true,
       "publication_scope": "source-only",
       "source_publication_eligible": true,
-      "source_publication_status": "approved: exact final r31 source-only restage, Downloads placement, detached checksum record, archive parity, CRC, privacy, and staged identity/icon/tooling verification passed",
+      "source_publication_status": "published at https://github.com/Ponkichi0718/ChromaMatter from the approved r31 source-only scope; exact final restage, Downloads placement, detached checksum record, archive parity, CRC, privacy, and staged identity/icon/tooling verification passed",
       "binary_publication_eligible": false,
       "binary_publication_blocker": "third-party binary redistribution audit for PyTetWild/fTetWild, TetGen, PyMeshLab, Qt, GEOS, and the exact packaged dependency set remains incomplete; owner GO does not waive licence obligations",
       "innovation_fund_submission_ready": false,
-      "innovation_fund_submission_blockers": "public repository URL and handle, rights-cleared public sample, Orca/U1 evidence, cover, video, community post, and submitted form remain pending",
+      "innovation_fund_submission_blockers": "rights-cleared public sample, Orca/U1 evidence, cover, video, community post, and submitted form remain pending",
       "publication_eligibility_note": "publication_eligible is true only for publication_scope=source-only. Binary publication remains ineligible. Physical XP-PEN and printer tests remain disclosed limitations rather than source-publication blockers",
       "failure_contract": "Do not distribute if any exact-source regression, clean build, smoke, stage, archive, privacy, identity, layout, or checksum gate fails."
     },
@@ -184,19 +189,23 @@
     "distribution_policy": {
       "non_public_validation_assets_distributed": false,
       "artifact_checksum_record": "The detached Downloads SHA256SUMS-r31.txt is the sole checksum authority for the final source-only distribution. ZIP hashes and sizes stay null or omitted here to avoid self-reference.",
-      "published_location_claimed": false,
+      "published_location_claimed": true,
+      "public_repository_url": "https://github.com/Ponkichi0718/ChromaMatter",
+      "public_repository_owner_handle": "Ponkichi0718",
+      "public_repository_visibility": "public",
+      "public_repository_default_branch": "main",
+      "initial_publication_commit": "a01ba4baa791809a5a6621fac35956dc65479216",
       "downloads_placement_claimed": true,
       "legal_review": "owner-accepted for the declared ChromaMatter icon asset scope on 2026-08-20; no independent legal clearance claimed",
-      "source_publication_policy": "approved for source-only publication after exact final restage, detached checksum, and archive verification",
+      "source_publication_policy": "published source-only at https://github.com/Ponkichi0718/ChromaMatter after exact final restage, detached checksum, and archive verification",
       "binary_publication_policy": "withhold the software ZIP and executable until the exact third-party binary redistribution audit is complete",
       "final_failure_contract": "Do not distribute when any r31 final gate fails."
     }
   },
   "known_pending": [
-    "Publish the approved source-only artifact from ChromaMatter_0.8beta-r31-source-public-20260820; keep its detached checksum record with the distribution.",
     "Validate the final Manual Editing interaction on physical XP-PEN hardware.",
     "Run a physical printer matrix and confirm exported projects in Snapmaker Orca slice preview.",
-    "Create the public repository URL and handle, then publish only the approved source-only r31 artifact; do not publish the EXE or software ZIP.",
+    "Complete the rights-cleared public sample, evidence media, community post, and Innovation Fund submission; do not publish the EXE or software ZIP.",
     "Keep the retained Decal beta implementation inaccessible until it is separately revalidated and explicitly reintroduced."
   ],
   "known_constraints": [

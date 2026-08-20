@@ -100,13 +100,14 @@ Repository-root `BOOTSTRAP_WINDOWS.ps1` is the standard setup and test entry poi
 - preflight public source: 204 files / 203 manifest records
 - preflight software: 1,340 files / 1,339 manifest records
 - preflight ZIP structure, manifest equality, path safety, CRC, and privacy: passed
-- release state: `source-publication-approved`
+- release state: `source-published`
 - final ZIP SHA-256: `null`
 - icon publication rights: `passed-by-creator-declaration` (2026-08-20); the project owner accepted publication for that asset scope, without claiming independent legal clearance
 - publication eligibility: true only for `publication_scope=source-only`
 - source publication eligibility: true
 - binary publication eligibility: false until the third-party binary redistribution audit is complete
-- Innovation Fund submission ready: false pending the public repository URL/handle, rights-cleared sample, Orca/U1 evidence, cover/video, and community post
+- public repository: [https://github.com/Ponkichi0718/ChromaMatter](https://github.com/Ponkichi0718/ChromaMatter) (owner handle `Ponkichi0718`)
+- Innovation Fund submission ready: false pending the rights-cleared sample, Orca/U1 evidence, cover/video, and community post
 - physical XP-PEN validation and physical print: pending disclosed limitations, not source-publication blockers
 
 The r30, r29, r28, and r27 results above are **previous evidence** for their respective revisions only. They do not validate ChromaMatter r31 source, binaries, packages, or checksums. Current r31 source regression, clean build, packaged smoke, and final source-only stage/archive/privacy/identity audits are GO. On 2026-08-20 the creator declared the robot an original fictional machine and `ZENITH DYNAMICS CORP.` fictional wording with no intended real-world affiliation; the project owner gave publication GO. This is not independent trademark/design clearance or legal advice, and no affiliation with entities using the close name `Zenith Dynamics` is claimed. Source-only publication is approved; binary publication eligibility remains false until the third-party redistribution audit is complete.
@@ -118,7 +119,7 @@ Creator Studio r26 results are previous evidence as well and do not validate Chr
 - approved source-only release: `ChromaMatter_0.8beta-r31-source-public-20260820`
 - non-public software preflight: `ChromaMatter_0.8beta-r31-ai-model-print-studio`
 
-The detached Downloads `SHA256SUMS-r31.txt` is the sole distribution checksum authority and has been verified externally for the source-only release. The r30 checksum is not reused, self-referential ZIP hashes are intentionally not embedded in canonical documents, and release state is `source-publication-approved`.
+The detached Downloads `SHA256SUMS-r31.txt` is the sole distribution checksum authority and has been verified externally for the source-only release. The r30 checksum is not reused, self-referential ZIP hashes are intentionally not embedded in canonical documents, and release state is `source-published`.
 
 ## Notes
 

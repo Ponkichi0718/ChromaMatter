@@ -1,10 +1,10 @@
 # ChromaMatter GitHub公開手順
 
 更新日: 2026-08-20  
-対象: ChromaMatter — AI Model Print Studio `0.8beta`の初回ソース公開  
-方針: **Privateで確認してからPublicへ変更する。初回はソースのみを公開し、EXEとReleaseは保留する。**
+対象: ChromaMatter — AI Model Print Studio `0.8beta`の初回ソース公開記録と再公開手順  
+方針: **初回source-only repositoryは公開済み。手順templateはPrivateで確認してからPublicへ変更する流れを維持し、EXEとReleaseは保留する。**
 
-r31 preflightでは、public source 227 files／226 manifest recordsのfresh archive exact・privacy監査と、software 1,404 files／1,403 manifest recordsのfresh-extracted self-test／日英UI smokeを確認済みです。これはfinal restageの技術的GOであり、Downloadsへの最終配置とdetached `SHA256SUMS-r31.txt`作成は未完了です。preflight ZIP hash／sizeを公開正本として流用しません。
+r31 final source-only stageは227 files／226 manifest recordsでfresh archive exact、privacy、identity／icon／tooling 32 tests、Downloads配置、detached `SHA256SUMS-r31.txt`照合まで完了しました。owner handle `Ponkichi0718`の[public repository](https://github.com/Ponkichi0718/ChromaMatter)へ公開済みで、個人メールを含まない初回公開commitは`a01ba4baa791809a5a6621fac35956dc65479216`です。software 1,404 files／1,403 manifest recordsのpreflight self-test／日英UI smokeは技術evidenceに限り、EXE／software ZIPは公開していません。
 
 ## 最初に守ること
 
@@ -50,10 +50,10 @@ GitHubへ入れるのは、`tooling/stage_public_source.ps1`で生成した**公
 例:
 
 ```text
-Copyright (c) 2026 YOUR_GITHUB_HANDLE and ChromaMatter contributors
+Copyright (c) 2026 Ponkichi0718 and ChromaMatter contributors
 ```
 
-`YOUR_GITHUB_HANDLE`は、実際に公開する名前へ置き換えます。公開後に名前を頻繁に変えると、作者と履歴の対応が分かりにくくなるため、初回公開前に決めておきます。
+公開用handleは`Ponkichi0718`です。公開後に名前を頻繁に変えると、作者と履歴の対応が分かりにくくなるため、この記録を維持します。
 
 ### 個人メールをcommitへ出さない設定
 
@@ -224,17 +224,17 @@ GitHub DesktopでPrivateリポジトリを別の空フォルダーへcloneし直
 
 次がすべて完了するまでPrivateのままにします。
 
-- [ ] 公開名／ハンドルとcommit用メールを確定した
-- [ ] README、`LICENSE`、第三者ライセンスを確認した
-- [ ] 最新アイコンへ変更後に公開候補を再生成した
-- [ ] 公開候補監査に合格した
-- [ ] GitHubからのクリーンクローンでテストできた
-- [ ] Private上の全ファイルとcommit履歴を確認した
-- [ ] ソースGit履歴には抽象形状の合成テストだけが入っている
-- [ ] 配布予定の実用デモはソースと別管理し、権利記録を作成した
-- [ ] デモ以外の実モデル、画像、3MF、動画を含めていない
-- [ ] EXEを含めていない
-- [ ] APIキー、トークン、個人メール、個人絶対パスがない
+- [x] 公開名／handle `Ponkichi0718`とGitHub `noreply` commit用メールを確定した
+- [x] README、`LICENSE`、第三者ライセンスを確認した
+- [x] 最新アイコンへ変更後に公開候補を再生成した
+- [x] 公開候補監査に合格した
+- [x] GitHubからのクリーンクローンで32 testsを再実行した
+- [x] Public化前後の全ファイルとcommit履歴を確認した
+- [x] ソースGit履歴には抽象形状の合成テストだけが入っている
+- [x] 配布予定の実用デモはソースと別管理し、権利記録を作成する方針を維持した
+- [x] デモ以外の実モデル、画像、3MF、動画を含めていない
+- [x] EXEを含めていない
+- [x] APIキー、トークン、個人メール、個人絶対パスがない
 
 ## 9. PrivateからPublicへ変更する
 
@@ -326,7 +326,7 @@ git remote add origin https://github.com/YOUR_GITHUB_HANDLE/ChromaMatter.git
 git push -u origin main
 ```
 
-この文書の作成時点では、実際の`git init`、commit、push、可視性変更は実行していません。
+上のCLIは今後の再公開時に使うtemplateです。初回は`https://github.com/Ponkichi0718/ChromaMatter`の`main`へsource-onlyで公開済みで、個人メールを除いた初回公開commitは`a01ba4baa791809a5a6621fac35956dc65479216`です。
 
 ## GitHub公式資料
 

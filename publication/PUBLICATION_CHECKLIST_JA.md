@@ -1,7 +1,7 @@
 # ChromaMatter 0.8beta 公開準備チェックリスト
 
 更新日: 2026-08-20  
-現在の方針: **`ChromaMatter_0.8beta-r31-source-public-20260820`はsource-only公開GO。EXE／software ZIPは第三者binary再配布監査が終わるまで保留。**
+現在の方針: **`ChromaMatter_0.8beta-r31-source-public-20260820`のsource-only repositoryは[GitHub](https://github.com/Ponkichi0718/ChromaMatter)で公開済み。EXE／software ZIPは第三者binary再配布監査が終わるまで保留。**
 
 このチェックリストは、法的助言ではなく、公開事故を減らすための実務管理表です。
 
@@ -12,6 +12,7 @@
 | 表示バージョン | 完了 | 利用者の指定があるまで`0.8beta`に固定 |
 | r31 preflight技術監査 | **GO** | source 227／226、software 1,404／1,403、fresh archive／extract、privacy、self-test、日英UI smokeを確認 |
 | r31 final source-only restage | **GO** | source 227／226、folder／archive parity、CRC、privacy、identity／icon／tooling 32 tests、Downloads配置、detached `SHA256SUMS-r31.txt`照合を完了 |
+| public repository | **公開済み** | `https://github.com/Ponkichi0718/ChromaMatter`、owner handle `Ponkichi0718`、default branch `main` |
 | 旧EXEへのビルド依存 | 完了 | 依存を除去。公開候補へ含めない |
 | 復元PYCへの実行依存 | 完了 | 293テストをPYCなしで通過。公開候補へ含めない |
 | ChromaMatterアイコン | **creator declarationでGO** | creatorがオリジナルの架空機体と創作文言であると申告し、公開・再配布を承認。独立した商標／意匠clearanceではない |
@@ -23,7 +24,7 @@
 | 混色モデルの来歴 | 完了 | MIT上流コミット、SHA-256、全配列一致、再生成手順を記録 |
 | クリーンクローン検証 | 完了 | 公開候補だけの空フォルダーとfresh `.venv`から、テスト・build・起動smoke・合成OBJ読込まで成功 |
 | アプリ基礎コードの公開判断 | **owner GO** | project ownerが現在のsourceを自分のprojectとして公開することを2026-08-20に承認。独立したcode provenance法務監査ではない |
-| 著作権表示名 | **公開運用時に決定** | repository owner名または公開用ハンドルを初回GitHub metadataへ記録する。final source artifactの技術blockerではない |
+| 公開用ハンドル | **完了** | repository owner handle `Ponkichi0718`をGitHub metadataへ記録 |
 | EXEの第三者ライセンス監査 | **未完了・binary公開blocker** | ownerの公開GOでもPyTetWild/fTetWild、TetGen、PyMeshLab、Qt、GEOS等の再配布条件は免除されない |
 | Snapmaker Orca一貫操作 | **未完了** | 動画で開く→スライス→保存→再読込を記録 |
 | U1物理造形 | **未完了** | 実際の色、積層、強度、嵌合を記録 |
@@ -98,7 +99,7 @@ TetGenはオープンソースなので利用できますが、「GitHubに何�
 - [ ] アプリからライセンスとソース入手先へ到達できるUIを実装する。
 - [ ] 必要なら専門家の確認またはWIASの商用ライセンスを検討する。
 
-このため、owner GOと完了したfinal artifact gateに基づき、**source-only公開はapproved**です。公開EXEは第三者binary再配布監査が完了するまで保留します。
+このため、owner GOと完了したfinal artifact gateに基づき、**source-only repositoryは公開済み**です。公開EXEは第三者binary再配布監査が完了するまで保留します。
 
 ## 5. 実モデル、動画、プロンプト
 
@@ -153,7 +154,7 @@ TetGenはオープンソースなので利用できますが、「GitHubに何�
 - [x] 2026-08-20、project ownerが既知の制約とcreator declarationの範囲を確認し、公開GOを出した（独立した法的clearanceの主張ではない）。
 - [x] ChromaMatterアイコンのcreator declarationと非提携方針をprovenanceへ記録した。
 - [x] project ownerによる現在sourceの公開承認を記録した。
-- [ ] 公開用の著作権者名／ハンドルと連絡先を決めた。
+- [x] 公開用handle `Ponkichi0718`とrepository URLを記録した。
 - [x] r31 preflight公開stageの監査、full regression、クリーンビルド、fresh extractが成功した。
 - [x] final restageしたsource-only artifactをDownloadsへ配置し、detached `SHA256SUMS-r31.txt`を作成・照合した。
 - [x] final source-only stageのREADME、LICENSE、PROVENANCE、第三者通知、identity／icon／tooling testが一致した。
@@ -161,5 +162,6 @@ TetGenはオープンソースなので利用できますが、「GitHubに何�
 - [ ] 公開専用デモを含める場合、権利記録、再配布条件、適用ライセンス、帰属表示、SHA-256を実ファイルと照合した。
 - [x] 公開scopeを`source-only`と明示し、EXE／software ZIPを対象外とした。
 - [ ] EXEを含む場合はバイナリ配布監査が完了した。
-- [ ] リポジトリURL、ソース入手先、issue運用、セキュリティ連絡先を決めた。
+- [x] リポジトリURLとソース入手先を公開した。
+- [ ] issue運用、公開連絡先、セキュリティ連絡先を決めた。
 - [ ] 「公式・認定・提携」と誤解される表現やロゴがない。

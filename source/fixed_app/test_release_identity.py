@@ -124,7 +124,7 @@ class ReleaseIdentityTests(unittest.TestCase):
         self.assertEqual("AI Model Print Studio r31", state["edition"])
         self.assertEqual("r31-ai-model-print-studio", state["artifact_slug"])
         self.assertEqual(
-            "r31-ai-model-print-studio-source-publication-approved",
+            "r31-ai-model-print-studio-source-published",
             state["status"],
         )
         self.assertTrue(state["version_policy"]["pinned_until_explicit_user_request"])
@@ -201,7 +201,7 @@ class ReleaseIdentityTests(unittest.TestCase):
 
         release = state["release"]
         self.assertEqual(
-            "source-publication-approved",
+            "source-published",
             release["state"],
         )
         self.assertEqual("r31-ai-model-print-studio", release["target_revision"])
@@ -215,7 +215,7 @@ class ReleaseIdentityTests(unittest.TestCase):
         )
         current = release["current_r31_candidate_validation"]
         self.assertEqual(
-            "source-publication-approved-binary-publication-held",
+            "source-published-binary-publication-held",
             current["status"],
         )
         self.assertTrue(
@@ -297,10 +297,25 @@ class ReleaseIdentityTests(unittest.TestCase):
         self.assertTrue(current["publication_eligible"])
         self.assertEqual("source-only", current["publication_scope"])
         self.assertTrue(current["source_publication_eligible"])
-        self.assertTrue(current["source_publication_status"].startswith("approved"))
+        self.assertTrue(current["source_publication_status"].startswith("published"))
+        self.assertEqual(
+            "https://github.com/Ponkichi0718/ChromaMatter",
+            current["public_repository_url"],
+        )
+        self.assertEqual("Ponkichi0718", current["public_repository_owner_handle"])
+        self.assertEqual("public", current["public_repository_visibility"])
+        self.assertEqual("main", current["public_repository_default_branch"])
+        self.assertEqual(
+            "a01ba4baa791809a5a6621fac35956dc65479216",
+            current["initial_publication_commit"],
+        )
         self.assertFalse(current["binary_publication_eligible"])
         self.assertIn("third-party binary redistribution", current["binary_publication_blocker"])
         self.assertFalse(current["innovation_fund_submission_ready"])
+        self.assertNotIn(
+            "public repository URL and handle",
+            current["innovation_fund_submission_blockers"],
+        )
         self.assertEqual(
             "go-authorized-by-project-owner-on-2026-08-20",
             current["publication_decision"],
@@ -378,7 +393,7 @@ class ReleaseIdentityTests(unittest.TestCase):
                     "1,404",
                     "1,403",
                     "SHA256SUMS-r31.txt",
-                    "source-publication-approved",
+                    "source-published",
                     "XP-PEN",
                     "passed-by-creator-declaration",
                     "ZENITH DYNAMICS CORP.",
@@ -386,6 +401,8 @@ class ReleaseIdentityTests(unittest.TestCase):
                     "ChromaMatter_0.8beta-r31-source-public-20260820",
                     "source-only",
                     "Innovation Fund",
+                    "https://github.com/Ponkichi0718/ChromaMatter",
+                    "Ponkichi0718",
                 ):
                     with self.subTest(path=path, required=required):
                         self.assertIn(required.casefold(), folded)

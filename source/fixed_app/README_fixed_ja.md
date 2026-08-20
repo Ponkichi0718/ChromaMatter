@@ -100,13 +100,14 @@ repository rootの`BOOTSTRAP_WINDOWS.ps1`が標準の準備・test入口です�
 - preflight public source: 204 files／203 manifest records
 - preflight software: 1,340 files／1,339 manifest records
 - preflight ZIP、manifest equality、path safety、CRC、privacy: PASS
-- release state: `source-publication-approved`
+- release state: `source-published`
 - final ZIP SHA-256: `null`
 - icon publication rights: `passed-by-creator-declaration`（2026-08-20）。当該asset scopeはproject ownerが公開を承認。独立した法的clearanceではない
 - publication eligibility: true only for `publication_scope=source-only`
 - source publication eligibility: true
 - binary publication eligibility: 第三者binary再配布監査完了までfalse
-- Innovation Fund submission ready: public repository URL／handle、権利処理済みsample、Orca／U1 evidence、cover／video／community postまでfalse
+- public repository: [https://github.com/Ponkichi0718/ChromaMatter](https://github.com/Ponkichi0718/ChromaMatter)（owner handle `Ponkichi0718`）
+- Innovation Fund submission ready: 権利処理済みsample、Orca／U1 evidence、cover／video／community postまでfalse
 - physical XP-PEN validation、physical print: pendingの既知制約（source公開blockerではない）
 
 上記r30、r29、r28、r27の結果は各revisionだけの**previous evidence**です。ChromaMatter r31のsource、binary、package、checksumを検証したものとして扱いません。現在のr31 source regression／clean build／packaged smokeとfinal source-only stage／archive／privacy／identityはGOです。2026-08-20、creatorはロボットをオリジナルの架空機体、`ZENITH DYNAMICS CORP.`を実在組織との関係を意図しない創作文言と申告し、project ownerは公開GOを出しました。これは独立した商標／意匠clearanceや法的意見ではなく、近似名`Zenith Dynamics`を使う実在組織との提携も示しません。source-only publicationはapproved、binaryは第三者再配布監査が完了するまでpublication eligible=falseです。
@@ -118,7 +119,7 @@ Creator Studio r26の結果も同様にprevious evidenceで、ChromaMatter r31�
 - approved source-only release: `ChromaMatter_0.8beta-r31-source-public-20260820`
 - non-public software preflight: `ChromaMatter_0.8beta-r31-ai-model-print-studio`
 
-配布checksumの正本はDownloadsのdetached external `SHA256SUMS-r31.txt`だけです。外部照合はsource-only distributionについて完了し、r30のchecksumは流用しません。canonical文書への自己参照ZIP hashは埋め込まず、release stateは`source-publication-approved`です。
+配布checksumの正本はDownloadsのdetached external `SHA256SUMS-r31.txt`だけです。外部照合はsource-only distributionについて完了し、r30のchecksumは流用しません。canonical文書への自己参照ZIP hashは埋め込まず、release stateは`source-published`です。
 
 ## 注意
 

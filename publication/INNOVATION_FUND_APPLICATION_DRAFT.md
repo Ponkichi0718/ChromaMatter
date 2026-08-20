@@ -1,7 +1,7 @@
 # ChromaMatter — Innovation Fund応募原稿案
 
 更新日: 2026-08-20  
-状態: **`ChromaMatter_0.8beta-r31-source-public-20260820`はsource-only公開approved。Innovation Fund submission readyはfalseで、応募文は未投稿・未提出。角括弧のplaceholder、public repository URL／handle、応募sample実証値を置換するまで提出しない。EXE／software ZIPは第三者binary再配布監査まで公開しない。**  
+状態: **`ChromaMatter_0.8beta-r31-source-public-20260820`のsource-only repositoryは[GitHub](https://github.com/Ponkichi0718/ChromaMatter)で公開済み。Innovation Fund submission readyはfalseで、応募文は未投稿・未提出。残る角括弧のplaceholderと応募sample実証値を置換するまで提出しない。EXE／software ZIPは第三者binary再配布監査まで公開しない。**  
 対象: `ChromaMatter — AI Model Print Studio 0.8beta` r31候補
 
 ## 1. 応募の基本情報
@@ -264,7 +264,7 @@ READMEではditherforgeを攻撃的に比較しない。必要なら`Related pro
 >
 > This is not a claim of perfect screen-to-print colour. Filament opacity, lot, lighting, geometry, and slicer settings all matter. My goal is to make the failures visible and the correction path reproducible. The linked demo records the exact source revision, OBJ/3MF hashes, four filaments, Snapmaker Orca version, U1 settings, and the failed and improved prints.
 >
-> **Project:** [GITHUB_URL]  
+> **Project:** https://github.com/Ponkichi0718/ChromaMatter  
 > **90-second demo:** [VIDEO_URL]  
 > **Development and physical-print log:** [NOTE_INDEX_URL]  
 > **Public sample and reproduction steps:** [SAMPLE_URL]
@@ -292,7 +292,7 @@ READMEではditherforgeを攻撃的に比較しない。必要なら`Related pro
 >
 > これは画面色と実物色の完全一致を保証するものではありません。filamentの隠蔽力、lot、照明、geometry、slicer設定で結果は変わります。目標は、失敗を見えるようにし、補正工程を再現可能にすることです。公開demoには、exact revision、OBJ／3MF hash、4本のfilament、Snapmaker Orca版、U1条件、失敗版と改善版を記録します。
 >
-> **GitHub:** [GITHUB_URL]  
+> **GitHub:** https://github.com/Ponkichi0718/ChromaMatter  
 > **90秒demo:** [VIDEO_URL]  
 > **開発・実機造形記録:** [NOTE_INDEX_URL]  
 > **公開sampleと再現手順:** [SAMPLE_URL]
@@ -305,8 +305,8 @@ READMEではditherforgeを攻撃的に比較しない。必要なら`Related pro
 
 ### A. release同一性
 
-- [ ] public repository URL: `[URL]`
-- [ ] release tag／commit: `[TAG / 40-char COMMIT]`
+- [x] public repository URL: `https://github.com/Ponkichi0718/ChromaMatter`
+- [x] initial source publication commit: `a01ba4baa791809a5a6621fac35956dc65479216`（release tagは未作成）
 - [ ] source ZIP name／SHA-256: `[FILE / HASH]`
 - [ ] software ZIP name／SHA-256: `[FILE / HASH]`
 - [ ] public sample OBJ name／SHA-256: `[FILE / HASH]`
@@ -373,7 +373,7 @@ READMEではditherforgeを攻撃的に比較しない。必要なら`Related pro
 1. r31 exact source-only release gateは完了。EXE／software ZIPは第三者binary再配布監査まで保留する。
 2. 権利処理済みsampleを同じr31でGLB／OBJ→project→3MF→Orca→U1まで完走する。
 3. hash、profile、filament、失敗／改善写真を記録する。
-4. README hero、sample、known limitations、validationをGitHubへ公開する。
+4. 公開済みGitHubへREADME hero、sample、known limitations、validationを追記する。
 5. 90秒hero videoとtechnical demoを公開する。
 6. Snapmaker Forumへ投稿し、URLを保存する。
 7. 公式formへproject URL、category、short description、coverを入力する。
