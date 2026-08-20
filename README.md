@@ -8,6 +8,11 @@
 
 ChromaMatter — AI Model Print Studioは、AI生成された頂点カラー付きOBJまたはUV baseColor付きGLBを、Snapmaker OrcaのFull Spectrum／Color Mixingワークフロー向け3MFへ変換・調整するWindowsデスクトップツールです。独立プロジェクトであり、TripoAI、Hi3D AI、Snapmaker、OpenAIその他第三者の公式・提携製品ではありません。
 
+**AIで作った3Dを、画面の中だけで終わらせない。** ChromaMatterは、AI 3D生成に「カラー造形という出口」を、3Dプリンタに「AIモデルという新しい入力」をつくり、それぞれの利用価値を高めるための橋渡しを目指しています。
+
+- [画像で見る主な機能と制作フロー](FEATURES_JA.md)
+- [試作・失敗・実機調整を含む開発記録（note）](https://note.com/ponkichi0718)
+
 公開表示versionは利用者指定どおり`0.8beta`に固定し、editionを`AI Model Print Studio r31`、artifact slugを`r31-ai-model-print-studio`とします。Windowsの数値versionも`0.8.0.0`のままです。
 
 ## AI Model Print Studio r31
@@ -40,12 +45,6 @@ r31は公開名とアイコンをChromaMatterへ統一したidentity releaseで�
 - 互換性を確認できる9層Airbrushはadaptive treeを1回だけtraversalします。旧形式、非同心、または分割形状が前提に合わない場合は、実績のある逐次処理へ安全にfallbackします。
 - optimized pathと逐次処理で、encoded output、changed roots、override、adaptive tree、Undo／Redoが一致することを回帰testで確認しています。
 
-### デカール β（source保持・公開UI非表示）
-
-- デカールの読込・投影・焼き付け実装と安全testは、将来の再検証のためsourceに保持しています。
-- 現在の公開Manual Editingにはリボンtab、button、menu、画像を開くcallback、shortcutのどれもなく、利用者はデカール機能を起動できません。
-- 旧projectは引き続き読み込めます。以前に焼き付けられた色は通常のmanual paintとして保持され、元PNG／SVGや編集可能layerは従来どおりproject dataではありません。
-
 ### 公開画面
 
 - メイン画面は「フィラメント設定」と「出力設定」の2ページです。長い説明や中間previewタブを減らし、3D previewを広くしています。
@@ -55,8 +54,6 @@ r31は公開名とアイコンをChromaMatterへ統一したidentity releaseで�
 - 「基本4色を初期値へ戻す」は公開画面に表示しません。モデルからの自動提案と個別の色編集は維持します。
 - 実機黒補正はmixed palette内に置き、表示色と自動配色を保ったまま3MF出力の黒混色だけを弱めます。
 - 出力設定の形状再処理は1操作、修復名は「閉立体化」です。
-
-Black-Free Gradient、ColorDepth、Radial、デカール β、黒内壁化、分割、ジョイント、Help Center、安全なつなぎ目だけ、手動ジョイント再処理、別の開口境界3D入口は公開UIに表示しません。旧project／preferencesの非公開設定もload時にsafe defaultへ戻します。
 
 ### フィラメント候補β
 
@@ -143,4 +140,8 @@ WindowsとPython 3.13で次を実行します。
 
 アプリケーションは`GPL-3.0-or-later`です。同梱依存関係には別ライセンスがあり、TetGen本体は`AGPL-3.0-or-later`です。binary配布前に`licenses/`とpublication checklistを確認してください。
 
-開発にはOpenAI Codexを利用しています。仕様、検証、採否、公開判断はプロジェクト提案者が行います。
+## AI利用について
+
+ChromaMatterは、企画整理、仕様設計、実装、テスト、文書化、画像制作、GitHub公開作業の各段階でChatGPT／OpenAI CodexなどのAIを活用しています。最終的な仕様、採否、実機検証、公開判断はプロジェクト作者が行っています。
+
+AI生成のコード、画像、説明文には、不自然な表現や技術的な誤りが残る可能性があります。重要な印刷設定はソース、生成3MF、スライサープレビュー、ご自身の実機で確認してください。お気づきの点は[GitHub Issues](https://github.com/Ponkichi0718/ChromaMatter/issues)でお知らせください。

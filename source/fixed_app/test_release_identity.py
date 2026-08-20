@@ -410,8 +410,19 @@ class ReleaseIdentityTests(unittest.TestCase):
                 self.assertIn("pending", folded)
                 self.assertTrue("no cap" in folded or "蓋を追加" in text)
                 self.assertTrue("true hole" in folded or "本当の穴" in text)
-                self.assertTrue("decal beta" in folded or "デカール β" in text)
-                self.assertTrue("hidden" in folded or "非表示" in text)
+                self.assertIn("https://note.com/ponkichi0718", folded)
+                self.assertIn("features_ja.md", folded)
+                self.assertTrue(
+                    "ai-use disclosure" in folded or "ai利用について" in folded
+                )
+                self.assertTrue(
+                    "github publication" in folded or "github公開作業" in folded
+                )
+                self.assertTrue(
+                    "technical errors" in folded or "技術的な誤り" in text
+                )
+                self.assertNotIn("decal beta", folded)
+                self.assertNotIn("デカール β", text)
 
 
 if __name__ == "__main__":

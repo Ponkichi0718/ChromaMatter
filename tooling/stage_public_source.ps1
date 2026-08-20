@@ -30,7 +30,8 @@ $requiredRootFiles = @(
     "BOOTSTRAP_WINDOWS.ps1",
     "RUN_TESTS.cmd",
     "CURRENT_STATE.json",
-    "PROVENANCE.md"
+    "PROVENANCE.md",
+    "FEATURES_JA.md"
 )
 $optionalRootFiles = @(
     "README_PUBLIC_JA.md",

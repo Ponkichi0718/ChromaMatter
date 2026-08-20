@@ -628,6 +628,7 @@ class PublicSourceStageRollbackTests(unittest.TestCase):
         "RUN_TESTS.cmd",
         "CURRENT_STATE.json",
         "PROVENANCE.md",
+        "FEATURES_JA.md",
         "README_PUBLIC_JA.md",
         "README_PUBLIC_EN.md",
     )

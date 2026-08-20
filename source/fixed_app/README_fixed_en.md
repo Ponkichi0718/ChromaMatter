@@ -8,6 +8,8 @@
 
 This directory contains the fixed ChromaMatter — AI Model Print Studio source application. The display version is `0.8beta`, the edition is `AI Model Print Studio r31`, and the artifact revision is `r31-ai-model-print-studio`; the Windows numeric version remains `0.8.0.0`.
 
+See the [visual feature overview and production flow](../../FEATURES_JA.md) and the [development journal, including experiments, failures, and hardware calibration](https://note.com/ponkichi0718).
+
 ## r30 GLB input beta
 
 - `Open OBJ / GLB` feeds both `v x y z r g b` vertex-colour OBJ and static GLB with embedded base colour / `COLOR_0` into the common pipeline.
@@ -28,12 +30,6 @@ This directory contains the fixed ChromaMatter — AI Model Print Studio source 
 - A batch reads effective state only for candidate roots and reuses validated geometry arrays.
 - A compatible nine-layer Airbrush traverses the adaptive tree once; legacy, non-concentric, or non-conforming geometry uses the safe sequential fallback.
 
-## r30 Decal beta (source retained, hidden from the public UI)
-
-- Loading, projection, baking, and safety tests remain in source for future validation.
-- The public Manual Editing workspace has no ribbon tab, button, menu, image-open callback, or shortcut that reaches this implementation.
-- Older projects and previously baked manual paint still load unchanged. Source artwork and editable layers are not project data.
-
 ## Public UI
 
 - The main window has compact Filament Settings and Output Settings pages.
@@ -44,8 +40,6 @@ This directory contains the fixed ChromaMatter — AI Model Print Studio source 
 - A common 16 / 24 / 32-state choice propagates to existing parts; an explicit part edit remains local.
 - The `Reset Four Base Colors` button is not shown in the public UI. Automatic proposals and individual editing remain available.
 - Physical black correction stays in the mixed-palette frame, geometry reprocessing is one action, and the repair action is labelled Solidify.
-
-Black-Free Gradient, ColorDepth, Radial, Decal beta, black-inner-wall, split, joint, Help Center, safe-seam-only, manual-joint reprocess, and the separate 3D open-boundary entry point cannot be reached from the public UI. Stale opt-ins from older projects or preferences are sanitised to safe defaults on load.
 
 ## Portable project folder
 
@@ -132,3 +126,7 @@ The detached Downloads `SHA256SUMS-r31.txt` is the sole distribution checksum au
 - The app is `GPL-3.0-or-later`; also review dependency licences and the publication checklist.
 
 See repository-root `CURRENT_STATE.json` and `PROVENANCE.md` for canonical status and evidence boundaries.
+
+## AI-use disclosure
+
+AI assistance, including ChatGPT and OpenAI Codex, was used across planning, specification, implementation, testing, documentation, image creation, and GitHub publication work. AI-generated code and explanations may contain technical errors or unnatural wording, so verify critical settings against the source, generated 3MF, slicer preview, and physical hardware. The project author makes final decisions on requirements, acceptance, physical validation, and publication.

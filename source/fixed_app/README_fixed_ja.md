@@ -8,6 +8,8 @@
 
 このdirectoryはChromaMatter — AI Model Print Studioの固定source applicationです。表示versionは`0.8beta`、editionは`AI Model Print Studio r31`、artifact revisionは`r31-ai-model-print-studio`です。Windows数値versionは`0.8.0.0`のままです。
 
+[画像で見る主な機能と制作フロー](../../FEATURES_JA.md)と、[試作・失敗・実機調整を含む開発記録](https://note.com/ponkichi0718)も参照してください。
+
 ## r30 GLB入力 β
 
 - 「OBJ / GLBを開く」は`v x y z r g b`頂点カラーOBJと、埋込baseColor／`COLOR_0`を持つ静的GLBを共通pipelineへ読み込みます。
@@ -28,12 +30,6 @@
 - batchはcandidate rootだけのeffective-stateを読み、検証済みgeometry配列を再利用します。
 - 互換性を確認できる9層Airbrushはadaptive treeを1回だけtraversalし、旧形式、非同心、または非互換geometryは逐次pathへsafe fallbackします。
 
-## r30 デカール β（source保持・公開UI非表示）
-
-- 読込・投影・焼き付け実装と安全testは将来の再検証用にsourceへ保持します。
-- 公開Manual Editingにはリボンtab、button、menu、画像open callback、shortcutがなく、この実装へ到達できません。
-- 旧projectと、以前焼き付けたmanual paintはそのまま読込みます。source画像や編集可能layerはproject dataではありません。
-
 ## 公開UI
 
 - メイン画面は「フィラメント設定」「出力設定」の2ページです。
@@ -44,8 +40,6 @@
 - 全体共通16／24／32色は既存全パーツへ伝播し、個別編集は対象パーツだけに適用します。
 - 「基本4色を初期値へ戻す」buttonは公開UIに表示しません。自動提案と個別編集は維持します。
 - 実機黒補正はmixed palette内に置き、形状再処理は1操作、修復名は「閉立体化」です。
-
-Black-Free Gradient、ColorDepth、Radial、デカール β、黒内壁化、split、joint、Help Center、安全なつなぎ目だけ、manual-joint reprocess、別の開口境界3D入口は公開UIから到達できません。旧project／preferencesのstale opt-inもload時にsafe defaultへsanitizeします。
 
 ## Portable project folder
 
@@ -132,3 +126,7 @@ Creator Studio r26の結果も同様にprevious evidenceで、ChromaMatter r31�
 - app licenseは`GPL-3.0-or-later`です。依存関係の個別licenseとpublication checklistも確認してください。
 
 正本の状態はrepository rootの`CURRENT_STATE.json`と`PROVENANCE.md`を参照してください。
+
+## AI利用について
+
+企画整理、仕様設計、実装、テスト、文書化、画像制作、GitHub公開作業の各段階でChatGPT／OpenAI CodexなどのAIを活用しています。AI生成のコードや説明には不自然な表現や技術的な誤りが残る可能性があるため、重要な印刷設定はソース、生成3MF、スライサープレビュー、実機で確認してください。最終的な仕様、採否、実機検証、公開判断はプロジェクト作者が行います。

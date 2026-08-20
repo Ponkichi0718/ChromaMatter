@@ -8,6 +8,11 @@
 
 ChromaMatter — AI Model Print Studio is a Windows desktop tool that converts and adjusts AI-generated vertex-coloured OBJ or UV-base-colour GLB models for the Snapmaker Orca Full Spectrum / Color Mixing 3MF workflow. It is an independent project and is not an official or affiliated product of TripoAI, Hi3D AI, Snapmaker, OpenAI, or any other third party.
 
+**Do not let AI-generated 3D end at the screen.** ChromaMatter aims to give AI 3D generation a path to physical colour printing and give colour 3D printers a new source of models—raising the practical value of both by bridging the gap between them.
+
+- [Visual feature overview and production flow (Japanese)](FEATURES_JA.md)
+- [Development journal, including experiments, failures, and hardware calibration (note)](https://note.com/ponkichi0718)
+
 The public display version remains pinned to `0.8beta` as requested. This edition is `AI Model Print Studio r31`, with artifact slug `r31-ai-model-print-studio`; the Windows numeric version remains `0.8.0.0`.
 
 ## AI Model Print Studio r31
@@ -40,12 +45,6 @@ r31 is an identity release that unifies the public name and icon as ChromaMatter
 - A compatible nine-layer Airbrush batch traverses the adaptive tree once. Legacy, non-concentric, or otherwise non-conforming layer geometry safely falls back to the proven sequential path.
 - Regression tests verify matching encoded output, changed roots, overrides, adaptive trees, and Undo/Redo semantics between the optimised and sequential paths.
 
-### Decal beta (source retained, hidden from the public UI)
-
-- Decal loading, projection, baking, and safety tests remain in source for future validation.
-- The current public Manual Editing workspace has no decal ribbon tab, button, menu, image-open callback, or shortcut, so users cannot invoke the feature.
-- Older projects remain readable. Colours baked by an earlier build remain ordinary manual-paint data; source PNG/SVG files and editable decal layers were never project data.
-
 ### Public workspace
 
 - The main window is organised into compact Filament Settings and Output Settings pages, leaving more room for the 3D preview.
@@ -55,8 +54,6 @@ r31 is an identity release that unifies the public name and icon as ChromaMatter
 - `Reset Four Base Colors` is not shown in the public workspace. Model-derived automatic proposals and individual colour editing remain available.
 - Physical black correction stays inside the mixed-palette frame and alters only the relevant 3MF output recipe.
 - Output geometry reprocessing is one action, and the public repair action is labelled Solidify.
-
-Black-Free Gradient, ColorDepth, Radial, Decal beta, black-inner-wall, split, joint, Help Center, safe-seam-only, manual-joint reprocess, and the separate 3D open-boundary entry point are not exposed in the public UI. Stale opt-ins from older projects or preferences are sanitised to safe defaults when loaded.
 
 ### Filament candidates beta
 
@@ -143,4 +140,8 @@ Do not include non-public validation assets or identifying details in the public
 
 The application is `GPL-3.0-or-later`. Bundled dependencies have their own licences, and TetGen itself is `AGPL-3.0-or-later`. Review `licenses/` and the publication checklist before binary distribution.
 
-OpenAI Codex was used during development. Product requirements, validation, acceptance, and publication decisions remain with the project proposer.
+## AI-use disclosure
+
+ChromaMatter uses AI assistance, including ChatGPT and OpenAI Codex, across planning, specification, implementation, testing, documentation, image creation, and GitHub publication work. The project author makes the final decisions on requirements, acceptance, physical validation, and publication.
+
+AI-generated code, images, and explanations may contain technical errors or unnatural wording. Verify critical print settings against the source, generated 3MF, slicer preview, and your own hardware. Please report anything suspicious through [GitHub Issues](https://github.com/Ponkichi0718/ChromaMatter/issues).
