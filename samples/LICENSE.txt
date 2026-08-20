@@ -1,0 +1,23 @@
+CC0 1.0 Universal
+
+Files covered by this dedication:
+
+- synthetic_multipart_vertex_color.obj
+- README_JA.md
+- PROMPT_TEMPLATES_JA.md
+
+To the extent possible under law, the contributors who associated CC0 with
+these works have waived all copyright and related or neighboring rights to
+the works worldwide. The works are provided without warranty of any kind.
+
+You may copy, modify, distribute, and use the covered files, including for
+commercial purposes, without asking permission. Attribution is appreciated
+but is not required.
+
+CC0 1.0 Universal legal code:
+https://creativecommons.org/publicdomain/zero/1.0/legalcode
+
+This dedication applies to the prompt text itself. It does not automatically
+apply to files produced by a generative service from those prompts. Rights and
+obligations for generated outputs depend on the service terms, the rights in
+any submitted input, and applicable law.

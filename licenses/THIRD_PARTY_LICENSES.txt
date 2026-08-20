@@ -1,0 +1,199 @@
+Filament mixer polynomial model
+================================
+
+The bundled assets/mixer_model.npz contains the polynomial coefficients from
+Snapmaker Orca's filament_mixer_model.h.
+
+MIT License
+
+Copyright (c) 2026 Justin Hayes
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+Filament candidate database
+===========================
+
+The bundled
+`resources/filament_db/filament_color_database_2026-08.sqlite`
+contains two attributed colour-data source groups and a separate dated table
+of manufacturer-qualification evidence:
+
+- Open Filament Database catalog data
+  Existing PLA base snapshot: v2026.07.31
+  PLA/ABS/PETG extension snapshot: v2026.08.16
+  Copyright © 2025 OpenFilamentCollective
+  License: MIT
+  Source: https://github.com/OpenFilamentCollective/open-filament-database
+  Explicit license text:
+  `_internal/resources/filament_db/LICENSE_OPEN_FILAMENT_DATABASE.txt`
+
+- FilamentColors.xyz physical swatch data
+  Scope: 41 measured PLA swatches, with an individual source URL retained for
+  every row
+  License: Creative Commons Attribution 4.0 International (CC BY 4.0)
+  Source and licensing statement: https://filamentcolors.xyz/about/
+  Explicit license text:
+  `_internal/resources/filament_db/LICENSE_CC_BY_4.0.txt`
+  Attribution and modifications:
+  `_internal/resources/filament_db/ATTRIBUTION.md`
+
+The measured subset was selected and normalized, and HEX values were used to
+derive Lab and CIEDE2000/Delta E matching values. The original measured-data
+build date is 2026-08-07; the material extension build date is 2026-08-19.
+Amazon.co.jp ratings/review counts qualify only the four added manufacturers
+and are stored separately from colour data. Candidate results are
+informational; neither catalog status nor inclusion in the database guarantees
+current stock or printed-color accuracy.
+
+
+Bundled runtime dependency index
+================================
+
+The portable Windows build also contains the following third-party software.
+In the current PyInstaller one-folder layout, this index and the explicitly
+copied governing texts are stored under `_internal/licenses/`. The Japanese
+volume-processing notice is stored as
+`_internal/THIRD_PARTY_VOLUME_LICENSES_JA.md`. License files that PyInstaller
+preserves from a dependency also remain at their original paths below `_internal/`
+(for example, `_internal/numpy-2.5.1.dist-info/licenses/` and
+`_internal/_tk_data/license.terms`). The entries and source links below identify
+the applicable terms and the explicitly copied texts.
+
+- Python 3.13 and its standard library
+  License: Python Software Foundation License Version 2
+  Source: https://www.python.org/
+
+- Tcl/Tk 8.6 (used by tkinter)
+  License: Tcl/Tk BSD-style license
+  Source: https://www.tcl.tk/software/tcltk/
+
+- NumPy 2.5.1
+  License expression: BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0
+  NumPy wheels also include separately licensed numerical runtime components;
+  their notices are preserved under
+  `_internal/numpy-2.5.1.dist-info/licenses/`.
+  Source: https://numpy.org/
+
+- SciPy 1.18.0
+  License: BSD-3-Clause, with separately licensed bundled components listed in
+  SciPy's complete LICENSE.txt.
+  Source: https://scipy.org/
+
+- Pillow 11.2.1
+  License expression: MIT-CMU
+  Source: https://python-pillow.github.io/
+
+- resvg-py 0.2.0 Python binding used for offline SVG decal rasterization
+  License: MIT
+  Explicit license text: `_internal/licenses/LICENSE_RESVG_PY.txt`
+  Source: https://github.com/briceyan/resvg-py/tree/v0.2.0
+
+- resvg/usvg 0.47.0 and Rust crates compiled into the resvg-py wheel
+  resvg/usvg license: Apache-2.0 OR MIT
+  Explicit texts: `_internal/licenses/LICENSE_RESVG_MIT.txt` and
+  `_internal/licenses/LICENSE_RESVG_APACHE_2.0.txt`
+  The wheel's complete 80-component crate/version/license-expression index is
+  preserved at `_internal/licenses/resvg-py/resvg.cyclonedx.json` and its
+  privacy-safe distribution metadata remains under
+  `_internal/resvg-0.2.0.dist-info/`. Local-install `direct_url.json` is
+  intentionally omitted because it can contain a build workstation path.
+  Source: https://github.com/linebender/resvg/tree/v0.47.0
+
+- PyTetWild 0.3.0 and the fTetWild components carried by its wheel
+  License: Mozilla Public License 2.0 (MPL-2.0)
+  Explicit license text: `_internal/licenses/pytetwild/LICENSE`
+  Source: https://github.com/pyvista/pytetwild
+  Upstream fTetWild source: https://github.com/wildmeshing/fTetWild
+
+- tetgen 0.8.3 Python wrapper
+  License: MIT
+  Explicit license text: `_internal/licenses/tetgen/LICENSE`
+  Source: https://github.com/pyvista/tetgen/tree/v0.8.3
+
+- TetGen C++ 1.6.0 carried by the tetgen 0.8.3 wheel
+  License: GNU Affero General Public License version 3 or later
+  (AGPL-3.0-or-later), or a separate commercial license from WIAS
+  TetGen notice and complete AGPL text:
+  `_internal/licenses/tetgen/tetgen-license`
+  License FAQ: https://wias-berlin.de/software/tetgen/FAQ-license.jsp
+
+- PyMeshLab 2025.7.post1 and the MeshLab components in its wheel
+  License: GNU General Public License version 3 (GPL-3.0)
+  Source: https://github.com/cnr-isti-vclab/PyMeshLab
+
+- Qt 5.15.2 libraries shipped inside the PyMeshLab wheel
+  License options include LGPL-3.0, GPL-2.0/GPL-3.0, or a commercial license.
+  The distributor is responsible for complying with the option that applies.
+  Source and license information: https://www.qt.io/licensing/open-source-lgpl-obligations
+
+- ModernGL 5.12.0
+  License: MIT
+  Source: https://github.com/moderngl/moderngl
+
+- glcontext 3.0.0
+  License: MIT
+  Source: https://github.com/moderngl/glcontext
+
+- Trimesh 5.0.0
+  License: MIT
+  Source: https://github.com/mikedh/trimesh
+
+- Manifold3D 3.5.2
+  License: Apache License 2.0
+  Source: https://github.com/elalish/manifold
+
+- Shapely 2.1.2
+  License: BSD-3-Clause
+  The Windows wheel also bundles GEOS under LGPL-2.1 and Microsoft Visual C++
+  Runtime files under Microsoft's redistributable-code terms.
+  Source: https://github.com/shapely/shapely
+
+- Mapbox Earcut 2.0.0 (`mapbox-earcut` wheel)
+  License: ISC
+  Source: https://github.com/skogler/mapbox_earcut_python
+
+- NetworkX 3.5
+  License: BSD-3-Clause
+  Source: https://github.com/networkx/networkx
+
+- Rtree 1.4.1
+  License expression: MIT
+  Source: https://github.com/Toblerity/rtree
+
+- Microsoft Visual C++ Runtime 14.44.35112 (`msvc-runtime` wheel)
+  License: Microsoft Visual Studio 2022 redistributable-code terms
+  Redistribution reference:
+  https://learn.microsoft.com/visualstudio/releases/2022/redistribution
+
+- PyInstaller 6.20.0 bootloader
+  License: GPL-2.0-or-later with the PyInstaller bootloader exception
+  Source: https://pyinstaller.org/
+
+
+Redistribution note
+===================
+
+PyMeshLab is GPL-3.0 software, PyTetWild/fTetWild is MPL-2.0 software, and the
+bundled TetGen core is AGPL-3.0-or-later software unless a separate commercial
+license applies. Keeping the current local desktop build solely for private use
+does not by itself distribute a copy. Anyone who gives copies of this
+application to another party must review and satisfy those licenses and the
+licenses of Qt and all other bundled components. This notice is informational
+and is not legal advice.

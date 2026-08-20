@@ -1,0 +1,23 @@
+ChromaMatter — AI Model Print Studio
+Copyright (c) 2026 ChromaMatter contributors
+
+SPDX-License-Identifier: GPL-3.0-or-later
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+This notice and the complete GPL version 3 text are stored under `licenses/` in
+the source tree and under `_internal/licenses/` in the current PyInstaller
+one-folder build. The same license text is also available from
+https://www.gnu.org/licenses/gpl-3.0.txt.
+
+Third-party terms and source links are listed in THIRD_PARTY_LICENSES.txt,
+which is distributed next to this file. In the current PyInstaller one-folder
+build, the Japanese volume-processing notice is stored as
+`_internal/THIRD_PARTY_VOLUME_LICENSES_JA.md`.

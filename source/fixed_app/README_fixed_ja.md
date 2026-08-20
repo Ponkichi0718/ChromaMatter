@@ -1,0 +1,133 @@
+# ChromaMatter — AI Model Print Studio 0.8beta (r31 source app)
+
+<p align="center">
+  <img src="assets/obj_adjuster_icon.png" width="160" alt="ChromaMatter icon">
+</p>
+
+[English](README_fixed_en.md)
+
+このdirectoryはChromaMatter — AI Model Print Studioの固定source applicationです。表示versionは`0.8beta`、editionは`AI Model Print Studio r31`、artifact revisionは`r31-ai-model-print-studio`です。Windows数値versionは`0.8.0.0`のままです。
+
+## r30 GLB入力 β
+
+- 「OBJ / GLBを開く」は`v x y z r g b`頂点カラーOBJと、埋込baseColor／`COLOR_0`を持つ静的GLBを共通pipelineへ読み込みます。
+- GLBのscene／node transformとmesh-node partを保持し、sRGB textureを線形空間で補間・合成して頂点色へ焼き付けます。bundle v2は`source_asset`と`source.glb`を使い、旧OBJ bundle v1も読めます。
+- baseColor以外のPBR map、alpha、animation、skin、morph、Draco、meshopt、BasisU、GPU instancing、外部URIは対象外です。texture細部はmesh頂点解像度に制限され、上限は512 MiB／300万頂点／300万三角形です。
+
+## r30 単一GLBのUV seam閉立体化
+
+- part markerがない単一GLBでも、明示的に「閉立体化」を実行すると、同一点の境界edgeがexact 1:1で逆向きに対応するUV／texture seamかを検証します。
+- 証明できたseamだけをcleanup／QEMより前に頂点統合します。面の追加・削除・順番変更とpart ID変更をしないため、manual paintとadaptive treeはordered faceへexact carryされます。
+- 蓋を追加する処理ではありません。未対応・同方向・曖昧な境界、非manifold化、本当の穴はfail-closedで停止し、元geometryを維持します。
+- 3MFのstrict topology検証は全`type=model` resourceを対象にします。必須検証に合格後、QEM由来の上限内の微小自己交差だけが残る場合はwarningを表示し、Snapmaker Orcaでprojectとして開いたslice preview確認を要求します。
+
+## r30 Manual Editing
+
+- Airbrushの確定待ちguideはscreen-space feedbackです。zoom、pan、orbit、またはprogrammatic camera changeで即時に消し、旧画面座標の軌跡を変換後のviewへ再描画しません。
+- view変更後も受付済みcommit tokenと1 stroke = 1 Undoのtransactionはexact frameまで保持します。確定済み3D色だけを新しいviewで描画します。
+- batchはcandidate rootだけのeffective-stateを読み、検証済みgeometry配列を再利用します。
+- 互換性を確認できる9層Airbrushはadaptive treeを1回だけtraversalし、旧形式、非同心、または非互換geometryは逐次pathへsafe fallbackします。
+
+## r30 デカール β（source保持・公開UI非表示）
+
+- 読込・投影・焼き付け実装と安全testは将来の再検証用にsourceへ保持します。
+- 公開Manual Editingにはリボンtab、button、menu、画像open callback、shortcutがなく、この実装へ到達できません。
+- 旧projectと、以前焼き付けたmanual paintはそのまま読込みます。source画像や編集可能layerはproject dataではありません。
+
+## 公開UI
+
+- メイン画面は「フィラメント設定」「出力設定」の2ページです。
+- ヘッダーは同梱PNGロゴ、`ChromaMatter`、`AI Model Print Studio`をcompactな2段表示にします。
+- F1～F4はcompact、mixed paletteはFペアfamily-major順のread-only固定比率swatchです。
+- mixed swatch番号はpresentation専用です。canonical state ID、manual paint、project、3MF recipeをrenumberしません。
+- calibration chartも同じ表示順とcanonical provenanceを使います。
+- 全体共通16／24／32色は既存全パーツへ伝播し、個別編集は対象パーツだけに適用します。
+- 「基本4色を初期値へ戻す」buttonは公開UIに表示しません。自動提案と個別編集は維持します。
+- 実機黒補正はmixed palette内に置き、形状再処理は1操作、修復名は「閉立体化」です。
+
+Black-Free Gradient、ColorDepth、Radial、デカール β、黒内壁化、split、joint、Help Center、安全なつなぎ目だけ、manual-joint reprocess、別の開口境界3D入口は公開UIから到達できません。旧project／preferencesのstale opt-inもload時にsafe defaultへsanitizeします。
+
+## Portable project folder
+
+標準bundleは次の構成です。
+
+```text
+source.obj | source.glb
+project.json
+prepared_geometry.npz
+reference.<ext>  # optional
+```
+
+snapshot検証が一致すればprepared geometryとmanual paintをexact restoreします。旧JSONは互換読込できますが、sourceを安全に解決できない場合は元OBJ／GLBを明示選択します。
+
+## フィラメント候補β
+
+- PLA（既定）／ABS β／PETG βを選び、選択素材だけでF1～F4ごとに近い製品を最大3候補まで示します。ΔE00と、実測値かcatalog値かを区別します。
+- 自動提案は選択素材内の実在製品を色域バランス済み基準へ対応付けてから4本を選びます。拡張DBのモデル平均色近傍だけが残り、似た茶系4本へ偏る回帰を防ぎます。多色／gradient製品は手動libraryには残し、自動提案からだけ除外します。
+- 代表的な赤・黒・灰・茶モデルのsoftware-fit診断では、面積加重`ΔE76 <= 12` coverageが28.63%から98.37%へ改善しました。実機の印刷色を保証する値ではありません。
+- 4本は必ず同一素材です。異素材を1つの印刷ジョブへ混在させず、3MFには`Generic PLA`／`Generic ABS`／`Generic PETG`の対応プロファイルを保存します。
+- ABSはPLAより登録色・実測・色域が少なく、目的色が無い場合はABS内で近似します。PLAでは補完しません。実機比較チャートで確認し、U1ではTop Coverを使用してください。
+- catalogのactive表示は現在の在庫、購入可否、spool lotや実際の造形色を保証しません。
+- 手持ち4色の自動構成は`%APPDATA%\TripoSpectrumMapper\owned_filaments.json`から選択素材だけを使う近似探索です。特殊仕上げは実物の小さな混色見本で確認してください。
+
+## 実行
+
+依存関係を用意したPython 3.13環境で実行します。
+
+```powershell
+python .\TripoSpectrumMapper_fixed.py
+python .\TripoSpectrumMapper_fixed.py --self-test
+```
+
+repository rootの`BOOTSTRAP_WINDOWS.ps1`が標準の準備・test入口です。
+
+## r31 validation state
+
+- 公開UI非公開化直前のpost-GLB r28候補のprevious evidence: Python `3.13.14`、PyInstaller `6.20.0`、`Ran 992 tests in 87.406s: OK (skipped=1)`、991 PASS／1 optional SKIP
+- 同候補の新しいshort pathでのclean one-folder build: PASS
+- 同候補のbuilt package self-test: exit 0、`pymeshlab=available`、`glb_import_smoke=true`、全体`ok=true`
+- 同候補のbuilt packageの日英UI smoke（隔離profile）: PASS
+- 同候補のpublic source／software ZIP restage、fresh extract、manifest／全file hash／CRC／path safety／privacy、Downloads配置、外部`SHA256SUMS`: PASS（source 223／222、software 1404／1403）
+- Creator Studio r29 exact sourceの**previous evidence**: Python `3.13.14`、`Ran 998 tests in 83.529s: OK (skipped=1)`、997 PASS／1 optional SKIP
+- r29 clean buildのprevious evidence: `C:\OBJAdjR29FIX1`、PyInstaller `6.20.0` one-folder build、packaged `--self-test` exit 0、隔離profile日英UI smoke: PASS
+- Creator Studio r30 exact sourceの**previous evidence**: Python `3.13.14`、`Ran 1019 tests in 86.932s: OK (skipped=1)`、1018 PASS／1 optional SKIP。`C:\OBJAdjR30FIX1`でのPyInstaller `6.20.0` clean build、package／stage／archive／privacy／detached `SHA256SUMS-r30.txt`契約: PASS。この証拠はr31へ適用しません。
+- 現在のChromaMatter r31 exact source: Python `3.13.14`、`Ran 1024 tests in 100.656s: OK (skipped=1)`、1023 PASS／1 optional SKIP。`C:\OBJAdjR31CM1`でのPyInstaller `6.20.0` clean build、built package self-test、隔離profileの日英UI smoke: PASS。preflight `ChromaMatter.exe`は13,986,866 bytes、FileVersion／ProductVersion `0.8beta`、InternalName `ChromaMatter`、OriginalFilename `ChromaMatter.exe`、SHA-256 `208167A225A37BAAAA473B574B2F746E46427FD0CA63FC5B7201BF3394243743`
+- r31 preflight public source: 227 files／226 manifest records、fresh archive exact、privacy technical GO。software: 1,404 files／1,403 manifest records、technical GO。fresh extractのself-test／日英UI smoke: exit 0
+- r31 final source-only stage `ChromaMatter_0.8beta-r31-source-public-20260820`: 227 files／226 manifest records、folder／archive parity、CRC、privacy、staged identity／icon／tooling 32 tests、Downloads配置、外部detached `SHA256SUMS-r31.txt`照合: PASS
+- Creator Studio r27のprevious evidence: Python `3.13.14`、PyInstaller `6.20`、`Ran 890 tests in 68.257s: OK (skipped=1)`、889 PASS／1 optional SKIP
+- preflight clean build、built packageとfresh extract双方のself-test／日英UI smoke: PASS
+- preflight EXE: 13,683,090 bytes、version `0.8beta`、SHA-256 `F2AB0AF025430FF3D5587D6C7B2A68365B8C091A7775697A24DDB84DF34EF056`
+- preflight public source: 204 files／203 manifest records
+- preflight software: 1,340 files／1,339 manifest records
+- preflight ZIP、manifest equality、path safety、CRC、privacy: PASS
+- release state: `source-publication-approved`
+- final ZIP SHA-256: `null`
+- icon publication rights: `passed-by-creator-declaration`（2026-08-20）。当該asset scopeはproject ownerが公開を承認。独立した法的clearanceではない
+- publication eligibility: true only for `publication_scope=source-only`
+- source publication eligibility: true
+- binary publication eligibility: 第三者binary再配布監査完了までfalse
+- Innovation Fund submission ready: public repository URL／handle、権利処理済みsample、Orca／U1 evidence、cover／video／community postまでfalse
+- physical XP-PEN validation、physical print: pendingの既知制約（source公開blockerではない）
+
+上記r30、r29、r28、r27の結果は各revisionだけの**previous evidence**です。ChromaMatter r31のsource、binary、package、checksumを検証したものとして扱いません。現在のr31 source regression／clean build／packaged smokeとfinal source-only stage／archive／privacy／identityはGOです。2026-08-20、creatorはロボットをオリジナルの架空機体、`ZENITH DYNAMICS CORP.`を実在組織との関係を意図しない創作文言と申告し、project ownerは公開GOを出しました。これは独立した商標／意匠clearanceや法的意見ではなく、近似名`Zenith Dynamics`を使う実在組織との提携も示しません。source-only publicationはapproved、binaryは第三者再配布監査が完了するまでpublication eligible=falseです。
+
+Creator Studio r26の結果も同様にprevious evidenceで、ChromaMatter r31へ流用しません。
+
+## Package identity
+
+- approved source-only release: `ChromaMatter_0.8beta-r31-source-public-20260820`
+- non-public software preflight: `ChromaMatter_0.8beta-r31-ai-model-print-studio`
+
+配布checksumの正本はDownloadsのdetached external `SHA256SUMS-r31.txt`だけです。外部照合はsource-only distributionについて完了し、r30のchecksumは流用しません。canonical文書への自己参照ZIP hashは埋め込まず、release stateは`source-publication-approved`です。
+
+## 注意
+
+- OBJは`v x y z r g b`頂点カラーを想定します。
+- GLBは静的な埋込baseColor／`COLOR_0`を対象とし、UV detailは頂点色へ焼き付けた解像度になります。
+- 大規模OBJ／GLBの準備と200万面級Manual Editingには時間とmemoryが必要です。
+- fail-soft importは非2-manifold geometryの自動修復または印刷可能性を保証しません。
+- 画面色と実機色は造形条件に依存します。calibration chartとtest printで確認してください。
+- 公開成果物へ非公開の検証assetまたは識別可能な詳細を含めません。
+- app licenseは`GPL-3.0-or-later`です。依存関係の個別licenseとpublication checklistも確認してください。
+
+正本の状態はrepository rootの`CURRENT_STATE.json`と`PROVENANCE.md`を参照してください。

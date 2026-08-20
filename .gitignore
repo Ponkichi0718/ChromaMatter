@@ -1,0 +1,58 @@
+# Local Python/build products
+.venv/
+build_output/
+release_stage*/
+outputs/
+**/__pycache__/
+*.py[cod]
+*.exe
+*.zip
+
+# Private validation and user assets
+validation_output*/
+private_samples/
+__tracked_surface.stl
+**/__tracked_surface.stl
+*.3mf
+*.stl
+*.mp4
+*.mov
+*.webm
+
+# Historical recovery inputs are retained only in the private working copy.
+source/original_icon_source.exe
+source/recovered_pyc/
+
+# Machine-local handoff/state files
+AGENT_START_HERE.md
+HOW_TO_HAND_OFF_JA.md
+INNOVATION_FUND_READINESS_*.md
+NEXT_CODEX_PROMPT.txt
+source/fixed_app/rotation_real_mesh_probe*.json
+
+# Private historical validation notes. Public status is summarized without
+# model identifiers in CURRENT_STATE.json and the public README files.
+source/fixed_app/*検証結果.md
+source/fixed_app/OBJ_adjuster_0.8beta_validation.md
+
+# Only the explicitly reviewed publication notes enter a future repository.
+publication/*
+!publication/LEGAL_AND_RIGHTS_JA.md
+!publication/PRIVATE_SAMPLE_POLICY_JA.md
+!publication/CLEAN_CLONE_GUIDE_JA.md
+!publication/VIDEO_VALIDATION_CHECKLIST_JA.md
+!publication/PUBLICATION_CHECKLIST_JA.md
+!publication/GITHUB_PUBLICATION_GUIDE_JA.md
+
+# Historical local probes and recovery utilities stay in the private workspace.
+tooling/*
+!tooling/build_mixer_model.py
+!tooling/generate_public_icon.py
+!tooling/audit_public_tree.ps1
+!tooling/stage_public_source.ps1
+
+# OBJ files are private by default; explicitly authored public fixtures may be
+# kept below samples/ or as the existing test tetrahedron.
+*.obj
+!samples/**/*.obj
+!source/fixed_app/test_tetra.obj

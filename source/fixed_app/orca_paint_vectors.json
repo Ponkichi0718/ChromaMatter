@@ -1,0 +1,285 @@
+{
+  "schema_version": 1,
+  "format": "Snapmaker Orca / OrcaSlicer paint_color recursive triangle stream",
+  "source": {
+    "repository": "https://github.com/Snapmaker/OrcaSlicer.git",
+    "tag": "v2.3.4",
+    "commit": "9fd12ffb2b1b80c9fb4c14564754d2ec1573a626",
+    "files": [
+      "src/libslic3r/TriangleSelector.hpp",
+      "src/libslic3r/TriangleSelector.cpp",
+      "src/libslic3r/Model.cpp"
+    ],
+    "functions": [
+      "TriangleSelector::serialize",
+      "TriangleSelector::deserialize",
+      "FacetsAnnotation::get_triangle_as_string",
+      "FacetsAnnotation::set_triangle_from_string"
+    ]
+  },
+  "specification": {
+    "state_numbering": "Raw Orca EnforcerBlockerType: NONE=0, Extruder1=1, ..., Extruder255=255.",
+    "node_nibble": "Bits 0..1 are split_sides. A nonzero value 1..3 is an internal node with split_sides+1 children; bits 2..3 hold special_side. For split_sides=3, special_side must be zero.",
+    "leaf_nibble": "A zero split_sides field is a leaf. Nibbles 0,4,8 encode states 0,1,2. Nibble C starts an extended state.",
+    "extended_state": "After C, each F contributes 15 and the first non-F nibble contributes 0..14; decoded state is 3 + 15*count(F) + final_nibble.",
+    "child_order": "The in-memory children are child0..childN. Orca serializes them childN..child0 after the parent nibble.",
+    "hex_order": "get_triangle_as_string prepends each logical nibble. Therefore the XML string is the reverse of the logical root-first nibble stream, using uppercase hexadecimal.",
+    "valid_state_range": [0, 255]
+  },
+  "tree_vectors": [
+    {
+      "name": "leaf_none",
+      "tree": {"state": 0},
+      "expected": "0",
+      "sut_compatible": false
+    },
+    {
+      "name": "leaf_extruder_1",
+      "tree": {"state": 1},
+      "expected": "4",
+      "sut_compatible": true
+    },
+    {
+      "name": "leaf_extruder_2",
+      "tree": {"state": 2},
+      "expected": "8",
+      "sut_compatible": true
+    },
+    {
+      "name": "leaf_extruder_3",
+      "tree": {"state": 3},
+      "expected": "0C",
+      "sut_compatible": true
+    },
+    {
+      "name": "leaf_extruder_10",
+      "tree": {"state": 10},
+      "expected": "7C",
+      "sut_compatible": true
+    },
+    {
+      "name": "leaf_extension_boundary_17",
+      "tree": {"state": 17},
+      "expected": "EC",
+      "sut_compatible": false
+    },
+    {
+      "name": "leaf_extension_boundary_18",
+      "tree": {"state": 18},
+      "expected": "0FC",
+      "sut_compatible": false
+    },
+    {
+      "name": "leaf_two_extensions_32",
+      "tree": {"state": 32},
+      "expected": "EFC",
+      "sut_compatible": false
+    },
+    {
+      "name": "leaf_two_extensions_33",
+      "tree": {"state": 33},
+      "expected": "0FFC",
+      "sut_compatible": false
+    },
+    {
+      "name": "leaf_maximum_255",
+      "tree": {"state": 255},
+      "expected": "CFFFFFFFFFFFFFFFFC",
+      "sut_compatible": false
+    },
+    {
+      "name": "one_side_split_child_order",
+      "tree": {
+        "split_sides": 1,
+        "special_side": 0,
+        "children": [
+          {"state": 1},
+          {"state": 2}
+        ]
+      },
+      "expected": "481",
+      "sut_compatible": true
+    },
+    {
+      "name": "one_side_split_special_side_2",
+      "tree": {
+        "split_sides": 1,
+        "special_side": 2,
+        "children": [
+          {"state": 3},
+          {"state": 10}
+        ]
+      },
+      "expected": "0C7C9",
+      "sut_compatible": true
+    },
+    {
+      "name": "two_side_split_special_side_1",
+      "tree": {
+        "split_sides": 2,
+        "special_side": 1,
+        "children": [
+          {"state": 1},
+          {"state": 2},
+          {"state": 3}
+        ]
+      },
+      "expected": "480C6",
+      "sut_compatible": true
+    },
+    {
+      "name": "three_side_split",
+      "tree": {
+        "split_sides": 3,
+        "special_side": 0,
+        "children": [
+          {"state": 1},
+          {"state": 2},
+          {"state": 3},
+          {"state": 4}
+        ]
+      },
+      "expected": "480C1C3",
+      "sut_compatible": true
+    },
+    {
+      "name": "nested_all_full_spectrum_states",
+      "tree": {
+        "split_sides": 1,
+        "special_side": 0,
+        "children": [
+          {"state": 1},
+          {
+            "split_sides": 2,
+            "special_side": 2,
+            "children": [
+              {"state": 2},
+              {"state": 3},
+              {"state": 10}
+            ]
+          }
+        ]
+      },
+      "expected": "480C7CA1",
+      "sut_compatible": true
+    },
+    {
+      "name": "nested_extended_state",
+      "tree": {
+        "split_sides": 1,
+        "special_side": 0,
+        "children": [
+          {"state": 1},
+          {
+            "split_sides": 2,
+            "special_side": 2,
+            "children": [
+              {"state": 2},
+              {"state": 3},
+              {"state": 18}
+            ]
+          }
+        ]
+      },
+      "expected": "480C0FCA1",
+      "sut_compatible": false
+    },
+    {
+      "name": "official_obj_two_same_one_different",
+      "tree": {
+        "split_sides": 2,
+        "special_side": 0,
+        "children": [
+          {"state": 1},
+          {"state": 2},
+          {"state": 2}
+        ]
+      },
+      "expected": "4882",
+      "sut_compatible": true,
+      "provenance": "Model.cpp obj_import_vertex_color_deal, _2_SAME_1_DIFF_COLOR, iso_index 0"
+    },
+    {
+      "name": "official_obj_three_different",
+      "tree": {
+        "split_sides": 3,
+        "special_side": 0,
+        "children": [
+          {"state": 1},
+          {"state": 2},
+          {"state": 3},
+          {
+            "split_sides": 1,
+            "special_side": 1,
+            "children": [
+              {"state": 2},
+              {"state": 3}
+            ]
+          }
+        ]
+      },
+      "expected": "480C80C53",
+      "sut_compatible": true,
+      "provenance": "Model.cpp obj_import_vertex_color_deal, _3_DIFF_COLOR, max_sita_vertex_index 0"
+    }
+  ],
+  "archive_vectors": [
+    {
+      "name": "user_body_full_spectrum_128",
+      "source_archive": "Body.3mf",
+      "source_archive_sha256": "69ef62c43c960eac71d7584a33800fc43a98c7c96e30c10bdda9ec5e84c371a7",
+      "model_entry": "3D/Objects/Leg Left.stl_3.model",
+      "triangle_index_zero_based": 128842,
+      "paint_attribute_index_zero_based": 62029,
+      "paint_color": "1C0C1C1C21C1CA0C1C0C1C91C1C61C0C1C1C61C0C5A230C1C1CA0C1C0C0C60C1C1CAA0C1C0C1C11C0C520C0C230C1C0C1C0C0C60C1C561C0C90C0CA20C0C0C33",
+      "paint_color_sha256": "460aa53297ebfab5a8e0cae68012c3110ae14f07bc971e8d51b3ce719f0138b0",
+      "expected_length": 128,
+      "expected_summary": {
+        "node_count": 77,
+        "leaf_count": 51,
+        "split_count": 26,
+        "max_depth": 5,
+        "state_counts": {"3": 26, "4": 25},
+        "split_sides_counts": {"1": 6, "2": 16, "3": 4},
+        "special_side_counts": {"0": 10, "1": 8, "2": 8},
+        "tree_sha256": "35fe27397bb998f2b828a9dc06487fc5d7d31720e7e39fadc2e42ad69ebeeedd"
+      },
+      "sut_compatible": true
+    },
+    {
+      "name": "user_body_longest_645",
+      "source_archive": "Body.3mf",
+      "source_archive_sha256": "69ef62c43c960eac71d7584a33800fc43a98c7c96e30c10bdda9ec5e84c371a7",
+      "model_entry": "3D/Objects/Leg Left.stl_3.model",
+      "triangle_index_zero_based": 344716,
+      "paint_attribute_index_zero_based": 206389,
+      "paint_color": "01C1C21C1C21C1C21C1CA01C1C21C1C21C1C21C1CA1C0061C01C1C21C1C21C1C61C01C1C21C1C61C01C1C61C01C00601C560AAA2301C00601C1CA21C1C21C1C21C1CA01C00601C1CA21C1C21C1C21C1CA1C01C00200200601C00200601C00601C1CAAA61C00200200200A61C01C00601C1CA21C1C21C1C61C01C00601C1CA21C1C61C01C00601C1CA61C01C10200AAA2301C01C1C61C01C00AA601C1C21C1CA21C1C6001C01C1C21C1C61C01C1C61C00AA601C1C21C1C21C1CA21C1C21C01C01C1C21C1C61C01C1C61C00AA601C1C21C1C21C1CA61C01C1C21C1C61C01C1C61C00AA200AA31C01C00601C1CA21C1C21C1C61C01C00601C1CA21C1C61C01C01C10601C1CA61C01C11C05200AAA201C00200200601C00200601C00601C1CAAA21C1C20000000001C5AAA21C1CA1C01C00200200600000001C5AAA61C00200200200A633",
+      "paint_color_sha256": "a5a3c0267b29766bd27ec712e56ce5741189353e4561584189ab3215aa962fb1",
+      "expected_length": 645,
+      "expected_summary": {
+        "node_count": 476,
+        "leaf_count": 317,
+        "split_count": 159,
+        "max_depth": 8,
+        "state_counts": {"0": 148, "4": 169},
+        "split_sides_counts": {"1": 7, "2": 147, "3": 5},
+        "special_side_counts": {"0": 63, "1": 47, "2": 49},
+        "tree_sha256": "fd23519a87363e60c7a1d512467e4a8ae5dcc35c0f22cdd4b1d907f0cb226cd7"
+      },
+      "sut_compatible": false,
+      "incompatibility_reason": "Contains raw Orca NONE leaves; the current Full Spectrum PaintNode API intentionally represents only palette states 0..9."
+    }
+  ],
+  "invalid_vectors": [
+    {"value": "", "error_contains": "non-empty"},
+    {"value": "0c", "error_contains": "uppercase"},
+    {"value": "G", "error_contains": "uppercase"},
+    {"value": "C", "error_contains": "extended"},
+    {"value": "FC", "error_contains": "extended"},
+    {"value": "04", "error_contains": "trailing"},
+    {"value": "1", "error_contains": "truncated"},
+    {"value": "7", "error_contains": "special_side"},
+    {"value": "D", "error_contains": "special_side"},
+    {"value": "DFFFFFFFFFFFFFFFFC", "error_contains": "255"}
+  ]
+}
