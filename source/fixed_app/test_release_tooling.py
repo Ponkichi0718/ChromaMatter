@@ -661,11 +661,12 @@ class SoftwarePackageStageTests(unittest.TestCase):
                 self.assertEqual(len(ids), len(set(ids)))
                 self.assertIn("validations:\n      required: true", text)
 
-        bug = (REPO_ROOT / forms[0]).read_text(encoding="utf-8").casefold()
-        compatibility = (REPO_ROOT / forms[2]).read_text(
-            encoding="utf-8"
-        ).casefold()
-        for text in (bug, compatibility):
+        form_texts = tuple(
+            (REPO_ROOT / relative).read_text(encoding="utf-8").casefold()
+            for relative in forms
+        )
+        compatibility = form_texts[2]
+        for text in form_texts:
             self.assertIn("personal paths", text)
             self.assertIn("permission to share", text)
         self.assertIn("  - compatibility\n", compatibility)

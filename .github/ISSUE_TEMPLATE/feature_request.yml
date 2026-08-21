@@ -54,3 +54,12 @@ body:
       label: Additional context
       description: Screenshots or links are welcome when you have the right to share them publicly.
 
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I removed personal paths, account information, and other sensitive data.
+          required: true
+        - label: I have permission to share every attached image or public link.
+          required: true
