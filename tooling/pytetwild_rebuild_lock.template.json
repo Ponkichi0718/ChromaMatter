@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "lock_status": "blocked-template-do-not-use",
+  "scope": "prospective-rebuild-only",
+  "reason": "The historical PyTetWild 0.3.0 Windows wheel does not disclose its nanobind version and its GitHub Actions job log has expired. Do not guess. A future wheel must be rebuilt from exact hashed inputs before this template can become a verified lock.",
+  "historical_build_evidence": {
+    "github_actions_run_id": 25986444942,
+    "windows_wheel_job_id": 76417358585,
+    "workflow_path": ".github/workflows/build-and-deploy.yml",
+    "workflow_cibuildwheel_version": "3.3.1",
+    "workflow_nanobind_requirement": ">=1.3.2",
+    "job_log_status": "expired-http-410",
+    "wheel_metadata_nanobind_version": null
+  },
+  "historical_wheel": {
+    "sha256": "11964e295a54cf9e2f6920a920aeeba27668c9b14e369a86f72ec5baa4f46060",
+    "nanobind_version_status": "unknown-not-asserted",
+    "release_disposition": "excluded"
+  },
+  "pytetwild": {
+    "version": "0.3.0",
+    "commit": "eea46df87ef58e861956b7a710f42ab58eaa02a0"
+  },
+  "ftetwild": {
+    "commit": "d7d99bb4387a07895b9adce058dc7305f6b6e5ab"
+  },
+  "wheel": {
+    "filename": null,
+    "sha256": null,
+    "python_tag": "cp312",
+    "abi_tag": "abi3",
+    "platform_tag": "win_amd64"
+  },
+  "nanobind": {
+    "version": null,
+    "source_url": "https://github.com/wjakob/nanobind.git",
+    "commit": null,
+    "required_paths": [
+      "LICENSE",
+      "CMakeLists.txt",
+      "include/nanobind/nanobind.h"
+    ]
+  },
+  "build_recipe": {"filename": null, "sha256": null},
+  "build_requirements_lock": {"filename": null, "sha256": null},
+  "environment": {
+    "python_version": null,
+    "cibuildwheel_version": null,
+    "runner_image": null,
+    "compiler": null,
+    "cmake_version": null,
+    "ninja_version": null,
+    "windows_sdk_version": null
+  },
+  "attestation": {"filename": null, "sha256": null},
+  "release_binding": {"filename": null, "sha256": null}
+}

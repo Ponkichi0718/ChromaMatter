@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 import hashlib
 import io
+import json
 import os
 from pathlib import Path
 import re
@@ -336,6 +337,17 @@ class SoftwarePackageStageTests(unittest.TestCase):
         "_internal/THIRD_PARTY_VOLUME_LICENSES_JA.md",
         "_internal/_tk_data/license.terms",
         "_internal/licenses/GPL-3.0.txt",
+        "_internal/licenses/AGPL-3.0.txt",
+        "_internal/licenses/LGPL-2.1.txt",
+        "_internal/licenses/LGPL-3.0.txt",
+        "_internal/licenses/MPL-2.0.txt",
+        "_internal/licenses/BINARY_COMPONENT_MAP.schema.json",
+        "_internal/licenses/BUILD_ENVIRONMENT_EN.md",
+        "_internal/licenses/BUILD_ENVIRONMENT_JA.md",
+        "_internal/licenses/RELINKING_EN.md",
+        "_internal/licenses/RELINKING_JA.md",
+        "_internal/licenses/THIRD_PARTY_NOTICES_EN.txt",
+        "_internal/licenses/THIRD_PARTY_NOTICES_JA.txt",
         "_internal/licenses/LICENSE_APP.txt",
         "_internal/licenses/LICENSE_RESVG_PY.txt",
         "_internal/licenses/LICENSE_RESVG_MIT.txt",
@@ -346,6 +358,11 @@ class SoftwarePackageStageTests(unittest.TestCase):
         "_internal/licenses/pytetwild/LICENSE",
         "_internal/licenses/tetgen/LICENSE",
         "_internal/licenses/tetgen/tetgen-license",
+        "_internal/licenses/pymeshlab/LICENSE",
+        "_internal/licenses/shapely/LICENSE.txt",
+        "_internal/licenses/shapely/LICENSE_GEOS",
+        "_internal/licenses/shapely/LICENSE_win32",
+        "_internal/licenses/msvc-runtime/LICENSE",
         "_internal/resources/filament_db/filament_color_database_2026-08.sqlite",
         "_internal/resources/filament_db/filament_color_database_README.md",
         "_internal/resources/filament_db/ATTRIBUTION.md",
@@ -374,6 +391,98 @@ class SoftwarePackageStageTests(unittest.TestCase):
             [path.name for path in root.iterdir() if path.name.startswith(prefix)]
         )
 
+    def _compliance_arguments(
+        self,
+        root: Path,
+        built: Path,
+        destination: Path,
+        *,
+        archive: Path | None = None,
+    ) -> tuple[str, ...]:
+        archive = archive or Path(f"{destination}.zip")
+        source_url = (
+            "https://github.com/Ponkichi0718/ChromaMatter/"
+            "releases/download/test/source.zip"
+        )
+        versions = {
+            "chromamatter": ("0.8beta-r32", "GPL-3.0-or-later"),
+            "tetgen": ("0.8.3 / 1.6.0", "MIT AND AGPL-3.0-or-later"),
+            "pymeshlab": ("2025.7.post1", "GPL-3.0-only"),
+            "qt": ("5.15.2", "LGPL-3.0-only"),
+            "pytetwild": ("0.3.0", "MPL-2.0"),
+            "shapely": ("2.1.2", "BSD-3-Clause"),
+            "geos": ("3.13.1", "LGPL-2.1-or-later"),
+            "msvc-runtime": (
+                "14.44.35112",
+                "LicenseRef-Microsoft-Visual-Cpp-Redistributable",
+            ),
+        }
+        components = [
+            {
+                "id": component_id,
+                "name": component_id,
+                "version": version,
+                "license": license_expression,
+                "source": f"https://github.com/example/{component_id}",
+            }
+            for component_id, (version, license_expression) in versions.items()
+        ]
+        exe_sha256 = hashlib.sha256(
+            (built / "ChromaMatter.exe").read_bytes()
+        ).hexdigest()
+        component_map = {
+            "schema": (
+                "https://github.com/Ponkichi0718/ChromaMatter/"
+                "schemas/binary-component-map-v1"
+            ),
+            "schema_version": 1,
+            "generator": {"name": "fixture", "version": "1"},
+            "package": {
+                "name": "ChromaMatter",
+                "version": "0.8beta-r32",
+                "root": ".",
+                "content_sha256": exe_sha256,
+            },
+            "components": components,
+            "files": [
+                {
+                    "path": "ChromaMatter.exe",
+                    "size": (built / "ChromaMatter.exe").stat().st_size,
+                    "sha256": exe_sha256,
+                    "file_type": "native",
+                    "package_owners": [],
+                    "components": ["chromamatter"],
+                    "mapping_basis": "fixture",
+                }
+            ],
+            "validation": {
+                "passed": True,
+                "file_count": 1,
+                "native_file_count": 1,
+                "mapped_native_file_count": 1,
+                "unmapped_native_files": [],
+                "reparse_points_not_traversed": [],
+            },
+        }
+        map_path = root / f"{destination.name}-component-map.json"
+        map_path.write_text(
+            json.dumps(component_map, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        sbom_path = root / f"{destination.name}-sbom.json"
+        sbom_path.write_text(
+            json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.5"}),
+            encoding="utf-8",
+        )
+        return (
+            "-CorrespondingSourceUrl",
+            source_url,
+            "-BinaryComponentMapPath",
+            str(map_path),
+            "-SbomPath",
+            str(sbom_path),
+        )
+
     def test_stage_manifest_zip_and_extracted_verification(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -387,6 +496,7 @@ class SoftwarePackageStageTests(unittest.TestCase):
                 str(built),
                 "-Destination",
                 str(destination),
+                *self._compliance_arguments(root, built, destination),
             )
 
             output = result.stdout + result.stderr
@@ -403,6 +513,17 @@ class SoftwarePackageStageTests(unittest.TestCase):
                 b"MZ\x00synthetic-test-exe",
             )
             self.assertTrue((destination / "licenses" / "GPL-3.0.txt").is_file())
+            source_offer = (
+                destination / "licenses" / "SOURCE_OFFER_EN.txt"
+            ).read_text(encoding="utf-8")
+            self.assertIn("releases/download/test/source.zip", source_offer)
+            self.assertNotIn("@@", source_offer)
+            self.assertTrue(
+                (destination / "licenses" / "BINARY_COMPONENT_MAP.json").is_file()
+            )
+            self.assertTrue(
+                (destination / "licenses" / "SBOM.cdx.json").is_file()
+            )
             self.assertTrue(
                 (destination / "publication" / "LEGAL_AND_RIGHTS_JA.md").is_file()
             )
@@ -439,6 +560,7 @@ class SoftwarePackageStageTests(unittest.TestCase):
                 str(built),
                 "-Destination",
                 str(destination),
+                *self._compliance_arguments(root, built, destination),
             )
 
             output = result.stdout + result.stderr
@@ -463,6 +585,7 @@ class SoftwarePackageStageTests(unittest.TestCase):
                 str(built),
                 "-Destination",
                 str(destination),
+                *self._compliance_arguments(root, built, destination),
             )
 
             output = result.stdout + result.stderr
@@ -491,6 +614,7 @@ class SoftwarePackageStageTests(unittest.TestCase):
                 str(built),
                 "-Destination",
                 str(destination),
+                *self._compliance_arguments(root, built, destination),
             )
 
             output = result.stdout + result.stderr
@@ -516,6 +640,7 @@ class SoftwarePackageStageTests(unittest.TestCase):
                 str(built),
                 "-Destination",
                 str(destination),
+                *self._compliance_arguments(root, built, destination),
             )
 
             output = result.stdout + result.stderr
@@ -540,6 +665,7 @@ class SoftwarePackageStageTests(unittest.TestCase):
                 str(built),
                 "-Destination",
                 str(existing_destination),
+                *self._compliance_arguments(root, built, existing_destination),
             )
             output = result.stdout + result.stderr
             self.assertNotEqual(result.returncode, 0, output)
@@ -560,6 +686,12 @@ class SoftwarePackageStageTests(unittest.TestCase):
                 str(destination),
                 "-ArchivePath",
                 str(existing_archive),
+                *self._compliance_arguments(
+                    root,
+                    built,
+                    destination,
+                    archive=existing_archive,
+                ),
             )
             output = result.stdout + result.stderr
             self.assertNotEqual(result.returncode, 0, output)
@@ -567,9 +699,38 @@ class SoftwarePackageStageTests(unittest.TestCase):
             self.assertEqual(existing_archive.read_bytes(), b"keep archive")
             self.assertFalse(destination.exists())
 
+    def test_missing_source_offer_inputs_fail_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            built = self._fake_build(root)
+            destination = root / "missing-compliance-inputs"
+            result = _run_powershell(
+                SOFTWARE_STAGE_SCRIPT,
+                "-BuiltAppRoot",
+                str(built),
+                "-Destination",
+                str(destination),
+            )
+            output = result.stdout + result.stderr
+            self.assertNotEqual(result.returncode, 0, output)
+            self.assertIn("CorrespondingSourceUrl is required", output)
+            self.assertFalse(destination.exists())
+            self.assertFalse(Path(f"{destination}.zip").exists())
+
     def test_spec_drops_upstream_pymeshlab_test_meshes(self) -> None:
         spec = SPEC_FILE.read_text(encoding="utf-8")
         self.assertIn('.startswith("pymeshlab/tests/")', spec)
+
+    def test_spec_drops_link_time_lib_archives_from_data_and_binaries(self) -> None:
+        spec = SPEC_FILE.read_text(encoding="utf-8")
+        self.assertIn("def is_windows_import_library(entry):", spec)
+        self.assertIn("and not is_windows_import_library(entry)", spec)
+        self.assertIn(
+            "a.binaries = [\n"
+            "    entry for entry in a.binaries if not is_windows_import_library(entry)\n"
+            "]",
+            spec,
+        )
 
     def test_spec_registers_frozen_pymeshlab_dll_directory(self) -> None:
         spec = SPEC_FILE.read_text(encoding="utf-8")
@@ -618,6 +779,17 @@ class SoftwarePackageStageTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn('"tooling/stage_software_package.ps1"', stage)
+        self.assertIn('"tooling/stage_corresponding_source.py"', stage)
+        self.assertIn('"tooling/stage_corresponding_source.ps1"', stage)
+        self.assertIn('"tooling/corresponding_source_components.json"', stage)
+        self.assertIn('"tooling/meshlab_windows_external_archives.lock.json"', stage)
+        self.assertIn('"tooling/pytetwild_rebuild_lock.template.json"', stage)
+        self.assertIn('"tooling/generate_binary_compliance_inventory.py"', stage)
+        self.assertIn('"tooling/update_budget_filament_library.py"', stage)
+        self.assertIn('"source/fixed_app/requirements-build.lock"', stage)
+        self.assertIn('"AGENTS.md"', stage)
+        self.assertIn('"HANDOFF.md"', stage)
+        self.assertIn('"publication/BINARY_RELEASE_HANDOFF_JA.md"', stage)
 
     def test_public_source_stage_uses_english_default_and_feedback_templates(self) -> None:
         stage = (REPO_ROOT / "tooling" / "stage_public_source.ps1").read_text(
@@ -682,6 +854,14 @@ class SoftwarePackageStageTests(unittest.TestCase):
         for required_negation in (
             "!publication/INNOVATION_FUND_APPLICATION_DRAFT.md",
             "!publication/INNOVATION_FUND_STATUS_JA.md",
+            "!publication/BINARY_RELEASE_HANDOFF_JA.md",
+            "!tooling/generate_binary_compliance_inventory.py",
+            "!tooling/update_budget_filament_library.py",
+            "!tooling/corresponding_source_components.json",
+            "!tooling/meshlab_windows_external_archives.lock.json",
+            "!tooling/pytetwild_rebuild_lock.template.json",
+            "!tooling/stage_corresponding_source.py",
+            "!tooling/stage_corresponding_source.ps1",
             "!tooling/stage_software_package.ps1",
         ):
             with self.subTest(required_negation=required_negation):
@@ -694,6 +874,8 @@ class PublicSourceStageRollbackTests(unittest.TestCase):
         ".gitattributes",
         "BUILD_AND_TEST.ps1",
         "BOOTSTRAP_WINDOWS.ps1",
+        "AGENTS.md",
+        "HANDOFF.md",
         "RUN_TESTS.cmd",
         "CURRENT_STATE.json",
         "PROVENANCE.md",
@@ -717,10 +899,12 @@ class PublicSourceStageRollbackTests(unittest.TestCase):
         "publication/GITHUB_PUBLICATION_GUIDE_JA.md",
         "publication/INNOVATION_FUND_APPLICATION_DRAFT.md",
         "publication/INNOVATION_FUND_STATUS_JA.md",
+        "publication/BINARY_RELEASE_HANDOFF_JA.md",
     )
     REQUIRED_FIXED_APP_FILES = (
         "source/fixed_app/TripoSpectrumMapper_fixed.py",
         "source/fixed_app/TripoSpectrumMapper_fixed.spec",
+        "source/fixed_app/requirements-build.lock",
         "source/fixed_app/requirements-build.txt",
         "source/fixed_app/START_FIXED.cmd",
         "source/fixed_app/version_info.txt",
@@ -780,6 +964,38 @@ class PublicSourceStageRollbackTests(unittest.TestCase):
         shutil.copy2(
             SOFTWARE_STAGE_SCRIPT,
             tooling / SOFTWARE_STAGE_SCRIPT.name,
+        )
+        shutil.copy2(
+            REPO_ROOT / "tooling" / "stage_corresponding_source.py",
+            tooling / "stage_corresponding_source.py",
+        )
+        shutil.copy2(
+            REPO_ROOT / "tooling" / "stage_corresponding_source.ps1",
+            tooling / "stage_corresponding_source.ps1",
+        )
+        shutil.copy2(
+            REPO_ROOT / "tooling" / "corresponding_source_components.json",
+            tooling / "corresponding_source_components.json",
+        )
+        shutil.copy2(
+            REPO_ROOT / "tooling" / "meshlab_windows_external_archives.lock.json",
+            tooling / "meshlab_windows_external_archives.lock.json",
+        )
+        shutil.copy2(
+            REPO_ROOT / "tooling" / "pytetwild_rebuild_lock.template.json",
+            tooling / "pytetwild_rebuild_lock.template.json",
+        )
+        shutil.copy2(
+            REPO_ROOT / "tooling" / "generate_binary_compliance_inventory.py",
+            tooling / "generate_binary_compliance_inventory.py",
+        )
+        shutil.copy2(
+            REPO_ROOT / "tooling" / "update_budget_filament_library.py",
+            tooling / "update_budget_filament_library.py",
+        )
+        shutil.copy2(
+            REPO_ROOT / "source" / "fixed_app" / "test_binary_compliance_inventory.py",
+            fixture / "source" / "fixed_app" / "test_binary_compliance_inventory.py",
         )
         (tooling / "generate_public_icon.py").write_text(
             "# synthetic public fixture\n",

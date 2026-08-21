@@ -119,6 +119,7 @@ the applicable terms and the explicitly copied texts.
 - PyTetWild 0.3.0 and the fTetWild components carried by its wheel
   License: Mozilla Public License 2.0 (MPL-2.0)
   Explicit license text: `_internal/licenses/pytetwild/LICENSE`
+  Generic MPL-2.0 text: `_internal/licenses/MPL-2.0.txt`
   Source: https://github.com/pyvista/pytetwild
   Upstream fTetWild source: https://github.com/wildmeshing/fTetWild
 
@@ -132,15 +133,19 @@ the applicable terms and the explicitly copied texts.
   (AGPL-3.0-or-later), or a separate commercial license from WIAS
   TetGen notice and complete AGPL text:
   `_internal/licenses/tetgen/tetgen-license`
+  Explicit AGPL/TetGen text: `_internal/licenses/AGPL-3.0.txt`
   License FAQ: https://wias-berlin.de/software/tetgen/FAQ-license.jsp
 
 - PyMeshLab 2025.7.post1 and the MeshLab components in its wheel
   License: GNU General Public License version 3 (GPL-3.0)
+  Wheel-supplied license text: `_internal/licenses/pymeshlab/LICENSE`
   Source: https://github.com/cnr-isti-vclab/PyMeshLab
 
 - Qt 5.15.2 libraries shipped inside the PyMeshLab wheel
   License options include LGPL-3.0, GPL-2.0/GPL-3.0, or a commercial license.
   The distributor is responsible for complying with the option that applies.
+  LGPL-3.0 text: `_internal/licenses/LGPL-3.0.txt`
+  Replacement instructions: `_internal/licenses/RELINKING_EN.md`
   Source and license information: https://www.qt.io/licensing/open-source-lgpl-obligations
 
 - ModernGL 5.12.0
@@ -163,6 +168,11 @@ the applicable terms and the explicitly copied texts.
   License: BSD-3-Clause
   The Windows wheel also bundles GEOS under LGPL-2.1 and Microsoft Visual C++
   Runtime files under Microsoft's redistributable-code terms.
+  Shapely/GEOS/Windows notices:
+  `_internal/licenses/shapely/LICENSE.txt`,
+  `_internal/licenses/shapely/LICENSE_GEOS`, and
+  `_internal/licenses/shapely/LICENSE_win32`
+  Generic LGPL-2.1 text: `_internal/licenses/LGPL-2.1.txt`
   Source: https://github.com/shapely/shapely
 
 - Mapbox Earcut 2.0.0 (`mapbox-earcut` wheel)
@@ -181,19 +191,28 @@ the applicable terms and the explicitly copied texts.
   License: Microsoft Visual Studio 2022 redistributable-code terms
   Redistribution reference:
   https://learn.microsoft.com/visualstudio/releases/2022/redistribution
+  Wheel-supplied terms: `_internal/licenses/msvc-runtime/LICENSE`
 
 - PyInstaller 6.20.0 bootloader
   License: GPL-2.0-or-later with the PyInstaller bootloader exception
   Source: https://pyinstaller.org/
 
 
-Redistribution note
-===================
+Binary redistribution notice
+============================
 
-PyMeshLab is GPL-3.0 software, PyTetWild/fTetWild is MPL-2.0 software, and the
-bundled TetGen core is AGPL-3.0-or-later software unless a separate commercial
-license applies. Keeping the current local desktop build solely for private use
-does not by itself distribute a copy. Anyone who gives copies of this
-application to another party must review and satisfy those licenses and the
-licenses of Qt and all other bundled components. This notice is informational
-and is not legal advice.
+ChromaMatter application code is GPL-3.0-or-later. PyMeshLab is GPL-3.0-only,
+PyTetWild/fTetWild is MPL-2.0, and the bundled TetGen core is
+AGPL-3.0-or-later unless a separate commercial license applies. Each component
+retains its own license; describing the combined package does not relicense
+third-party code.
+
+A redistributable package must include completed SOURCE_OFFER_EN.txt and
+SOURCE_OFFER_JA.txt files, a release-specific BINARY_COMPONENT_MAP.json, the
+matching SBOM.cdx.json, the listed license texts, build/install information, and LGPL replacement
+instructions. The software-package staging tool rejects an unset source URL,
+templates/placeholders, runtime paths that are not in the built package, and an
+executable hash mismatch. Passing that local gate does not prove the source URL
+has been uploaded or reviewed.
+
+This notice is an engineering aid, not legal advice.

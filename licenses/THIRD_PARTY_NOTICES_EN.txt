@@ -1,0 +1,45 @@
+ChromaMatter binary distribution: licenses and source access
+============================================================
+
+ChromaMatter application code is licensed under GPL-3.0-or-later. The
+portable Windows package also contains separately copyrighted third-party
+components. Each component retains its own license; this notice does not
+relicense third-party software.
+
+The current binary route intentionally keeps TetGen. The tetgen 0.8.3 Python
+wrapper is MIT-licensed, while the bundled TetGen 1.6.0 core is
+AGPL-3.0-or-later unless a separate WIAS commercial license applies. A binary
+release using the free-software route must therefore be accompanied by the
+complete corresponding source and the installation/build information
+required by the applicable licenses. Merely calling the package "AGPL" is
+not a substitute for providing those materials.
+
+High-impact bundled components
+------------------------------
+
+- ChromaMatter application: GPL-3.0-or-later
+- tetgen 0.8.3 Python wrapper: MIT
+- TetGen 1.6.0 core: AGPL-3.0-or-later (or separate commercial license)
+- PyMeshLab 2025.7.post1: GPL-3.0-only
+- Qt 5.15.2 libraries carried by PyMeshLab: distributed here under the
+  LGPL-3.0 option; Qt also offers other license options
+- PyTetWild 0.3.0 and its fTetWild components: MPL-2.0
+- Shapely 2.1.2: BSD-3-Clause
+- GEOS 3.13.1 carried by the Shapely wheel: LGPL-2.1-or-later
+- Microsoft Visual C++ Runtime 14.44.35112: Microsoft redistributable-code
+  terms
+
+The complete dependency index is in THIRD_PARTY_LICENSES.txt. Governing
+license texts and wheel-supplied notices are stored beside this file and in
+component subdirectories. BINARY_COMPONENT_MAP.json records the exact files
+and owning components for the particular binary release; SBOM.cdx.json
+provides the matching CycloneDX inventory.
+
+SOURCE_OFFER_EN.txt identifies the complete corresponding-source archive for
+the exact binary. BUILD_ENVIRONMENT_EN.md describes the reproducible build
+entry point. RELINKING_EN.md explains how to replace the separately shipped
+Qt and GEOS libraries in the PyInstaller one-folder package.
+
+The program and third-party components are provided without warranty to the
+extent permitted by their licenses. This inventory is an engineering aid,
+not legal advice.

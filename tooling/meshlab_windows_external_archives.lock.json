@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "lock_status": "verified-official-release-assets",
+  "meshlab_commit": "d876376e3cc4f92d257e248023d82cbac5b03c7d",
+  "archives": [
+    {
+      "variable": "EMBREE_WIN_LINK",
+      "url": "https://github.com/embree/embree/releases/download/v4.3.3/embree-4.3.3.x64.windows.zip",
+      "sha256": "d4c07f88df9f009dd84e4e9b9dcec32ad7d96f927bd88de00b721b0923d481a9",
+      "byte_size": 76444177,
+      "provenance": {
+        "asset_name": "embree-4.3.3.x64.windows.zip",
+        "github_asset_id": 181085852,
+        "github_release_id": 166503668,
+        "github_release_tag": "v4.3.3",
+        "asset_created_at": "2024-07-22T12:25:33Z",
+        "asset_updated_at": "2024-07-22T12:28:12Z",
+        "release_repository_url": "https://github.com/RenderKit/embree",
+        "release_api_url": "https://api.github.com/repos/RenderKit/embree/releases/166503668",
+        "asset_api_url": "https://api.github.com/repos/RenderKit/embree/releases/assets/181085852",
+        "resolved_download_url": "https://github.com/RenderKit/embree/releases/download/v4.3.3/embree-4.3.3.x64.windows.zip",
+        "sha256_method": "downloaded-official-github-release-asset"
+      }
+    },
+    {
+      "variable": "TBB_WIN_LINK",
+      "url": "https://github.com/oneapi-src/oneTBB/releases/download/v2021.6.0/oneapi-tbb-2021.6.0-win.zip",
+      "sha256": "8e2b48500fe93ab77bad435eea7ed9c513eacb032ee6a90e086d99b7f96bd8d5",
+      "byte_size": 15439347,
+      "provenance": {
+        "asset_name": "oneapi-tbb-2021.6.0-win.zip",
+        "github_asset_id": 78363962,
+        "github_release_id": 77571286,
+        "github_release_tag": "v2021.6.0",
+        "asset_created_at": "2022-09-19T17:07:40Z",
+        "asset_updated_at": "2022-09-19T17:08:02Z",
+        "release_repository_url": "https://github.com/uxlfoundation/oneTBB",
+        "release_api_url": "https://api.github.com/repos/uxlfoundation/oneTBB/releases/77571286",
+        "asset_api_url": "https://api.github.com/repos/uxlfoundation/oneTBB/releases/assets/78363962",
+        "resolved_download_url": "https://github.com/uxlfoundation/oneTBB/releases/download/v2021.6.0/oneapi-tbb-2021.6.0-win.zip",
+        "sha256_method": "downloaded-official-github-release-asset"
+      }
+    }
+  ]
+}

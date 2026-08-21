@@ -1,0 +1,41 @@
+ChromaMatterバイナリ配布：ライセンスとソース入手方法
+====================================================
+
+ChromaMatter本体のコードはGPL-3.0-or-laterです。Windowsポータブル版には、
+それぞれ別の著作権者とライセンスを持つ第三者コンポーネントも含まれます。
+各コンポーネントは元のライセンスを維持します。この文書によって第三者
+ソフトウェアを別ライセンスへ変更するものではありません。
+
+現在のバイナリ配布方針ではTetGenを残します。tetgen 0.8.3 Pythonラッパーは
+MITですが、同梱されるTetGen 1.6.0本体は、WIASの別途商用ライセンスを取得
+していない場合、AGPL-3.0-or-laterです。フリーソフトウェア条件でバイナリを
+配布する場合は、適用ライセンスが求める完全な対応ソースと、ビルド・
+インストールに必要な情報を一緒に入手できるようにします。配布物を単に
+「AGPL」と表示するだけでは、この提供義務の代わりにはなりません。
+
+主要な同梱コンポーネント
+--------------------------
+
+- ChromaMatter本体：GPL-3.0-or-later
+- tetgen 0.8.3 Pythonラッパー：MIT
+- TetGen 1.6.0本体：AGPL-3.0-or-later（または別途商用ライセンス）
+- PyMeshLab 2025.7.post1：GPL-3.0-only
+- PyMeshLabが同梱するQt 5.15.2：この配布ではLGPL-3.0の選択肢を使用
+  （Qtには他のライセンス選択肢もあります）
+- PyTetWild 0.3.0および同梱fTetWild：MPL-2.0
+- Shapely 2.1.2：BSD-3-Clause
+- Shapely wheelが同梱するGEOS 3.13.1：LGPL-2.1-or-later
+- Microsoft Visual C++ Runtime 14.44.35112：Microsoft再頒布可能コード条項
+
+完全な依存関係一覧はTHIRD_PARTY_LICENSES.txtにあります。ライセンス原文と
+wheel由来の通知は、このファイルと同じ場所および各コンポーネント用の
+サブフォルダーに収録します。BINARY_COMPONENT_MAP.jsonには、そのリリースの
+実ファイルと所有コンポーネントを記録し、SBOM.cdx.jsonには対応するCycloneDX
+一覧を収録します。
+
+SOURCE_OFFER_JA.txtは、対象バイナリと一致する完全な対応ソースの場所を示し
+ます。BUILD_ENVIRONMENT_JA.mdは再ビルド入口、RELINKING_JA.mdはPyInstaller
+one-folder版でQtとGEOSを差し替える方法を説明します。
+
+本体および第三者コンポーネントは、各ライセンスで認められる範囲において
+無保証です。この一覧は実務上の整理であり、法的助言ではありません。

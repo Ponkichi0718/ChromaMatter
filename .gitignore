@@ -1,12 +1,22 @@
 # Local Python/build products
-.venv/
+.venv*/
+build/
+dist/
+artifacts/
 build_output/
 release_stage*/
 outputs/
 **/__pycache__/
 *.py[cod]
 *.exe
+*.dll
+*.pyd
+*.whl
 *.zip
+*.7z
+*.tar
+*.tar.gz
+*.tar.xz
 
 # Private validation and user assets
 validation_output*/
@@ -14,7 +24,17 @@ private_samples/
 __tracked_surface.stl
 **/__tracked_surface.stl
 *.3mf
+*.amf
+*.fbx
+*.gcode
+*.glb
+*.gltf
+*.iges
+*.igs
+*.ply
+*.step
 *.stl
+*.stp
 *.mp4
 *.mov
 *.webm
@@ -45,12 +65,20 @@ publication/*
 !publication/GITHUB_PUBLICATION_GUIDE_JA.md
 !publication/INNOVATION_FUND_APPLICATION_DRAFT.md
 !publication/INNOVATION_FUND_STATUS_JA.md
+!publication/BINARY_RELEASE_HANDOFF_JA.md
 
 # Historical local probes and recovery utilities stay in the private workspace.
 tooling/*
 !tooling/build_mixer_model.py
 !tooling/generate_public_icon.py
 !tooling/audit_public_tree.ps1
+!tooling/generate_binary_compliance_inventory.py
+!tooling/update_budget_filament_library.py
+!tooling/corresponding_source_components.json
+!tooling/meshlab_windows_external_archives.lock.json
+!tooling/pytetwild_rebuild_lock.template.json
+!tooling/stage_corresponding_source.py
+!tooling/stage_corresponding_source.ps1
 !tooling/stage_public_source.ps1
 !tooling/stage_software_package.ps1
 

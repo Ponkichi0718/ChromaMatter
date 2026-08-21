@@ -85,6 +85,7 @@ from .i18n import (
     save_language,
 )
 from .help_center import HelpCenterWindow, get_help_center
+from .legal_notice import LegalNoticeWindow, get_legal_notice
 from .palette_state_count import apply_palette_state_count_change
 from .project_bundle import (
     ProjectBundleError,
@@ -789,6 +790,7 @@ class MapperApp:
         self.paint_editor: PaintEditorWindow | None = None
         self.filament_candidate_window: FilamentCandidateWindow | None = None
         self.help_center: HelpCenterWindow | None = None
+        self.legal_notice_window: LegalNoticeWindow | None = None
         self._open_boundary_diagnostics_on_paint = False
         self._manual_high_face_warning_key: tuple[object, ...] | None = None
         self.app_closing = False
@@ -1186,7 +1188,14 @@ class MapperApp:
             command=lambda: self._show_help_center("first_steps"),
         )
         # Help Center remains available in source for internal builds.  The
-        # public toolbar intentionally exposes only the primary workflow.
+        # compact legal/source notice below is the one additional public route.
+        self.legal_notice_button = ttk.Button(
+            toolbar,
+            text=self.i18n.text("toolbar.licenses"),
+            command=self._show_legal_notice,
+            width=10,
+        )
+        self.legal_notice_button.grid(row=0, column=6, padx=(3, 6))
         self.language_label = ttk.Label(
             toolbar,
             text=self.i18n.text("toolbar.language_opposite"),
@@ -1253,6 +1262,9 @@ class MapperApp:
         self.open_source_button.configure(
             text=self.i18n.text("toolbar.open_obj")
         )
+        self.legal_notice_button.configure(
+            text=self.i18n.text("toolbar.licenses")
+        )
         self.language_label.configure(
             text=self.i18n.text("toolbar.language_opposite")
         )
@@ -1304,6 +1316,11 @@ class MapperApp:
         if self.help_center is not None:
             try:
                 self.help_center.set_translator(self.i18n)
+            except (AttributeError, tk.TclError):
+                pass
+        if self.legal_notice_window is not None:
+            try:
+                self.legal_notice_window.set_translator(self.i18n)
             except (AttributeError, tk.TclError):
                 pass
         if persist:
@@ -1703,6 +1720,13 @@ class MapperApp:
             else "export_3mf"
         )
         self._show_help_center(topic_id)
+
+    def _show_legal_notice(self) -> LegalNoticeWindow:
+        """Show the single public legal/source notice without leaving the app."""
+
+        self.legal_notice_window = get_legal_notice(self.root, self.i18n)
+        self.legal_notice_window.show()
+        return self.legal_notice_window
 
     def _show_filament_settings(self) -> None:
         self._main_ribbon_selected = "filament"
@@ -8857,6 +8881,12 @@ class MapperApp:
             except (AttributeError, tk.TclError):
                 pass
             self.help_center = None
+        if self.legal_notice_window is not None:
+            try:
+                self.legal_notice_window.destroy()
+            except (AttributeError, tk.TclError):
+                pass
+            self.legal_notice_window = None
         self.main_executor.shutdown(wait=False, cancel_futures=True)
         self.preview_executor.shutdown(wait=False, cancel_futures=True)
         try:

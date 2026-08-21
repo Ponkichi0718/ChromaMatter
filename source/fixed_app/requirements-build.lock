@@ -1,0 +1,57 @@
+# ChromaMatter Windows x64 / CPython 3.13.14 build lock.
+#
+# Every hash below is the SHA-256 published by the official PyPI JSON API for
+# the one CPython 3.13 win_amd64 (or compatible abi3/pure-Python) wheel used by
+# the build.  BOOTSTRAP_WINDOWS.ps1 installs this file with both
+# --require-hashes and --only-binary=:all:.  Do not add an sdist hash here.
+
+altgraph==0.17.5 \
+    --hash=sha256:f3a22400bce1b0c701683820ac4f3b159cd301acab067c51c653e06961600597
+glcontext==3.0.0 \
+    --hash=sha256:18aa4b1df50e8c8ea39bd0f775f39bcc987521f92c4ed019ec7d70078471354d
+manifold3d==3.5.2 \
+    --hash=sha256:87c812f45979775b9345b1112f630253f043cfbcc53252f4002712c6a48e54ae
+mapbox-earcut==2.0.0 \
+    --hash=sha256:e049e6a37c228d7a9cb2f54ae405aa21d35c5175d849530fb32064ddb38ad5ab
+moderngl==5.12.0 \
+    --hash=sha256:e34d1cd38f7998258f76a08bb5e87f351ec653b7ea1928b2711f8719c10cefd1
+msvc_runtime==14.44.35112 \
+    --hash=sha256:d4f6cf106aaf235f2a90952f9ec7de49e9946323880d051abf9745a6d4bf60bf
+networkx==3.5 \
+    --hash=sha256:0030d386a9a06dee3565298b4a734b68589749a544acbb6c412dc9e2489ec6ec
+numpy==2.5.1 \
+    --hash=sha256:6c3fe51bc6a16453d452997053454f309e8e0ed7b42d6b361ce4ac8c32913d74
+packaging==26.2 \
+    --hash=sha256:5fc45236b9446107ff2415ce77c807cee2862cb6fac22b8a73826d0693b0980e
+pefile==2024.8.26 \
+    --hash=sha256:76f8b485dcd3b1bb8166f1128d395fa3d87af26360c2358fb75b80019b957c6f
+pillow==11.2.1 \
+    --hash=sha256:74ee3d7ecb3f3c05459ba95eed5efa28d6092d751ce9bf20e3e253a4e497e691
+pip==26.2.1 \
+    --hash=sha256:71138adf1f4ca900cdb7d289c21b7494329f2332b6d85f0e1c42108c0384ed3e
+pyinstaller==6.20.0 \
+    --hash=sha256:d588844e890ee80c4365867f98146636e1849bbca8e4284bbf0c809aff0f161a
+pyinstaller-hooks-contrib==2026.6 \
+    --hash=sha256:fd13b8ac126b35361175edacd41a0d97080b75dd5f4b594ecefefff969509dd3
+pymeshlab==2025.7.post1 \
+    --hash=sha256:25eb2578dd6c4d1b2e0253fb3b4f8f7895e8bb4f3f1236832db0ab58e6a44998
+pytetwild==0.3.0 \
+    --hash=sha256:11964e295a54cf9e2f6920a920aeeba27668c9b14e369a86f72ec5baa4f46060
+resvg==0.2.0 \
+    --hash=sha256:a0e9b233cbda14f4bac9f093c83f7ca46045738131450a45416fa6b50b55bc83
+pywin32-ctypes==0.2.3 \
+    --hash=sha256:8a1513379d709975552d202d942d9837758905c8d01eb82b8bcc30918929e7b8
+rtree==1.4.1 \
+    --hash=sha256:efe125f416fd27150197ab8521158662943a40f87acab8028a1aac4ad667a489
+scipy==1.18.0 \
+    --hash=sha256:1afac4a847207c7ff8efd321734a50b06d0280b3b2a2c0fc2f413101747ad7c7
+setuptools==83.0.0 \
+    --hash=sha256:29b23c360f22f414dc7336bb39178cc7bcbf6021ed2733cde173f09dba19abb3
+shapely==2.1.2 \
+    --hash=sha256:ca2591bff6645c216695bdf1614fca9c82ea1144d4a7591a466fef64f28f0715
+tetgen==0.8.3 \
+    --hash=sha256:21982452c4c91d7fdd69101eaf18a3d3cb55c158571bcade04a83ed617305a28
+trimesh==5.0.0 \
+    --hash=sha256:51ec67d7f9f74b918f2a695da5fd511b9c084e96307648ae83f45b58f13f8009
+wheel==0.46.3 \
+    --hash=sha256:4b399d56c9d9338230118d705d9737a2a468ccca63d5e813e2a4fc7815d8bc4d

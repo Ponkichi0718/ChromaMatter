@@ -87,6 +87,79 @@ VOLUME_DATAS = (
     ]
 )
 
+# Preserve exact notice files shipped by the pinned wheels.  PyInstaller hooks
+# do not consistently retain dist-info metadata, especially for PyMeshLab and
+# Shapely, so release builds copy these files to a stable visible location.
+WHEEL_LICENSE_FILES = (
+    (
+        "pymeshlab",
+        "pymeshlab-2025.7.post1.dist-info/licenses/LICENSE",
+        "licenses/pymeshlab",
+    ),
+    (
+        "shapely",
+        "shapely-2.1.2.dist-info/licenses/LICENSE.txt",
+        "licenses/shapely",
+    ),
+    (
+        "shapely",
+        "shapely-2.1.2.dist-info/licenses/LICENSE_GEOS",
+        "licenses/shapely",
+    ),
+    (
+        "shapely",
+        "shapely-2.1.2.dist-info/licenses/LICENSE_win32",
+        "licenses/shapely",
+    ),
+    (
+        "msvc-runtime",
+        "msvc_runtime-14.44.35112.dist-info/licenses/LICENSE",
+        "licenses/msvc-runtime",
+    ),
+    ("scipy", "scipy-1.18.0.dist-info/LICENSE.txt", "licenses/scipy"),
+    (
+        "pillow",
+        "pillow-11.2.1.dist-info/licenses/LICENSE",
+        "licenses/pillow",
+    ),
+    (
+        "pyinstaller",
+        "pyinstaller-6.20.0.dist-info/COPYING.txt",
+        "licenses/pyinstaller",
+    ),
+    (
+        "manifold3d",
+        "manifold3d-3.5.2.dist-info/licenses/LICENSE",
+        "licenses/manifold3d",
+    ),
+    (
+        "mapbox-earcut",
+        "mapbox_earcut-2.0.0.dist-info/licenses/LICENSE.md",
+        "licenses/mapbox-earcut",
+    ),
+    (
+        "networkx",
+        "networkx-3.5.dist-info/licenses/LICENSE.txt",
+        "licenses/networkx",
+    ),
+    (
+        "rtree",
+        "rtree-1.4.1.dist-info/licenses/LICENSE.txt",
+        "licenses/rtree",
+    ),
+    ("moderngl", "moderngl-5.12.0.dist-info/LICENSE", "licenses/moderngl"),
+    ("glcontext", "glcontext-3.0.0.dist-info/LICENSE", "licenses/glcontext"),
+    (
+        "trimesh",
+        "trimesh-5.0.0.dist-info/licenses/LICENSE.md",
+        "licenses/trimesh",
+    ),
+)
+WHEEL_LICENSE_DATAS = [
+    (str(distribution_file(distribution, relative)), destination)
+    for distribution, relative, destination in WHEEL_LICENSE_FILES
+]
+
 # The decal SVG loader uses the pinned resvg-py Windows wheel.  The extension
 # module itself is collected through the explicit hidden import below.  Keep
 # importlib.metadata.version("resvg") functional and expose the wheel's MIT
@@ -142,8 +215,19 @@ RESVG_DATAS = [
 APP_LICENSE_DATAS = [
     (str(PROJECT / "licenses" / filename), "licenses")
     for filename in (
+        "AGPL-3.0.txt",
+        "BINARY_COMPONENT_MAP.schema.json",
+        "BUILD_ENVIRONMENT_EN.md",
+        "BUILD_ENVIRONMENT_JA.md",
         "LICENSE_APP.txt",
         "GPL-3.0.txt",
+        "LGPL-2.1.txt",
+        "LGPL-3.0.txt",
+        "MPL-2.0.txt",
+        "RELINKING_EN.md",
+        "RELINKING_JA.md",
+        "THIRD_PARTY_NOTICES_EN.txt",
+        "THIRD_PARTY_NOTICES_JA.txt",
         "THIRD_PARTY_LICENSES.txt",
         "LICENSE_RESVG_PY.txt",
         "LICENSE_RESVG_MIT.txt",
@@ -183,6 +267,7 @@ a = Analysis(
     ]
     + FILAMENT_DATABASE_DATAS
     + VOLUME_DATAS
+    + WHEEL_LICENSE_DATAS
     + RESVG_DATAS
     + APP_LICENSE_DATAS,
     hiddenimports=[
@@ -264,6 +349,15 @@ a = Analysis(
 # PyInstaller's upstream pymeshlab hook collects the wheel's test meshes as
 # data.  They are not runtime dependencies and must not enter a release
 # package, whose staging audit intentionally rejects embedded model files.
+def is_windows_import_library(entry):
+    """True for link-time .lib archives, which are never runtime payloads."""
+
+    return any(
+        str(value).replace("\\", "/").casefold().endswith(".lib")
+        for value in entry[:2]
+    )
+
+
 a.datas = [
     entry
     for entry in a.datas
@@ -276,7 +370,14 @@ a.datas = [
         .replace("\\", "/")
         .casefold()
         .endswith("resvg-0.2.0.dist-info/direct_url.json")
+        and not is_windows_import_library(entry)
     )
+]
+# Qt and other wheel hooks can classify import/development archives as either
+# data or binaries.  Windows loads DLLs at runtime; .lib files are link-time
+# inputs and are excluded from both collections without removing plugin DLLs.
+a.binaries = [
+    entry for entry in a.binaries if not is_windows_import_library(entry)
 ]
 pyz = PYZ(a.pure)
 

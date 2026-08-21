@@ -4,7 +4,10 @@ param(
     [Alias("BuildRoot")]
     [string]$BuiltAppRoot,
     [string]$Destination = "",
-    [string]$ArchivePath = ""
+    [string]$ArchivePath = "",
+    [string]$CorrespondingSourceUrl = "",
+    [string]$BinaryComponentMapPath = "",
+    [string]$SbomPath = ""
 )
 
 Set-StrictMode -Version Latest
@@ -107,6 +110,17 @@ $requiredRuntimeFiles = @(
     "_internal/THIRD_PARTY_VOLUME_LICENSES_JA.md",
     "_internal/_tk_data/license.terms",
     "_internal/licenses/GPL-3.0.txt",
+    "_internal/licenses/AGPL-3.0.txt",
+    "_internal/licenses/LGPL-2.1.txt",
+    "_internal/licenses/LGPL-3.0.txt",
+    "_internal/licenses/MPL-2.0.txt",
+    "_internal/licenses/BINARY_COMPONENT_MAP.schema.json",
+    "_internal/licenses/BUILD_ENVIRONMENT_EN.md",
+    "_internal/licenses/BUILD_ENVIRONMENT_JA.md",
+    "_internal/licenses/RELINKING_EN.md",
+    "_internal/licenses/RELINKING_JA.md",
+    "_internal/licenses/THIRD_PARTY_NOTICES_EN.txt",
+    "_internal/licenses/THIRD_PARTY_NOTICES_JA.txt",
     "_internal/licenses/LICENSE_APP.txt",
     "_internal/licenses/LICENSE_RESVG_PY.txt",
     "_internal/licenses/LICENSE_RESVG_MIT.txt",
@@ -117,6 +131,11 @@ $requiredRuntimeFiles = @(
     "_internal/licenses/pytetwild/LICENSE",
     "_internal/licenses/tetgen/LICENSE",
     "_internal/licenses/tetgen/tetgen-license",
+    "_internal/licenses/pymeshlab/LICENSE",
+    "_internal/licenses/shapely/LICENSE.txt",
+    "_internal/licenses/shapely/LICENSE_GEOS",
+    "_internal/licenses/shapely/LICENSE_win32",
+    "_internal/licenses/msvc-runtime/LICENSE",
     "_internal/resources/filament_db/filament_color_database_2026-08.sqlite",
     "_internal/resources/filament_db/filament_color_database_README.md",
     "_internal/resources/filament_db/ATTRIBUTION.md",
@@ -128,6 +147,123 @@ foreach ($relative in $requiredRuntimeFiles) {
     if (-not (Test-Path -LiteralPath $runtimeFile -PathType Leaf)) {
         throw "Required packaged runtime file is missing: $relative"
     }
+}
+
+function Test-IncompleteReleaseValue {
+    param([Parameter(Mandatory = $true)][AllowEmptyString()][string]$Value)
+    return (
+        [string]::IsNullOrWhiteSpace($Value) -or
+        $Value -match "@@[^@\r\n]+@@" -or
+        $Value -match "__[A-Z0-9_]+__" -or
+        $Value -match "(?i)\b(?:TODO|TBD|CHANGEME)\b"
+    )
+}
+
+if (Test-IncompleteReleaseValue -Value $CorrespondingSourceUrl) {
+    throw "CorrespondingSourceUrl is required and must not contain a placeholder."
+}
+$sourceUri = $null
+if (
+    -not [Uri]::TryCreate($CorrespondingSourceUrl, [UriKind]::Absolute, [ref]$sourceUri) -or
+    $sourceUri.Scheme -ne "https" -or
+    $sourceUri.Host -match "(?i)^(?:example\.(?:com|org|net)|localhost)$"
+) {
+    throw "CorrespondingSourceUrl must be a final public HTTPS release URL."
+}
+if (Test-IncompleteReleaseValue -Value $BinaryComponentMapPath) {
+    throw "BinaryComponentMapPath is required; templates cannot be published."
+}
+$componentMapFullPath = if ([System.IO.Path]::IsPathRooted($BinaryComponentMapPath)) {
+    [System.IO.Path]::GetFullPath($BinaryComponentMapPath)
+}
+else {
+    [System.IO.Path]::GetFullPath((Join-Path $repoRoot $BinaryComponentMapPath))
+}
+if (-not (Test-Path -LiteralPath $componentMapFullPath -PathType Leaf)) {
+    throw "Completed binary component map is missing: $componentMapFullPath"
+}
+$componentMapText = [System.IO.File]::ReadAllText($componentMapFullPath)
+if (Test-IncompleteReleaseValue -Value $componentMapText) {
+    throw "Binary component map contains an incomplete placeholder."
+}
+try {
+    $componentMap = $componentMapText | ConvertFrom-Json -ErrorAction Stop
+}
+catch {
+    throw "Binary component map is not valid JSON: $($_.Exception.Message)"
+}
+$generatedInventory = $null -ne $componentMap.PSObject.Properties["package"]
+if (-not $generatedInventory) {
+    throw "BinaryComponentMapPath must contain the generated compliance inventory."
+}
+    if (
+        $null -eq $componentMap.validation -or
+        $componentMap.validation.passed -ne $true -or
+        @($componentMap.validation.unmapped_native_files).Count -ne 0 -or
+        @($componentMap.validation.reparse_points_not_traversed).Count -ne 0
+    ) {
+        throw "Generated binary component inventory did not pass its fail-closed validation."
+    }
+    if (
+        [string]$componentMap.package.name -ne "ChromaMatter" -or
+        [string]$componentMap.package.version -ne "0.8beta-r32"
+    ) {
+        throw "Generated binary component inventory has the wrong package identity."
+    }
+    $componentLicenses = @{}
+    foreach ($component in @($componentMap.components)) {
+        $componentLicenses[[string]$component.id] = [string]$component.license
+    }
+    foreach ($required in @{
+        "chromamatter" = "GPL-3.0-or-later"
+        "tetgen" = "MIT AND AGPL-3.0-or-later"
+        "pymeshlab" = "GPL-3.0-only"
+        "qt" = "LGPL-3.0-only"
+        "pytetwild" = "MPL-2.0"
+        "shapely" = "BSD-3-Clause"
+        "geos" = "LGPL-2.1-or-later"
+    }.GetEnumerator()) {
+        if ($componentLicenses[$required.Key] -ne $required.Value) {
+            throw "Generated inventory is missing or mislabels component: $($required.Key)"
+        }
+    }
+    $exeRow = @($componentMap.files | Where-Object { $_.path -eq "ChromaMatter.exe" })
+    if (
+        $exeRow.Count -ne 1 -or
+        [string]$exeRow[0].sha256 -ne (
+            Get-FileHash -LiteralPath (Join-Path $builtRoot "ChromaMatter.exe") -Algorithm SHA256
+        ).Hash.ToLowerInvariant()
+    ) {
+        throw "Generated inventory does not match ChromaMatter.exe."
+    }
+
+if (Test-IncompleteReleaseValue -Value $SbomPath) {
+    throw "SbomPath is required; the release SBOM cannot be omitted."
+}
+$sbomFullPath = if ([System.IO.Path]::IsPathRooted($SbomPath)) {
+    [System.IO.Path]::GetFullPath($SbomPath)
+}
+else {
+    [System.IO.Path]::GetFullPath((Join-Path $repoRoot $SbomPath))
+}
+if (-not (Test-Path -LiteralPath $sbomFullPath -PathType Leaf)) {
+    throw "Completed CycloneDX SBOM is missing: $sbomFullPath"
+}
+$sbomText = [System.IO.File]::ReadAllText($sbomFullPath)
+if (Test-IncompleteReleaseValue -Value $sbomText) {
+    throw "CycloneDX SBOM contains an incomplete placeholder."
+}
+try {
+    $sbom = $sbomText | ConvertFrom-Json -ErrorAction Stop
+}
+catch {
+    throw "CycloneDX SBOM is not valid JSON: $($_.Exception.Message)"
+}
+if (
+    [string]$sbom.bomFormat -ne "CycloneDX" -or
+    [string]$sbom.specVersion -ne "1.5"
+) {
+    throw "SbomPath must contain the generated CycloneDX 1.5 SBOM."
 }
 
 # The PyInstaller runtime contains many legitimate binary formats, so the
@@ -311,6 +447,17 @@ $packageFiles = @(
     @{ Source = "source/fixed_app/THIRD_PARTY_VOLUME_LICENSES_JA.md"; Destination = "THIRD_PARTY_VOLUME_LICENSES_JA.md" },
     @{ Source = "source/fixed_app/VERSION_POLICY.md"; Destination = "VERSION_POLICY.md" },
     @{ Source = "licenses/GPL-3.0.txt"; Destination = "licenses/GPL-3.0.txt" },
+    @{ Source = "licenses/AGPL-3.0.txt"; Destination = "licenses/AGPL-3.0.txt" },
+    @{ Source = "licenses/LGPL-2.1.txt"; Destination = "licenses/LGPL-2.1.txt" },
+    @{ Source = "licenses/LGPL-3.0.txt"; Destination = "licenses/LGPL-3.0.txt" },
+    @{ Source = "licenses/MPL-2.0.txt"; Destination = "licenses/MPL-2.0.txt" },
+    @{ Source = "licenses/BINARY_COMPONENT_MAP.schema.json"; Destination = "licenses/BINARY_COMPONENT_MAP.schema.json" },
+    @{ Source = "licenses/BUILD_ENVIRONMENT_EN.md"; Destination = "licenses/BUILD_ENVIRONMENT_EN.md" },
+    @{ Source = "licenses/BUILD_ENVIRONMENT_JA.md"; Destination = "licenses/BUILD_ENVIRONMENT_JA.md" },
+    @{ Source = "licenses/RELINKING_EN.md"; Destination = "licenses/RELINKING_EN.md" },
+    @{ Source = "licenses/RELINKING_JA.md"; Destination = "licenses/RELINKING_JA.md" },
+    @{ Source = "licenses/THIRD_PARTY_NOTICES_EN.txt"; Destination = "licenses/THIRD_PARTY_NOTICES_EN.txt" },
+    @{ Source = "licenses/THIRD_PARTY_NOTICES_JA.txt"; Destination = "licenses/THIRD_PARTY_NOTICES_JA.txt" },
     @{ Source = "licenses/LICENSE_APP.txt"; Destination = "licenses/LICENSE_APP.txt" },
     @{ Source = "licenses/LICENSE_RESVG_PY.txt"; Destination = "licenses/LICENSE_RESVG_PY.txt" },
     @{ Source = "licenses/LICENSE_RESVG_MIT.txt"; Destination = "licenses/LICENSE_RESVG_MIT.txt" },
@@ -329,6 +476,14 @@ foreach ($record in $packageFiles) {
     $source = Join-Path $repoRoot $record.Source.Replace("/", "\")
     if (-not (Test-Path -LiteralPath $source -PathType Leaf)) {
         throw "Required software-package source is missing: $($record.Source)"
+    }
+}
+foreach ($template in @(
+    "licenses/SOURCE_OFFER_TEMPLATE_EN.txt",
+    "licenses/SOURCE_OFFER_TEMPLATE_JA.txt"
+)) {
+    if (-not (Test-Path -LiteralPath (Join-Path $repoRoot $template) -PathType Leaf)) {
+        throw "Required source-offer template is missing: $template"
     }
 }
 
@@ -555,6 +710,27 @@ try {
         Copy-SoftwareFile `
             -Source (Join-Path $repoRoot $record.Source.Replace("/", "\")) `
             -Destination (Join-Path $stagingRoot $record.Destination.Replace("/", "\"))
+    }
+    Copy-SoftwareFile -Source $componentMapFullPath -Destination (
+        Join-Path $stagingRoot "licenses\BINARY_COMPONENT_MAP.json"
+    )
+    Copy-SoftwareFile -Source $sbomFullPath -Destination (
+        Join-Path $stagingRoot "licenses\SBOM.cdx.json"
+    )
+    foreach ($language in @("EN", "JA")) {
+        $templatePath = Join-Path $repoRoot "licenses\SOURCE_OFFER_TEMPLATE_$language.txt"
+        $rendered = [System.IO.File]::ReadAllText($templatePath).
+            Replace("@@RELEASE_ID@@", $destinationLeaf).
+            Replace("@@BINARY_ARCHIVE_NAME@@", $archiveLeaf).
+            Replace("@@CORRESPONDING_SOURCE_URL@@", $CorrespondingSourceUrl)
+        if (Test-IncompleteReleaseValue -Value $rendered) {
+            throw "Rendered source offer still contains a placeholder: $language"
+        }
+        [System.IO.File]::WriteAllText(
+            (Join-Path $stagingRoot "licenses\SOURCE_OFFER_$language.txt"),
+            $rendered,
+            [System.Text.UTF8Encoding]::new($false)
+        )
     }
 
     Assert-SoftwarePayloadSafe -Root $stagingRoot

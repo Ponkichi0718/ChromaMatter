@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ChromaMatter generated binary component map v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "generator", "package", "components", "files", "validation"],
+  "properties": {
+    "schema": { "type": "string", "format": "uri" },
+    "schema_version": { "const": 1 },
+    "generator": { "type": "object", "required": ["name", "version"] },
+    "package": {
+      "type": "object",
+      "required": ["name", "version", "root", "content_sha256"],
+      "properties": {
+        "name": { "const": "ChromaMatter" },
+        "version": { "type": "string" },
+        "root": { "const": "." },
+        "content_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    },
+    "components": { "type": "array", "items": { "type": "object", "required": ["id", "name", "version", "license", "source"] } },
+    "files": { "type": "array", "items": { "type": "object", "required": ["path", "size", "sha256", "file_type", "components", "mapping_basis"] } },
+    "validation": {
+      "type": "object",
+      "required": ["passed", "file_count", "native_file_count", "mapped_native_file_count", "unmapped_native_files", "reparse_points_not_traversed"],
+      "properties": {
+        "passed": { "const": true },
+        "unmapped_native_files": { "type": "array", "maxItems": 0 },
+        "reparse_points_not_traversed": { "type": "array", "maxItems": 0 }
+      }
+    }
+  }
+}

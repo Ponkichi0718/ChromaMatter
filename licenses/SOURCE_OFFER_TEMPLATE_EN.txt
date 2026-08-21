@@ -1,0 +1,22 @@
+Corresponding source for @@RELEASE_ID@@
+=======================================
+
+Binary archive: @@BINARY_ARCHIVE_NAME@@
+Complete corresponding source: @@CORRESPONDING_SOURCE_URL@@
+
+The source archive above is the source counterpart for this exact binary
+release. It is intended to contain the ChromaMatter application source, build
+and installation scripts, pinned dependency information, modifications, and
+the source materials required for the GPL-, AGPL-, LGPL-, and MPL-covered
+components shipped in the binary.
+
+See licenses/BINARY_COMPONENT_MAP.json for the exact binary file-to-component
+inventory, licenses/SBOM.cdx.json for the CycloneDX inventory, the corresponding
+source archive's COMPONENT_SOURCES.json for upstream source pins,
+licenses/BUILD_ENVIRONMENT_EN.md for rebuild instructions, and
+licenses/RELINKING_EN.md for LGPL library replacement instructions.
+
+This is a same-download-location source-access notice for network
+distribution, not a separate written offer under GPLv3/AGPLv3 section 6(b).
+Do not redistribute the binary without keeping this source archive available
+alongside it under equivalent access conditions.

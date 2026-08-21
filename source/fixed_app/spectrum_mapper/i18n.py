@@ -28,11 +28,51 @@ CATALOG: dict[str, dict[str, str]] = {
     "toolbar.load_project": {"ja": "プロジェクト読込", "en": "Load Project"},
     "toolbar.open_paint": {"ja": "マニュアル修正", "en": "Manual Editing"},
     "toolbar.help": {"ja": "使い方", "en": "Help"},
+    "toolbar.licenses": {"ja": "ライセンス", "en": "Licenses"},
     # Show the other language beside the selector so the switch is obvious to
     # someone who cannot yet read the current interface language.
     "toolbar.language_opposite": {"ja": "Language", "en": "言語"},
     "toolbar.launch_orca": {"ja": "Snapmaker Orca起動", "en": "Launch Snapmaker Orca"},
     "toolbar.export_3mf": {"ja": "3MFを書き出す", "en": "Export 3MF"},
+    # This compact notice is always reachable from the public toolbar.  Exact
+    # release URLs and local document locations are supplied by legal_notice.py.
+    "legal_notice.title": {
+        "ja": "ライセンスとソース",
+        "en": "Licenses & Source",
+    },
+    "legal_notice.application": {
+        "ja": "ChromaMatter本体は{license}で提供される自由ソフトウェアです。",
+        "en": "The ChromaMatter application is free software provided under {license}.",
+    },
+    "legal_notice.no_warranty": {
+        "ja": "本ソフトウェアは無保証です。商品性・特定目的への適合性を含む、いかなる保証もありません。",
+        "en": "This software comes with NO WARRANTY, including no implied warranty of merchantability or fitness for a particular purpose.",
+    },
+    "legal_notice.rights": {
+        "ja": "適用されるライセンス条件に従い、対象となるソフトウェアを再配布・改変できます。",
+        "en": "You may redistribute and modify covered software under the terms of its applicable licence.",
+    },
+    "legal_notice.third_party": {
+        "ja": "Windows配布物にはTetGen（{tetgen_license}）などの第三者ソフトウェアが含まれます。各構成要素にはそれぞれのライセンスが適用されます。",
+        "en": "The Windows distribution includes third-party software such as TetGen ({tetgen_license}). Each component remains governed by its own licence.",
+    },
+    "legal_notice.source_heading": {
+        "ja": "ライセンス原文・対応ソース・ビルド情報",
+        "en": "Licence texts, corresponding source, and build information",
+    },
+    "legal_notice.source_url": {
+        "ja": "公開ソース／リリース資料: {source_url}",
+        "en": "Public source and release materials: {source_url}",
+    },
+    "legal_notice.local_documents": {
+        "ja": "この配布物内のライセンス／ソース案内: {locations}",
+        "en": "Licence and source notices in this distribution: {locations}",
+    },
+    "legal_notice.governing_terms": {
+        "ja": "この概要ではなく、配布物に同梱された各ライセンス原文とソース案内が適用条件を定めます。",
+        "en": "The full licence texts and source notices supplied with the distribution, rather than this summary, govern their respective components.",
+    },
+    "legal_notice.close": {"ja": "閉じる", "en": "Close"},
     # Compact, task-oriented help.  Each topic deliberately stays at four
     # short steps so the Help Center remains useful beside the working UI.
     "help_center.title": {"ja": "使い方・ヘルプ", "en": "Help Center"},

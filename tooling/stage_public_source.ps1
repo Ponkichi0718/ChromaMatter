@@ -28,6 +28,8 @@ $requiredRootFiles = @(
     ".gitattributes",
     "BUILD_AND_TEST.ps1",
     "BOOTSTRAP_WINDOWS.ps1",
+    "AGENTS.md",
+    "HANDOFF.md",
     "RUN_TESTS.cmd",
     "CURRENT_STATE.json",
     "PROVENANCE.md",
@@ -53,11 +55,13 @@ $requiredPublicationFiles = @(
     "publication/PUBLICATION_CHECKLIST_JA.md",
     "publication/GITHUB_PUBLICATION_GUIDE_JA.md",
     "publication/INNOVATION_FUND_APPLICATION_DRAFT.md",
-    "publication/INNOVATION_FUND_STATUS_JA.md"
+    "publication/INNOVATION_FUND_STATUS_JA.md",
+    "publication/BINARY_RELEASE_HANDOFF_JA.md"
 )
 $requiredFixedAppFiles = @(
     "source/fixed_app/TripoSpectrumMapper_fixed.py",
     "source/fixed_app/TripoSpectrumMapper_fixed.spec",
+    "source/fixed_app/requirements-build.lock",
     "source/fixed_app/requirements-build.txt",
     "source/fixed_app/START_FIXED.cmd",
     "source/fixed_app/version_info.txt",
@@ -89,6 +93,13 @@ $optionalFixedAppFiles = @(
 $requiredToolingFiles = @(
     "tooling/generate_public_icon.py",
     "tooling/audit_public_tree.ps1",
+    "tooling/generate_binary_compliance_inventory.py",
+    "tooling/update_budget_filament_library.py",
+    "tooling/corresponding_source_components.json",
+    "tooling/meshlab_windows_external_archives.lock.json",
+    "tooling/pytetwild_rebuild_lock.template.json",
+    "tooling/stage_corresponding_source.py",
+    "tooling/stage_corresponding_source.ps1",
     "tooling/stage_public_source.ps1",
     "tooling/stage_software_package.ps1"
 )

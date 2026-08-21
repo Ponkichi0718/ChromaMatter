@@ -10,7 +10,8 @@ $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $venvRoot = Join-Path $repoRoot ".venv"
 $venvPython = Join-Path $venvRoot "Scripts\python.exe"
-$requirements = Join-Path $repoRoot "source\fixed_app\requirements-build.txt"
+$requirementsLock = Join-Path $repoRoot `
+    "source\fixed_app\requirements-build.lock"
 
 if (-not (Test-Path -LiteralPath $venvPython)) {
     if ($PythonExe) {
@@ -21,26 +22,28 @@ if (-not (Test-Path -LiteralPath $venvPython)) {
     } elseif (Get-Command python.exe -ErrorAction SilentlyContinue) {
         & python.exe -m venv $venvRoot
     } else {
-        throw "Python 3.13 was not found. Install it or pass -PythonExe."
+        throw "Python 3.13.14 was not found. Install it or pass -PythonExe."
     }
     if ($LASTEXITCODE -ne 0) {
-        throw "Failed to create the local .venv. Python 3.13 is required."
+        throw "Failed to create the local .venv. Python 3.13.14 is required."
     }
 }
 
 $version = & $venvPython -c "import sys; print('.'.join(map(str, sys.version_info[:3])))"
-if ($LASTEXITCODE -ne 0 -or -not $version.StartsWith("3.13.")) {
-    throw "The local environment must use Python 3.13; found $version"
+if ($LASTEXITCODE -ne 0 -or $version -ne "3.13.14") {
+    throw "The local environment must use Python 3.13.14; found $version"
 }
 
 if (-not $SkipInstall) {
-    & $venvPython -m pip install --upgrade pip
-    if ($LASTEXITCODE -ne 0) {
-        throw "pip upgrade failed."
+    if (-not (Test-Path -LiteralPath $requirementsLock -PathType Leaf)) {
+        throw "Hashed build lock is missing: $requirementsLock"
     }
-    & $venvPython -m pip install -r $requirements
+    & $venvPython -m pip install `
+        --require-hashes `
+        --only-binary=:all: `
+        -r $requirementsLock
     if ($LASTEXITCODE -ne 0) {
-        throw "Dependency installation failed."
+        throw "Hash-locked binary dependency installation failed."
     }
 }
 
