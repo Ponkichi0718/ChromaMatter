@@ -1,19 +1,73 @@
 # ChromaMatter — AI Model Print Studio 0.8beta (r32)
 
 <p align="center">
-  <img src="source/fixed_app/assets/obj_adjuster_icon.png" width="180" alt="ChromaMatter icon">
+  <img src="source/fixed_app/assets/obj_adjuster_icon.png" width="160" alt="ChromaMatter icon">
 </p>
 
-[Japanese README](README_PUBLIC_JA.md)
+[日本語版はこちら](README_JA.md)
 
-ChromaMatter — AI Model Print Studio is a Windows desktop tool that converts and adjusts AI-generated vertex-coloured OBJ or UV-base-colour GLB models for the Snapmaker Orca Full Spectrum / Color Mixing 3MF workflow. It is an independent project and is not an official or affiliated product of TripoAI, Hi3D AI, Snapmaker, OpenAI, or any other third party.
+**Turn AI-generated color OBJ and GLB models into Snapmaker U1 Full Spectrum 3MF projects using four physical filaments.**
 
-**Do not let AI-generated 3D end at the screen.** ChromaMatter aims to give AI 3D generation a path to physical colour printing and give colour 3D printers a new source of models—raising the practical value of both by bridging the gap between them.
+<table>
+  <tr>
+    <td width="25%"><a href="https://note.com/ponkichi0718/n/nad23088e6f2d"><img src="https://assets.st-note.com/img/1787038136-QYcX12yPUL4fzm5RWZNbiEqM.jpg?width=1200" alt="Original AI-assisted concept image used for the public ChromaMatter workflow"></a></td>
+    <td width="25%"><a href="https://note.com/ponkichi0718/n/nad23088e6f2d"><img src="https://assets.st-note.com/img/1787038182-v0C8IT5i1jVeKLdNX3ZygYu4.png?width=1200" alt="Coloured 3D model generated from the original concept"></a></td>
+    <td width="25%"><a href="https://note.com/ponkichi0718/n/nad23088e6f2d"><img src="https://assets.st-note.com/img/1787038261-fQtHZho5CXvrYl94M7zJOqLD.png?width=1200" alt="ChromaMatter comparing source, model, and Full Spectrum colours"></a></td>
+    <td width="25%"><a href="https://note.com/ponkichi0718/n/nad23088e6f2d"><img src="https://assets.st-note.com/img/1787038285-sNiOGxEzyLoRrklQAXH7BJ8W.png?width=1200" alt="ChromaMatter 3MF project opened in Snapmaker Orca"></a></td>
+  </tr>
+  <tr>
+    <td align="center">AI concept</td>
+    <td align="center">Colour 3D model</td>
+    <td align="center">ChromaMatter</td>
+    <td align="center">Snapmaker Orca</td>
+  </tr>
+</table>
 
-- [Visual feature overview and production flow (Japanese)](FEATURES_JA.md)
-- [Development journal, including experiments, failures, and hardware calibration (note)](https://note.com/ponkichi0718)
+**Physical U1 print validation is in progress, so no finished-print image is presented as validated evidence yet.**
 
-The public display version remains pinned to `0.8beta` as requested. This edition is `AI Model Print Studio r32`, with artifact slug `r32-ai-model-print-studio`; the Windows numeric version remains `0.8.0.0`.
+ChromaMatter is an independent Windows desktop project. It is not an official or affiliated product of TripoAI, Hi3D AI, Snapmaker, OpenAI, or any other third party.
+
+## Current status
+
+- **Source code:** Public
+- **Windows binary:** Not yet public
+- **Reason:** [Third-party binary redistribution audit](licenses/THIRD_PARTY_LICENSES.txt) in progress
+- **Public test model:** In preparation
+- **Physical U1 validation:** In progress
+- **Version:** `0.8beta`
+
+## Four things ChromaMatter does
+
+1. **Bridges AI model formats to printing.** Opens vertex-coloured OBJ and static GLB with embedded base colour, then keeps processing local to the PC.
+2. **Maps model colour to four real filaments.** Proposes F1-F4 from a material-aware filament library and builds a 16, 24, or 32-state Full Spectrum palette.
+3. **Lets you inspect and refine the result.** Compares source colour with converted colour, supports 3D manual editing, and explicitly applies experimental F1-F4 changes to both preview and 3MF.
+4. **Exports a safer Orca project.** Performs topology checks, safely welds only proven seams when eligible, and records a conservative Full Spectrum layer-cycle and prime-tower baseline.
+
+[See the visual feature overview](FEATURES_EN.md) · [Read the Japanese development journal on note](https://note.com/ponkichi0718)
+
+## Quick Start
+
+ChromaMatter currently ships as source code. On Windows with Python 3.13 installed:
+
+```powershell
+git clone https://github.com/Ponkichi0718/ChromaMatter.git
+cd ChromaMatter
+.\BOOTSTRAP_WINDOWS.ps1
+.\.venv\Scripts\python.exe .\source\fixed_app\TripoSpectrumMapper_fixed.py
+```
+
+Then:
+
+1. Open a vertex-coloured OBJ or supported static GLB.
+2. Review the proposed F1-F4 filaments and palette size.
+3. Optionally refine colours or apply a different F1-F4 combination.
+4. Check size and geometry, export 3MF, then open it **as a project** in Snapmaker Orca and inspect the slice preview before printing.
+
+The bootstrap installs pinned build dependencies and runs the test suite. See [BUILD_AND_TEST.ps1](BUILD_AND_TEST.ps1), [PRIVACY.md](PRIVACY.md), and [THIRD_PARTY_LICENSES.txt](licenses/THIRD_PARTY_LICENSES.txt) for the complete source-build and distribution context.
+
+## Technical details
+
+The public display version remains pinned to `0.8beta`. This edition is `AI Model Print Studio r32`, with artifact slug `r32-ai-model-print-studio`; the Windows numeric version remains `0.8.0.0`.
 
 ## AI Model Print Studio r32
 

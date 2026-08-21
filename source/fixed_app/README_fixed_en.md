@@ -8,7 +8,7 @@
 
 This directory contains the fixed ChromaMatter — AI Model Print Studio source application. The display version is `0.8beta`, the edition is `AI Model Print Studio r32`, and the artifact revision is `r32-ai-model-print-studio`; the Windows numeric version remains `0.8.0.0`.
 
-See the [visual feature overview and production flow](../../FEATURES_JA.md) and the [development journal, including experiments, failures, and hardware calibration](https://note.com/ponkichi0718).
+See the [visual feature overview and production flow](../../FEATURES_EN.md) and the [development journal, including experiments, failures, and hardware calibration](https://note.com/ponkichi0718).
 
 ## r32 output workflow
 

@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+import re
 import unittest
 
 
@@ -339,8 +340,10 @@ class ReleaseIdentityTests(unittest.TestCase):
         public_documents = (
             REPO_ROOT / "README.md",
             REPO_ROOT / "README_EN.md",
+            REPO_ROOT / "README_JA.md",
             REPO_ROOT / "README_PUBLIC_JA.md",
             REPO_ROOT / "README_PUBLIC_EN.md",
+            REPO_ROOT / "FEATURES_EN.md",
             FIXED_APP / "README_fixed_ja.md",
             FIXED_APP / "README_fixed_en.md",
             REPO_ROOT / "CURRENT_STATE.json",
@@ -361,10 +364,11 @@ class ReleaseIdentityTests(unittest.TestCase):
         self.assertNotIn("c:\\users", combined.casefold())
         self.assertNotIn("pdf" + "um", combined.casefold())
 
-    def test_all_six_readmes_describe_r32_build_and_audited_preflight(self):
+    def test_all_seven_readmes_describe_r32_build_and_audited_preflight(self):
         readmes = (
             REPO_ROOT / "README.md",
             REPO_ROOT / "README_EN.md",
+            REPO_ROOT / "README_JA.md",
             REPO_ROOT / "README_PUBLIC_JA.md",
             REPO_ROOT / "README_PUBLIC_EN.md",
             FIXED_APP / "README_fixed_ja.md",
@@ -428,7 +432,12 @@ class ReleaseIdentityTests(unittest.TestCase):
                 self.assertTrue("no cap" in folded or "蓋を追加" in text)
                 self.assertTrue("true hole" in folded or "本当の穴" in text)
                 self.assertIn("https://note.com/ponkichi0718", folded)
-                self.assertIn("features_ja.md", folded)
+                expected_features = (
+                    "features_ja.md"
+                    if path.name.casefold().endswith("_ja.md")
+                    else "features_en.md"
+                )
+                self.assertIn(expected_features, folded)
                 self.assertTrue(
                     "ai-use disclosure" in folded or "ai利用について" in folded
                 )
@@ -440,6 +449,72 @@ class ReleaseIdentityTests(unittest.TestCase):
                 )
                 self.assertNotIn("decal beta", folded)
                 self.assertNotIn("デカール β", text)
+
+    def test_github_readme_defaults_to_english_with_exact_japanese_alias(self):
+        english = read_text(REPO_ROOT / "README_PUBLIC_EN.md")
+        japanese = read_text(REPO_ROOT / "README_PUBLIC_JA.md")
+        self.assertEqual(english, read_text(REPO_ROOT / "README.md"))
+        self.assertEqual(english, read_text(REPO_ROOT / "README_EN.md"))
+        self.assertEqual(japanese, read_text(REPO_ROOT / "README_JA.md"))
+
+    def test_english_landing_page_is_concise_and_uses_approved_images_only(self):
+        readme = read_text(REPO_ROOT / "README.md")
+        features = read_text(REPO_ROOT / "FEATURES_EN.md")
+        self.assertIn(
+            "Turn AI-generated color OBJ and GLB models into Snapmaker U1 "
+            "Full Spectrum 3MF projects using four physical filaments.",
+            readme,
+        )
+        for required in (
+            "## Current status",
+            "**Source code:** Public",
+            "**Windows binary:** Not yet public",
+            "Third-party binary redistribution audit",
+            "**Public test model:** In preparation",
+            "**Physical U1 validation:** In progress",
+            "## Four things ChromaMatter does",
+            "## Quick Start",
+            "## Technical details",
+            "[日本語版はこちら](README_JA.md)",
+            "[See the visual feature overview](FEATURES_EN.md)",
+        ):
+            with self.subTest(required=required):
+                self.assertIn(required, readme)
+        positions = [
+            readme.index(marker)
+            for marker in (
+                "Turn AI-generated color OBJ and GLB models",
+                "AI concept",
+                "## Current status",
+                "## Four things ChromaMatter does",
+                "## Quick Start",
+                "## Technical details",
+            )
+        ]
+        self.assertEqual(positions, sorted(positions))
+        allowed_image_sources = {
+            "source/fixed_app/assets/obj_adjuster_icon.png",
+            "https://assets.st-note.com/img/1787038136-QYcX12yPUL4fzm5RWZNbiEqM.jpg?width=1200",
+            "https://assets.st-note.com/img/1787038182-v0C8IT5i1jVeKLdNX3ZygYu4.png?width=1200",
+            "https://assets.st-note.com/img/1787038261-fQtHZho5CXvrYl94M7zJOqLD.png?width=1200",
+            "https://assets.st-note.com/img/1787038285-sNiOGxEzyLoRrklQAXH7BJ8W.png?width=1200",
+            "https://assets.st-note.com/img/1787193863-DjEUKLdVrxFgauov4mzq7QB9.png?width=1200",
+            "https://assets.st-note.com/img/1787193878-2RMCKirmlunSDIXfhzQgEHpd.png?width=1200",
+            "https://assets.st-note.com/img/1787194049-FwXqus5ArK8B4NoU1eIQYzPg.png?width=1200",
+            "https://assets.st-note.com/img/1787193923-A1VTIhjR6w07qWedXZloDEFU.png?width=1200",
+        }
+        expected_image_counts = {"README.md": 5, "FEATURES_EN.md": 9}
+        for name, document in (("README.md", readme), ("FEATURES_EN.md", features)):
+            sources = re.findall(r'<img[^>]+src="([^"]+)"', document)
+            self.assertEqual(expected_image_counts[name], len(sources))
+            for source in sources:
+                with self.subTest(image_source=source):
+                    self.assertIn(source, allowed_image_sources)
+            self.assertNotIn("decal", document.casefold())
+        self.assertIn(
+            "no finished-print image is presented as validated evidence yet",
+            readme,
+        )
 
 
 if __name__ == "__main__":

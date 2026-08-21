@@ -5,6 +5,7 @@ import hashlib
 import io
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -618,6 +619,63 @@ class SoftwarePackageStageTests(unittest.TestCase):
         )
         self.assertIn('"tooling/stage_software_package.ps1"', stage)
 
+    def test_public_source_stage_uses_english_default_and_feedback_templates(self) -> None:
+        stage = (REPO_ROOT / "tooling" / "stage_public_source.ps1").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('"FEATURES_EN.md"', stage)
+        self.assertIn(
+            '-SourceRelativePath "README_PUBLIC_EN.md" `\n'
+            '    -DestinationRelativePath "README.md"',
+            stage,
+        )
+        self.assertIn(
+            '-SourceRelativePath "README_PUBLIC_JA.md" `\n'
+            '    -DestinationRelativePath "README_JA.md"',
+            stage,
+        )
+        for relative in (
+            ".github/ISSUE_TEMPLATE/bug_report.yml",
+            ".github/ISSUE_TEMPLATE/feature_request.yml",
+            ".github/ISSUE_TEMPLATE/compatibility_report.yml",
+            ".github/ISSUE_TEMPLATE/config.yml",
+        ):
+            with self.subTest(relative=relative):
+                self.assertIn(f'"{relative}"', stage)
+
+    def test_github_feedback_templates_are_structured_and_privacy_safe(self) -> None:
+        forms = (
+            ".github/ISSUE_TEMPLATE/bug_report.yml",
+            ".github/ISSUE_TEMPLATE/feature_request.yml",
+            ".github/ISSUE_TEMPLATE/compatibility_report.yml",
+        )
+        for relative in forms:
+            with self.subTest(relative=relative):
+                text = (REPO_ROOT / relative).read_text(encoding="utf-8")
+                self.assertTrue(text.startswith("name: "))
+                self.assertIn("\ndescription: ", text)
+                self.assertIn("\nbody:\n", text)
+                self.assertNotIn("\t", text)
+                ids = re.findall(r"(?m)^    id: ([a-z0-9_]+)$", text)
+                self.assertTrue(ids)
+                self.assertEqual(len(ids), len(set(ids)))
+                self.assertIn("validations:\n      required: true", text)
+
+        bug = (REPO_ROOT / forms[0]).read_text(encoding="utf-8").casefold()
+        compatibility = (REPO_ROOT / forms[2]).read_text(
+            encoding="utf-8"
+        ).casefold()
+        for text in (bug, compatibility):
+            self.assertIn("personal paths", text)
+            self.assertIn("permission to share", text)
+        self.assertIn("  - compatibility\n", compatibility)
+
+        config = (
+            REPO_ROOT / ".github/ISSUE_TEMPLATE/config.yml"
+        ).read_text(encoding="utf-8")
+        self.assertIn("blank_issues_enabled: false", config)
+        self.assertIn("https://note.com/ponkichi0718", config)
+
     def test_gitignore_keeps_required_publication_inputs_addable(self) -> None:
         gitignore = (REPO_ROOT / ".gitignore").read_text(encoding="utf-8")
         for required_negation in (
@@ -638,9 +696,16 @@ class PublicSourceStageRollbackTests(unittest.TestCase):
         "RUN_TESTS.cmd",
         "CURRENT_STATE.json",
         "PROVENANCE.md",
+        "FEATURES_EN.md",
         "FEATURES_JA.md",
         "README_PUBLIC_JA.md",
         "README_PUBLIC_EN.md",
+    )
+    REQUIRED_GITHUB_FILES = (
+        ".github/ISSUE_TEMPLATE/bug_report.yml",
+        ".github/ISSUE_TEMPLATE/compatibility_report.yml",
+        ".github/ISSUE_TEMPLATE/config.yml",
+        ".github/ISSUE_TEMPLATE/feature_request.yml",
     )
     REQUIRED_PUBLICATION_FILES = (
         "publication/LEGAL_AND_RIGHTS_JA.md",
@@ -685,6 +750,7 @@ class PublicSourceStageRollbackTests(unittest.TestCase):
         fixture = root / "fixture-repository"
         for relative in (
             self.REQUIRED_ROOT_FILES
+            + self.REQUIRED_GITHUB_FILES
             + self.REQUIRED_PUBLICATION_FILES
             + self.REQUIRED_FIXED_APP_FILES
         ):

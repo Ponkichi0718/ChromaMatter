@@ -31,12 +31,19 @@ $requiredRootFiles = @(
     "RUN_TESTS.cmd",
     "CURRENT_STATE.json",
     "PROVENANCE.md",
+    "FEATURES_EN.md",
     "FEATURES_JA.md"
 )
 $optionalRootFiles = @(
     "README_PUBLIC_JA.md",
     "README_PUBLIC_EN.md",
     "PRIVACY.md"
+)
+$requiredGithubFiles = @(
+    ".github/ISSUE_TEMPLATE/bug_report.yml",
+    ".github/ISSUE_TEMPLATE/compatibility_report.yml",
+    ".github/ISSUE_TEMPLATE/config.yml",
+    ".github/ISSUE_TEMPLATE/feature_request.yml"
 )
 $requiredPublicationFiles = @(
     "publication/LEGAL_AND_RIGHTS_JA.md",
@@ -97,6 +104,7 @@ $requiredDirectories = @(
 
 foreach ($relative in (
     $requiredRootFiles +
+    $requiredGithubFiles +
     $requiredPublicationFiles +
     $requiredFixedAppFiles +
     $requiredToolingFiles
@@ -248,16 +256,22 @@ foreach ($relative in $optionalRootFiles) {
 # GitHub-recognized entry files are generated inside the reviewed stage so
 # users never need to mutate a validated tree and invalidate its manifest.
 Copy-PublicAlias `
-    -SourceRelativePath "README_PUBLIC_JA.md" `
+    -SourceRelativePath "README_PUBLIC_EN.md" `
     -DestinationRelativePath "README.md"
 Copy-PublicAlias `
     -SourceRelativePath "README_PUBLIC_EN.md" `
     -DestinationRelativePath "README_EN.md"
 Copy-PublicAlias `
+    -SourceRelativePath "README_PUBLIC_JA.md" `
+    -DestinationRelativePath "README_JA.md"
+Copy-PublicAlias `
     -SourceRelativePath "licenses/GPL-3.0.txt" `
     -DestinationRelativePath "LICENSE"
 
 foreach ($relative in $requiredPublicationFiles) {
+    Copy-PublicFile -RelativePath $relative
+}
+foreach ($relative in $requiredGithubFiles) {
     Copy-PublicFile -RelativePath $relative
 }
 
