@@ -41,6 +41,8 @@ ChromaMatter — AI Model Print Studioは、AI生成された色付き3Dモデ�
 
 混色はF1+F2、F1+F3……という組み合わせごとにグラデーション順で表示します。画面、3MF、実機比較チャートで同じ並びと番号を使うため、「どの混色が、モデルのどこに使われているか」を追いやすくしています。
 
+自動提案後にF1～F4を試しに変更した場合は、「現在の4色をプレビュー・3MFへ反映」で右側の変換previewと3MF paletteを更新できます。自動提案は既定のままで、現在の色番号とmanual paintを保って比較できます。
+
 - PLAを既定とし、ABS／PETGはβです。
 - 1つの印刷ジョブでは、PLAならPLAだけというように4本を同じ素材で揃えます。
 - 異なる素材を混ぜるマルチマテリアル印刷は行いません。
@@ -73,7 +75,9 @@ ChromaMatter — AI Model Print Studioは、AI生成された色付き3Dモデ�
 - サイズ、面数、形状診断、対応するUV seamの閉立体化
 - 全体3MFまたはパーツ別3MF、持ち運べるproject folder
 
-閉立体化は、証明できる境界だけを安全に処理します。すべての穴や壊れたモデルを自動修復できる機能ではなく、危険な形状は出力前に停止します。
+閉立体化は、証明できる境界だけを安全に処理します。閉立体化前に3MF出力を始めた場合も、適格なmodelでは処理を宣言し、成功後に出力を再開します。すべての穴や壊れたモデルを自動修復する機能ではなく、本当の穴へ推測で蓋は追加しません。
+
+出力3MFには安定したFull Spectrum layer-cycleとprime towerのbaselineを記録します。Local Z、advanced dithering、pointillism等の実験設定は有効化せず、supportはSnapmaker Orca側で選択します。最終判断は必ずOrcaのslice previewと実機testで行います。
 
 ## AI×3Dプリンタを、もう一つ前へ
 

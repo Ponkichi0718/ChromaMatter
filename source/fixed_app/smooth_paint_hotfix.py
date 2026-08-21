@@ -1148,6 +1148,17 @@ def apply_smooth_paint_hotfix(
                 pass
         return self.settings.palette
 
+    def refresh_adaptive_palette_routing(self) -> None:
+        """Refresh GPU state colours without rebuilding adaptive paint IDs."""
+
+        level = getattr(self, "level", None)
+        if level is None:
+            # Lightweight unit/integration fixtures may exercise the settings
+            # bridge before constructing a renderer-owned mesh level.
+            return
+        _configure_gpu_palette_routing(self.settings, level)
+        self._hotfix_overlay_cache = None
+
     @functools.wraps(original_editor_init)
     def editor_init_smooth(self, *args, **kwargs):
         prepared = kwargs.get("prepared")
@@ -3341,6 +3352,9 @@ def apply_smooth_paint_hotfix(
     editor_class._queue_smooth = queue_boundary_smooth
     editor_class._queue_auto_shading = queue_auto_shading
     editor_class._run_auto_shading = run_auto_shading
+    editor_class._refresh_adaptive_palette_routing = (
+        refresh_adaptive_palette_routing
+    )
     editor_class._reset_adaptive_geometry_context = (
         reset_adaptive_geometry_context
     )

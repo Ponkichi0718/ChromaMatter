@@ -431,6 +431,8 @@ def _inspect_portable_materials(
         "snapmaker_u1_metadata": False,
         "snapmaker_u1_print_settings": False,
         "snapmaker_u1_layer_height_008": False,
+        "snapmaker_u1_transition_settings": False,
+        "full_spectrum_stable_cadence_settings": False,
         "generic_pla_filament_settings": False,
         "generic_material_filament_settings": False,
         "project_support_disabled": False,
@@ -533,6 +535,14 @@ def _inspect_portable_materials(
             and str(settings.get("initial_layer_print_height", "")) == "0.2"
             and str(settings.get("adaptive_layer_height", "")) == "0"
         )
+        result["snapmaker_u1_transition_settings"] = all(
+            str(settings.get(key, "")) == expected
+            for key, expected in engine.SNAPMAKER_U1_008_TRANSITION_SETTINGS.items()
+        )
+        result["full_spectrum_stable_cadence_settings"] = all(
+            str(settings.get(key, "")) == expected
+            for key, expected in engine.FULL_SPECTRUM_STABLE_CADENCE_SETTINGS.items()
+        )
         result["generic_pla_filament_settings"] = (
             settings.get("filament_settings_id")
             == [_GENERIC_PLA_FILAMENT_SETTINGS_ID] * 4
@@ -625,6 +635,8 @@ def _inspect_portable_materials(
                 "snapmaker_u1_metadata",
                 "snapmaker_u1_print_settings",
                 "snapmaker_u1_layer_height_008",
+                "snapmaker_u1_transition_settings",
+                "full_spectrum_stable_cadence_settings",
                 "generic_material_filament_settings",
                 "project_support_disabled",
                 "support_override_disabled",
@@ -1016,6 +1028,8 @@ def _validate_3mf_fixed(
                 "snapmaker_u1_metadata": False,
                 "snapmaker_u1_print_settings": False,
                 "snapmaker_u1_layer_height_008": False,
+                "snapmaker_u1_transition_settings": False,
+                "full_spectrum_stable_cadence_settings": False,
                 "generic_pla_filament_settings": False,
                 "generic_material_filament_settings": False,
                 "project_support_disabled": False,
@@ -1075,6 +1089,8 @@ def _write_guide_fixed(path, model_path, height_mm, palette):
         "・本ファイルにはOrca用paint_colorと一般ビューア用標準3MF色材の両方を記録済みです。\n"
         "・本ソフトの混色表示はOrca 2.3.5で確認した印刷可能なレイヤー比率へ丸めてあります。\n"
         "・公式0.08 Extra Fineプロファイルを指定しています。通常層0.08 mm、初層0.20 mmです。\n"
+        "・公式0.08プロファイルのリブ型プライムタワーとooze preventionを記録済みです。\n"
+        "・通常の固定レイヤー混色を使用し、実験的なLocal Z／高度なDithering／Pointillismは無効です。\n"
         "・サポートは3MFで固定していません。モデルごとにOrca上で選択してください。\n"
     )
     if any(value is not None for value in palette.mix_hex_overrides):

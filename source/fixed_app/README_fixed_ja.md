@@ -1,4 +1,4 @@
-# ChromaMatter — AI Model Print Studio 0.8beta (r31 source app)
+# ChromaMatter — AI Model Print Studio 0.8beta (r32 source app)
 
 <p align="center">
   <img src="assets/obj_adjuster_icon.png" width="160" alt="ChromaMatter icon">
@@ -6,9 +6,15 @@
 
 [English](README_fixed_en.md)
 
-このdirectoryはChromaMatter — AI Model Print Studioの固定source applicationです。表示versionは`0.8beta`、editionは`AI Model Print Studio r31`、artifact revisionは`r31-ai-model-print-studio`です。Windows数値versionは`0.8.0.0`のままです。
+このdirectoryはChromaMatter — AI Model Print Studioの固定source applicationです。表示versionは`0.8beta`、editionは`AI Model Print Studio r32`、artifact revisionは`r32-ai-model-print-studio`です。Windows数値versionは`0.8.0.0`のままです。
 
 [画像で見る主な機能と制作フロー](../../FEATURES_JA.md)と、[試作・失敗・実機調整を含む開発記録](https://note.com/ponkichi0718)も参照してください。
+
+## r32出力workflow
+
+- 3MF出力時に安全確認済みのpart境界またはGLB同一座標seamを検出した場合、閉立体化を宣言し、成功後だけ出力を再開します。本当の穴へ蓋は追加しません。
+- 基本F1～F4を個別変更した後は「現在の4色をプレビュー・3MFへ反映」で右previewと3MF paletteを更新できます。自動提案は既定のままです。
+- 3MFは安定したFull Spectrum layer-cycleとprime tower baselineを記録します。実験的なLocal Z、advanced dithering、pointillismはOFF、supportはOrca側で選択します。
 
 ## r30 GLB入力 β
 
@@ -39,6 +45,7 @@
 - calibration chartも同じ表示順とcanonical provenanceを使います。
 - 全体共通16／24／32色は既存全パーツへ伝播し、個別編集は対象パーツだけに適用します。
 - 「基本4色を初期値へ戻す」buttonは公開UIに表示しません。自動提案と個別編集は維持します。
+- 「現在の4色をプレビュー・3MFへ反映」で、個別編集したF1～F4を明示適用します。
 - 実機黒補正はmixed palette内に置き、形状再処理は1操作、修復名は「閉立体化」です。
 
 ## Portable project folder
@@ -75,7 +82,15 @@ python .\TripoSpectrumMapper_fixed.py --self-test
 
 repository rootの`BOOTSTRAP_WINDOWS.ps1`が標準の準備・test入口です。
 
-## r31 validation state
+## r32 validation state
+
+- P2後のexact-source full regression: Python `3.13.14`、`Ran 1048 tests in 90.160s: OK (skipped=1)`、1047 PASS／1 optional SKIP／0 FAIL
+- `C:\OBJAdjR32CM3`でのPyInstaller `6.20.0` clean build、packaged self-test exit 0、隔離profileの日英UI smoke: PASS
+- preflight `ChromaMatter.exe`: 13,997,622 bytes、FileVersion／ProductVersion `0.8beta`、SHA-256 `8BBABEACCF9B47AC2750C86B7C38966E46F00A624C648036D600C9601CF86EBB`
+- preflight source stage: 230 files／229 manifest records、manifest SHA-256 `C0D0A96570F83162B4B92E34FC463802C32A31600AEAE191D79D972E55CFE920`、fresh parity／privacy／source focused 33/33: PASS
+- preflight software stage: 1,404 files／1,403 manifest records、manifest SHA-256 `9764A61571421CC8C1773938C4CD724515C07D77C435BF2F4E0DB5DB5E68572C`、fresh self-test／日本語UI／英語UI: exit 0
+- final source backpatch／restage、Downloads配置、final detached `SHA256SUMS-r32.txt`、GitHub update: pending。preflight ZIP hashはfinal artifactと異なるためcanonical文書へ埋め込まない
+- 以下のr31結果は**previous evidence**であり、r32を検証しない
 
 - 公開UI非公開化直前のpost-GLB r28候補のprevious evidence: Python `3.13.14`、PyInstaller `6.20.0`、`Ran 992 tests in 87.406s: OK (skipped=1)`、991 PASS／1 optional SKIP
 - 同候補の新しいshort pathでのclean one-folder build: PASS
@@ -85,7 +100,7 @@ repository rootの`BOOTSTRAP_WINDOWS.ps1`が標準の準備・test入口です�
 - Creator Studio r29 exact sourceの**previous evidence**: Python `3.13.14`、`Ran 998 tests in 83.529s: OK (skipped=1)`、997 PASS／1 optional SKIP
 - r29 clean buildのprevious evidence: `C:\OBJAdjR29FIX1`、PyInstaller `6.20.0` one-folder build、packaged `--self-test` exit 0、隔離profile日英UI smoke: PASS
 - Creator Studio r30 exact sourceの**previous evidence**: Python `3.13.14`、`Ran 1019 tests in 86.932s: OK (skipped=1)`、1018 PASS／1 optional SKIP。`C:\OBJAdjR30FIX1`でのPyInstaller `6.20.0` clean build、package／stage／archive／privacy／detached `SHA256SUMS-r30.txt`契約: PASS。この証拠はr31へ適用しません。
-- 現在のChromaMatter r31 exact source: Python `3.13.14`、`Ran 1024 tests in 100.656s: OK (skipped=1)`、1023 PASS／1 optional SKIP。`C:\OBJAdjR31CM1`でのPyInstaller `6.20.0` clean build、built package self-test、隔離profileの日英UI smoke: PASS。preflight `ChromaMatter.exe`は13,986,866 bytes、FileVersion／ProductVersion `0.8beta`、InternalName `ChromaMatter`、OriginalFilename `ChromaMatter.exe`、SHA-256 `208167A225A37BAAAA473B574B2F746E46427FD0CA63FC5B7201BF3394243743`
+- ChromaMatter r31 exact sourceのprevious evidence: Python `3.13.14`、`Ran 1024 tests in 100.656s: OK (skipped=1)`、1023 PASS／1 optional SKIP。`C:\OBJAdjR31CM1`でのPyInstaller `6.20.0` clean build、built package self-test、隔離profileの日英UI smoke: PASS。preflight `ChromaMatter.exe`は13,986,866 bytes、FileVersion／ProductVersion `0.8beta`、InternalName `ChromaMatter`、OriginalFilename `ChromaMatter.exe`、SHA-256 `208167A225A37BAAAA473B574B2F746E46427FD0CA63FC5B7201BF3394243743`
 - r31 preflight public source: 227 files／226 manifest records、fresh archive exact、privacy technical GO。software: 1,404 files／1,403 manifest records、technical GO。fresh extractのself-test／日英UI smoke: exit 0
 - r31 final source-only stage `ChromaMatter_0.8beta-r31-source-public-20260820`: 227 files／226 manifest records、folder／archive parity、CRC、privacy、staged identity／icon／tooling 32 tests、Downloads配置、外部detached `SHA256SUMS-r31.txt`照合: PASS
 - Creator Studio r27のprevious evidence: Python `3.13.14`、PyInstaller `6.20`、`Ran 890 tests in 68.257s: OK (skipped=1)`、889 PASS／1 optional SKIP
@@ -104,16 +119,16 @@ repository rootの`BOOTSTRAP_WINDOWS.ps1`が標準の準備・test入口です�
 - Innovation Fund submission ready: 権利処理済みsample、Orca／U1 evidence、cover／video／community postまでfalse
 - physical XP-PEN validation、physical print: pendingの既知制約（source公開blockerではない）
 
-上記r30、r29、r28、r27の結果は各revisionだけの**previous evidence**です。ChromaMatter r31のsource、binary、package、checksumを検証したものとして扱いません。現在のr31 source regression／clean build／packaged smokeとfinal source-only stage／archive／privacy／identityはGOです。2026-08-20、creatorはロボットをオリジナルの架空機体、`ZENITH DYNAMICS CORP.`を実在組織との関係を意図しない創作文言と申告し、project ownerは公開GOを出しました。これは独立した商標／意匠clearanceや法的意見ではなく、近似名`Zenith Dynamics`を使う実在組織との提携も示しません。source-only publicationはapproved、binaryは第三者再配布監査が完了するまでpublication eligible=falseです。
+上記r31、r30、r29、r28、r27の結果は各revisionだけの**previous evidence**です。r32のexact regression／build／packaged smokeとpreflight artifact auditは上記の現行証拠で、final Downloads／checksum／GitHub gateはpendingです。2026-08-20のcreator declarationとproject ownerによる公開GOは、ロボットと創作文言`ZENITH DYNAMICS CORP.`を含む変更していないアイコンassetについて保持します。これは独立した商標／意匠clearanceや法的意見ではありません。binaryは第三者再配布監査が完了するまでpublication eligible=falseです。
 
 Creator Studio r26の結果も同様にprevious evidenceで、ChromaMatter r31へ流用しません。
 
 ## Package identity
 
-- approved source-only release: `ChromaMatter_0.8beta-r31-source-public-20260820`
-- non-public software preflight: `ChromaMatter_0.8beta-r31-ai-model-print-studio`
+- pending source-only candidate: `ChromaMatter_0.8beta-r32-source-public-20260821`
+- pending non-public software preflight: `ChromaMatter_0.8beta-r32-ai-model-print-studio`
 
-配布checksumの正本はDownloadsのdetached external `SHA256SUMS-r31.txt`だけです。外部照合はsource-only distributionについて完了し、r30のchecksumは流用しません。canonical文書への自己参照ZIP hashは埋め込まず、release stateは`source-published`です。
+r32のdetached external `SHA256SUMS-r32.txt`はfinal artifact作成後までpendingです。完成済み`SHA256SUMS-r31.txt`はr31 previous evidenceだけに適用します。canonical文書への自己参照ZIP hashは埋め込みません。
 
 ## 注意
 

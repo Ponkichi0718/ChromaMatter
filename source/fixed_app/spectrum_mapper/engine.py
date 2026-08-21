@@ -68,6 +68,8 @@ from .models import (
 )
 from .filament_materials import generic_filament_profile, normalize_filament_material
 from .parts import (
+    assignment_palette_rgb_table,
+    build_part_assignment_palette_rgb_tables,
     build_part_palette_rgb_tables,
     plan_palette_groups,
     resolve_part_palette_settings,
@@ -114,6 +116,49 @@ NEUTRAL_STATES = np.asarray(
 
 class EngineError(RuntimeError):
     pass
+
+
+# Snapmaker's U1 0.08 mm process preset enables a rib-style prime tower and
+# ooze prevention.  Store the transition-critical subset in the project so a
+# ChromaMatter archive does not silently inherit weaker user-profile values.
+# Support generation remains intentionally absent and editable in Orca.
+SNAPMAKER_U1_008_TRANSITION_SETTINGS = {
+    "enable_prime_tower": "1",
+    "prime_tower_width": "30",
+    "prime_volume": "18",
+    "prime_tower_brim_width": "5",
+    "wipe_tower_filament": "0",
+    "wipe_tower_no_sparse_layers": "0",
+    "wipe_tower_wall_type": "rib",
+    "wipe_tower_extra_rib_length": "8",
+    "wipe_tower_extra_spacing": "120%",
+    "wipe_tower_cone_angle": "15",
+    "ooze_prevention": "1",
+    "standby_temperature_delta": "-150",
+}
+
+
+# ChromaMatter's recipes are calibrated for Orca's ordinary fixed-layer
+# cadence.  Explicitly pin every related experimental switch so a saved user
+# preset cannot turn Local-Z, pointillism, or advanced dithering on behind the
+# user's back.  Same-color region collapse is Orca's normal continuity aid.
+FULL_SPECTRUM_STABLE_CADENCE_SETTINGS = {
+    "mixed_color_layer_height_a": "0",
+    "mixed_color_layer_height_b": "0",
+    "mixed_filament_gradient_mode": "0",
+    "mixed_filament_advanced_dithering": "0",
+    "mixed_filament_pointillism_pixel_size": "0",
+    "mixed_filament_pointillism_line_gap": "0",
+    "mixed_filament_component_bias_enabled": "0",
+    "mixed_filament_surface_indentation": "0",
+    "mixed_filament_region_collapse": "1",
+    "dithering_z_step_size": "0",
+    "dithering_local_z_mode": "0",
+    "dithering_local_z_whole_objects": "0",
+    "dithering_local_z_infill": "0",
+    "dithering_local_z_direct_multicolor": "0",
+    "dithering_step_painted_zones_only": "1",
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -2502,7 +2547,9 @@ def recolor_level(
     source_face_rgb = level.vertex_colors[level.faces].mean(axis=1)
     tone_face_rgb = tone_vertex[level.faces].mean(axis=1)
     face_lab = srgb_to_lab(tone_face_rgb)
-    palette_lab = srgb_to_lab(palette_rgb)
+    assignment_palette_rgb = assignment_palette_rgb_table(palette)
+    assignment_palette_lab = srgb_to_lab(assignment_palette_rgb)
+    display_palette_lab = srgb_to_lab(palette_rgb)
     indices = np.empty(len(level.faces), dtype=np.int8)
     if tone.pink_protection:
         pink_score = tone_face_rgb[:, 0] - 0.5 * (tone_face_rgb[:, 1] + tone_face_rgb[:, 2])
@@ -2518,7 +2565,7 @@ def recolor_level(
         if not np.any(mask):
             continue
         sample_indices = np.flatnonzero(mask)
-        candidate_lab = palette_lab[candidates]
+        candidate_lab = assignment_palette_lab[candidates]
         # A 450k-face model and 16 colours would otherwise allocate roughly
         # 385 MiB for one float64 distance tensor.  Chunking keeps peak memory
         # bounded while producing the exact same nearest-colour assignment.
@@ -2532,16 +2579,21 @@ def recolor_level(
             indices[chunk_indices] = candidates[nearest]
     areas_mm2 = level.areas_unit * float(height_mm) ** 2
     indices, smoothed = _smooth_labels(
-        indices, face_lab, palette_lab, areas_mm2, level.neighbors, tone
+        indices,
+        face_lab,
+        assignment_palette_lab,
+        areas_mm2,
+        level.neighbors,
+        tone,
     )
     indices, black_free_remapped = _apply_black_free_gradient(
         indices,
         face_lab,
-        palette_lab,
+        assignment_palette_lab,
         palette,
     )
     target_rgb = palette_rgb[indices]
-    delta_e = np.linalg.norm(face_lab - palette_lab[indices], axis=1)
+    delta_e = np.linalg.norm(face_lab - display_palette_lab[indices], axis=1)
     counts = np.bincount(indices, minlength=PALETTE_STATE_COUNT)
     area_by_state = np.bincount(
         indices, weights=areas_mm2, minlength=PALETTE_STATE_COUNT
@@ -2599,6 +2651,9 @@ def recolor_level_parts(
     layout = validate_part_layout(level)
     palettes = resolve_part_palette_settings(settings, layout)
     palette_tables = build_part_palette_rgb_tables(settings, layout)
+    assignment_palette_tables = build_part_assignment_palette_rgb_tables(
+        settings, layout
+    )
     tone_vertex = apply_tone(level.vertex_colors, tone)
     source_face_rgb = level.vertex_colors[level.faces].mean(axis=1)
     tone_face_rgb = tone_vertex[level.faces].mean(axis=1)
@@ -2632,7 +2687,10 @@ def recolor_level_parts(
             )
         local_lab = face_lab[selected]
         local_rgb = tone_face_rgb[selected]
-        palette_lab = srgb_to_lab(palette_tables[part_id])
+        assignment_palette_lab = srgb_to_lab(
+            assignment_palette_tables[part_id]
+        )
+        display_palette_lab = srgb_to_lab(palette_tables[part_id])
         local_indices = np.empty(len(selected), dtype=np.int8)
         if tone.pink_protection:
             pink_score = local_rgb[:, 0] - 0.5 * (
@@ -2653,7 +2711,7 @@ def recolor_level_parts(
             sample_indices = np.flatnonzero(mask)
             if not len(sample_indices):
                 continue
-            candidate_lab = palette_lab[candidates]
+            candidate_lab = assignment_palette_lab[candidates]
             for start in range(0, len(sample_indices), 25_000):
                 chunk = sample_indices[start : start + 25_000]
                 differences = (
@@ -2669,7 +2727,7 @@ def recolor_level_parts(
         local_indices, smoothed = _smooth_labels(
             local_indices,
             local_lab,
-            palette_lab,
+            assignment_palette_lab,
             areas_mm2[selected],
             local_neighbors,
             tone,
@@ -2677,13 +2735,13 @@ def recolor_level_parts(
         local_indices, black_free_remapped = _apply_black_free_gradient(
             local_indices,
             local_lab,
-            palette_lab,
+            assignment_palette_lab,
             part_palette,
         )
         total_smoothed += smoothed
         total_black_free_remapped += black_free_remapped
         local_delta = np.linalg.norm(
-            local_lab - palette_lab[local_indices], axis=1
+            local_lab - display_palette_lab[local_indices], axis=1
         )
         indices[selected] = local_indices
         target_rgb[selected] = palette_tables[part_id, local_indices]
@@ -3049,15 +3107,11 @@ def _make_project_settings(palette: PaletteSettings) -> bytes:
         "filament_colour_mode": ["0", "0", "0", "0"],
         "filament_settings_id": [generic_filament_profile(palette.material)] * 4,
         "mixed_filament_definitions": definitions,
-        "mixed_filament_gradient_mode": "0",
         "mixed_filament_height_lower_bound": "0.04",
         "mixed_filament_height_upper_bound": "0.16",
-        "mixed_filament_advanced_dithering": "0",
-        "mixed_filament_pointillism_pixel_size": "0",
-        "mixed_filament_pointillism_line_gap": "0",
-        "mixed_filament_component_bias_enabled": "0",
-        "mixed_filament_surface_indentation": "0",
     }
+    config.update(FULL_SPECTRUM_STABLE_CADENCE_SETTINGS)
+    config.update(SNAPMAKER_U1_008_TRANSITION_SETTINGS)
     if surface_shell_enabled:
         # The shell math is exactly two equal path widths.  Do not inherit an
         # Arachne/0.42+0.45 profile whose unequal paths would change the
@@ -3707,6 +3761,26 @@ def validate_3mf(
         or str(project.get("adaptive_layer_height", "")) != "0"
     ):
         errors.append("積層ピッチ設定")
+    stable_cadence_mismatches = [
+        key
+        for key, expected in FULL_SPECTRUM_STABLE_CADENCE_SETTINGS.items()
+        if str(project.get(key, "")) != expected
+    ]
+    if stable_cadence_mismatches:
+        errors.append(
+            "Full Spectrum固定レイヤー設定="
+            + ",".join(stable_cadence_mismatches)
+        )
+    transition_mismatches = [
+        key
+        for key, expected in SNAPMAKER_U1_008_TRANSITION_SETTINGS.items()
+        if str(project.get(key, "")) != expected
+    ]
+    if transition_mismatches:
+        errors.append(
+            "U1 0.08 mmフィラメント切替設定="
+            + ",".join(transition_mismatches)
+        )
     if "enable_support" in project or 'key="enable_support"' in model_settings:
         errors.append("サポート固定設定")
     single_mesh_generic = bool(assembly_metadata.get("single_mesh_generic"))
@@ -4247,7 +4321,8 @@ def write_guide(path: Path, model_path: Path, height_mm: float, palette: Palette
 {ratio_lines}
 {output_recipe_note}
 7. 公式「0.08 Extra Fine @Snapmaker U1 (0.4 nozzle)」が選択され、通常層0.08 mmになっていることを確認します。
-8. サポートはモデルごとにSnapmaker Orca側で選択し、スライスプレビューで色ID 1〜{PALETTE_STATE_COUNT}を確認してから保存・印刷します。
+8. 3MFには公式0.08プロファイルのリブ型プライムタワーとooze prevention、通常の固定レイヤー混色を記録しています。Local Z／高度なDithering／Pointillismは安全のため無効です。
+9. サポートはモデルごとにSnapmaker Orca側で選択し、スライスプレビューで色ID 1〜{PALETTE_STATE_COUNT}を確認してから保存・印刷します。
 
 出力高さ: {height_mm:g} mm
 

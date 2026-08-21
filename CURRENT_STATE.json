@@ -2,10 +2,10 @@
   "product": "ChromaMatter — AI Model Print Studio",
   "display_version": "0.8beta",
   "package_version": "0.8beta",
-  "edition": "AI Model Print Studio r31",
-  "artifact_slug": "r31-ai-model-print-studio",
-  "status": "r31-ai-model-print-studio-source-published",
-  "updated": "2026-08-20",
+  "edition": "AI Model Print Studio r32",
+  "artifact_slug": "r32-ai-model-print-studio",
+  "status": "r32-ai-model-print-studio-preflight-audited-final-publication-pending",
+  "updated": "2026-08-21",
   "version_policy": {
     "pinned_until_explicit_user_request": true,
     "edition_and_artifact_revision_may_advance_independently": true,
@@ -35,7 +35,8 @@
       "PLA is the default material; ABS and PETG are opt-in beta modes and never mix material families within one four-filament job.",
       "Automatic proposals use a material-specific, gamut-balanced set of real catalog products.",
       "The public model picker accepts vertex-coloured OBJ and static GLB; embedded baseColor texture is baked to the existing vertex-colour pipeline.",
-      "The public Filament Settings page does not expose the legacy reset-all-four-base-colours action."
+      "The public Filament Settings page does not expose the legacy reset-all-four-base-colours action.",
+      "After an optional F1-F4 edit, Apply Current F1-F4 to Preview / 3MF explicitly rebuilds the converted preview while automatic proposal remains the default workflow."
     ],
     "public_safety": [
       "Black-Free Gradient, ColorDepth, Radial, Decal beta, black-inner-wall, split, joint, Help Center, safe-seam-only, manual-joint reprocess, and reset-all-four-base-colours entry points are not exposed in the public UI.",
@@ -54,19 +55,21 @@
       "Explicit Solidify supports a single GLB without Tripo part markers when its apparent openings prove to be exact 1:1 reversed boundary pairs at coincident UV or texture seams.",
       "The single GLB seam weld runs before cleanup and QEM so face-count reduction cannot destroy the exact seam proof.",
       "The seam path preserves every ordered triangle and part ID and does not add caps; ambiguous seams, non-manifold results, or true holes fail closed without replacing the current geometry.",
+      "When export finds an eligible unsolidified model, ChromaMatter announces the safe solidification step, runs it, and resumes export only after success.",
       "Manual paint state and adaptive trees keep exact ordered-face carry across the seam-only vertex remap.",
       "Strict 3MF topology validation checks all type=model resources, including printable child objects that are not direct build items.",
       "A bounded minor self-intersection introduced by QEM is a warning only after all mandatory solid checks pass, and the export guide requires Snapmaker Orca project-open and slice-preview confirmation.",
-      "Combined and per-part 3MF output retain physical F1-F4 and stable canonical palette-state semantics."
+      "Combined and per-part 3MF output retain physical F1-F4 and stable canonical palette-state semantics.",
+      "Export records a stable Full Spectrum layer-cycle and prime-tower baseline while keeping experimental Local Z, advanced dithering, and pointillism disabled and leaving support selection to Snapmaker Orca."
     ]
   },
   "validation": {
-    "implementation_focused_source": "passed as part of the current exact r31 full regression",
-    "release_focused_identity_regression_tooling_gui_layout": "passed as part of the current exact r31 full regression",
-    "current_public_ui_focused_regression": "passed as part of the current exact r31 full regression",
-    "current_full_regression": "passed on Python 3.13.14: Ran 1024 tests in 100.656s: OK (skipped=1); 1023 passed and 1 optional skip",
-    "current_clean_build_and_packaged_smoke": "passed: BUILD_AND_TEST.ps1 exited 0 with Python 3.13.14 and PyInstaller 6.20.0 at C:\\OBJAdjR31CM1; ChromaMatter packaged self-test and isolated 1920x1080 Japanese/English UI smoke passed",
-    "current_stage_archive_privacy_and_checksum_audit": "passed for the final r31 source-only distribution: 227 files including manifest and 226 manifest records; folder/archive parity, CRC, privacy, and staged identity/icon/tooling tests passed. The Downloads source directory and detached checksum record were externally completed. Binary package preflight remains technical evidence only and is not approved for publication",
+    "implementation_focused_source": "passed within the exact P2-frozen r32 full regression on Python 3.13.14",
+    "release_focused_identity_regression_tooling_gui_layout": "passed within the exact P2-frozen r32 full regression on Python 3.13.14",
+    "current_public_ui_focused_regression": "passed within the exact P2-frozen r32 full regression; packaged isolated-profile Japanese and English UI smoke also passed",
+    "current_full_regression": "passed on Python 3.13.14: Ran 1048 tests in 90.160s: OK (skipped=1); 1047 passed, 1 optional skip, and 0 failed",
+    "current_clean_build_and_packaged_smoke": "passed at C:\\OBJAdjR32CM3 with PyInstaller 6.20.0; packaged self-test exit 0 and isolated-profile Japanese and English UI smoke passed",
+    "current_stage_archive_privacy_and_checksum_audit": "preflight passed: source 230 files/229 manifest records and software 1404 files/1403 manifest records; manifests, privacy, archive CRC and byte parity, fresh extraction, detached checksum, source focused 33 tests, packaged self-test, and Japanese/English UI smoke passed; final Downloads restage and GitHub update remain pending",
     "source_runtime": {
       "python": "3.13.14",
       "pyinstaller": "6.20.0"
@@ -78,7 +81,7 @@
       "packaged_self_test": "passed for r29 only",
       "packaged_ui_smoke_ja": "passed for r29 only",
       "packaged_ui_smoke_en": "passed for r29 only",
-      "scope": "This evidence predates the r30 single-GLB seam-closure, strict-export, and r31 identity changes and does not validate r31."
+      "scope": "This evidence predates the r30 single-GLB seam-closure, strict-export, r31 identity changes, and r32 export controls and does not validate r32."
     },
     "previous_r28_full_regression": "previous evidence only: Ran 992 tests in 87.406s: OK (skipped=1); 991 passed and 1 optional skip",
     "previous_r27_full_regression": "previous evidence only: Ran 890 tests in 68.257s: OK (skipped=1); 889 passed and 1 optional skip",
@@ -88,13 +91,77 @@
     "physical_print": "pending"
   },
   "release": {
-    "state": "source-published",
-    "target_revision": "r31-ai-model-print-studio",
-    "revision": "AI Model Print Studio r31 renames the public product to ChromaMatter and replaces its icon while retaining legacy project, settings, and schema compatibility. Exact-source regression, clean build, packaged self-test, isolated Japanese/English UI smoke, and final source-only stage/archive/privacy/identity audits passed. The project owner authorized publication on 2026-08-20 and accepted the declared icon asset scope. Source-only publication is live at https://github.com/Ponkichi0718/ChromaMatter; binary publication remains held for the third-party redistribution audit, and physical validation remains a disclosed limitation rather than a source-publication blocker.",
-    "public_source_default": "ChromaMatter_0.8beta-r31-source-public-20260820",
-    "software_package_default": "ChromaMatter_0.8beta-r31-ai-model-print-studio",
-    "current_r31_candidate_validation": {
-      "status": "source-published-binary-publication-held",
+    "state": "preflight-artifacts-audited-final-publication-pending",
+    "target_revision": "r32-ai-model-print-studio",
+    "revision": "AI Model Print Studio r32 adds export-time safe solidification, explicit application of manually edited F1-F4 colors to the converted preview, and a conservative Snapmaker Orca Full Spectrum project baseline. Public version 0.8beta, schemas, application identity, icon, and legacy settings compatibility remain unchanged. Exact P2-frozen regression, clean build, packaged smoke, preflight source/software staging, manifest/privacy/archive/checksum parity, and fresh-extract smoke passed. Final Downloads restage and the GitHub update remain pending; no r31 result is reused.",
+    "public_source_default": "ChromaMatter_0.8beta-r32-source-public-20260821",
+    "software_package_default": "ChromaMatter_0.8beta-r32-ai-model-print-studio",
+    "current_r32_candidate_validation": {
+      "status": "preflight-artifacts-audited-final-publication-pending",
+      "source_full_regression": "passed on Python 3.13.14: Ran 1048 tests in 90.160s: OK (skipped=1); 1047 passed, 1 optional skip, and 0 failed",
+      "current_focused_release_identity_regression": "passed as part of the exact P2-frozen r32 full regression",
+      "current_focused_ui_regression": "passed as part of the exact P2-frozen r32 full regression",
+      "clean_build": "passed at C:\\OBJAdjR32CM3 using Python 3.13.14 and PyInstaller 6.20.0",
+      "packaged_self_test": "passed: exit 0 inside BUILD_AND_TEST",
+      "packaged_ui_smoke_ja": "passed at 1920x1080 with an isolated temporary profile",
+      "packaged_ui_smoke_en": "passed at 1920x1080 with an isolated temporary profile",
+      "preflight_executable": {
+        "path": "C:\\OBJAdjR32CM3\\dist\\ChromaMatter\\ChromaMatter.exe",
+        "bytes": 13997622,
+        "sha256": "8BBABEACCF9B47AC2750C86B7C38966E46F00A624C648036D600C9601CF86EBB",
+        "file_version": "0.8beta",
+        "product_version": "0.8beta",
+        "internal_name": "ChromaMatter",
+        "original_filename": "ChromaMatter.exe",
+        "product_name": "ChromaMatter — AI Model Print Studio",
+        "version_and_product_identity": "passed"
+      },
+      "public_source_stage": {
+        "status": "preflight-passed-final-restage-pending",
+        "expected_root": "ChromaMatter_0.8beta-r32-source-public-20260821",
+        "total_files_including_manifest": 230,
+        "manifest_records": 229,
+        "fresh_archive_exact": true,
+        "privacy_audit": "passed in independent preflight audit",
+        "folder_archive_crc_parity": "passed in independent preflight audit",
+        "staged_identity_icon_tooling": "passed: 33 tests on fresh-extracted source"
+      },
+      "software_package_stage": {
+        "status": "preflight-passed-local-validation-only-final-restage-pending",
+        "expected_root": "ChromaMatter_0.8beta-r32-ai-model-print-studio",
+        "total_files_including_manifest": 1404,
+        "manifest_records": 1403,
+        "privacy_audit": "passed in independent preflight audit"
+      },
+      "fresh_extracted_self_test": "passed in independent preflight audit",
+      "fresh_extracted_ui_smoke_ja": "passed in independent preflight audit",
+      "fresh_extracted_ui_smoke_en": "passed in independent preflight audit",
+      "source_and_software_archive_audit": "passed for the preflight artifacts; final Downloads restage remains pending",
+      "external_checksum_record": "preflight two-row SHA256SUMS-r32.txt passed; final detached checksum must be regenerated after final Downloads restage",
+      "legal_review": "inherits only the r31 creator declaration for the unchanged icon asset; this is not independent legal clearance",
+      "icon_publication_rights": "unchanged asset; previous r31 creator declaration retained",
+      "publication_decision": "approved by the project owner; exact final artifact and GitHub update gates remain pending",
+      "physical_xp_pen": "pending",
+      "physical_print": "pending",
+      "final_zip_sha256": null,
+      "public_source_zip_sha256": null,
+      "software_package_zip_sha256": null,
+      "zip_hashes_and_sizes_embedded_in_canonical_documents": false,
+      "downloads_placement_claimed": false,
+      "public_repository_url": "https://github.com/Ponkichi0718/ChromaMatter",
+      "public_repository_owner_handle": "Ponkichi0718",
+      "public_repository_visibility": "public",
+      "public_repository_default_branch": "main",
+      "source_publication_eligible": false,
+      "source_publication_status": "r31 is published; the r32 preflight passed and the update is pending final Downloads restage, detached checksum, Git-tree parity, and GitHub pull request",
+      "binary_publication_eligible": false,
+      "binary_publication_blocker": "third-party binary redistribution audit for PyTetWild/fTetWild, TetGen, PyMeshLab, Qt, GEOS, and the exact packaged dependency set remains incomplete",
+      "innovation_fund_submission_ready": false,
+      "innovation_fund_submission_blockers": "rights-cleared public sample, Orca/U1 evidence, cover, video, community post, and submitted form remain pending",
+      "failure_contract": "Do not distribute or claim r32 publication when any exact-source regression, build, smoke, stage, archive, privacy, identity, layout, or checksum gate is pending or failed."
+    },
+    "previous_r31_candidate_validation": {
+      "status": "previous evidence only: source-published-binary-publication-held",
       "source_full_regression": "passed on Python 3.13.14: Ran 1024 tests in 100.656s: OK (skipped=1); 1023 passed and 1 optional skip",
       "current_focused_release_identity_regression": "passed as part of the current exact r31 full regression",
       "current_focused_ui_regression": "passed as part of the current exact r31 full regression",
@@ -174,32 +241,32 @@
       "public_source_stage": "passed for r30 only: 225 files including manifest and 224 manifest records",
       "software_package_stage": "passed for r30 only: 1404 files including manifest and 1403 manifest records",
       "fresh_extract_archive_privacy_and_checksum": "passed for r30 only, including detached SHA256SUMS-r30.txt contract",
-      "scope": "The r30 artifacts predate the ChromaMatter public identity and icon change and do not validate r31.",
-      "applies_to_r31": false
+      "scope": "The r30 artifacts predate the ChromaMatter public identity, icon change, and r32 export controls and do not validate r32.",
+      "applies_to_r32": false
     },
     "previous_r29_build_package_evidence": {
       "status": "previous evidence only",
-      "scope": "Creator Studio r29 regression, clean build, packaged self-test, and isolated Japanese/English UI smoke do not validate ChromaMatter r31.",
-      "applies_to_r31": false
+      "scope": "Creator Studio r29 regression, clean build, packaged self-test, and isolated Japanese/English UI smoke do not validate ChromaMatter r32.",
+      "applies_to_r32": false
     },
     "older_revision_evidence": {
       "status": "previous evidence only",
-      "applies_to_r31": false
+      "applies_to_r32": false
     },
     "distribution_policy": {
       "non_public_validation_assets_distributed": false,
-      "artifact_checksum_record": "The detached Downloads SHA256SUMS-r31.txt is the sole checksum authority for the final source-only distribution. ZIP hashes and sizes stay null or omitted here to avoid self-reference.",
+      "artifact_checksum_record": "SHA256SUMS-r32.txt is pending and must be generated outside canonical documents only after final r32 artifacts exist. The completed SHA256SUMS-r31.txt remains previous evidence only.",
       "published_location_claimed": true,
       "public_repository_url": "https://github.com/Ponkichi0718/ChromaMatter",
       "public_repository_owner_handle": "Ponkichi0718",
       "public_repository_visibility": "public",
       "public_repository_default_branch": "main",
       "initial_publication_commit": "a01ba4baa791809a5a6621fac35956dc65479216",
-      "downloads_placement_claimed": true,
+      "downloads_placement_claimed": false,
       "legal_review": "owner-accepted for the declared ChromaMatter icon asset scope on 2026-08-20; no independent legal clearance claimed",
-      "source_publication_policy": "published source-only at https://github.com/Ponkichi0718/ChromaMatter after exact final restage, detached checksum, and archive verification",
+      "source_publication_policy": "the repository already contains the published r31 source; publish the r32 source-only update only after exact final restage, manifest, privacy, archive, and Git-tree parity checks",
       "binary_publication_policy": "withhold the software ZIP and executable until the exact third-party binary redistribution audit is complete",
-      "final_failure_contract": "Do not distribute when any r31 final gate fails."
+      "final_failure_contract": "Do not distribute or claim publication while any r32 final gate is pending or failed."
     }
   },
   "known_pending": [
@@ -210,7 +277,7 @@
   ],
   "known_constraints": [
     "The current public desktop layout is validated at 1920x1080 in Japanese and English.",
-    "1280x720 is not a supported public UI target for r31."
+    "1280x720 is not a supported public UI target for r32."
   ],
   "privacy": {
     "policy": "Do not publish non-public validation assets or identifying asset details.",

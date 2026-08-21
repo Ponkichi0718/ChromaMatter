@@ -39,6 +39,7 @@ PaletteIdentity: TypeAlias = tuple[
     tuple[int, ...],
     tuple[int, ...],
     tuple[int, ...] | None,
+    tuple[str, ...] | None,
     bool,
     int,
     int,
@@ -241,6 +242,26 @@ def _canonical_palette(palette: PaletteSettings) -> PaletteIdentity:
         output = validate_output_mix_ratios_b(palette.output_mix_ratios_b)
     except ValueError as exc:
         raise PartPaletteError(str(exc)) from exc
+    raw_assignment = getattr(palette, "assignment_palette_hex", None)
+    if raw_assignment is None:
+        assignment: tuple[str, ...] | None = None
+    else:
+        try:
+            assignment_values = tuple(raw_assignment)
+        except TypeError as exc:
+            raise PartPaletteError(
+                f"assignment_palette_hex must contain {PALETTE_STATE_COUNT} colours"
+            ) from exc
+        if len(assignment_values) != PALETTE_STATE_COUNT or any(
+            not isinstance(value, str) for value in assignment_values
+        ):
+            raise PartPaletteError(
+                f"assignment_palette_hex must contain {PALETTE_STATE_COUNT} colours"
+            )
+        try:
+            assignment = tuple(normalize_hex(value) for value in assignment_values)
+        except ValueError as exc:
+            raise PartPaletteError(str(exc)) from exc
     if not isinstance(palette.black_free_gradient_enabled, (bool, np.bool_)):
         raise PartPaletteError(
             "black_free_gradient_enabled must be a boolean"
@@ -301,6 +322,7 @@ def _canonical_palette(palette: PaletteSettings) -> PaletteIdentity:
         primary,
         secondary,
         output,
+        assignment,
         bool(palette.black_free_gradient_enabled),
         black_slot,
         red_slot,
@@ -339,6 +361,7 @@ def print_palette_identity(palette: PaletteSettings) -> PrintPaletteIdentity:
         primary,
         secondary,
         output,
+        _assignment,
         _black_free_enabled,
         _black_slot,
         _red_slot,
@@ -437,6 +460,55 @@ def build_part_palette_rgb_tables(
     if not np.all(np.isfinite(result)) or np.any(result < 0.0) or np.any(result > 1.0):
         raise PartPaletteError("palette RGB tables must stay in the 0..1 range")
     return np.ascontiguousarray(result)
+
+
+def assignment_palette_rgb_table(palette: PaletteSettings) -> np.ndarray:
+    """Return the RGB table used to choose automatic state IDs.
+
+    ``assignment_palette_hex`` freezes only the choice of state.  The normal
+    display table remains authoritative for preview and print output.
+    """
+
+    _canonical_palette(palette)
+    assignment = getattr(palette, "assignment_palette_hex", None)
+    if assignment is None:
+        _hex_values, rgb = build_palette_rgb(
+            list(palette.physical_hex),
+            list(palette.mix_hex_overrides),
+            list(palette.mix_ratios_b),
+            list(palette.secondary_mix_ratios_b),
+        )
+        result = np.asarray(rgb, dtype=np.float64)
+    else:
+        result = np.asarray(
+            [
+                [int(value[index : index + 2], 16) for index in (1, 3, 5)]
+                for value in assignment
+            ],
+            dtype=np.float64,
+        ) / 255.0
+    if result.shape != (PALETTE_STATE_COUNT, 3):
+        raise PartPaletteError(
+            f"assignment palette must produce {PALETTE_STATE_COUNT} RGB states"
+        )
+    if not np.all(np.isfinite(result)) or np.any(result < 0.0) or np.any(result > 1.0):
+        raise PartPaletteError("assignment palette RGB must stay in the 0..1 range")
+    return np.ascontiguousarray(result)
+
+
+def build_part_assignment_palette_rgb_tables(
+    settings: AppSettings, level: MeshLevel | PartLayout
+) -> np.ndarray:
+    """Build one automatic-assignment table per resolved model part."""
+
+    layout = level if isinstance(level, PartLayout) else validate_part_layout(level)
+    palettes = resolve_part_palette_settings(settings, layout)
+    return np.ascontiguousarray(
+        np.stack(
+            [assignment_palette_rgb_table(palette) for palette in palettes],
+            axis=0,
+        )
+    )
 
 
 def _validated_local_states(

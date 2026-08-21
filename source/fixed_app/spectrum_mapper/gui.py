@@ -655,6 +655,11 @@ def _mix_optimizer_settings_key(settings: AppSettings) -> tuple[object, ...]:
             if palette.output_mix_ratios_b is None
             else tuple(int(value) for value in palette.output_mix_ratios_b)
         ),
+        (
+            None
+            if palette.assignment_palette_hex is None
+            else tuple(palette.assignment_palette_hex)
+        ),
         bool(getattr(palette, "surface_shell_enabled", False)),
         bool(getattr(palette, "black_free_gradient_enabled", False)),
         int(getattr(palette, "black_free_black_slot", 0)),
@@ -674,6 +679,11 @@ def _mix_optimizer_settings_key(settings: AppSettings) -> tuple[object, ...]:
                     else tuple(
                         int(ratio) for ratio in value.output_mix_ratios_b
                     )
+                ),
+                (
+                    None
+                    if value.assignment_palette_hex is None
+                    else tuple(value.assignment_palette_hex)
                 ),
                 bool(getattr(value, "surface_shell_enabled", False)),
                 bool(getattr(value, "black_free_gradient_enabled", False)),
@@ -799,6 +809,9 @@ class MapperApp:
         self.last_mix_target_key: str | None = None
         self._mix_input_generation = 0
         self._applying_mix_result = False
+        # F1-F4 edits are staged until explicitly applied to the preview.
+        # Track each global/part palette independently across target changes.
+        self._pending_physical_palette_targets: set[str | None] = set()
         self.eyedropper_active = False
         self.physical_eyedropper_target: int | None = None
         self.reference_mapping: tuple[int, int, int, int, int, int] | None = None
@@ -1481,6 +1494,13 @@ class MapperApp:
             candidate_button.configure(
                 text=self.i18n.text("filament_candidates.button")
             )
+        apply_physical_button = getattr(
+            self, "apply_physical_palette_button", None
+        )
+        if apply_physical_button is not None:
+            apply_physical_button.configure(
+                text=self.i18n.text("palette.apply_physical")
+            )
         calibration_button = getattr(self, "calibration_chart_button", None)
         if calibration_button is not None:
             calibration_button.configure(
@@ -1910,6 +1930,19 @@ class MapperApp:
             text=self.i18n.text("filament_candidates.button"),
             command=self._open_filament_candidates,
             style="Accent.TButton",
+        )
+        self.apply_physical_palette_button = ttk.Button(
+            physical,
+            text=self.i18n.text("palette.apply_physical"),
+            command=self._apply_physical_palette_to_conversion,
+            style="Accent.TButton",
+        )
+        self.apply_physical_palette_button.grid(
+            row=6,
+            column=0,
+            columnspan=5,
+            sticky="ew",
+            pady=(5, 0),
         )
         self.filament_candidate_button.grid(
             row=7,
@@ -2594,7 +2627,9 @@ class MapperApp:
 
     def _attach_traces(self) -> None:
         for variable in self.physical_vars:
-            variable.trace_add("write", lambda *_args: self._on_palette_changed())
+            variable.trace_add(
+                "write", lambda *_args: self._on_physical_palette_changed()
+            )
         for variable in self.mix_ratio_vars:
             variable.trace_add("write", lambda *_args: self._on_palette_changed())
         for variable in self.secondary_mix_ratio_vars:
@@ -3617,6 +3652,11 @@ class MapperApp:
                 if palette.output_mix_ratios_b is None
                 else list(palette.output_mix_ratios_b)
             ),
+            assignment_palette_hex=(
+                None
+                if palette.assignment_palette_hex is None
+                else list(palette.assignment_palette_hex)
+            ),
             surface_shell_enabled=False,
             black_free_gradient_enabled=bool(
                 getattr(palette, "black_free_gradient_enabled", False)
@@ -3632,6 +3672,18 @@ class MapperApp:
             ),
             physical_filament_refs=list(palette.physical_filament_refs),
         )
+
+    @staticmethod
+    def _palette_state_hex_snapshot(palette: PaletteSettings) -> list[str]:
+        """Freeze all stable state colours used by automatic assignment."""
+
+        palette_hex, _palette_rgb = build_palette_rgb(
+            palette.physical_hex,
+            palette.mix_hex_overrides,
+            palette.mix_ratios_b,
+            palette.secondary_mix_ratios_b,
+        )
+        return [normalize_hex(value) for value in palette_hex]
 
     def _palette_from_variables(self) -> PaletteSettings:
         physical = [normalize_hex(variable.get()) for variable in self.physical_vars]
@@ -3673,6 +3725,16 @@ class MapperApp:
             ref if ref is not None and ref.matched_hex == physical[index] else None
             for index, ref in enumerate(previous.physical_filament_refs)
         ]
+        assignment_palette_hex = (
+            None
+            if previous.assignment_palette_hex is None
+            else list(previous.assignment_palette_hex)
+        )
+        previous_physical = [
+            normalize_hex(value) for value in previous.physical_hex
+        ]
+        if assignment_palette_hex is None and physical != previous_physical:
+            assignment_palette_hex = self._palette_state_hex_snapshot(previous)
         output_ratios: list[int] | None = None
         if bool(self.black_output_enabled_var.get()):
             previous_output = previous.output_mix_ratios_b
@@ -3699,7 +3761,7 @@ class MapperApp:
                     if list(previous_output) == previous_preset
                     else list(previous_output)
                 )
-        return PaletteSettings(
+        palette = PaletteSettings(
             material=previous.material,
             palette_state_count=int(self.palette_state_count_var.get()),
             physical_hex=physical,
@@ -3708,6 +3770,7 @@ class MapperApp:
             mix_ratios_b=ratios,
             secondary_mix_ratios_b=secondary_ratios,
             output_mix_ratios_b=output_ratios,
+            assignment_palette_hex=assignment_palette_hex,
             surface_shell_enabled=False,
             black_free_gradient_enabled=black_free_enabled,
             black_free_black_slot=black_free_black_slot,
@@ -3715,6 +3778,15 @@ class MapperApp:
             black_free_brown_slot=black_free_brown_slot,
             physical_filament_refs=refs,
         )
+        if (
+            palette.assignment_palette_hex is not None
+            and self._palette_state_hex_snapshot(palette)
+            == palette.assignment_palette_hex
+        ):
+            # Returning to the exact source palette restores ordinary
+            # automatic recommendation semantics for future changes.
+            palette.assignment_palette_hex = None
+        return palette
 
     def _active_physical_filament_ref(
         self, slot_index: int
@@ -3745,20 +3817,8 @@ class MapperApp:
         ref = FilamentSnapshotRef.from_product(product)
         if ref is None:
             return False
-        if self.active_part_key is None:
-            palette = self.settings.palette
-        else:
-            # A slot selected while a part is active must become a local
-            # palette; mutating the inherited common palette would change
-            # every other part unexpectedly.
-            palette = self.settings.part_palettes.get(self.active_part_key)
-            if palette is None:
-                palette = self._copy_palette(
-                    resolve_palette_for_part_key(
-                        self.settings, self.active_part_key
-                    )
-                )
-                self.settings.part_palettes[self.active_part_key] = palette
+        previous = self._active_palette_for_controls()
+        palette = self._copy_palette(previous)
         if ref.material != palette.material:
             messagebox.showwarning(
                 self.i18n.text("palette.material_mismatch_title"),
@@ -3770,13 +3830,24 @@ class MapperApp:
                 parent=self.root,
             )
             return False
+        if palette.assignment_palette_hex is None:
+            palette.assignment_palette_hex = self._palette_state_hex_snapshot(
+                previous
+            )
         palette.physical_hex[int(slot_index)] = ref.matched_hex
         palette.physical_filament_refs[int(slot_index)] = ref
-        self.physical_vars[int(slot_index)].set(ref.matched_hex)
-        self.enabled_vars[int(slot_index)].set(True)
-        # Tk normally commits through the variable trace.  Calling this once
-        # explicitly also makes the helper deterministic for isolated tests.
-        self._commit_active_palette()
+        palette.enabled_states[int(slot_index)] = True
+        if self._palette_state_hex_snapshot(palette) == palette.assignment_palette_hex:
+            palette.assignment_palette_hex = None
+        self._assign_active_palette(palette)
+        self._load_palette_variables(palette)
+        self._note_mix_input_change()
+        self._refresh_palette_widgets(schedule_preview=False)
+        self._refresh_part_tree()
+        if self.active_part_key is not None:
+            self.part_recommendations.pop(self.active_part_key, None)
+        self._mark_physical_palette_pending(self.active_part_key)
+        self.status_var.set(self.i18n.text("palette.apply_physical_pending"))
         return True
 
     def _load_palette_variables(self, palette: PaletteSettings) -> None:
@@ -4178,6 +4249,7 @@ class MapperApp:
         # user-selected 16/24/32 quality level and non-colour preferences;
         # never carry the previous model's black point or filaments forward.
         self.settings = _fresh_settings_for_new_obj(self.settings)
+        self._clear_all_physical_palette_pending()
         self.active_part_key = None
         self._sync_tone_variables(self.settings.tone)
         self._load_palette_variables(self.settings.palette)
@@ -4606,12 +4678,19 @@ class MapperApp:
         self.pending_manual_payload = None
         self._process_geometry(reuse_asset=self.asset is not None)
 
-    def _process_geometry(self, *, reuse_asset: bool, after_done=None) -> bool:
+    def _process_geometry(
+        self,
+        *,
+        reuse_asset: bool,
+        after_done=None,
+        after_failed=None,
+    ) -> bool:
         if self.paint_editor is not None:
             self.paint_editor.close(
                 after_close=lambda: self._process_geometry(
                     reuse_asset=reuse_asset,
                     after_done=after_done,
+                    after_failed=after_failed,
                 )
             )
             return True
@@ -4904,6 +4983,8 @@ class MapperApp:
                 )
                 self._update_face_count_status()
             if not bool(settings.geometry.solidify_parts) or previous_prepared is None:
+                if callable(after_failed):
+                    after_failed()
                 return False
             previous_assembly = dict(previous_prepared.assembly or {})
             self.solidify_parts_var.set(
@@ -4924,6 +5005,8 @@ class MapperApp:
             if inspect_now and previous_assembly.get("boundary_diagnostics"):
                 self._open_boundary_diagnostics_on_paint = True
                 self.root.after(20, self._open_paint_editor)
+            if callable(after_failed):
+                after_failed()
             return True
 
         return self._submit_main(
@@ -5411,6 +5494,118 @@ class MapperApp:
         if not self.app_closing and self.root.winfo_exists():
             self.poll_after_id = self.root.after(80, self._poll_queue)
 
+    def _on_physical_palette_changed(self) -> None:
+        """Stage F1-F4 while preserving the last automatic state routing."""
+
+        if self._loading_palette_variables:
+            return
+        try:
+            self._commit_active_palette()
+            valid = True
+            if self.active_part_key is not None:
+                self.part_recommendations.pop(self.active_part_key, None)
+        except (ValueError, tk.TclError):
+            valid = False
+        self._note_mix_input_change()
+        self._refresh_palette_widgets(schedule_preview=False)
+        self._refresh_black_free_gradient_widgets()
+        self._refresh_black_output_widgets()
+        self._refresh_surface_shell_widgets()
+        self._refresh_part_tree()
+        if self.sample_rgb is not None:
+            self._update_recipe_candidates()
+        if valid:
+            self._mark_physical_palette_pending(self.active_part_key)
+            self.status_var.set(
+                self.i18n.text("palette.apply_physical_pending")
+            )
+
+    def _mark_physical_palette_pending(self, target_key: str | None) -> None:
+        pending = getattr(self, "_pending_physical_palette_targets", None)
+        if pending is None:
+            pending = set()
+            self._pending_physical_palette_targets = pending
+        pending.add(target_key)
+
+    def _clear_physical_palette_pending(self, target_key: str | None) -> None:
+        pending = getattr(self, "_pending_physical_palette_targets", None)
+        if pending is not None:
+            pending.discard(target_key)
+
+    def _clear_all_physical_palette_pending(self) -> None:
+        pending = getattr(self, "_pending_physical_palette_targets", None)
+        if pending is None:
+            self._pending_physical_palette_targets = set()
+        else:
+            pending.clear()
+
+    def _physical_palette_target_label(self, target_key: str | None) -> str:
+        if target_key is None:
+            return self.i18n.text("parts.common")
+        if self.prepared is not None:
+            try:
+                part_id = self.prepared.final.part_keys.index(target_key)
+                return str(self.prepared.final.part_names[part_id])
+            except (AttributeError, IndexError, ValueError):
+                pass
+        return str(self.settings.part_names.get(target_key) or target_key)
+
+    def _block_export_for_pending_physical_palettes(self) -> bool:
+        pending = getattr(self, "_pending_physical_palette_targets", set())
+        if not pending:
+            return False
+        labels = sorted(
+            (self._physical_palette_target_label(key) for key in pending),
+            key=str.casefold,
+        )
+        messagebox.showwarning(
+            self.i18n.text("palette.apply_physical_required_title"),
+            self.i18n.text(
+                "palette.apply_physical_required",
+                targets="\n".join(f"- {label}" for label in labels),
+            ),
+            parent=self.root,
+        )
+        self.status_var.set(self.i18n.text("palette.apply_physical_pending"))
+        return True
+
+    def _apply_physical_palette_to_conversion(self) -> None:
+        """Render current F1-F4 through existing automatic/manual state IDs."""
+
+        try:
+            palette = self._commit_active_palette()
+        except (ValueError, tk.TclError) as exc:
+            messagebox.showerror(
+                self.i18n.text("dialog.settings.title"),
+                str(exc),
+                parent=self.root,
+            )
+            return
+        target_key = self.active_part_key
+        if target_key is not None:
+            self.part_recommendations.pop(target_key, None)
+        # Keep the editor's private settings snapshot and palette-usage summary
+        # in sync before its recolour worker starts.  Manual face overrides and
+        # adaptive paint trees are state IDs, so neither is rewritten here.
+        self._assign_active_palette(palette)
+        self._note_mix_input_change()
+        self._refresh_palette_widgets(schedule_preview=False)
+        self._refresh_black_free_gradient_widgets(palette)
+        self._refresh_black_output_widgets(palette)
+        self._refresh_surface_shell_widgets(palette)
+        self._refresh_part_tree()
+        target = self._calibration_target_label()
+        status = self.i18n.text(
+            "palette.apply_physical_done", target=target
+        )
+        editor = getattr(self, "paint_editor", None)
+        reapply = getattr(editor, "reapply_palette_settings", None)
+        if callable(reapply):
+            reapply(target_key, self._copy_palette(palette), message=status)
+        self._clear_physical_palette_pending(target_key)
+        self._schedule_preview(immediate=True)
+        self.status_var.set(status)
+
     def _on_palette_changed(self) -> None:
         if self._loading_palette_variables:
             return
@@ -5887,6 +6082,10 @@ class MapperApp:
             return
         for key in self.prepared.final.part_keys:
             self.settings.part_palettes[key] = self._copy_palette(palette)
+            # Copying commits these exact colours and immediately rebuilds the
+            # full preview below, so each overwritten part is now applied.
+            self._clear_physical_palette_pending(key)
+        self._clear_physical_palette_pending(self.active_part_key)
         self._refresh_part_tree()
         self._schedule_preview(immediate=True)
         self.status_var.set("現在の基本4色と混色比率を全パーツへコピーしました")
@@ -5897,6 +6096,9 @@ class MapperApp:
             return
         key = self.active_part_key
         self.settings.part_palettes.pop(key, None)
+        # The removed palette can no longer be selected and must not leave an
+        # orphaned pending target that permanently blocks export.
+        self._clear_physical_palette_pending(key)
         self._load_palette_variables(self.settings.palette)
         self._refresh_palette_widgets(schedule_preview=True)
         self._refresh_part_tree()
@@ -6191,9 +6393,11 @@ class MapperApp:
                 )
                 if key == "__global__":
                     self.settings.palette = palette
+                    self._clear_physical_palette_pending(None)
                 else:
                     self.settings.part_palettes[key] = palette
                     self.part_recommendations[key] = recommendation
+                    self._clear_physical_palette_pending(key)
             if self.active_part_key is None:
                 active_palette = self.settings.palette
                 active_recommendation = results.get("__global__")
@@ -6414,12 +6618,14 @@ class MapperApp:
 
         replacement = self._copy_palette(current)
         replacement.material = selected
+        replacement.assignment_palette_hex = None
         replacement.physical_filament_refs = [None] * 4
         if self.prepared is None:
             replacement.physical_hex = list(
                 PaletteSettings(material=selected).physical_hex
             )
         self._assign_active_palette(replacement)
+        self._clear_physical_palette_pending(self.active_part_key)
         self._load_palette_variables(replacement)
         self._note_mix_input_change()
         self._refresh_part_tree()
@@ -6679,6 +6885,7 @@ class MapperApp:
             else:
                 self.settings.part_palettes[target_key] = palette
                 self.part_recommendations.pop(target_key, None)
+            self._clear_physical_palette_pending(target_key)
             self._load_palette_variables(palette)
             self._commit_active_palette()
             self._note_mix_input_change()
@@ -6942,15 +7149,30 @@ class MapperApp:
             return
         if self.preview_after_id:
             self.root.after_cancel(self.preview_after_id)
-        self.preview_after_id = self.root.after(20 if immediate else 330, self._start_preview_job)
+        # Invalidate a running result now, not after the debounce callback.
+        # Otherwise a stale render can briefly replace the just-applied F1-F4
+        # preview during the 20/330 ms scheduling window.
+        self.preview_generation += 1
+        generation = self.preview_generation
+        self.preview_after_id = self.root.after(
+            20 if immediate else 330,
+            lambda requested=generation: self._start_preview_job(requested),
+        )
 
-    def _start_preview_job(self) -> None:
+    def _start_preview_job(self, requested_generation: int | None = None) -> None:
+        if requested_generation is not None:
+            if requested_generation != self.preview_generation:
+                return
+            generation = requested_generation
+        else:
+            # Retain a deterministic direct-call boundary for tests and
+            # internal callers that intentionally bypass the debounce.
+            self.preview_generation += 1
+            generation = self.preview_generation
         self.preview_after_id = None
         settings = self._variables_to_settings(show_error=False)
         if settings is None or self.prepared is None:
             return
-        self.preview_generation += 1
-        generation = self.preview_generation
         selection_key = self.active_part_key
         use_manual = (
             self.manual_overrides is not None
@@ -7415,6 +7637,7 @@ class MapperApp:
         ignored_features: tuple[str, ...],
     ) -> None:
         self.settings = settings
+        self._clear_all_physical_palette_pending()
         self._auto_recommend_after_geometry = False
         self._project_obj_recovery_pending = False
         self.part_recommendations.clear()
@@ -8198,9 +8421,165 @@ class MapperApp:
             on_error=on_error,
         )
 
+    def _offer_export_boundary_recovery(
+        self,
+        *,
+        title_key: str,
+        message_key: str,
+        assembly: dict[str, object],
+        boundaries: int,
+        unmatched: int,
+    ) -> None:
+        """Stop an unsafe export while keeping boundary recovery actionable."""
+
+        title = self.i18n.text(title_key)
+        message = self.i18n.text(
+            message_key,
+            boundaries=int(boundaries),
+            unmatched=int(unmatched),
+        )
+        records = assembly.get("boundary_diagnostics", [])
+        can_inspect = bool(
+            isinstance(records, (list, tuple)) and records
+        )
+        self.status_var.set(
+            self.i18n.text("assembly.export_auto_solidify_stopped")
+        )
+        if not can_inspect:
+            messagebox.showerror(title, message, parent=self.root)
+            return
+        inspect_now = messagebox.askyesno(
+            title,
+            message
+            + self.i18n.text("assembly.export_auto_solidify_inspect"),
+            parent=self.root,
+        )
+        if inspect_now:
+            self._show_boundary_diagnostics()
+
+    def _start_export_auto_solidification(
+        self, settings: AppSettings
+    ) -> bool:
+        """Safely solidify an open model, then resume export on success only.
+
+        This intentionally does not enable ``repair_unmatched_boundaries``.
+        Export-time convenience may weld proven GLB seams or matched part
+        boundaries, but a real/unmatched hole still requires an explicit user
+        repair action and its stricter small-planar-hole checks.
+        """
+
+        if self.prepared is None or self.source_path is None:
+            return False
+        assembly = dict(self.prepared.assembly or {})
+        boundaries = int(
+            self.prepared.topology.get("boundary_edges", 0) or 0
+        )
+        unmatched = int(
+            assembly.get("unmatched_boundary_loop_count", 0) or 0
+        )
+
+        # A completed processing pass with solidification already enabled must
+        # never loop back into another automatic attempt.  Fail closed and let
+        # the user inspect/repair the source geometry instead.
+        if bool(settings.geometry.solidify_parts):
+            self._offer_export_boundary_recovery(
+                title_key=(
+                    "assembly.export_auto_solidify_incomplete_title"
+                ),
+                message_key="assembly.export_auto_solidify_incomplete",
+                assembly=assembly,
+                boundaries=boundaries,
+                unmatched=unmatched,
+            )
+            return False
+
+        # Do not silently turn the opt-in tiny-hole capper on at export time.
+        # Matched seams are safe to close automatically; unmatched openings
+        # can represent intentional vents, gaps, or genuinely missing faces.
+        if unmatched > 0:
+            self._offer_export_boundary_recovery(
+                title_key="assembly.export_auto_solidify_unsafe_title",
+                message_key="assembly.export_auto_solidify_unsafe",
+                assembly=assembly,
+                boundaries=boundaries,
+                unmatched=unmatched,
+            )
+            return False
+
+        source_suffix = self.source_path.suffix.lower()
+        source_asset = getattr(self.prepared, "source", None)
+        source_part_names = tuple(
+            getattr(source_asset, "part_names", ()) or ()
+        )
+        source_faces = getattr(source_asset, "faces", ())
+        source_face_part_ids = getattr(source_asset, "face_part_ids", ())
+        explicit_multipart = bool(
+            getattr(source_asset, "has_explicit_parts", False)
+            and len(source_part_names) > 1
+            and len(source_face_part_ids) == len(source_faces)
+        )
+        if (
+            source_suffix not in {".glb", ".gltf"}
+            and not explicit_multipart
+        ):
+            self._offer_export_boundary_recovery(
+                title_key=(
+                    "assembly.export_auto_solidify_unsupported_title"
+                ),
+                message_key="assembly.export_auto_solidify_unsupported",
+                assembly=assembly,
+                boundaries=boundaries,
+                unmatched=unmatched,
+            )
+            return False
+
+        proceed = messagebox.askyesno(
+            self.i18n.text("assembly.export_auto_solidify_title"),
+            self.i18n.text(
+                "assembly.export_auto_solidify_confirm",
+                boundaries=boundaries,
+            ),
+            parent=self.root,
+        )
+        if not proceed:
+            self.status_var.set(
+                self.i18n.text(
+                    "assembly.export_auto_solidify_cancelled"
+                )
+            )
+            return False
+
+        previous_solidify = bool(self.solidify_parts_var.get())
+        previous_repair = bool(
+            self.repair_unmatched_boundaries_var.get()
+        )
+
+        def restore_previous_geometry_controls() -> None:
+            self.solidify_parts_var.set(previous_solidify)
+            self.repair_unmatched_boundaries_var.set(previous_repair)
+
+        self.solidify_parts_var.set(True)
+        self.repair_unmatched_boundaries_var.set(False)
+        self.status_var.set(
+            self.i18n.text("assembly.export_auto_solidify_running")
+        )
+        started = self._process_geometry(
+            reuse_asset=True,
+            after_done=self._export,
+            after_failed=restore_previous_geometry_controls,
+        )
+        if not started:
+            # Validation or the existing manual-paint topology confirmation
+            # can decline before a worker starts.  Restore the exact UI flags;
+            # the prepared geometry and all manual state were never replaced.
+            restore_previous_geometry_controls()
+        return bool(started)
+
     def _export(self) -> None:
         if self.paint_editor is not None:
             self.paint_editor.close(after_close=self._export)
+            return
+        if self._block_export_for_pending_physical_palettes():
             return
         if self.prepared is None or self.source_path is None:
             messagebox.showinfo(
@@ -8216,23 +8595,7 @@ class MapperApp:
             self._process_geometry(reuse_asset=self.asset is not None, after_done=self._export)
             return
         if not bool(self.prepared.topology.get("watertight")):
-            assembly = dict(self.prepared.assembly or {})
-            unmatched = int(
-                assembly.get("unmatched_boundary_loop_count", 0) or 0
-            )
-            inspect_now = messagebox.askyesno(
-                self.i18n.text("assembly.export_blocked_title"),
-                self.i18n.text(
-                    "assembly.export_blocked_open",
-                    boundaries=int(
-                        self.prepared.topology.get("boundary_edges", 0) or 0
-                    ),
-                    unmatched=unmatched,
-                ),
-                parent=self.root,
-            )
-            if inspect_now and assembly.get("boundary_diagnostics"):
-                self._show_boundary_diagnostics()
+            self._start_export_auto_solidification(settings)
             return
         grouping = plan_palette_groups(settings, self.prepared.final)
         force_common_palette = False

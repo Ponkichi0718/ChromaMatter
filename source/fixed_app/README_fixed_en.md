@@ -1,4 +1,4 @@
-# ChromaMatter — AI Model Print Studio 0.8beta (r31 source app)
+# ChromaMatter — AI Model Print Studio 0.8beta (r32 source app)
 
 <p align="center">
   <img src="assets/obj_adjuster_icon.png" width="160" alt="ChromaMatter icon">
@@ -6,9 +6,15 @@
 
 [Japanese](README_fixed_ja.md)
 
-This directory contains the fixed ChromaMatter — AI Model Print Studio source application. The display version is `0.8beta`, the edition is `AI Model Print Studio r31`, and the artifact revision is `r31-ai-model-print-studio`; the Windows numeric version remains `0.8.0.0`.
+This directory contains the fixed ChromaMatter — AI Model Print Studio source application. The display version is `0.8beta`, the edition is `AI Model Print Studio r32`, and the artifact revision is `r32-ai-model-print-studio`; the Windows numeric version remains `0.8.0.0`.
 
 See the [visual feature overview and production flow](../../FEATURES_JA.md) and the [development journal, including experiments, failures, and hardware calibration](https://note.com/ponkichi0718).
+
+## r32 output workflow
+
+- When export finds safely matched part boundaries or coincident GLB seams, ChromaMatter announces solidification and resumes export only after it succeeds. It never guesses caps for true holes.
+- After an individual F1-F4 edit, `Apply Current F1-F4 to Preview / 3MF` updates the right preview and 3MF palette. Automatic proposal remains the default.
+- The 3MF records a stable Full Spectrum layer-cycle and prime-tower baseline. Experimental Local Z, advanced dithering, and pointillism remain off, and support stays selectable in Orca.
 
 ## r30 GLB input beta
 
@@ -39,6 +45,7 @@ See the [visual feature overview and production flow](../../FEATURES_JA.md) and 
 - Calibration charts use the same display order while retaining canonical provenance.
 - A common 16 / 24 / 32-state choice propagates to existing parts; an explicit part edit remains local.
 - The `Reset Four Base Colors` button is not shown in the public UI. Automatic proposals and individual editing remain available.
+- `Apply Current F1-F4 to Preview / 3MF` explicitly applies individually edited base colours.
 - Physical black correction stays in the mixed-palette frame, geometry reprocessing is one action, and the repair action is labelled Solidify.
 
 ## Portable project folder
@@ -75,7 +82,15 @@ python .\TripoSpectrumMapper_fixed.py --self-test
 
 Repository-root `BOOTSTRAP_WINDOWS.ps1` is the standard setup and test entry point.
 
-## r31 validation state
+## r32 validation state
+
+- exact post-P2 source regression: Python `3.13.14`, `Ran 1048 tests in 90.160s: OK (skipped=1)`, 1047 passed / 1 optional skip / 0 failed
+- PyInstaller `6.20.0` clean build at `C:\OBJAdjR32CM3`, packaged self-test exit 0, and isolated-profile Japanese/English UI smoke: passed
+- preflight `ChromaMatter.exe`: 13,997,622 bytes, FileVersion/ProductVersion `0.8beta`, SHA-256 `8BBABEACCF9B47AC2750C86B7C38966E46F00A624C648036D600C9601CF86EBB`
+- preflight source stage: 230 files / 229 manifest records, manifest SHA-256 `C0D0A96570F83162B4B92E34FC463802C32A31600AEAE191D79D972E55CFE920`, fresh parity/privacy/source-focused 33/33: passed
+- preflight software stage: 1,404 files / 1,403 manifest records, manifest SHA-256 `9764A61571421CC8C1773938C4CD724515C07D77C435BF2F4E0DB5DB5E68572C`, fresh self-test/Japanese UI/English UI: exit 0
+- final source backpatch/restage, Downloads placement, final detached `SHA256SUMS-r32.txt`, and GitHub update: pending. Preflight ZIP hashes are not embedded because final artifacts will differ
+- the r31 results below are **previous evidence** and do not validate r32
 
 - previous evidence for the post-GLB r28 candidate immediately before the public-UI change: Python `3.13.14`, PyInstaller `6.20.0`, `Ran 992 tests in 87.406s: OK (skipped=1)`, 991 passed / 1 optional skip
 - that candidate's clean one-folder build in a new short path: passed
@@ -85,7 +100,7 @@ Repository-root `BOOTSTRAP_WINDOWS.ps1` is the standard setup and test entry poi
 - Creator Studio r29 exact-source **previous evidence**: Python `3.13.14`, `Ran 998 tests in 83.529s: OK (skipped=1)`, 997 passed / 1 optional skip
 - r29 clean-build previous evidence: `C:\OBJAdjR29FIX1`, PyInstaller `6.20.0` one-folder build, packaged `--self-test` exit 0, and isolated-profile Japanese/English UI smoke: passed
 - Creator Studio r30 exact-source **previous evidence**: Python `3.13.14`, `Ran 1019 tests in 86.932s: OK (skipped=1)`, 1018 passed / 1 optional skip; PyInstaller `6.20.0` clean build at `C:\OBJAdjR30FIX1`, package/stage/archive/privacy, and detached `SHA256SUMS-r30.txt` contract passed. This evidence does not apply to r31.
-- current exact ChromaMatter r31 source: Python `3.13.14`, `Ran 1024 tests in 100.656s: OK (skipped=1)`, 1023 passed / 1 optional skip; PyInstaller `6.20.0` clean build at `C:\OBJAdjR31CM1`, built-package self-test, and isolated-profile Japanese/English UI smoke passed; preflight `ChromaMatter.exe` 13,986,866 bytes, FileVersion/ProductVersion `0.8beta`, InternalName `ChromaMatter`, OriginalFilename `ChromaMatter.exe`, SHA-256 `208167A225A37BAAAA473B574B2F746E46427FD0CA63FC5B7201BF3394243743`
+- ChromaMatter r31 exact-source previous evidence: Python `3.13.14`, `Ran 1024 tests in 100.656s: OK (skipped=1)`, 1023 passed / 1 optional skip; PyInstaller `6.20.0` clean build at `C:\OBJAdjR31CM1`, built-package self-test, and isolated-profile Japanese/English UI smoke passed; preflight `ChromaMatter.exe` 13,986,866 bytes, FileVersion/ProductVersion `0.8beta`, InternalName `ChromaMatter`, OriginalFilename `ChromaMatter.exe`, SHA-256 `208167A225A37BAAAA473B574B2F746E46427FD0CA63FC5B7201BF3394243743`
 - r31 preflight public source: 227 files / 226 manifest records, exact fresh archive, privacy technical GO. Software: 1,404 files / 1,403 manifest records, technical GO. Fresh-extracted self-test and Japanese/English UI smoke: exit 0
 - r31 final source-only stage `ChromaMatter_0.8beta-r31-source-public-20260820`: 227 files / 226 manifest records; folder/archive parity, CRC, privacy, 32 staged identity/icon/tooling tests, Downloads placement, and external detached `SHA256SUMS-r31.txt` verification passed
 - Creator Studio r27 previous evidence: Python `3.13.14`, PyInstaller `6.20`, and `Ran 890 tests in 68.257s: OK (skipped=1)`, 889 passed / 1 optional skip
@@ -104,16 +119,16 @@ Repository-root `BOOTSTRAP_WINDOWS.ps1` is the standard setup and test entry poi
 - Innovation Fund submission ready: false pending the rights-cleared sample, Orca/U1 evidence, cover/video, and community post
 - physical XP-PEN validation and physical print: pending disclosed limitations, not source-publication blockers
 
-The r30, r29, r28, and r27 results above are **previous evidence** for their respective revisions only. They do not validate ChromaMatter r31 source, binaries, packages, or checksums. Current r31 source regression, clean build, packaged smoke, and final source-only stage/archive/privacy/identity audits are GO. On 2026-08-20 the creator declared the robot an original fictional machine and `ZENITH DYNAMICS CORP.` fictional wording with no intended real-world affiliation; the project owner gave publication GO. This is not independent trademark/design clearance or legal advice, and no affiliation with entities using the close name `Zenith Dynamics` is claimed. Source-only publication is approved; binary publication eligibility remains false until the third-party redistribution audit is complete.
+The r31, r30, r29, r28, and r27 results above are **previous evidence** for their respective revisions only. The exact r32 regression, build, packaged smoke, and preflight artifact audit are the current evidence recorded above; final Downloads/checksum/GitHub gates remain pending. The unchanged icon, including its robot and fictional `ZENITH DYNAMICS CORP.` wording, retains the 2026-08-20 creator declaration and owner acceptance without claiming independent legal clearance. Binary publication eligibility remains false until the third-party redistribution audit is complete.
 
 Creator Studio r26 results are previous evidence as well and do not validate ChromaMatter r31.
 
 ## Package identity
 
-- approved source-only release: `ChromaMatter_0.8beta-r31-source-public-20260820`
-- non-public software preflight: `ChromaMatter_0.8beta-r31-ai-model-print-studio`
+- pending source-only candidate: `ChromaMatter_0.8beta-r32-source-public-20260821`
+- pending non-public software preflight: `ChromaMatter_0.8beta-r32-ai-model-print-studio`
 
-The detached Downloads `SHA256SUMS-r31.txt` is the sole distribution checksum authority and has been verified externally for the source-only release. The r30 checksum is not reused, self-referential ZIP hashes are intentionally not embedded in canonical documents, and release state is `source-published`.
+The detached `SHA256SUMS-r32.txt` remains pending until final r32 artifacts exist. Completed `SHA256SUMS-r31.txt` applies only to r31 previous evidence. Self-referential ZIP hashes are not embedded in canonical documents.
 
 ## Notes
 

@@ -377,7 +377,7 @@ class SoftwarePackageStageTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             built = self._fake_build(root)
-            destination = root / "ChromaMatter_0.8beta-r31-ai-model-print-studio"
+            destination = root / "ChromaMatter_0.8beta-r32-ai-model-print-studio"
             archive = Path(f"{destination}.zip")
 
             result = _run_powershell(
@@ -617,6 +617,16 @@ class SoftwarePackageStageTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn('"tooling/stage_software_package.ps1"', stage)
+
+    def test_gitignore_keeps_required_publication_inputs_addable(self) -> None:
+        gitignore = (REPO_ROOT / ".gitignore").read_text(encoding="utf-8")
+        for required_negation in (
+            "!publication/INNOVATION_FUND_APPLICATION_DRAFT.md",
+            "!publication/INNOVATION_FUND_STATUS_JA.md",
+            "!tooling/stage_software_package.ps1",
+        ):
+            with self.subTest(required_negation=required_negation):
+                self.assertIn(required_negation, gitignore.splitlines())
 
 
 class PublicSourceStageRollbackTests(unittest.TestCase):

@@ -20,7 +20,7 @@ if (-not (Test-Path -LiteralPath $builtRoot -PathType Container)) {
 if (-not $Destination) {
     $Destination = Join-Path `
         $repoRoot `
-        "artifacts\ChromaMatter_0.8beta-r31-ai-model-print-studio"
+        "artifacts\ChromaMatter_0.8beta-r32-ai-model-print-studio"
 }
 elseif (-not [System.IO.Path]::IsPathRooted($Destination)) {
     $Destination = Join-Path $repoRoot $Destination

@@ -214,6 +214,12 @@ class PaletteSettings:
     # Display RGB/Lab and stable paint IDs continue to use the two legacy
     # ratio fields above.  None preserves the established export path.
     output_mix_ratios_b: list[int] | None = None
+    # Optional 32-colour snapshot used only for automatic state assignment.
+    # The visible/output palette still comes from the current F1-F4 and mix
+    # ratios.  This lets a user substitute real spools without making every
+    # face jump to a different state ID; manual and adaptive paint already use
+    # those stable IDs and therefore need no special migration.
+    assignment_palette_hex: list[str] | None = None
     # Optional automatic-assignment policy.  Stable state IDs, printable
     # recipes, pure black and explicit manual paint remain unchanged.
     black_free_gradient_enabled: bool = False
@@ -281,6 +287,27 @@ class PaletteSettings:
         self.output_mix_ratios_b = (
             None if output_ratios is None else list(output_ratios)
         )
+
+        if self.assignment_palette_hex is None:
+            self.assignment_palette_hex = None
+        else:
+            try:
+                assignment = list(self.assignment_palette_hex)
+            except TypeError as exc:
+                raise ValueError(
+                    f"assignment_palette_hex must contain {PALETTE_STATE_COUNT} colours"
+                ) from exc
+            if len(assignment) != PALETTE_STATE_COUNT:
+                raise ValueError(
+                    f"assignment_palette_hex must contain {PALETTE_STATE_COUNT} colours"
+                )
+            if any(not isinstance(value, str) for value in assignment):
+                raise ValueError(
+                    "assignment_palette_hex values must be #RRGGBB strings"
+                )
+            self.assignment_palette_hex = [
+                normalize_hex(value) for value in assignment
+            ]
 
         raw_refs = list(self.physical_filament_refs or ())
         raw_refs = (raw_refs + [None] * 4)[:4]
@@ -435,6 +462,8 @@ class AppSettings:
         palette = result.get("palette")
         if isinstance(palette, dict) and palette.get("output_mix_ratios_b") is None:
             palette.pop("output_mix_ratios_b", None)
+        if isinstance(palette, dict) and palette.get("assignment_palette_hex") is None:
+            palette.pop("assignment_palette_hex", None)
         if isinstance(palette, dict) and not palette.get("surface_shell_enabled"):
             palette.pop("surface_shell_enabled", None)
         part_palettes = result.get("part_palettes")
@@ -445,6 +474,11 @@ class AppSettings:
                     and part_palette.get("output_mix_ratios_b") is None
                 ):
                     part_palette.pop("output_mix_ratios_b", None)
+                if (
+                    isinstance(part_palette, dict)
+                    and part_palette.get("assignment_palette_hex") is None
+                ):
+                    part_palette.pop("assignment_palette_hex", None)
                 if isinstance(part_palette, dict) and not part_palette.get(
                     "surface_shell_enabled"
                 ):

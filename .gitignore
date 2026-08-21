@@ -43,6 +43,8 @@ publication/*
 !publication/VIDEO_VALIDATION_CHECKLIST_JA.md
 !publication/PUBLICATION_CHECKLIST_JA.md
 !publication/GITHUB_PUBLICATION_GUIDE_JA.md
+!publication/INNOVATION_FUND_APPLICATION_DRAFT.md
+!publication/INNOVATION_FUND_STATUS_JA.md
 
 # Historical local probes and recovery utilities stay in the private workspace.
 tooling/*
@@ -50,6 +52,7 @@ tooling/*
 !tooling/generate_public_icon.py
 !tooling/audit_public_tree.ps1
 !tooling/stage_public_source.ps1
+!tooling/stage_software_package.ps1
 
 # OBJ files are private by default; explicitly authored public fixtures may be
 # kept below samples/ or as the existing test tetrahedron.

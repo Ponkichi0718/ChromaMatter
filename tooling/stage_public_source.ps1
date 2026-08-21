@@ -12,7 +12,7 @@ $repoRoot = (Get-Item -LiteralPath (Split-Path -Parent $PSScriptRoot)).FullName
 if (-not $Destination) {
     $Destination = Join-Path `
         $repoRoot `
-        "artifacts\ChromaMatter_0.8beta-r31-ai-model-print-studio_HANDOFF"
+        "artifacts\ChromaMatter_0.8beta-r32-ai-model-print-studio_HANDOFF"
 }
 elseif (-not [System.IO.Path]::IsPathRooted($Destination)) {
     $Destination = Join-Path $repoRoot $Destination
