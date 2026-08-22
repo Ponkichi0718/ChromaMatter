@@ -1,22 +1,26 @@
 #!/usr/bin/env python3
-"""Stage a fail-closed corresponding-source candidate for ChromaMatter.
+"""Stage a fail-closed corresponding-source bundle for ChromaMatter.
 
 The release component list is deliberately data driven.  Git sources are
 exported from exact full commit IDs (never from a working tree), archive
 downloads are checked before use, and gitlinks are recursively populated.
-The generated bundle is still a *candidate*: publication approval belongs to
-the binary/license audit, not to this acquisition utility.
+The generated bundle remains a candidate unless every declared source gap is
+closed by its bound, tool-verified evidence path.  Editing a status string is
+never sufficient to produce a release-approved bundle.
 """
 
 from __future__ import annotations
 
 import argparse
+import base64
 import configparser
+import csv
+from datetime import datetime
 import hashlib
 import io
 import json
 import os
-from pathlib import Path, PurePosixPath
+from pathlib import Path, PurePosixPath, PureWindowsPath
 import posixpath
 import re
 import shlex
@@ -25,6 +29,7 @@ import stat
 import subprocess
 import sys
 import tarfile
+import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -33,6 +38,27 @@ import zipfile
 
 
 TOOL_VERSION = 1
+CANDIDATE_BUNDLE_STATUS = "candidate-only-not-release-approved"
+RELEASE_APPROVED_BUNDLE_STATUS = "release-approved"
+PYTETWILD_REBUILD_RESOLVER = "pytetwild-controlled-rebuild"
+DYNAMIC_ARCHIVE_LOCK_RESOLVER = "complete-dynamic-archive-sha256-lock"
+DYNAMIC_ARCHIVE_LOCK_RESOLUTION = "verified-complete-dynamic-archive-sha256-lock"
+EXTERNAL_ARCHIVE_LOCK_V1_STATUS = "verified-official-release-assets"
+EXTERNAL_ARCHIVE_LOCK_V2_STATUS = "verified-official-release-inputs"
+EXTERNAL_ARCHIVE_PROVENANCE_KINDS = {
+    "github-release-asset",
+    "github-tag-source-archive",
+    "official-release-checksum",
+    "official-project-file-release",
+    "official-archive-byte-equivalence",
+    "meshlab-historical-tag-archive",
+}
+APPLICATION_REQUIREMENTS_LOCK_PATH = "source/fixed_app/requirements-build.lock"
+PYTETWILD_BUILD_RECIPE_PATH = "tooling/BUILD_PYTETWILD_WINDOWS.ps1"
+PYTETWILD_BUILD_REQUIREMENTS_PATH = "tooling/requirements-pytetwild-build.lock"
+PYTETWILD_SOURCE_PATCH_PATH = (
+    "tooling/patches/pytetwild-0.3.0-optional-pyvista.patch"
+)
 MAX_ARCHIVE_MEMBERS = 500_000
 MAX_ARCHIVE_UNCOMPRESSED_BYTES = 40 * 1024 * 1024 * 1024
 SHA1_RE = re.compile(r"^[0-9a-f]{40}$")
@@ -51,9 +77,69 @@ WINDOWS_RESERVED = {
     *(f"lpt{number}" for number in range(1, 10)),
 }
 PRIVATE_PATH_PATTERNS = (
-    re.compile(rb"(?i)[a-z]:[\\/]+users[\\/]+[a-z0-9._-]+[\\/]"),
-    re.compile(rb"(?i)/(?:home|users)/[a-z0-9._-]+/"),
+    re.compile(
+        rb"(?i)[a-z]:[\\/]+users[\\/]+[^\\/\x00\r\n\"']+(?:[\\/]|(?=[\s\"']|$))"
+    ),
+    re.compile(rb"(?i)/(?:home|users)/[^/\x00\r\n\"']+(?:/|(?=[\s\"']|$))"),
+    re.compile(
+        rb"(?i)(?:\\{2,}|/{2})[^\\/\x00\r\n\"']+"
+        rb"(?:[\\/]+[^\\/\x00\r\n\"']+)?"
+        rb"[\\/]+(?:home|users)[\\/]+[^\\/\x00\r\n\"']+"
+        rb"(?:[\\/]|(?=[\s\"']|$))"
+    ),
 )
+PYTETWILD_AUDIT_LOG_FILES = {
+    "visual_studio_layout_verification": "visual-studio-layout-verification.log",
+    "build_wheel": "build-wheel.log",
+    "raw_delvewheel_show": "delvewheel-show-raw.log",
+    "delvewheel_repair": "delvewheel-repair.log",
+    "abi3audit": "abi3audit.log",
+    "native_dependency_closure": "native-dependency-closure.log",
+    "native_smoke_install": "native-smoke-install.log",
+    "native_normal_import": "native-normal-import.log",
+}
+PYTETWILD_MAX_AUDIT_LOG_BYTES = 64 * 1024 * 1024
+PYTETWILD_LOCK_ENVIRONMENT_FIELDS = {
+    "python_version",
+    "pip_version",
+    "cibuildwheel_version",
+    "runner_image",
+    "compiler",
+    "compiler_family_requested_from_vsdevcmd",
+    "visual_studio_installation_version",
+    "cmake_version",
+    "ninja_version",
+    "nanobind_version",
+    "build_version",
+    "scikit_build_core_version",
+    "delvewheel_version",
+    "abi3audit_version",
+    "numpy_version",
+    "windows_sdk_version",
+    "windows_sdk_servicing_version",
+}
+PYTETWILD_ATTESTATION_ENVIRONMENT_FIELDS = PYTETWILD_LOCK_ENVIRONMENT_FIELDS | {
+    "compiler_path",
+    "linker_path",
+    "compiler_file_version",
+    "signtool_path",
+    "cmake_cli",
+    "ninja_cli",
+}
+PYTETWILD_SOURCE_ARCHIVE_FIELDS = {
+    "pytetwild_sha256",
+    "ftetwild_sha256",
+    "fmt_sha256",
+    "spdlog_sha256",
+    "libigl_sha256",
+    "predicates_sha256",
+    "geogram_sha256",
+    "geogram_amgcl_sha256",
+    "geogram_libmeshb_sha256",
+    "geogram_rply_sha256",
+    "onetbb_sha256",
+    "json_sha256",
+}
 
 
 class StageError(RuntimeError):
@@ -116,6 +202,30 @@ def _canonical_git_url(value: str) -> str:
     return urllib.parse.urlunsplit(("https", parsed.netloc.casefold(), path, "", ""))
 
 
+def _validate_required_gitlinks(value: object, label: str, *, required: bool) -> None:
+    if not isinstance(value, list) or (required and not value):
+        qualifier = "a non-empty" if required else "an"
+        raise StageError(f"{label} must be {qualifier} array")
+    seen_paths: set[str] = set()
+    for index, expectation in enumerate(value):
+        item_label = f"{label}[{index}]"
+        if not isinstance(expectation, dict) or set(expectation) not in (
+            {"path", "url"},
+            {"path", "url", "commit"},
+        ):
+            raise StageError(f"{item_label} has an invalid schema")
+        path = _safe_relative(expectation.get("path"), f"{item_label}.path")
+        folded = path.casefold()
+        if folded in seen_paths:
+            raise StageError(f"{label} has a duplicate path: {path}")
+        seen_paths.add(folded)
+        _validate_https_url(expectation.get("url"), f"{item_label}.url")
+        if "commit" in expectation:
+            commit = expectation["commit"]
+            if not isinstance(commit, str) or not SHA1_RE.fullmatch(commit):
+                raise StageError(f"{item_label}.commit must be a full lowercase commit")
+
+
 def _is_relative_to(path: Path, parent: Path) -> bool:
     try:
         path.relative_to(parent)
@@ -124,8 +234,24 @@ def _is_relative_to(path: Path, parent: Path) -> bool:
         return False
 
 
+def _is_link_like(path: Path) -> bool:
+    try:
+        metadata = path.lstat()
+    except OSError:
+        return False
+    if stat.S_ISLNK(metadata.st_mode):
+        return True
+    reparse_attribute = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+    if reparse_attribute and (
+        getattr(metadata, "st_file_attributes", 0) & reparse_attribute
+    ):
+        return True
+    is_junction = getattr(path, "is_junction", None)
+    return bool(is_junction is not None and is_junction())
+
+
 def _assert_plain_directory(path: Path, label: str) -> None:
-    if not path.is_dir() or path.is_symlink():
+    if not path.is_dir() or _is_link_like(path):
         raise StageError(f"{label} must be a real directory, not a link: {path}")
 
 
@@ -162,6 +288,11 @@ def _component_map(manifest: dict) -> dict[str, dict]:
                 raise StageError(f"component {component_id} required_paths must be an array")
             for path in required:
                 _safe_relative(path, f"component {component_id} required path")
+            _validate_required_gitlinks(
+                component.get("required_gitlinks", []),
+                f"component {component_id} required_gitlinks",
+                required="required_gitlinks" in component,
+            )
         elif kind == "archive":
             urls = component.get("urls")
             if not isinstance(urls, list) or not urls:
@@ -185,12 +316,33 @@ def validate_component_manifest(manifest: dict) -> dict[str, dict]:
     if manifest.get("schema_version") != 1:
         raise StageError("Unsupported component manifest schema_version")
     _safe_id(manifest.get("bundle_id"), "bundle_id")
-    if manifest.get("bundle_status") != "candidate-only-not-release-approved":
-        raise StageError("bundle_status must remain candidate-only-not-release-approved")
+    if manifest.get("bundle_status") != CANDIDATE_BUNDLE_STATUS:
+        raise StageError(f"bundle_status must remain {CANDIDATE_BUNDLE_STATUS}")
     known_gaps = manifest.get("known_gaps", [])
     if not isinstance(known_gaps, list):
         raise StageError("known_gaps must be an array")
+    release_approval = manifest.get("release_approval")
+    if release_approval is not None:
+        if not isinstance(release_approval, dict) or set(release_approval) != {
+            "status",
+            "requires_all_known_gaps_resolved",
+            "required_gap_ids",
+        }:
+            raise StageError("release_approval has an invalid schema")
+        if (
+            release_approval["status"] != RELEASE_APPROVED_BUNDLE_STATUS
+            or release_approval["requires_all_known_gaps_resolved"] is not True
+        ):
+            raise StageError("release_approval must require every known gap to be resolved")
+        required_gap_ids = release_approval["required_gap_ids"]
+        if not isinstance(required_gap_ids, list) or not required_gap_ids:
+            raise StageError("release_approval requires a non-empty required_gap_ids array")
+        for index, gap_id in enumerate(required_gap_ids):
+            _safe_id(gap_id, f"release_approval.required_gap_ids[{index}]")
+        if len(set(required_gap_ids)) != len(required_gap_ids):
+            raise StageError("release_approval has duplicate required_gap_ids")
     gap_ids: set[str] = set()
+    gap_resolvers: dict[str, dict] = {}
     for index, gap in enumerate(known_gaps):
         if not isinstance(gap, dict):
             raise StageError(f"known_gaps[{index}] must be an object")
@@ -199,7 +351,29 @@ def validate_component_manifest(manifest: dict) -> dict[str, dict]:
             raise StageError(f"Invalid or duplicate unresolved gap: {gap_id}")
         if not isinstance(gap.get("reason"), str) or not gap["reason"]:
             raise StageError(f"known_gaps[{index}] needs a reason")
+        resolver = gap.get("resolution_evidence")
+        if release_approval is not None and not isinstance(resolver, dict):
+            raise StageError(f"known_gaps[{index}] needs bound resolution_evidence")
+        if release_approval is None and resolver is not None:
+            raise StageError("resolution_evidence requires an explicit release_approval policy")
+        if isinstance(resolver, dict):
+            kind = resolver.get("kind")
+            if kind == PYTETWILD_REBUILD_RESOLVER:
+                expected_keys = {"kind"}
+            elif kind == DYNAMIC_ARCHIVE_LOCK_RESOLVER:
+                expected_keys = {"kind", "rule_id"}
+                _safe_id(
+                    resolver.get("rule_id"),
+                    f"known_gaps[{index}].resolution_evidence.rule_id",
+                )
+            else:
+                raise StageError(f"known_gaps[{index}] has an unsupported resolver")
+            if set(resolver) != expected_keys:
+                raise StageError(f"known_gaps[{index}] resolution_evidence has extra fields")
+            gap_resolvers[gap_id] = resolver
         gap_ids.add(gap_id)
+    if release_approval is not None and set(release_approval["required_gap_ids"]) != gap_ids:
+        raise StageError("release_approval required_gap_ids must match every known gap")
     project = manifest.get("project")
     if not isinstance(project, dict):
         raise StageError("project must be an object")
@@ -297,6 +471,11 @@ def validate_component_manifest(manifest: dict) -> dict[str, dict]:
             rebuild_policy.get("nanobind_destination"),
             "pytetwild_rebuild_policy.nanobind_destination",
         )
+        _validate_required_gitlinks(
+            rebuild_policy.get("nanobind_required_gitlinks"),
+            "pytetwild_rebuild_policy.nanobind_required_gitlinks",
+            required=True,
+        )
         if any(
             destination.casefold() == item["destination"].casefold()
             or destination.casefold().startswith(f"{item['destination'].casefold()}/")
@@ -306,6 +485,14 @@ def validate_component_manifest(manifest: dict) -> dict[str, dict]:
             raise StageError("pytetwild_rebuild_policy nanobind destination collides")
         if rebuild_policy.get("required_for_staging") is not True:
             raise StageError("pytetwild_rebuild_policy must be required_for_staging")
+    pytetwild_gap_ids = {
+        gap_id
+        for gap_id, resolver in gap_resolvers.items()
+        if resolver["kind"] == PYTETWILD_REBUILD_RESOLVER
+    }
+    if pytetwild_gap_ids:
+        if rebuild_policy is None or pytetwild_gap_ids != {rebuild_policy.get("known_gap_id")}:
+            raise StageError("PyTetWild gap resolver is not bound to its rebuild policy")
 
     evidence = manifest.get("pin_evidence", [])
     if not isinstance(evidence, list):
@@ -324,6 +511,7 @@ def validate_component_manifest(manifest: dict) -> dict[str, dict]:
     if not isinstance(rules, list):
         raise StageError("dynamic_archive_rules must be an array")
     rule_ids: set[str] = set()
+    rules_by_id: dict[str, dict] = {}
     for index, rule in enumerate(rules):
         if not isinstance(rule, dict):
             raise StageError(f"dynamic_archive_rules[{index}] must be an object")
@@ -331,6 +519,7 @@ def validate_component_manifest(manifest: dict) -> dict[str, dict]:
         if rule_id in rule_ids:
             raise StageError(f"Duplicate dynamic archive rule id: {rule_id}")
         rule_ids.add(rule_id)
+        rules_by_id[rule_id] = rule
         component_id = rule.get("component")
         if component_id not in components or components[component_id]["kind"] != "git":
             raise StageError(f"Dynamic archive rule {rule_id} has invalid component")
@@ -355,6 +544,24 @@ def validate_component_manifest(manifest: dict) -> dict[str, dict]:
             for key, reason in excluded.items()
         ):
             raise StageError(f"Dynamic rule {rule_id} excluded_variables is invalid")
+    resolved_rule_ids: set[str] = set()
+    for gap_id, resolver in gap_resolvers.items():
+        if resolver["kind"] != DYNAMIC_ARCHIVE_LOCK_RESOLVER:
+            continue
+        rule_id = resolver["rule_id"]
+        rule = rules_by_id.get(rule_id)
+        if rule is None:
+            raise StageError(f"Dynamic archive gap {gap_id} references an unknown rule")
+        if rule_id in resolved_rule_ids:
+            raise StageError(f"Dynamic archive rule {rule_id} resolves multiple gaps")
+        resolved_rule_ids.add(rule_id)
+        if (
+            rule.get("require_sha256_lock_for_unhashed") is not True
+            or rule.get("require_release_asset_provenance") is not True
+        ):
+            raise StageError(
+                f"Dynamic archive gap {gap_id} requires SHA-256 and release provenance"
+            )
     return components
 
 
@@ -394,6 +601,67 @@ def _git_object_exists(repository: Path, commit: str, *, allow_file: bool = Fals
     except StageError:
         return False
     return True
+
+
+def _git_file_at_exact_commit(repository: Path, commit: str, relative: str) -> bytes:
+    if not isinstance(commit, str) or not SHA1_RE.fullmatch(commit):
+        raise StageError("Project commit must be a full lowercase 40-character commit")
+    _assert_plain_directory(repository, "Project repository")
+    resolved = _run_git(
+        repository,
+        ["rev-parse", f"{commit}^{{commit}}"],
+        allow_file=True,
+    ).strip()
+    if resolved != commit:
+        raise StageError("Project repository does not contain the exact requested commit")
+
+    relative = _safe_relative(relative, "project commit file")
+    tree_output = _run_git(
+        repository,
+        ["ls-tree", "-z", commit, "--", relative],
+        allow_file=True,
+    )
+    records = [record for record in tree_output.split("\x00") if record]
+    if len(records) != 1:
+        raise StageError(f"Project commit lacks one exact regular file: {relative}")
+    metadata, separator, tree_path = records[0].partition("\t")
+    fields = metadata.split()
+    if (
+        separator != "\t"
+        or tree_path != relative
+        or len(fields) != 3
+        or fields[0] not in ("100644", "100755")
+        or fields[1] != "blob"
+        or not re.fullmatch(r"[0-9a-f]{40,64}", fields[2])
+    ):
+        raise StageError(f"Project commit path is not one exact regular file: {relative}")
+
+    environment = os.environ.copy()
+    environment["GIT_TERMINAL_PROMPT"] = "0"
+    result = subprocess.run(
+        [
+            "git",
+            "-c",
+            "core.safecrlf=false",
+            "-c",
+            "http.followRedirects=false",
+            "-c",
+            "protocol.file.allow=always",
+            "-C",
+            str(repository),
+            "cat-file",
+            "blob",
+            fields[2],
+        ],
+        check=False,
+        capture_output=True,
+        env=environment,
+    )
+    if result.returncode != 0:
+        detail = result.stderr.decode("utf-8", errors="replace").strip().splitlines()
+        summary = detail[-1] if detail else f"exit {result.returncode}"
+        raise StageError(f"Cannot read project commit file {relative}: {summary}")
+    return result.stdout
 
 
 def _cache_git_repository(
@@ -449,21 +717,120 @@ def _cache_git_repository(
     return repository
 
 
-def _archive_member_parts(name: str, strip_components: int = 0) -> tuple[str, ...] | None:
-    if not isinstance(name, str) or not name or "\x00" in name or "\\" in name:
+def _archive_member_parts(
+    name: str,
+    strip_components: int = 0,
+    *,
+    is_directory: bool = False,
+) -> tuple[str, ...] | None:
+    """Return a canonical archive path without normalizing hostile input."""
+
+    if not isinstance(strip_components, int) or strip_components < 0:
+        raise StageError("Archive strip-components must be a non-negative integer")
+    if not isinstance(name, str) or not name:
         raise StageError(f"Unsafe archive member name: {name!r}")
-    while name.startswith("./"):
-        name = name[2:]
-    if not name or name.startswith("/") or WINDOWS_DRIVE_RE.match(name):
+    if any(unicodedata.category(character) == "Cc" for character in name):
+        raise StageError(f"Archive member contains a control character: {name!r}")
+    if unicodedata.normalize("NFC", name) != name:
+        raise StageError(f"Archive member is not NFC-normalized: {name!r}")
+    if "\\" in name or name.startswith("/") or WINDOWS_DRIVE_RE.match(name):
         raise StageError(f"Unsafe archive member name: {name!r}")
-    raw_parts = PurePosixPath(name).parts
-    if any(part in ("", ".", "..") for part in raw_parts):
+
+    candidate = name
+    if is_directory and candidate.endswith("/"):
+        candidate = candidate[:-1]
+    elif not is_directory and candidate.endswith("/"):
+        raise StageError(f"Archive file has a directory path: {name!r}")
+    if not candidate:
+        raise StageError(f"Unsafe archive member name: {name!r}")
+    windows_path = PureWindowsPath(candidate)
+    if windows_path.drive or windows_path.root:
+        raise StageError(f"Archive member has a Windows drive or root: {name!r}")
+
+    # PurePosixPath silently removes empty and dot components, so split the
+    # original spelling before constructing any normalized path object.
+    raw_parts = candidate.split("/")
+    if any(part == ".." for part in raw_parts):
         raise StageError(f"Archive traversal or non-normal path: {name!r}")
+    if any(part in ("", ".") for part in raw_parts):
+        raise StageError(f"Archive traversal or non-normal path: {name!r}")
+    for part in raw_parts:
+        if ":" in part:
+            raise StageError(f"Archive member contains a Windows ADS segment: {name!r}")
+        if part.endswith((".", " ")):
+            raise StageError(f"Archive member contains a Windows-unsafe segment: {part!r}")
+        if part.split(".", 1)[0].casefold() in WINDOWS_RESERVED:
+            raise StageError(f"Archive member contains a reserved Windows name: {part!r}")
+
     if len(raw_parts) <= strip_components:
         return None
     parts = raw_parts[strip_components:]
     _safe_relative("/".join(parts), f"archive member {name!r}")
     return tuple(parts)
+
+
+def _register_archive_member(
+    seen: dict[tuple[str, ...], str],
+    known_ancestors: set[tuple[str, ...]],
+    parts: tuple[str, ...],
+    member_kind: str,
+    name: str,
+) -> bool:
+    """Register a Windows-equivalent path and reject file/tree conflicts."""
+
+    key = tuple(unicodedata.normalize("NFC", part).casefold() for part in parts)
+    previous_kind = seen.get(key)
+    if previous_kind is not None:
+        if previous_kind == "directory" and member_kind == "directory":
+            return False
+        raise StageError(f"Duplicate case-insensitive archive member: {name!r}")
+
+    parents = [key[:index] for index in range(1, len(key))]
+    if any(seen.get(parent) == "file" for parent in parents):
+        raise StageError(f"Archive file/ancestor conflict: {name!r}")
+    if member_kind == "file" and key in known_ancestors:
+        raise StageError(f"Archive file/ancestor conflict: {name!r}")
+
+    seen[key] = member_kind
+    known_ancestors.update(parents)
+    return True
+
+
+def _zip_member_details(
+    member: zipfile.ZipInfo,
+    strip_components: int = 0,
+) -> tuple[str, tuple[str, ...] | None, str, int]:
+    """Validate a ZIP member and return its raw name, path, kind, and mode."""
+
+    raw_name = getattr(member, "orig_filename", member.filename)
+    if raw_name != member.filename:
+        # zipfile truncates filename at NUL but preserves the source spelling
+        # in orig_filename. Any disagreement is therefore ambiguous.
+        raise StageError(f"Unsafe ZIP member original name: {raw_name!r}")
+    if member.flag_bits & 0x41:
+        raise StageError(f"Encrypted archive member is forbidden: {raw_name!r}")
+    if member.external_attr & 0x400:
+        raise StageError(f"Archive reparse-point member is forbidden: {raw_name!r}")
+
+    mode = (member.external_attr >> 16) & 0xFFFF
+    file_type = stat.S_IFMT(mode)
+    if stat.S_ISLNK(mode):
+        raise StageError(f"Archive links are forbidden: {raw_name!r}")
+    if file_type not in (0, stat.S_IFREG, stat.S_IFDIR):
+        raise StageError(f"Archive special member is forbidden: {raw_name!r}")
+
+    is_directory = member.is_dir()
+    if (is_directory and file_type not in (0, stat.S_IFDIR)) or (
+        not is_directory and file_type == stat.S_IFDIR
+    ):
+        raise StageError(f"Archive member type disagrees with its path: {raw_name!r}")
+    member_kind = "directory" if is_directory else "file"
+    parts = _archive_member_parts(
+        raw_name,
+        strip_components,
+        is_directory=is_directory,
+    )
+    return raw_name, parts, member_kind, mode
 
 
 def _target_for_parts(destination: Path, parts: tuple[str, ...]) -> Path:
@@ -479,7 +846,8 @@ def _safe_extract_tar(archive: Path, destination: Path, *, strip_components: int
     if destination.exists():
         raise StageError(f"Refusing to extract over existing path: {destination}")
     destination.mkdir(parents=True)
-    seen: dict[str, str] = {}
+    seen: dict[tuple[str, ...], str] = {}
+    known_ancestors: set[tuple[str, ...]] = set()
     count = 0
     total = 0
     with tarfile.open(archive, mode="r:*") as package:
@@ -491,17 +859,22 @@ def _safe_extract_tar(archive: Path, destination: Path, *, strip_components: int
                 raise StageError(f"Archive links are forbidden: {member.name!r}")
             if not (member.isdir() or member.isfile()):
                 raise StageError(f"Archive special member is forbidden: {member.name!r}")
-            parts = _archive_member_parts(member.name, strip_components)
+            parts = _archive_member_parts(
+                member.name,
+                strip_components,
+                is_directory=member.isdir(),
+            )
             if parts is None:
                 continue
-            folded = "/".join(parts).casefold()
             member_kind = "directory" if member.isdir() else "file"
-            previous_kind = seen.get(folded)
-            if previous_kind is not None:
-                if previous_kind == "directory" and member_kind == "directory":
-                    continue
-                raise StageError(f"Duplicate case-insensitive archive member: {member.name!r}")
-            seen[folded] = member_kind
+            if not _register_archive_member(
+                seen,
+                known_ancestors,
+                parts,
+                member_kind,
+                member.name,
+            ):
+                continue
             target = _target_for_parts(destination, parts)
             if member.isdir():
                 target.mkdir(parents=True, exist_ok=True)
@@ -522,7 +895,8 @@ def _safe_extract_zip(archive: Path, destination: Path, *, strip_components: int
     if destination.exists():
         raise StageError(f"Refusing to extract over existing path: {destination}")
     destination.mkdir(parents=True)
-    seen: dict[str, str] = {}
+    seen: dict[tuple[str, ...], str] = {}
+    known_ancestors: set[tuple[str, ...]] = set()
     count = 0
     total = 0
     with zipfile.ZipFile(archive) as package:
@@ -530,24 +904,20 @@ def _safe_extract_zip(archive: Path, destination: Path, *, strip_components: int
             count += 1
             if count > MAX_ARCHIVE_MEMBERS:
                 raise StageError("Archive has too many members")
-            mode = (member.external_attr >> 16) & 0xFFFF
-            if stat.S_ISLNK(mode):
-                raise StageError(f"Archive links are forbidden: {member.filename!r}")
-            if member.flag_bits & 0x1:
-                raise StageError(f"Encrypted archive member is forbidden: {member.filename!r}")
-            parts = _archive_member_parts(member.filename, strip_components)
+            raw_name, parts, member_kind, mode = _zip_member_details(
+                member,
+                strip_components,
+            )
             if parts is None:
                 continue
-            folded = "/".join(parts).casefold()
-            member_kind = "directory" if member.is_dir() else "file"
-            previous_kind = seen.get(folded)
-            if previous_kind is not None:
-                if previous_kind == "directory" and member_kind == "directory":
-                    continue
-                raise StageError(
-                    f"Duplicate case-insensitive archive member: {member.filename!r}"
-                )
-            seen[folded] = member_kind
+            if not _register_archive_member(
+                seen,
+                known_ancestors,
+                parts,
+                member_kind,
+                raw_name,
+            ):
+                continue
             target = _target_for_parts(destination, parts)
             if member.is_dir():
                 target.mkdir(parents=True, exist_ok=True)
@@ -562,7 +932,8 @@ def _safe_extract_zip(archive: Path, destination: Path, *, strip_components: int
 
 
 def _validate_archive_members(archive: Path) -> None:
-    seen: dict[str, str] = {}
+    seen: dict[tuple[str, ...], str] = {}
+    known_ancestors: set[tuple[str, ...]] = set()
     count = 0
     total = 0
     if zipfile.is_zipfile(archive):
@@ -571,26 +942,16 @@ def _validate_archive_members(archive: Path) -> None:
                 count += 1
                 if count > MAX_ARCHIVE_MEMBERS:
                     raise StageError("Archive has too many members")
-                mode = (member.external_attr >> 16) & 0xFFFF
-                if stat.S_ISLNK(mode):
-                    raise StageError(f"Archive links are forbidden: {member.filename!r}")
-                if member.flag_bits & 0x1:
-                    raise StageError(
-                        f"Encrypted archive member is forbidden: {member.filename!r}"
-                    )
-                parts = _archive_member_parts(member.filename)
+                raw_name, parts, member_kind, _mode = _zip_member_details(member)
                 if parts is None:
                     continue
-                folded = "/".join(parts).casefold()
-                member_kind = "directory" if member.is_dir() else "file"
-                previous_kind = seen.get(folded)
-                if previous_kind is not None:
-                    if previous_kind == "directory" and member_kind == "directory":
-                        continue
-                    raise StageError(
-                        f"Duplicate case-insensitive archive member: {member.filename!r}"
-                    )
-                seen[folded] = member_kind
+                _register_archive_member(
+                    seen,
+                    known_ancestors,
+                    parts,
+                    member_kind,
+                    raw_name,
+                )
                 total += member.file_size
                 if total > MAX_ARCHIVE_UNCOMPRESSED_BYTES:
                     raise StageError("Archive expands beyond the safety limit")
@@ -607,19 +968,20 @@ def _validate_archive_members(archive: Path) -> None:
                     raise StageError(
                         f"Archive special member is forbidden: {member.name!r}"
                     )
-                parts = _archive_member_parts(member.name)
+                parts = _archive_member_parts(
+                    member.name,
+                    is_directory=member.isdir(),
+                )
                 if parts is None:
                     continue
-                folded = "/".join(parts).casefold()
                 member_kind = "directory" if member.isdir() else "file"
-                previous_kind = seen.get(folded)
-                if previous_kind is not None:
-                    if previous_kind == "directory" and member_kind == "directory":
-                        continue
-                    raise StageError(
-                        f"Duplicate case-insensitive archive member: {member.name!r}"
-                    )
-                seen[folded] = member_kind
+                _register_archive_member(
+                    seen,
+                    known_ancestors,
+                    parts,
+                    member_kind,
+                    member.name,
+                )
                 total += member.size
                 if total > MAX_ARCHIVE_UNCOMPRESSED_BYTES:
                     raise StageError("Archive expands beyond the safety limit")
@@ -794,6 +1156,29 @@ def _resolve_submodule_url(parent_url: str, child_url: str) -> str:
     if not joined.casefold().endswith(".git"):
         joined += ".git"
     return urllib.parse.urlunsplit(("https", parent.netloc, joined, "", ""))
+
+
+def _verify_required_gitlinks(
+    component: dict,
+    gitlinks: dict[str, str],
+    modules: dict[str, str],
+) -> None:
+    for expectation in component.get("required_gitlinks", []):
+        path = expectation["path"]
+        actual_commit = gitlinks.get(path)
+        if actual_commit is None:
+            raise StageError(
+                f"Required gitlink is missing from {component['id']}: {path}"
+            )
+        expected_commit = expectation.get("commit")
+        if expected_commit is not None and actual_commit != expected_commit:
+            raise StageError(
+                f"Required gitlink commit drift for {component['id']}:{path}; "
+                f"tree has {actual_commit}, manifest requires {expected_commit}"
+            )
+        actual_url = _resolve_submodule_url(component["url"], modules[path])
+        if _canonical_git_url(actual_url) != _canonical_git_url(expectation["url"]):
+            raise StageError(f"Required gitlink URL drift for {component['id']}:{path}")
 
 
 def _verify_required_paths(component: dict, destination: Path) -> None:
@@ -1018,21 +1403,571 @@ def _scan_cmake_links(source_root: Path, relative_glob: str, rule: dict) -> dict
     return found
 
 
+def _external_lock_url_leaf(value: str) -> str:
+    parts = [
+        urllib.parse.unquote(part)
+        for part in PurePosixPath(urllib.parse.urlsplit(value).path).parts
+        if part not in ("", "/")
+    ]
+    if parts and parts[-1] == "download":
+        parts.pop()
+    return parts[-1] if parts else ""
+
+
+def _external_lock_string(value: object, label: str) -> str:
+    if not isinstance(value, str) or not value or "\x00" in value:
+        raise StageError(f"{label} must be a non-empty string")
+    return value
+
+
+def _external_lock_positive_integer(value: object, label: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        raise StageError(f"{label} must be a positive integer")
+    return value
+
+
+def _external_lock_timestamp(value: object, label: str) -> str:
+    if not isinstance(value, str) or not UTC_TIMESTAMP_RE.fullmatch(value):
+        raise StageError(f"{label} must be a UTC timestamp")
+    return value
+
+
+def _external_lock_sha1(value: object, label: str) -> str:
+    if not isinstance(value, str) or not SHA1_RE.fullmatch(value):
+        raise StageError(f"{label} must be a full lowercase SHA-1")
+    return value
+
+
+def _external_lock_sha256(value: object, label: str) -> str:
+    if not isinstance(value, str) or not SHA256_RE.fullmatch(value):
+        raise StageError(f"{label} must be a lowercase SHA-256")
+    return value
+
+
+def _github_repository_parts(value: object, label: str) -> tuple[str, str, str]:
+    url = _validate_https_url(value, label)
+    parsed = urllib.parse.urlsplit(url)
+    parts = [part for part in PurePosixPath(parsed.path).parts if part not in ("", "/")]
+    if (
+        parsed.hostname.casefold() != "github.com"
+        or parsed.query
+        or len(parts) != 2
+        or parts[1].casefold().endswith(".git")
+    ):
+        raise StageError(f"{label} must identify one canonical GitHub repository")
+    return url, parts[0], parts[1]
+
+
+def _validate_github_release_asset_provenance(
+    variable: str,
+    entry: dict,
+    provenance: dict,
+    *,
+    legacy: bool,
+) -> None:
+    fields = {
+        "asset_name",
+        "github_asset_id",
+        "github_release_id",
+        "github_release_tag",
+        "asset_created_at",
+        "asset_updated_at",
+        "release_repository_url",
+        "release_api_url",
+        "asset_api_url",
+        "resolved_download_url",
+        "sha256_method",
+    }
+    if not legacy:
+        fields.add("provenance_kind")
+    _require_exact_keys(provenance, fields, f"external lock {variable} provenance")
+    if not legacy and provenance["provenance_kind"] != "github-release-asset":
+        raise StageError(f"External lock {variable} has the wrong provenance kind")
+
+    asset_id = _external_lock_positive_integer(
+        provenance["github_asset_id"], f"external lock {variable} github_asset_id"
+    )
+    release_id = _external_lock_positive_integer(
+        provenance["github_release_id"], f"external lock {variable} github_release_id"
+    )
+    for field in ("asset_created_at", "asset_updated_at"):
+        _external_lock_timestamp(
+            provenance[field], f"external lock {variable} provenance {field}"
+        )
+    asset_name = _external_lock_string(
+        provenance["asset_name"], f"external lock {variable} asset_name"
+    )
+    tag = _external_lock_string(
+        provenance["github_release_tag"], f"external lock {variable} release tag"
+    )
+    repository_url, owner, repository = _github_repository_parts(
+        provenance["release_repository_url"],
+        f"external lock {variable} release_repository_url",
+    )
+    expected_api_prefix = f"https://api.github.com/repos/{owner}/{repository}/releases"
+    if provenance["release_api_url"] != f"{expected_api_prefix}/{release_id}":
+        raise StageError(f"External lock {variable} release API identity does not match")
+    if provenance["asset_api_url"] != f"{expected_api_prefix}/assets/{asset_id}":
+        raise StageError(f"External lock {variable} asset API identity does not match")
+    expected_download = f"{repository_url}/releases/download/{tag}/{asset_name}"
+    if legacy:
+        if _external_lock_url_leaf(provenance["resolved_download_url"]) != asset_name:
+            raise StageError(
+                f"External lock {variable} release download asset name does not match"
+            )
+    else:
+        # MeshLab's exact CMake input may retain a pre-rename GitHub repository
+        # path (for example embree/embree or oneapi-src/oneTBB).  Bind that
+        # source URL's release/tag/asset shape while the API IDs and canonical
+        # resolved_download_url bind the current repository identity.
+        source_download = urllib.parse.urlsplit(entry["url"])
+        source_parts = [
+            urllib.parse.unquote(part)
+            for part in PurePosixPath(source_download.path).parts
+            if part not in ("", "/")
+        ]
+        if (
+            provenance["resolved_download_url"] != expected_download
+            or source_download.hostname.casefold() != "github.com"
+            or source_download.query
+            or len(source_parts) != 6
+            or source_parts[2:5] != ["releases", "download", tag]
+            or source_parts[5] != asset_name
+        ):
+            raise StageError(
+                f"External lock {variable} release download identity does not match"
+            )
+    for field in ("release_api_url", "asset_api_url", "resolved_download_url"):
+        _validate_https_url(
+            provenance[field], f"external lock {variable} provenance {field}"
+        )
+    if provenance["sha256_method"] != "downloaded-official-github-release-asset":
+        raise StageError(f"External lock {variable} has an unapproved SHA-256 method")
+    if _external_lock_url_leaf(entry["url"]) != asset_name:
+        raise StageError(f"External lock {variable} asset name does not match its source URL")
+
+
+def _validate_github_tag_provenance(
+    variable: str, entry: dict, provenance: dict
+) -> None:
+    common_fields = {
+        "provenance_kind",
+        "repository_url",
+        "tag",
+        "ref_api_url",
+        "ref_object_type",
+        "ref_object_sha",
+        "peeled_commit_sha",
+        "peeled_commit_api_url",
+        "resolved_download_url",
+        "sha256_method",
+    }
+    object_type = provenance.get("ref_object_type")
+    expected_fields = set(common_fields)
+    if object_type == "tag":
+        expected_fields.update(("annotated_tag_sha", "tag_signature_verified"))
+    elif object_type != "commit":
+        raise StageError(f"External lock {variable} has an invalid GitHub ref object type")
+    _require_exact_keys(
+        provenance, expected_fields, f"external lock {variable} provenance"
+    )
+    if provenance["provenance_kind"] != "github-tag-source-archive":
+        raise StageError(f"External lock {variable} has the wrong provenance kind")
+
+    repository_url, owner, repository = _github_repository_parts(
+        provenance["repository_url"], f"external lock {variable} repository_url"
+    )
+    tag = _external_lock_string(provenance["tag"], f"external lock {variable} tag")
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", tag):
+        raise StageError(f"External lock {variable} has an unsafe GitHub tag")
+    ref_sha = _external_lock_sha1(
+        provenance["ref_object_sha"], f"external lock {variable} ref_object_sha"
+    )
+    commit = _external_lock_sha1(
+        provenance["peeled_commit_sha"], f"external lock {variable} peeled_commit_sha"
+    )
+    expected_ref_api = f"https://api.github.com/repos/{owner}/{repository}/git/refs/tags/{tag}"
+    expected_commit_api = (
+        f"https://api.github.com/repos/{owner}/{repository}/git/commits/{commit}"
+    )
+    expected_download = f"{repository_url}/archive/refs/tags/{tag}.zip"
+    if provenance["ref_api_url"] != expected_ref_api:
+        raise StageError(f"External lock {variable} tag ref API identity does not match")
+    if provenance["peeled_commit_api_url"] != expected_commit_api:
+        raise StageError(f"External lock {variable} peeled commit identity does not match")
+    if provenance["resolved_download_url"] != expected_download or entry["url"] != expected_download:
+        raise StageError(f"External lock {variable} tag archive URL identity does not match")
+    if object_type == "commit":
+        if ref_sha != commit:
+            raise StageError(f"External lock {variable} direct tag does not bind its commit")
+    else:
+        if provenance["annotated_tag_sha"] != ref_sha or not isinstance(
+            provenance["tag_signature_verified"], bool
+        ):
+            raise StageError(f"External lock {variable} annotated tag identity is invalid")
+    if provenance["sha256_method"] != "downloaded-github-tag-source-archive":
+        raise StageError(f"External lock {variable} has an unapproved SHA-256 method")
+
+
+def _validate_official_checksum_provenance(
+    variable: str, entry: dict, provenance: dict
+) -> None:
+    _require_exact_keys(
+        provenance,
+        {
+            "provenance_kind",
+            "release_repository_url",
+            "checksum_url",
+            "release_file",
+            "source_commit",
+            "created_at",
+            "resolved_download_url",
+            "official_sha256",
+            "sha256_method",
+        },
+        f"external lock {variable} provenance",
+    )
+    release_url = _validate_https_url(
+        provenance["release_repository_url"],
+        f"external lock {variable} release_repository_url",
+    )
+    checksum_url = _validate_https_url(
+        provenance["checksum_url"], f"external lock {variable} checksum_url"
+    )
+    if (
+        provenance["provenance_kind"] != "official-release-checksum"
+        or provenance["sha256_method"]
+        != "downloaded-official-release-archive-verified-by-official-sha256"
+        or provenance["resolved_download_url"] != entry["url"]
+        or provenance["official_sha256"] != entry["sha256"]
+    ):
+        raise StageError(f"External lock {variable} official checksum binding is invalid")
+    _validate_https_url(
+        provenance["resolved_download_url"],
+        f"external lock {variable} resolved_download_url",
+    )
+    if urllib.parse.urlsplit(release_url).hostname.casefold() != urllib.parse.urlsplit(
+        checksum_url
+    ).hostname.casefold() or urllib.parse.urlsplit(entry["url"]).hostname.casefold() != (
+        urllib.parse.urlsplit(release_url).hostname.casefold()
+    ):
+        raise StageError(f"External lock {variable} checksum host does not match its release")
+    release_file = _external_lock_string(
+        provenance["release_file"], f"external lock {variable} release_file"
+    )
+    if release_file != _external_lock_url_leaf(entry["url"]):
+        raise StageError(f"External lock {variable} release filename does not match")
+    _external_lock_sha1(
+        provenance["source_commit"], f"external lock {variable} source_commit"
+    )
+    _external_lock_timestamp(
+        provenance["created_at"], f"external lock {variable} created_at"
+    )
+
+
+def _validate_official_project_file_provenance(
+    variable: str, entry: dict, provenance: dict
+) -> None:
+    _require_exact_keys(
+        provenance,
+        {
+            "provenance_kind",
+            "project_url",
+            "file_page_url",
+            "asset_name",
+            "published_at",
+            "resolved_download_url",
+            "official_md5",
+            "sha256_method",
+        },
+        f"external lock {variable} provenance",
+    )
+    project_url = _validate_https_url(
+        provenance["project_url"], f"external lock {variable} project_url"
+    )
+    file_page_url = _validate_https_url(
+        provenance["file_page_url"], f"external lock {variable} file_page_url"
+    )
+    if (
+        urllib.parse.urlsplit(project_url).hostname.casefold() != "sourceforge.net"
+        or urllib.parse.urlsplit(file_page_url).hostname.casefold() != "sourceforge.net"
+        or urllib.parse.urlsplit(entry["url"]).hostname.casefold() != "sourceforge.net"
+        or provenance["provenance_kind"] != "official-project-file-release"
+        or provenance["sha256_method"]
+        != "downloaded-official-sourceforge-release-file-verified-by-upstream-cmake-md5"
+        or provenance["resolved_download_url"] != entry["url"]
+        or provenance["official_md5"] != entry["upstream_md5"]
+    ):
+        raise StageError(f"External lock {variable} official project-file binding is invalid")
+    _validate_https_url(
+        provenance["resolved_download_url"],
+        f"external lock {variable} resolved_download_url",
+    )
+    if provenance["asset_name"] != _external_lock_url_leaf(entry["url"]):
+        raise StageError(f"External lock {variable} project asset name does not match")
+    _external_lock_timestamp(
+        provenance["published_at"], f"external lock {variable} published_at"
+    )
+
+
+def _validate_official_mirror_provenance(
+    variable: str, entry: dict, provenance: dict
+) -> None:
+    expected_fields = {
+        "provenance_kind",
+        "official_reference_url",
+        "official_reference_last_modified",
+        "official_reference_etag",
+        "official_reference_sha256",
+        "official_reference_md5",
+        "official_reference_byte_size",
+        "resolved_download_url",
+        "sha256_method",
+    }
+    if provenance.get("sha256_method") == (
+        "downloaded-meshlab-mirror-byte-identical-to-apache-archive"
+    ):
+        expected_fields.add("cmake_primary_url_status")
+    _require_exact_keys(
+        provenance,
+        expected_fields,
+        f"external lock {variable} provenance",
+    )
+    reference_url = _validate_https_url(
+        provenance["official_reference_url"],
+        f"external lock {variable} official_reference_url",
+    )
+    resolved_url = _validate_https_url(
+        provenance["resolved_download_url"],
+        f"external lock {variable} resolved_download_url",
+    )
+    method_hosts = {
+        "downloaded-meshlab-mirror-byte-identical-to-google-code-archive": (
+            "storage.googleapis.com"
+        ),
+        "downloaded-meshlab-mirror-byte-identical-to-apache-archive": (
+            "archive.apache.org"
+        ),
+    }
+    reference_host = method_hosts.get(provenance["sha256_method"])
+    if (
+        provenance["provenance_kind"] != "official-archive-byte-equivalence"
+        or reference_host is None
+        or urllib.parse.urlsplit(reference_url).hostname.casefold() != reference_host
+        or urllib.parse.urlsplit(resolved_url).hostname.casefold()
+        not in ("meshlab.net", "www.meshlab.net")
+        or resolved_url != entry["url"]
+        or _external_lock_url_leaf(reference_url) != _external_lock_url_leaf(resolved_url)
+        or provenance["official_reference_sha256"] != entry["sha256"]
+        or provenance["official_reference_md5"] != entry["upstream_md5"]
+        or provenance["official_reference_byte_size"] != entry["byte_size"]
+        or (
+            reference_host == "archive.apache.org"
+            and provenance["cmake_primary_url_status"] != 404
+        )
+    ):
+        raise StageError(f"External lock {variable} official mirror equivalence is invalid")
+    _external_lock_timestamp(
+        provenance["official_reference_last_modified"],
+        f"external lock {variable} official_reference_last_modified",
+    )
+    _external_lock_string(
+        provenance["official_reference_etag"],
+        f"external lock {variable} official_reference_etag",
+    )
+
+
+def _validate_tinygltf_historical_provenance(
+    variable: str, entry: dict, provenance: dict
+) -> None:
+    _require_exact_keys(
+        provenance,
+        {
+            "provenance_kind",
+            "repository_url",
+            "tag",
+            "ref_api_url",
+            "ref_object_type",
+            "ref_object_sha",
+            "peeled_commit_sha",
+            "peeled_commit_api_url",
+            "current_github_tag_archive_sha256",
+            "current_github_tag_archive_md5",
+            "common_file_count",
+            "common_file_content_mismatches",
+            "meshlab_only_paths",
+            "resolved_download_url",
+            "sha256_method",
+            "tag_tree_contains_meshlab_only_file",
+            "meshlab_only_file_sha256",
+            "meshlab_only_file_authenticode_status",
+            "security_review_required",
+            "known_difference",
+            "meshlab_only_file_execution_policy",
+            "release_review_status",
+        },
+        f"external lock {variable} provenance",
+    )
+    ref_sha = _external_lock_sha1(
+        provenance["ref_object_sha"], f"external lock {variable} ref_object_sha"
+    )
+    commit = _external_lock_sha1(
+        provenance["peeled_commit_sha"], f"external lock {variable} peeled_commit_sha"
+    )
+    current_sha256 = _external_lock_sha256(
+        provenance["current_github_tag_archive_sha256"],
+        f"external lock {variable} current GitHub archive SHA-256",
+    )
+    current_md5 = provenance["current_github_tag_archive_md5"]
+    if not isinstance(current_md5, str) or not MD5_RE.fullmatch(current_md5):
+        raise StageError(f"External lock {variable} current GitHub archive MD5 is invalid")
+    if (
+        variable != "TINYGLTF_LINK"
+        or provenance["provenance_kind"] != "meshlab-historical-tag-archive"
+        or provenance["repository_url"] != "https://github.com/syoyo/tinygltf"
+        or provenance["tag"] != "v2.6.3"
+        or provenance["ref_object_type"] != "tag"
+        or provenance["ref_api_url"]
+        != "https://api.github.com/repos/syoyo/tinygltf/git/refs/tags/v2.6.3"
+        or provenance["peeled_commit_api_url"]
+        != f"https://api.github.com/repos/syoyo/tinygltf/git/commits/{commit}"
+        or provenance["resolved_download_url"] != entry["url"]
+        or urllib.parse.urlsplit(entry["url"]).hostname.casefold()
+        not in ("meshlab.net", "www.meshlab.net")
+        or current_sha256 == entry["sha256"]
+        or current_md5 == entry["upstream_md5"]
+        or provenance["common_file_count"] != 1338
+        or provenance["common_file_content_mismatches"] != 0
+        or provenance["meshlab_only_paths"] != ["tools/windows/premake5.exe"]
+        or provenance["tag_tree_contains_meshlab_only_file"] is not False
+        or provenance["meshlab_only_file_authenticode_status"] != "NotSigned"
+        or provenance["security_review_required"] is not True
+        or provenance["known_difference"]
+        != "meshlab-mirror-adds-one-unsigned-file-not-in-tag-tree"
+        or provenance["meshlab_only_file_execution_policy"] != "preserve-do-not-execute"
+        or provenance["release_review_status"] != "required-before-binary-release"
+        or provenance["sha256_method"]
+        != "downloaded-meshlab-historical-archive-verified-by-upstream-cmake-md5-and-tag-tree-comparison"
+        or ref_sha == commit
+    ):
+        raise StageError(f"External lock {variable} historical mirror evidence is invalid")
+    _external_lock_sha256(
+        provenance["meshlab_only_file_sha256"],
+        f"external lock {variable} MeshLab-only member SHA-256",
+    )
+
+
+def _validate_external_lock_v2_provenance(
+    variable: str, entry: dict, provenance: object
+) -> None:
+    if not isinstance(provenance, dict):
+        raise StageError(f"External lock {variable} lacks release provenance")
+    kind = provenance.get("provenance_kind")
+    if kind not in EXTERNAL_ARCHIVE_PROVENANCE_KINDS:
+        raise StageError(f"External lock {variable} has an unsupported provenance kind")
+    validators = {
+        "github-release-asset": _validate_github_release_asset_provenance,
+        "github-tag-source-archive": _validate_github_tag_provenance,
+        "official-release-checksum": _validate_official_checksum_provenance,
+        "official-project-file-release": _validate_official_project_file_provenance,
+        "official-archive-byte-equivalence": _validate_official_mirror_provenance,
+        "meshlab-historical-tag-archive": _validate_tinygltf_historical_provenance,
+    }
+    validator = validators[kind]
+    if kind == "github-release-asset":
+        validator(variable, entry, provenance, legacy=False)
+    else:
+        validator(variable, entry, provenance)
+
+
+def _verify_declared_nonexecuted_archive_member(path: Path, entry: dict) -> None:
+    provenance = entry.get("provenance")
+    if not isinstance(provenance, dict) or provenance.get("provenance_kind") != (
+        "meshlab-historical-tag-archive"
+    ):
+        return
+    relative = provenance["meshlab_only_paths"][0]
+    expected_sha256 = provenance["meshlab_only_file_sha256"]
+    try:
+        with zipfile.ZipFile(path, "r") as package:
+            matches = [
+                item
+                for item in package.infolist()
+                if not item.is_dir()
+                and (item.filename == relative or item.filename.endswith(f"/{relative}"))
+            ]
+            if len(matches) != 1:
+                raise StageError(
+                    "TinyGLTF historical archive does not contain one exact declared "
+                    "non-executed member"
+                )
+            digest = hashlib.sha256()
+            actual_size = 0
+            with package.open(matches[0], "r") as source:
+                for block in iter(lambda: source.read(1024 * 1024), b""):
+                    digest.update(block)
+                    actual_size += len(block)
+            if actual_size != matches[0].file_size or digest.hexdigest() != expected_sha256:
+                raise StageError(
+                    "TinyGLTF historical archive non-executed member does not match its lock"
+                )
+    except StageError:
+        raise
+    except (OSError, KeyError, RuntimeError, zipfile.BadZipFile) as exc:
+        raise StageError(
+            f"Cannot verify TinyGLTF historical archive non-executed member: {exc}"
+        ) from exc
+
+
 def _load_external_lock(
     path: Path | None,
     expected_commit: str,
     *,
     require_release_provenance: bool = False,
+    expected_exclusions: dict[str, str] | None = None,
 ) -> dict[str, dict]:
     if path is None:
         return {}
     lock = _json_load(path)
-    if lock.get("schema_version") != 1 or lock.get("meshlab_commit") != expected_commit:
+    schema_version = lock.get("schema_version")
+    if schema_version not in (1, 2) or lock.get("meshlab_commit") != expected_commit:
         raise StageError("External archive lock schema or MeshLab commit does not match")
-    if require_release_provenance and lock.get("lock_status") != (
-        "verified-official-release-assets"
-    ):
-        raise StageError("Production external archive lock is not verified")
+    if schema_version == 1:
+        if require_release_provenance and lock.get("lock_status") != (
+            EXTERNAL_ARCHIVE_LOCK_V1_STATUS
+        ):
+            raise StageError("Production external archive lock is not verified")
+    else:
+        _require_exact_keys(
+            lock,
+            {
+                "schema_version",
+                "lock_status",
+                "meshlab_commit",
+                "platform",
+                "platform_exclusions",
+                "archives",
+            },
+            "external archive lock v2",
+        )
+        if lock["lock_status"] != EXTERNAL_ARCHIVE_LOCK_V2_STATUS:
+            raise StageError("Production external archive lock v2 is not verified")
+        if lock["platform"] != "windows":
+            raise StageError("External archive lock v2 targets the wrong platform")
+        exclusions = lock["platform_exclusions"]
+        if not isinstance(exclusions, dict) or not all(
+            isinstance(name, str)
+            and re.fullmatch(r"[A-Z][A-Z0-9_]*_LINK", name)
+            and isinstance(reason, str)
+            and reason
+            for name, reason in exclusions.items()
+        ):
+            raise StageError("External archive lock v2 has invalid platform exclusions")
+        if require_release_provenance and expected_exclusions is None:
+            raise StageError("External archive lock v2 needs expected platform exclusions")
+        if expected_exclusions is not None and exclusions != expected_exclusions:
+            raise StageError("External archive lock v2 platform exclusions do not match")
+
     entries = lock.get("archives")
     if not isinstance(entries, list):
         raise StageError("External archive lock needs an archives array")
@@ -1043,6 +1978,8 @@ def _load_external_lock(
         variable = entry["variable"]
         if variable in result:
             raise StageError(f"Duplicate external lock variable: {variable}")
+        if not re.fullmatch(r"[A-Z][A-Z0-9_]*_LINK", variable):
+            raise StageError(f"Invalid external lock variable: {variable}")
         _validate_https_url(entry.get("url"), f"external lock {variable} URL")
         digest = entry.get("sha256")
         if not isinstance(digest, str) or not SHA256_RE.fullmatch(digest):
@@ -1053,54 +1990,51 @@ def _load_external_lock(
         ):
             raise StageError(f"External lock {variable} has invalid byte_size")
         provenance = entry.get("provenance")
-        if require_release_provenance:
+        if schema_version == 1 and require_release_provenance:
             if byte_size is None or not isinstance(provenance, dict):
                 raise StageError(
                     f"External lock {variable} lacks official release provenance"
                 )
-            for field in ("github_asset_id", "github_release_id"):
-                value = provenance.get(field)
-                if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
-                    raise StageError(
-                        f"External lock {variable} has invalid provenance {field}"
-                    )
-            for field in ("asset_created_at", "asset_updated_at"):
-                value = provenance.get(field)
-                if not isinstance(value, str) or not UTC_TIMESTAMP_RE.fullmatch(value):
-                    raise StageError(
-                        f"External lock {variable} has invalid provenance {field}"
-                    )
-            for field in (
-                "release_repository_url",
-                "release_api_url",
-                "asset_api_url",
-                "resolved_download_url",
-            ):
-                _validate_https_url(
-                    provenance.get(field), f"external lock {variable} provenance {field}"
-                )
-            for field in ("asset_name", "github_release_tag"):
-                if not isinstance(provenance.get(field), str) or not provenance[field]:
-                    raise StageError(
-                        f"External lock {variable} has invalid provenance {field}"
-                    )
-            if provenance.get("sha256_method") != (
-                "downloaded-official-github-release-asset"
-            ):
+            _validate_github_release_asset_provenance(
+                variable, entry, provenance, legacy=True
+            )
+        elif schema_version == 2:
+            required = {
+                "variable",
+                "url",
+                "sha256",
+                "byte_size",
+                "upstream_md5",
+                "cmake_path",
+                "provenance",
+            }
+            allowed = required | {"fixture_file"}
+            actual = set(entry)
+            if not required.issubset(actual) or not actual.issubset(allowed):
                 raise StageError(
-                    f"External lock {variable} has an unapproved SHA-256 method"
+                    f"External lock {variable} fields do not match schema v2; "
+                    f"missing={sorted(required - actual)}, unknown={sorted(actual - allowed)}"
                 )
-            source_name = Path(urllib.parse.urlsplit(entry["url"]).path).name
-            resolved_name = Path(
-                urllib.parse.urlsplit(provenance["resolved_download_url"]).path
-            ).name
-            if source_name != provenance["asset_name"] or resolved_name != source_name:
-                raise StageError(
-                    f"External lock {variable} asset name does not match its URLs"
-                )
+            upstream_md5 = entry["upstream_md5"]
+            if upstream_md5 is not None and (
+                not isinstance(upstream_md5, str) or not MD5_RE.fullmatch(upstream_md5)
+            ):
+                raise StageError(f"External lock {variable} has invalid upstream_md5")
+            cmake_path = _safe_relative(
+                entry["cmake_path"], f"external lock {variable} cmake_path"
+            )
+            if not cmake_path.startswith("src/external/") or not cmake_path.endswith(".cmake"):
+                raise StageError(f"External lock {variable} has an invalid CMake source path")
+            if byte_size is None:
+                raise StageError(f"External lock {variable} v2 requires byte_size")
+            _validate_external_lock_v2_provenance(variable, entry, provenance)
         fixture_file = entry.get("fixture_file")
         if fixture_file is not None:
             _safe_relative(fixture_file, f"external lock {variable} fixture_file")
+            if schema_version == 2 and require_release_provenance:
+                raise StageError(
+                    f"Production external lock {variable} cannot use a fixture file"
+                )
         result[variable] = entry
     return result
 
@@ -1112,6 +2046,11 @@ def _require_exact_keys(value: dict, expected: set[str], label: str) -> None:
             f"{label} fields do not match the schema; missing={sorted(expected - actual)}, "
             f"unknown={sorted(actual - expected)}"
         )
+
+
+def _require_exact_value(actual: object, expected: object, label: str) -> None:
+    if type(actual) is not type(expected) or actual != expected:
+        raise StageError(f"{label} differs from the controlled rebuild recipe")
 
 
 def _safe_leaf(value: object, label: str) -> str:
@@ -1127,7 +2066,7 @@ def _verify_bound_file(specification: dict, path: Path, label: str) -> dict:
     digest = specification.get("sha256")
     if not isinstance(digest, str) or not SHA256_RE.fullmatch(digest):
         raise StageError(f"{label}.sha256 must be a lowercase SHA-256")
-    if not path.is_file() or path.is_symlink():
+    if not path.is_file() or _is_link_like(path):
         raise StageError(f"{label} input is missing or linked")
     if path.name != filename:
         raise StageError(f"{label} filename does not match the rebuild lock")
@@ -1137,11 +2076,403 @@ def _verify_bound_file(specification: dict, path: Path, label: str) -> dict:
     return {"filename": filename, "sha256": actual}
 
 
-def _hashed_python_requirements(path: Path) -> dict[str, tuple[str, set[str]]]:
+def _reject_private_absolute_paths(payload: bytes, label: str) -> None:
+    if any(pattern.search(payload) for pattern in PRIVATE_PATH_PATTERNS):
+        raise StageError(f"{label} contains a private absolute user path")
+
+
+def _parse_dotnet_utc_timestamp(value: object, label: str) -> datetime:
+    if not isinstance(value, str) or not re.fullmatch(
+        r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]{1,7})?Z",
+        value,
+    ):
+        raise StageError(f"{label} must be an exact UTC timestamp")
+    try:
+        return datetime.fromisoformat(value[:-1] + "+00:00")
+    except ValueError as exc:
+        raise StageError(f"{label} is not a valid UTC timestamp") from exc
+
+
+def _validate_windows_executable_path(value: object, filename: str, label: str) -> None:
+    if not isinstance(value, str) or not value or "\x00" in value:
+        raise StageError(f"{label} must be an absolute Windows executable path")
+    path = PureWindowsPath(value)
+    if (
+        not path.is_absolute()
+        or path.name.casefold() != filename.casefold()
+        or any(part in ("", ".", "..") for part in path.parts)
+    ):
+        raise StageError(f"{label} must be an absolute path to {filename}")
+    _reject_private_absolute_paths(value.encode("utf-8"), label)
+
+
+def _verify_pytetwild_audit_logs(
+    directory: Path,
+    specifications: object,
+) -> tuple[dict[str, dict], list[tuple[Path, str]]]:
+    _assert_plain_directory(directory, "PyTetWild audit-log directory")
+    if not isinstance(specifications, dict):
+        raise StageError("PyTetWild attestation audit_logs must be an object")
+    _require_exact_keys(
+        specifications,
+        set(PYTETWILD_AUDIT_LOG_FILES),
+        "PyTetWild attestation audit_logs",
+    )
+    try:
+        entries = list(directory.iterdir())
+    except OSError as exc:
+        raise StageError(f"Cannot enumerate PyTetWild audit logs: {exc}") from exc
+    actual_names = {entry.name for entry in entries}
+    expected_names = set(PYTETWILD_AUDIT_LOG_FILES.values())
+    if len(entries) != len(actual_names) or actual_names != expected_names:
+        raise StageError(
+            "PyTetWild audit-log directory must contain exactly the eight bound logs; "
+            f"missing={sorted(expected_names - actual_names)}, "
+            f"unknown={sorted(actual_names - expected_names)}"
+        )
+
+    evidence: dict[str, dict] = {}
+    files: list[tuple[Path, str]] = []
+    for key, expected_filename in PYTETWILD_AUDIT_LOG_FILES.items():
+        specification = specifications[key]
+        if not isinstance(specification, dict):
+            raise StageError(f"PyTetWild audit log {key} evidence must be an object")
+        _require_exact_keys(
+            specification,
+            {"filename", "sha256"},
+            f"PyTetWild audit log {key} evidence",
+        )
+        if specification.get("filename") != expected_filename:
+            raise StageError(f"PyTetWild audit log {key} has an unexpected filename")
+        path = directory / expected_filename
+        if not path.is_file() or _is_link_like(path):
+            raise StageError(f"PyTetWild audit log {key} input is missing or linked")
+        try:
+            size = path.stat().st_size
+        except OSError as exc:
+            raise StageError(f"Cannot stat PyTetWild audit log {key}: {exc}") from exc
+        if size <= 0 or size > PYTETWILD_MAX_AUDIT_LOG_BYTES:
+            raise StageError(f"PyTetWild audit log {key} has an invalid byte size")
+        item = _verify_bound_file(specification, path, f"PyTetWild audit log {key}")
+        try:
+            payload = path.read_bytes()
+        except OSError as exc:
+            raise StageError(f"Cannot read PyTetWild audit log {key}: {exc}") from exc
+        if (
+            len(payload) != size
+            or hashlib.sha256(payload).hexdigest() != item["sha256"]
+        ):
+            raise StageError(f"PyTetWild audit log {key} changed during verification")
+        if payload.startswith(b"\xef\xbb\xbf"):
+            raise StageError(f"PyTetWild audit log {key} must not contain a UTF-8 BOM")
+        if b"\x00" in payload:
+            raise StageError(f"PyTetWild audit log {key} contains a NUL byte")
+        _reject_private_absolute_paths(payload, f"PyTetWild audit log {key}")
+        try:
+            text = payload.decode("utf-8", errors="strict")
+        except UnicodeError as exc:
+            raise StageError(f"PyTetWild audit log {key} is not strict UTF-8") from exc
+        exit_lines = [line for line in text.splitlines() if line.startswith("exit_code=")]
+        if exit_lines != ["exit_code=0"]:
+            raise StageError(f"PyTetWild audit log {key} lacks exact exit_code=0 evidence")
+        evidence[key] = item
+        files.append(
+            (path, f"build-evidence/pytetwild/logs/{expected_filename}")
+        )
+    return evidence, files
+
+
+def _verify_pytetwild_attestation_binding(
+    path: Path,
+    bound_evidence: dict[str, dict],
+    wheel_specification: dict,
+    wheel_evidence: dict,
+    raw_wheel_path: Path,
+    audit_log_directory: Path,
+    expected_sources: dict[str, object],
+    lock_environment: dict[str, str],
+) -> tuple[dict, dict[str, dict], list[tuple[Path, str]]]:
+    try:
+        attestation_payload = path.read_bytes()
+    except OSError as exc:
+        raise StageError(f"Cannot read PyTetWild build attestation: {exc}") from exc
+    _reject_private_absolute_paths(
+        attestation_payload,
+        "PyTetWild build attestation",
+    )
+    attestation = _json_load(path)
+    _require_exact_keys(
+        attestation,
+        {
+            "schema_version",
+            "status",
+            "scope",
+            "started_utc",
+            "finished_utc",
+            "network_policy",
+            "sources",
+            "environment",
+            "inputs",
+            "output",
+        },
+        "PyTetWild build attestation",
+    )
+    for field, expected in {
+        "schema_version": 1,
+        "status": "verified-controlled-rebuild",
+        "scope": "prospective-rebuild-only",
+    }.items():
+        _require_exact_value(
+            attestation[field],
+            expected,
+            f"PyTetWild build attestation {field}",
+        )
+    started = _parse_dotnet_utc_timestamp(
+        attestation["started_utc"],
+        "PyTetWild build attestation started_utc",
+    )
+    finished = _parse_dotnet_utc_timestamp(
+        attestation["finished_utc"],
+        "PyTetWild build attestation finished_utc",
+    )
+    if finished < started:
+        raise StageError("PyTetWild build attestation timestamps are out of order")
+
+    network_policy = attestation["network_policy"]
+    if not isinstance(network_policy, dict):
+        raise StageError("PyTetWild build attestation network_policy must be an object")
+    expected_network_policy = {
+        "operator_confirmed_os_level_isolation": True,
+        "os_level_enforcement_by_script": False,
+        "script_enforcement_scope": "prebuild-probes-and-child-process-guards-only",
+        "pip_no_index": True,
+        "fetchcontent_fully_disconnected": True,
+        "fetchcontent_try_find_package_mode": "NEVER",
+        "git_https_rewritten_to_offline_invalid": True,
+        "process_proxies_rejected_at_loopback_port_9": True,
+        "prebuild_direct_connect_probes": "all-unreachable",
+        "probe_targets": [
+            "github.com:443",
+            "pypi.org:443",
+            "files.pythonhosted.org:443",
+            "conda.anaconda.org:443",
+        ],
+    }
+    _require_exact_keys(
+        network_policy,
+        set(expected_network_policy),
+        "PyTetWild build attestation network_policy",
+    )
+    for field, expected in expected_network_policy.items():
+        _require_exact_value(
+            network_policy[field],
+            expected,
+            f"PyTetWild build attestation network_policy.{field}",
+        )
+
+    inputs = attestation.get("inputs")
+    if not isinstance(inputs, dict):
+        raise StageError("PyTetWild build attestation inputs must be an object")
+    expected_inputs = {
+        "build_recipe_sha256": bound_evidence["build_recipe"]["sha256"],
+        "build_requirements_lock_sha256": bound_evidence["build_requirements_lock"][
+            "sha256"
+        ],
+        "source_patch_sha256": bound_evidence["source_patch"]["sha256"],
+        "python_installer_sha256": "67b5635e80ea51072b87941312d00ec8927c4db9ba18938f7ad2d27b328b95fb",
+        "portable_git_sha256": "5aa8a20f6e9abb2c755f0e73c91c687701a46b309ad84a0ca6509380fa4ae290",
+        "visual_studio_bootstrapper_sha256": "236367b68ba9a51708263ab10a1c85546cc4a8eca78b365168811d19c4fb2f29",
+        "visual_studio_catalog_sha256": "3891c3018a07338b3880cbb28088bb22ef7762eb9206523655b2e3972b9d527e",
+        "visual_studio_channel_manifest_sha256": "4c81e902fb7fe2acea779b828e6dc548fe0bbb693df50eda0224263c16686bdd",
+        "visual_studio_layout_sha256": "9707247b5e1c5ffdbd2ec97889db8e16ad97361840427a846e21f697c28ed494",
+        "visual_studio_installer_opc_sha256": "e2c0a268ec9b678169ed5ff9c0162ea135d8868c27e7ac67a754b09d16841b71",
+        "visual_studio_layout_file_count": 714,
+        "visual_studio_layout_total_bytes": 2651377645,
+        "visual_studio_layout_tree_sha256": "2b6a89bb69aa7de013fc055828258a3a91c7c333f0c6be831a750990922fed3a",
+        "microsoft_visual_studio_layout_verifier_exit_code": 0,
+    }
+    _require_exact_keys(
+        inputs,
+        set(expected_inputs) | {"source_archives"},
+        "PyTetWild build attestation inputs",
+    )
+    for field, expected in expected_inputs.items():
+        _require_exact_value(
+            inputs[field],
+            expected,
+            f"PyTetWild build attestation inputs.{field}",
+        )
+    source_archives = inputs["source_archives"]
+    if not isinstance(source_archives, dict):
+        raise StageError("PyTetWild build attestation source_archives must be an object")
+    _require_exact_keys(
+        source_archives,
+        PYTETWILD_SOURCE_ARCHIVE_FIELDS,
+        "PyTetWild build attestation source_archives",
+    )
+    for field, digest in source_archives.items():
+        if not isinstance(digest, str) or not SHA256_RE.fullmatch(digest):
+            raise StageError(
+                f"PyTetWild build attestation source_archives.{field} is not SHA-256"
+            )
+
+    sources = attestation.get("sources")
+    if not isinstance(sources, dict):
+        raise StageError("PyTetWild build attestation sources must be an object")
+    _require_exact_keys(
+        sources,
+        set(expected_sources),
+        "PyTetWild build attestation sources",
+    )
+    for field, expected in expected_sources.items():
+        _require_exact_value(
+            sources[field],
+            expected,
+            f"PyTetWild build attestation sources.{field}",
+        )
+
+    environment = attestation.get("environment")
+    if not isinstance(environment, dict):
+        raise StageError("PyTetWild build attestation environment must be an object")
+    _require_exact_keys(
+        environment,
+        PYTETWILD_ATTESTATION_ENVIRONMENT_FIELDS,
+        "PyTetWild build attestation environment",
+    )
+    for field in PYTETWILD_LOCK_ENVIRONMENT_FIELDS:
+        _require_exact_value(
+            environment[field],
+            lock_environment[field],
+            f"PyTetWild build attestation environment.{field}",
+        )
+    _validate_windows_executable_path(
+        environment["compiler_path"], "cl.exe", "PyTetWild compiler_path"
+    )
+    _validate_windows_executable_path(
+        environment["linker_path"], "link.exe", "PyTetWild linker_path"
+    )
+    _validate_windows_executable_path(
+        environment["signtool_path"], "signtool.exe", "PyTetWild signtool_path"
+    )
+    compiler_file_version = environment["compiler_file_version"]
+    if (
+        not isinstance(compiler_file_version, str)
+        or not compiler_file_version.strip()
+        or compiler_file_version != compiler_file_version.strip()
+        or len(compiler_file_version) > 256
+        or any(ord(character) < 32 for character in compiler_file_version)
+    ):
+        raise StageError("PyTetWild compiler_file_version is not exact")
+    _require_exact_value(
+        environment["cmake_cli"],
+        f"cmake version {lock_environment['cmake_version']}",
+        "PyTetWild build attestation environment.cmake_cli",
+    )
+    _require_exact_value(
+        environment["ninja_cli"],
+        "1.13.0.git.kitware.jobserver-pipe-1",
+        "PyTetWild build attestation environment.ninja_cli",
+    )
+
+    output = attestation.get("output")
+    if not isinstance(output, dict):
+        raise StageError("PyTetWild build attestation output must be an object")
+    expected_output = {
+        "filename": wheel_evidence["filename"],
+        "sha256": wheel_evidence["sha256"],
+        "python_tag": wheel_specification["python_tag"],
+        "abi_tag": wheel_specification["abi_tag"],
+        "platform_tag": wheel_specification["platform_tag"],
+        "zip_test": "passed",
+        "raw_wheel_record": "passed",
+        "repaired_wheel_record": "passed",
+        "abi3audit_strict": "passed",
+        "raw_delvewheel_show": "passed-no-not-found-markers",
+        "repaired_native_dependency_closure": "passed",
+        "repaired_delvewheel_metadata": "passed",
+        "native_extension_load": "passed",
+        "normal_isolated_package_import": "passed",
+        "vendored_dll_load_order": "passed",
+    }
+    _require_exact_keys(
+        output,
+        set(expected_output)
+        | {"raw_wheel_filename", "raw_wheel_sha256", "audit_logs"},
+        "PyTetWild build attestation output",
+    )
+    for field, expected in expected_output.items():
+        _require_exact_value(
+            output[field],
+            expected,
+            f"PyTetWild build attestation output.{field}",
+        )
+
+    raw_specification = {
+        "filename": _safe_leaf(
+            output["raw_wheel_filename"],
+            "PyTetWild build attestation output.raw_wheel_filename",
+        ),
+        "sha256": output["raw_wheel_sha256"],
+    }
+    raw_wheel_evidence = _verify_bound_file(
+        raw_specification,
+        raw_wheel_path,
+        "raw wheel",
+    )
+    if raw_wheel_evidence["sha256"] == wheel_evidence["sha256"]:
+        raise StageError("Raw and repaired PyTetWild wheels must be distinct artifacts")
+    raw_wheel_specification = dict(
+        raw_specification,
+        python_tag=wheel_specification["python_tag"],
+        abi_tag=wheel_specification["abi_tag"],
+        platform_tag=wheel_specification["platform_tag"],
+    )
+    _verify_pytetwild_wheel(
+        raw_wheel_path,
+        raw_wheel_specification,
+        require_repaired=False,
+    )
+    audit_log_evidence, audit_log_files = _verify_pytetwild_audit_logs(
+        audit_log_directory,
+        output["audit_logs"],
+    )
+    return raw_wheel_evidence, audit_log_evidence, audit_log_files
+
+
+def _verify_project_file_binding(
+    supplied_path: Path,
+    expected_sha256: str,
+    project_repository: Path,
+    project_commit: str,
+    repository_relative_path: str,
+    label: str,
+) -> None:
+    committed = _git_file_at_exact_commit(
+        project_repository,
+        project_commit,
+        repository_relative_path,
+    )
+    try:
+        supplied = supplied_path.read_bytes()
+    except OSError as exc:
+        raise StageError(f"Cannot read {label}: {exc}") from exc
+    committed_sha256 = hashlib.sha256(committed).hexdigest()
+    if supplied != committed or committed_sha256 != expected_sha256:
+        raise StageError(
+            f"{label} does not byte-match the exact project commit"
+        )
+
+
+def _hashed_python_requirements(
+    path: Path,
+    *,
+    label: str,
+    required_packages: set[str],
+) -> dict[str, tuple[str, set[str]]]:
     try:
         physical_lines = path.read_text(encoding="utf-8").splitlines()
     except (OSError, UnicodeError) as exc:
-        raise StageError(f"Cannot read PyTetWild build requirements lock: {exc}") from exc
+        raise StageError(f"Cannot read {label}: {exc}") from exc
     logical_lines: list[str] = []
     pending = ""
     for physical in physical_lines:
@@ -1155,13 +2486,13 @@ def _hashed_python_requirements(path: Path) -> dict[str, tuple[str, set[str]]]:
         logical_lines.append(pending)
         pending = ""
     if pending:
-        raise StageError("PyTetWild build requirements lock ends in a continuation")
+        raise StageError(f"{label} ends in a continuation")
     result: dict[str, tuple[str, set[str]]] = {}
     for line in logical_lines:
         try:
             tokens = shlex.split(line, posix=True)
         except ValueError as exc:
-            raise StageError(f"Invalid PyTetWild build requirement: {exc}") from exc
+            raise StageError(f"Invalid {label} requirement: {exc}") from exc
         if not tokens:
             continue
         match = re.fullmatch(
@@ -1170,40 +2501,162 @@ def _hashed_python_requirements(path: Path) -> dict[str, tuple[str, set[str]]]:
         )
         if match is None:
             raise StageError(
-                f"PyTetWild build requirement is not an exact name==version pin: {tokens[0]}"
+                f"{label} requirement is not an exact name==version pin: {tokens[0]}"
             )
         name = re.sub(r"[-_.]+", "-", match.group(1)).casefold()
         version = match.group(2)
-        hashes = {
+        hash_tokens = [
             token.removeprefix("--hash=sha256:")
             for token in tokens[1:]
             if token.startswith("--hash=sha256:")
-        }
+        ]
+        hashes = set(hash_tokens)
         if not hashes or any(not SHA256_RE.fullmatch(item) for item in hashes):
-            raise StageError(f"PyTetWild build requirement lacks valid SHA-256: {name}")
+            raise StageError(f"{label} requirement lacks valid SHA-256: {name}")
+        if len(hash_tokens) != len(hashes):
+            raise StageError(f"{label} requirement repeats a SHA-256: {name}")
         unexpected = [token for token in tokens[1:] if not token.startswith("--hash=sha256:")]
         if unexpected:
-            raise StageError(f"Unsupported PyTetWild build requirement options: {unexpected}")
+            raise StageError(f"Unsupported {label} requirement options: {unexpected}")
         if name in result:
-            raise StageError(f"Duplicate PyTetWild build requirement: {name}")
+            raise StageError(f"Duplicate {label} requirement: {name}")
         result[name] = (version, hashes)
-    required = {
-        "abi3audit",
-        "build",
-        "cibuildwheel",
-        "cmake",
-        "delvewheel",
-        "nanobind",
-        "ninja",
-        "scikit-build-core",
-    }
-    missing = sorted(required - set(result))
+    missing = sorted(required_packages - set(result))
     if missing:
-        raise StageError(f"PyTetWild build requirements are incomplete: {missing}")
+        raise StageError(f"{label} requirements are incomplete: {missing}")
     return result
 
 
-def _verify_pytetwild_wheel(path: Path, wheel_specification: dict) -> None:
+def _verify_application_requirements_lock(
+    path: Path,
+    repaired_wheel_sha256: str,
+    historical_wheel_sha256: str,
+) -> None:
+    requirements = _hashed_python_requirements(
+        path,
+        label="Application requirements lock",
+        required_packages={"pytetwild"},
+    )
+    version, hashes = requirements["pytetwild"]
+    if historical_wheel_sha256 in hashes:
+        raise StageError(
+            "Application requirements lock still permits the historical PyTetWild wheel"
+        )
+    if version != "0.3.0":
+        raise StageError("Application requirements lock must pin pytetwild==0.3.0")
+    if hashes != {repaired_wheel_sha256}:
+        raise StageError(
+            "Application requirements lock must bind PyTetWild to exactly the repaired wheel"
+        )
+    duplicate_owners = sorted(
+        name
+        for name, (_other_version, other_hashes) in requirements.items()
+        if name != "pytetwild" and repaired_wheel_sha256 in other_hashes
+    )
+    if duplicate_owners:
+        raise StageError(
+            "Application requirements lock assigns the repaired PyTetWild wheel hash "
+            f"to other packages: {duplicate_owners}"
+        )
+
+
+def _verify_wheel_record(
+    package: zipfile.ZipFile,
+    record_name: str,
+    file_names: list[str],
+) -> None:
+    archive_files = set(file_names)
+    if len(archive_files) != len(file_names):
+        raise StageError("PyTetWild wheel contains duplicate file entries")
+    for name in file_names:
+        parts = _archive_member_parts(name)
+        if parts is None or "/".join(parts) != name:
+            raise StageError(f"PyTetWild wheel contains a non-normal file path: {name!r}")
+
+    entries: dict[str, tuple[str, str]] = {}
+    folded_paths: set[str] = set()
+    try:
+        with package.open(record_name, "r") as raw_record, io.TextIOWrapper(
+            raw_record,
+            encoding="utf-8",
+            errors="strict",
+            newline="",
+        ) as record_text:
+            for row_number, row in enumerate(csv.reader(record_text, strict=True), start=1):
+                if len(row) != 3:
+                    raise StageError(
+                        f"PyTetWild wheel RECORD row {row_number} must have exactly three fields"
+                    )
+                member_name, recorded_hash, recorded_size = row
+                parts = _archive_member_parts(member_name)
+                if parts is None or "/".join(parts) != member_name:
+                    raise StageError(
+                        f"PyTetWild wheel RECORD has a non-normal path: {member_name!r}"
+                    )
+                folded = member_name.casefold()
+                if folded in folded_paths:
+                    raise StageError(
+                        f"PyTetWild wheel RECORD has a duplicate path: {member_name!r}"
+                    )
+                folded_paths.add(folded)
+                entries[member_name] = (recorded_hash, recorded_size)
+    except (
+        UnicodeError,
+        csv.Error,
+        KeyError,
+        RuntimeError,
+        zipfile.BadZipFile,
+        OSError,
+    ) as exc:
+        raise StageError(f"Cannot parse PyTetWild wheel RECORD: {exc}") from exc
+
+    recorded_files = set(entries)
+    unknown = sorted(recorded_files - archive_files)
+    missing = sorted(archive_files - recorded_files)
+    if unknown:
+        raise StageError(f"PyTetWild wheel RECORD has unknown entries: {unknown}")
+    if missing:
+        raise StageError(f"PyTetWild wheel RECORD is missing entries: {missing}")
+
+    for member_name in file_names:
+        recorded_hash, recorded_size = entries[member_name]
+        if member_name == record_name:
+            if recorded_hash or recorded_size:
+                raise StageError("PyTetWild wheel RECORD must leave its own hash and size empty")
+            continue
+        if not re.fullmatch(r"(?:0|[1-9][0-9]*)", recorded_size):
+            raise StageError(
+                f"PyTetWild wheel RECORD has an invalid size for {member_name!r}"
+            )
+        expected_size = int(recorded_size)
+        digest = hashlib.sha256()
+        actual_size = 0
+        try:
+            with package.open(member_name, "r") as source:
+                for block in iter(lambda: source.read(1024 * 1024), b""):
+                    digest.update(block)
+                    actual_size += len(block)
+        except (KeyError, RuntimeError, zipfile.BadZipFile, OSError) as exc:
+            raise StageError(
+                f"Cannot read PyTetWild wheel member {member_name!r}: {exc}"
+            ) from exc
+        if actual_size != package.getinfo(member_name).file_size or actual_size != expected_size:
+            raise StageError(
+                f"PyTetWild wheel RECORD size mismatch for {member_name!r}"
+            )
+        encoded = base64.urlsafe_b64encode(digest.digest()).rstrip(b"=").decode("ascii")
+        if recorded_hash != f"sha256={encoded}":
+            raise StageError(
+                f"PyTetWild wheel RECORD SHA-256 mismatch for {member_name!r}"
+            )
+
+
+def _verify_pytetwild_wheel(
+    path: Path,
+    wheel_specification: dict,
+    *,
+    require_repaired: bool = True,
+) -> None:
     _validate_archive_members(path)
     expected_tag = "-".join(
         wheel_specification[field]
@@ -1219,6 +2672,10 @@ def _verify_pytetwild_wheel(path: Path, wheel_specification: dict) -> None:
         roots = {name.rsplit("/", 1)[0] for name in (*metadata_names, *wheel_names, *record_names)}
         if len(roots) != 1:
             raise StageError("PyTetWild wheel dist-info files do not share one directory")
+        dist_info_root = next(iter(roots))
+        if dist_info_root != "pytetwild-0.3.0.dist-info":
+            raise StageError("PyTetWild wheel has an unexpected dist-info directory")
+        _verify_wheel_record(package, record_names[0], names)
         metadata = package.read(metadata_names[0]).decode("utf-8", errors="strict")
         wheel_metadata = package.read(wheel_names[0]).decode("utf-8", errors="strict")
         if not re.search(r"(?mi)^Name:\s*pytetwild\s*$", metadata) or not re.search(
@@ -1229,12 +2686,19 @@ def _verify_pytetwild_wheel(path: Path, wheel_specification: dict) -> None:
             raise StageError("PyTetWild wheel ABI/platform tag does not match")
         if not any(name.casefold().endswith(".pyd") for name in names):
             raise StageError("PyTetWild wheel lacks its compiled wrapper")
-        if not any(
+        delvewheel_metadata = [name for name in names if name.casefold().endswith(".dist-info/delvewheel")]
+        expected_delvewheel_metadata = f"{dist_info_root}/DELVEWHEEL"
+        if require_repaired and delvewheel_metadata != [expected_delvewheel_metadata]:
+            raise StageError("Repaired PyTetWild wheel lacks exact DELVEWHEEL metadata")
+        if not require_repaired and delvewheel_metadata:
+            raise StageError("Raw PyTetWild wheel unexpectedly contains DELVEWHEEL metadata")
+        has_mpir_runtime = any(
             name.casefold().startswith("pytetwild.libs/")
             and Path(name).name.casefold().startswith("mpir-")
             and name.casefold().endswith(".dll")
             for name in names
-        ):
+        )
+        if require_repaired and not has_mpir_runtime:
             raise StageError("PyTetWild wheel lacks its repaired MPIR runtime DLL")
 
 
@@ -1260,6 +2724,9 @@ def _prepare_pytetwild_rebuild(
     manifest: dict,
     manifest_path: Path,
     args: argparse.Namespace,
+    *,
+    project_repository: Path,
+    project_commit: str,
 ) -> tuple[dict | None, dict | None, list[tuple[Path, str]]]:
     policy = manifest.get("pytetwild_rebuild_policy")
     if policy is None:
@@ -1289,8 +2756,11 @@ def _prepare_pytetwild_rebuild(
 
     required_arguments = {
         "pytetwild_wheel": "--pytetwild-wheel",
+        "pytetwild_raw_wheel": "--pytetwild-raw-wheel",
+        "pytetwild_audit_logs": "--pytetwild-audit-logs",
         "pytetwild_build_recipe": "--pytetwild-build-recipe",
         "pytetwild_build_requirements": "--pytetwild-build-requirements",
+        "pytetwild_source_patch": "--pytetwild-source-patch",
         "pytetwild_build_attestation": "--pytetwild-build-attestation",
         "application_requirements_lock": "--application-requirements-lock",
     }
@@ -1301,8 +2771,8 @@ def _prepare_pytetwild_rebuild(
         raise StageError(
             f"Verified PyTetWild rebuild lock also requires: {', '.join(missing_arguments)}"
         )
-    lock_path = Path(lock_argument).resolve()
-    if not lock_path.is_file() or lock_path.is_symlink():
+    lock_path = Path(os.path.abspath(os.fspath(lock_argument)))
+    if not lock_path.is_file() or _is_link_like(lock_path):
         raise StageError("PyTetWild rebuild lock is missing or linked")
     lock = _json_load(lock_path)
     expected_top = {
@@ -1316,6 +2786,7 @@ def _prepare_pytetwild_rebuild(
         "nanobind",
         "build_recipe",
         "build_requirements_lock",
+        "source_patch",
         "environment",
         "attestation",
         "release_binding",
@@ -1360,7 +2831,7 @@ def _prepare_pytetwild_rebuild(
     }.items():
         if wheel[field] != expected_value:
             raise StageError(f"PyTetWild wheel {field} must be {expected_value}")
-    wheel_path = Path(args.pytetwild_wheel).resolve()
+    wheel_path = Path(os.path.abspath(os.fspath(args.pytetwild_wheel)))
     wheel_evidence = _verify_bound_file(
         {"filename": wheel["filename"], "sha256": wheel["sha256"]},
         wheel_path,
@@ -1368,7 +2839,7 @@ def _prepare_pytetwild_rebuild(
     )
     if wheel_evidence["sha256"] == lock["historical_wheel"]["sha256"]:
         raise StageError("Controlled rebuild must not reuse the provenance-unknown wheel")
-    _verify_pytetwild_wheel(wheel_path, wheel)
+    _verify_pytetwild_wheel(wheel_path, wheel, require_repaired=True)
 
     nanobind = lock["nanobind"]
     _require_exact_keys(
@@ -1382,53 +2853,147 @@ def _prepare_pytetwild_rebuild(
     _validate_https_url(nanobind["source_url"], "nanobind.source_url")
     if not isinstance(nanobind["commit"], str) or not SHA1_RE.fullmatch(nanobind["commit"]):
         raise StageError("nanobind.commit must be a full lowercase commit")
+    if version != "2.12.0" or nanobind["commit"] != (
+        "2a61ad2494d09fecb2e13322c1383342c299900d"
+    ):
+        raise StageError("nanobind version/commit differs from the controlled recipe")
     if not isinstance(nanobind["required_paths"], list) or not nanobind["required_paths"]:
         raise StageError("nanobind.required_paths must be a non-empty array")
     for relative in nanobind["required_paths"]:
         _safe_relative(relative, "nanobind required path")
 
     bound_inputs = {
-        "build_recipe": Path(args.pytetwild_build_recipe).resolve(),
-        "build_requirements_lock": Path(args.pytetwild_build_requirements).resolve(),
-        "attestation": Path(args.pytetwild_build_attestation).resolve(),
-        "release_binding": Path(args.application_requirements_lock).resolve(),
+        "build_recipe": Path(os.path.abspath(os.fspath(args.pytetwild_build_recipe))),
+        "build_requirements_lock": Path(
+            os.path.abspath(os.fspath(args.pytetwild_build_requirements))
+        ),
+        "source_patch": Path(os.path.abspath(os.fspath(args.pytetwild_source_patch))),
+        "attestation": Path(
+            os.path.abspath(os.fspath(args.pytetwild_build_attestation))
+        ),
+        "release_binding": Path(
+            os.path.abspath(os.fspath(args.application_requirements_lock))
+        ),
     }
     bound_evidence = {
         key: _verify_bound_file(lock[key], path, key)
         for key, path in bound_inputs.items()
     }
-    requirements = _hashed_python_requirements(bound_inputs["build_requirements_lock"])
+    project_bindings = {
+        "build_recipe": (PYTETWILD_BUILD_RECIPE_PATH, "PyTetWild build recipe"),
+        "build_requirements_lock": (
+            PYTETWILD_BUILD_REQUIREMENTS_PATH,
+            "PyTetWild build requirements lock",
+        ),
+        "source_patch": (PYTETWILD_SOURCE_PATCH_PATH, "PyTetWild source patch"),
+        "release_binding": (
+            APPLICATION_REQUIREMENTS_LOCK_PATH,
+            "Application requirements lock",
+        ),
+    }
+    for key, (repository_relative_path, label) in project_bindings.items():
+        _verify_project_file_binding(
+            bound_inputs[key],
+            bound_evidence[key]["sha256"],
+            project_repository,
+            project_commit,
+            repository_relative_path,
+            label,
+        )
+    requirements = _hashed_python_requirements(
+        bound_inputs["build_requirements_lock"],
+        label="PyTetWild build requirements lock",
+        required_packages={
+            "abi3audit",
+            "build",
+            "cibuildwheel",
+            "cmake",
+            "delvewheel",
+            "nanobind",
+            "ninja",
+            "numpy",
+            "scikit-build-core",
+        },
+    )
     if requirements["nanobind"][0] != version:
         raise StageError("nanobind version differs between rebuild lock and hashed requirements")
     environment = lock["environment"]
-    environment_fields = {
-        "python_version",
-        "cibuildwheel_version",
-        "runner_image",
-        "compiler",
-        "cmake_version",
-        "ninja_version",
-        "windows_sdk_version",
+    if not isinstance(environment, dict):
+        raise StageError("PyTetWild rebuild environment must be an object")
+    _require_exact_keys(
+        environment,
+        PYTETWILD_LOCK_ENVIRONMENT_FIELDS,
+        "environment",
+    )
+    expected_environment = {
+        "python_version": "3.12.10",
+        "pip_version": "25.0.1",
+        "cibuildwheel_version": requirements["cibuildwheel"][0],
+        "runner_image": "self-hosted-windows-controlled-offline",
+        "compiler": "MSVC 14.44.35211",
+        "compiler_family_requested_from_vsdevcmd": "14.44",
+        "visual_studio_installation_version": "17.14.37614.0",
+        "cmake_version": requirements["cmake"][0],
+        "ninja_version": requirements["ninja"][0],
+        "nanobind_version": requirements["nanobind"][0],
+        "build_version": requirements["build"][0],
+        "scikit_build_core_version": requirements["scikit-build-core"][0],
+        "delvewheel_version": requirements["delvewheel"][0],
+        "abi3audit_version": requirements["abi3audit"][0],
+        "numpy_version": requirements["numpy"][0],
+        "windows_sdk_version": "10.0.26100.0",
+        "windows_sdk_servicing_version": "10.0.26100.7705",
     }
-    _require_exact_keys(environment, environment_fields, "environment")
-    for field in environment_fields:
-        if not isinstance(environment[field], str) or not environment[field].strip():
-            raise StageError(f"PyTetWild rebuild environment {field} is not exact")
-    for field, requirement_name in (
-        ("cibuildwheel_version", "cibuildwheel"),
-        ("cmake_version", "cmake"),
-        ("ninja_version", "ninja"),
-    ):
-        if environment[field] != requirements[requirement_name][0]:
-            raise StageError(f"PyTetWild environment {field} differs from the build lock")
+    for field, expected_value in expected_environment.items():
+        _require_exact_value(
+            environment[field],
+            expected_value,
+            f"PyTetWild rebuild environment.{field}",
+        )
 
-    release_text = bound_inputs["release_binding"].read_text(encoding="utf-8")
-    if not re.search(r"(?m)^pytetwild==0\.3\.0\s*\\?\s*$", release_text):
-        raise StageError("Application requirements lock lacks pytetwild==0.3.0")
-    if f"sha256:{wheel_evidence['sha256']}" not in release_text:
-        raise StageError("Application requirements lock does not bind the rebuilt wheel")
-    if f"sha256:{lock['historical_wheel']['sha256']}" in release_text:
-        raise StageError("Application requirements lock still permits the historical wheel")
+    expected_sources = {
+        "pytetwild_commit": expected["commit"],
+        "pytetwild_optional_pyvista_patch_sha256": bound_evidence["source_patch"][
+            "sha256"
+        ],
+        "pytetwild_patched_accessor_sha256": "c1bfeb0417cd3109d0ef3ecde6e69e04573571f5050003d330a04c25a5d1030c",
+        "ftetwild_commit": lock["ftetwild"]["commit"],
+        "nanobind_commit": nanobind["commit"],
+        "fmt_commit": "40626af88bd7df9a5fb80be7b25ac85b122d6c21",
+        "spdlog_commit": "6fa36017cfd5731d617e1a934f0e5ea9c4445b13",
+        "libigl_commit": "40e7900ccbd767f1f360e0eb10f0f1a6432e0993",
+        "predicates_commit": "decb7bc1260e689cbe008109e3cc5d3a5a433aea",
+        "geogram_commit": "fc3eb9bf44d2ee29686592e3ef5f5f4daeda27f8",
+        "geogram_amgcl_commit": "ab57038d68ee372ed5df280631051b91f17ed2d1",
+        "geogram_libmeshb_commit": "952a157c9d516b28cc6c69cd1550c3e48d4792f9",
+        "geogram_rply_commit": "4296cc91b5c8c26d4e7d7aac0cee2b194ffc5800",
+        "onetbb_commit": "06ce6212da6710f4bb2d20a1904b018aa44069bf",
+        "json_commit": "0901d33bf6e7dfe6f70fd9d142c8f5c6695c6c5b",
+        "eigen_archive_sha256": "8586084f71f9bde545ee7fa6d00288b264a2b7ac3607b974e54d13e7162c1c72",
+        "mpir_archive_sha256": "c7243b2c3f8e849a9367eab8d77babcd8dd5b828d6b5068441297edc86843b69",
+    }
+    raw_wheel_path = Path(os.path.abspath(os.fspath(args.pytetwild_raw_wheel)))
+    audit_log_directory = Path(
+        os.path.abspath(os.fspath(args.pytetwild_audit_logs))
+    )
+    raw_wheel_evidence, audit_log_evidence, audit_log_files = (
+        _verify_pytetwild_attestation_binding(
+            bound_inputs["attestation"],
+            bound_evidence,
+            wheel,
+            wheel_evidence,
+            raw_wheel_path,
+            audit_log_directory,
+            expected_sources,
+            environment,
+        )
+    )
+
+    _verify_application_requirements_lock(
+        bound_inputs["release_binding"],
+        wheel_evidence["sha256"],
+        lock["historical_wheel"]["sha256"],
+    )
 
     component = {
         "id": "pytetwild-nanobind-rebuild",
@@ -1439,6 +3004,9 @@ def _prepare_pytetwild_rebuild(
         "commit": nanobind["commit"],
         "destination": policy["nanobind_destination"],
         "required_paths": nanobind["required_paths"],
+        "required_gitlinks": [
+            dict(expectation) for expectation in policy["nanobind_required_gitlinks"]
+        ],
     }
     evidence = {
         "id": policy["known_gap_id"],
@@ -1446,6 +3014,7 @@ def _prepare_pytetwild_rebuild(
         "rebuild_lock_sha256": _hash_file(lock_path),
         "historical_wheel": lock["historical_wheel"],
         "wheel": wheel_evidence,
+        "raw_wheel": raw_wheel_evidence,
         "nanobind": {
             "version": version,
             "source_url": nanobind["source_url"],
@@ -1453,14 +3022,277 @@ def _prepare_pytetwild_rebuild(
         },
         "environment": environment,
         "bound_evidence": bound_evidence,
+        "audit_logs": audit_log_evidence,
     }
     files = [
         (lock_path, "build-evidence/pytetwild/pytetwild_rebuild.lock.json"),
-        (bound_inputs["build_recipe"], f"build-evidence/pytetwild/{bound_evidence['build_recipe']['filename']}"),
-        (bound_inputs["build_requirements_lock"], f"build-evidence/pytetwild/{bound_evidence['build_requirements_lock']['filename']}"),
-        (bound_inputs["attestation"], f"build-evidence/pytetwild/{bound_evidence['attestation']['filename']}"),
+        (
+            raw_wheel_path,
+            f"build-evidence/pytetwild/raw-wheel/{raw_wheel_evidence['filename']}",
+        ),
+        (
+            wheel_path,
+            f"build-evidence/pytetwild/repaired-wheel/{wheel_evidence['filename']}",
+        ),
+        (
+            bound_inputs["build_recipe"],
+            f"build-evidence/pytetwild/{bound_evidence['build_recipe']['filename']}",
+        ),
+        (
+            bound_inputs["build_requirements_lock"],
+            "build-evidence/pytetwild/"
+            f"{bound_evidence['build_requirements_lock']['filename']}",
+        ),
+        (
+            bound_inputs["source_patch"],
+            f"build-evidence/pytetwild/{bound_evidence['source_patch']['filename']}",
+        ),
+        (
+            bound_inputs["attestation"],
+            f"build-evidence/pytetwild/{bound_evidence['attestation']['filename']}",
+        ),
+        *audit_log_files,
     ]
     return component, evidence, files
+
+
+def _evaluate_release_state(
+    manifest: dict,
+    verified_evidence: list[dict],
+) -> tuple[str, list[dict], list[dict]]:
+    """Return output status, unresolved gaps, and validated resolution evidence."""
+
+    known_gaps = manifest.get("known_gaps", [])
+    gaps_by_id = {gap["id"]: gap for gap in known_gaps}
+    evidence_by_id: dict[str, dict] = {}
+    for index, evidence in enumerate(verified_evidence):
+        if not isinstance(evidence, dict):
+            raise StageError(f"Resolution evidence {index} must be an object")
+        gap_id = _safe_id(evidence.get("id"), f"resolution evidence {index} id")
+        if gap_id not in gaps_by_id:
+            raise StageError(f"Resolution evidence targets an undeclared gap: {gap_id}")
+        if gap_id in evidence_by_id:
+            raise StageError(f"Duplicate resolution evidence for gap: {gap_id}")
+        resolver = gaps_by_id[gap_id].get("resolution_evidence")
+        if not isinstance(resolver, dict):
+            raise StageError(f"Gap {gap_id} has no bound resolution evidence path")
+        if resolver["kind"] == PYTETWILD_REBUILD_RESOLVER:
+            _require_exact_keys(
+                evidence,
+                {
+                    "id",
+                    "resolution",
+                    "rebuild_lock_sha256",
+                    "historical_wheel",
+                    "wheel",
+                    "raw_wheel",
+                    "nanobind",
+                    "environment",
+                    "bound_evidence",
+                    "audit_logs",
+                },
+                f"PyTetWild gap {gap_id} evidence",
+            )
+            if evidence.get("resolution") != "verified-controlled-rebuild":
+                raise StageError(f"PyTetWild gap {gap_id} lacks controlled-rebuild evidence")
+            for field in ("rebuild_lock_sha256",):
+                if not isinstance(evidence.get(field), str) or not SHA256_RE.fullmatch(
+                    evidence[field]
+                ):
+                    raise StageError(f"PyTetWild gap {gap_id} has invalid {field}")
+            historical = evidence.get("historical_wheel")
+            wheel = evidence.get("wheel")
+            raw_wheel = evidence.get("raw_wheel")
+            nanobind = evidence.get("nanobind")
+            environment = evidence.get("environment")
+            bound_evidence = evidence.get("bound_evidence")
+            audit_logs = evidence.get("audit_logs")
+            if not all(
+                isinstance(value, dict)
+                for value in (
+                    historical,
+                    wheel,
+                    raw_wheel,
+                    nanobind,
+                    environment,
+                    bound_evidence,
+                    audit_logs,
+                )
+            ):
+                raise StageError(f"PyTetWild gap {gap_id} has incomplete rebuild evidence")
+            _require_exact_keys(
+                historical,
+                {"sha256", "nanobind_version_status", "release_disposition"},
+                f"PyTetWild gap {gap_id} historical wheel evidence",
+            )
+            if (
+                historical["sha256"]
+                != "11964e295a54cf9e2f6920a920aeeba27668c9b14e369a86f72ec5baa4f46060"
+                or historical["nanobind_version_status"] != "unknown-not-asserted"
+                or historical["release_disposition"] != "excluded"
+            ):
+                raise StageError(f"PyTetWild gap {gap_id} has invalid historical evidence")
+            for label, specification in (
+                ("wheel", wheel),
+                ("raw_wheel", raw_wheel),
+            ):
+                _require_exact_keys(
+                    specification,
+                    {"filename", "sha256"},
+                    f"PyTetWild gap {gap_id} {label} evidence",
+                )
+                _safe_leaf(
+                    specification.get("filename"),
+                    f"PyTetWild gap {gap_id} {label} filename",
+                )
+            historical_hash = historical.get("sha256")
+            wheel_hash = wheel.get("sha256")
+            raw_wheel_hash = raw_wheel.get("sha256")
+            if (
+                not isinstance(historical_hash, str)
+                or not SHA256_RE.fullmatch(historical_hash)
+                or not isinstance(wheel_hash, str)
+                or not SHA256_RE.fullmatch(wheel_hash)
+                or not isinstance(raw_wheel_hash, str)
+                or not SHA256_RE.fullmatch(raw_wheel_hash)
+                or wheel_hash == historical_hash
+                or raw_wheel_hash in {historical_hash, wheel_hash}
+            ):
+                raise StageError(f"PyTetWild gap {gap_id} does not bind distinct new wheels")
+            _require_exact_keys(
+                nanobind,
+                {"version", "source_url", "commit"},
+                f"PyTetWild gap {gap_id} nanobind evidence",
+            )
+            if (
+                nanobind.get("version") != "2.12.0"
+                or nanobind.get("commit")
+                != "2a61ad2494d09fecb2e13322c1383342c299900d"
+                or nanobind.get("source_url")
+                != "https://github.com/wjakob/nanobind.git"
+            ):
+                raise StageError(f"PyTetWild gap {gap_id} lacks exact build provenance")
+            _validate_https_url(
+                nanobind.get("source_url"),
+                f"PyTetWild gap {gap_id} nanobind source_url",
+            )
+            _require_exact_keys(
+                environment,
+                PYTETWILD_LOCK_ENVIRONMENT_FIELDS,
+                f"PyTetWild gap {gap_id} environment evidence",
+            )
+            if any(
+                not isinstance(value, str) or not value.strip()
+                for value in environment.values()
+            ):
+                raise StageError(f"PyTetWild gap {gap_id} has inexact environment evidence")
+            expected_environment = {
+                "python_version": "3.12.10",
+                "pip_version": "25.0.1",
+                "cibuildwheel_version": "3.3.1",
+                "runner_image": "self-hosted-windows-controlled-offline",
+                "compiler": "MSVC 14.44.35211",
+                "compiler_family_requested_from_vsdevcmd": "14.44",
+                "visual_studio_installation_version": "17.14.37614.0",
+                "cmake_version": "3.29.6",
+                "ninja_version": "1.13.0",
+                "nanobind_version": "2.12.0",
+                "build_version": "1.5.0",
+                "scikit_build_core_version": "0.12.2",
+                "delvewheel_version": "1.12.1",
+                "abi3audit_version": "0.0.26",
+                "numpy_version": "2.5.1",
+                "windows_sdk_version": "10.0.26100.0",
+                "windows_sdk_servicing_version": "10.0.26100.7705",
+            }
+            for field, expected_value in expected_environment.items():
+                _require_exact_value(
+                    environment[field],
+                    expected_value,
+                    f"PyTetWild gap {gap_id} environment.{field}",
+                )
+            required_bound_evidence = {
+                "build_recipe",
+                "build_requirements_lock",
+                "source_patch",
+                "attestation",
+                "release_binding",
+            }
+            if set(bound_evidence) != required_bound_evidence:
+                raise StageError(
+                    f"PyTetWild gap {gap_id} lacks complete bound build evidence"
+                )
+            for field in sorted(required_bound_evidence):
+                specification = bound_evidence[field]
+                if not isinstance(specification, dict):
+                    raise StageError(
+                        f"PyTetWild gap {gap_id} has invalid {field} evidence"
+                    )
+                _require_exact_keys(
+                    specification,
+                    {"filename", "sha256"},
+                    f"PyTetWild gap {gap_id} {field} evidence",
+                )
+                _safe_leaf(
+                    specification.get("filename"),
+                    f"PyTetWild gap {gap_id} {field} evidence filename",
+                )
+                if not isinstance(specification.get("sha256"), str) or not SHA256_RE.fullmatch(
+                    specification["sha256"]
+                ):
+                    raise StageError(
+                        f"PyTetWild gap {gap_id} has invalid {field} evidence SHA-256"
+                    )
+            _require_exact_keys(
+                audit_logs,
+                set(PYTETWILD_AUDIT_LOG_FILES),
+                f"PyTetWild gap {gap_id} audit log evidence",
+            )
+            for field, expected_filename in PYTETWILD_AUDIT_LOG_FILES.items():
+                specification = audit_logs[field]
+                if not isinstance(specification, dict):
+                    raise StageError(
+                        f"PyTetWild gap {gap_id} has invalid {field} audit evidence"
+                    )
+                _require_exact_keys(
+                    specification,
+                    {"filename", "sha256"},
+                    f"PyTetWild gap {gap_id} {field} audit evidence",
+                )
+                if specification.get("filename") != expected_filename:
+                    raise StageError(
+                        f"PyTetWild gap {gap_id} {field} audit filename is invalid"
+                    )
+                if not isinstance(specification.get("sha256"), str) or not SHA256_RE.fullmatch(
+                    specification["sha256"]
+                ):
+                    raise StageError(
+                        f"PyTetWild gap {gap_id} {field} audit SHA-256 is invalid"
+                    )
+        elif resolver["kind"] == DYNAMIC_ARCHIVE_LOCK_RESOLVER:
+            variables = evidence.get("locked_variables")
+            if (
+                evidence.get("resolution") != DYNAMIC_ARCHIVE_LOCK_RESOLUTION
+                or evidence.get("rule_id") != resolver["rule_id"]
+                or not isinstance(evidence.get("external_archive_lock_sha256"), str)
+                or not SHA256_RE.fullmatch(evidence["external_archive_lock_sha256"])
+                or not isinstance(variables, list)
+                or not variables
+                or not all(isinstance(value, str) and value for value in variables)
+                or variables != sorted(set(variables))
+                or evidence.get("archive_count") != len(variables)
+            ):
+                raise StageError(f"Dynamic archive gap {gap_id} lacks a complete SHA-256 lock")
+        else:  # validate_component_manifest rejects unknown resolver kinds.
+            raise StageError(f"Gap {gap_id} has an unsupported resolver")
+        evidence_by_id[gap_id] = evidence
+
+    unresolved = [gap for gap in known_gaps if gap["id"] not in evidence_by_id]
+    resolved = [evidence_by_id[gap["id"]] for gap in known_gaps if gap["id"] in evidence_by_id]
+    status = CANDIDATE_BUNDLE_STATUS
+    if manifest.get("release_approval") is not None and known_gaps and not unresolved:
+        status = RELEASE_APPROVED_BUNDLE_STATUS
+    return status, unresolved, resolved
 
 
 def _write_json(path: Path, value: object) -> None:
@@ -1512,12 +3344,19 @@ class _Stager:
         self.offline = offline
         self.fixture_root = fixture_root
         self.records: list[dict] = []
+        self.resolved_constraints: list[dict] = []
         self._staged_components: set[str] = set()
         self._relations = {
             (item["parent"], item["path"]): item["child"]
             for item in manifest.get("submodule_relations", [])
         }
         self._child_components = {item["child"] for item in manifest.get("submodule_relations", [])}
+        self._dynamic_release_gap_ids = {
+            gap["resolution_evidence"]["rule_id"]: gap["id"]
+            for gap in manifest.get("known_gaps", [])
+            if isinstance(gap.get("resolution_evidence"), dict)
+            and gap["resolution_evidence"].get("kind") == DYNAMIC_ARCHIVE_LOCK_RESOLVER
+        }
         self.allowed_suffixes = tuple(manifest["allowed_redirect_host_suffixes"])
 
     def _fixture_repository(self, component: dict) -> Path | None:
@@ -1595,6 +3434,7 @@ class _Stager:
                 )
             # Stale .gitmodules entries are recorded source text but are not gitlinks.
             modules = {path: url for path, url in modules.items() if path in gitlinks}
+        _verify_required_gitlinks(component, gitlinks, modules)
         for path, commit in sorted(gitlinks.items()):
             explicit_child_id = self._relations.get((component_id, path))
             resolved_url = _resolve_submodule_url(component["url"], modules[path])
@@ -1753,10 +3593,12 @@ class _Stager:
                 require_release_provenance=rule.get(
                     "require_release_asset_provenance", False
                 ),
+                expected_exclusions=excluded,
             )
             unknown_locks = sorted(set(lock) - set(active))
             if unknown_locks:
                 raise StageError(f"External archive lock has unknown variables: {unknown_locks}")
+            all_active_archives_locked = bool(active) and set(lock) == set(active)
             missing_locks = [name for name in actual_unhashed if name not in lock]
             if rule.get("require_sha256_lock_for_unhashed") and missing_locks:
                 details = {
@@ -1778,6 +3620,10 @@ class _Stager:
                 if lock_entry:
                     if lock_entry["url"] not in https_urls:
                         raise StageError(f"External lock URL drift for {variable}")
+                    if "upstream_md5" in lock_entry and lock_entry["upstream_md5"] != item["md5"]:
+                        raise StageError(f"External lock upstream MD5 drift for {variable}")
+                    if "cmake_path" in lock_entry and lock_entry["cmake_path"] != item["cmake_path"]:
+                        raise StageError(f"External lock CMake source drift for {variable}")
                     https_urls = [lock_entry["url"]]
                 fixture_file: Path | None = None
                 if self.fixture_root is not None:
@@ -1801,6 +3647,8 @@ class _Stager:
                 )
                 if rule.get("validate_archive_members", False):
                     _validate_archive_members(cached)
+                if lock_entry is not None:
+                    _verify_declared_nonexecuted_archive_member(cached, lock_entry)
                 extension = _archive_extension(selected_url)
                 output = output_root / f"{variable.casefold()}{extension}"
                 if output.exists():
@@ -1831,6 +3679,21 @@ class _Stager:
                     "source_component": rule["component"],
                 }
             )
+            gap_id = self._dynamic_release_gap_ids.get(rule["id"])
+            if gap_id is not None and all_active_archives_locked:
+                if self.external_lock_path is None:
+                    raise StageError("A complete dynamic archive lock has no source file")
+                locked_variables = sorted(active)
+                self.resolved_constraints.append(
+                    {
+                        "archive_count": len(locked_variables),
+                        "external_archive_lock_sha256": _hash_file(self.external_lock_path),
+                        "id": gap_id,
+                        "locked_variables": locked_variables,
+                        "resolution": DYNAMIC_ARCHIVE_LOCK_RESOLUTION,
+                        "rule_id": rule["id"],
+                    }
+                )
 
     def stage(self) -> list[dict]:
         self._stage_project()
@@ -1972,8 +3835,14 @@ def stage_bundle(args: argparse.Namespace) -> tuple[Path, Path]:
         )
         return Path(), Path()
 
+    project_repository = Path(args.project_repository).resolve()
+    project_commit = args.project_commit
     rebuild_component, rebuild_evidence, rebuild_files = _prepare_pytetwild_rebuild(
-        manifest, manifest_path, args
+        manifest,
+        manifest_path,
+        args,
+        project_repository=project_repository,
+        project_commit=project_commit,
     )
     if rebuild_component is not None:
         if rebuild_component["id"] in components:
@@ -1982,7 +3851,6 @@ def stage_bundle(args: argparse.Namespace) -> tuple[Path, Path]:
 
     destination = Path(args.destination).resolve()
     cache_root = Path(args.cache).resolve()
-    project_repository = Path(args.project_repository).resolve()
     archive = Path(args.archive).resolve() if args.archive else Path(f"{destination}.zip")
     external_lock = Path(args.external_archive_lock).resolve() if args.external_archive_lock else None
     if external_lock is None and manifest.get("default_external_archive_lock"):
@@ -2026,7 +3894,7 @@ def stage_bundle(args: argparse.Namespace) -> tuple[Path, Path]:
             temporary_stage,
             cache_root,
             project_repository,
-            args.project_commit,
+            project_commit,
             external_lock_path=external_lock,
             offline=args.offline,
             fixture_root=fixture_root,
@@ -2039,24 +3907,27 @@ def stage_bundle(args: argparse.Namespace) -> tuple[Path, Path]:
                 raise StageError(f"Duplicate PyTetWild rebuild evidence: {relative}")
             output.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(source, output)
+        verified_evidence = list(stager.resolved_constraints)
+        if rebuild_evidence is not None:
+            verified_evidence.append(rebuild_evidence)
+        bundle_status, unresolved_gaps, resolved_constraints = _evaluate_release_state(
+            manifest,
+            verified_evidence,
+        )
         provenance = {
             "bundle_id": manifest["bundle_id"],
-            "bundle_status": manifest["bundle_status"],
+            "bundle_status": bundle_status,
             "component_manifest_sha256": _hash_file(manifest_path),
             "components": records,
             "deterministic_metadata": True,
-            "known_gaps": [
-                gap
-                for gap in manifest.get("known_gaps", [])
-                if rebuild_evidence is None or gap["id"] != rebuild_evidence["id"]
-            ],
+            "known_gaps": unresolved_gaps,
             "schema_version": 1,
             "tool_version": TOOL_VERSION,
         }
         if external_lock is not None:
             provenance["external_archive_lock_sha256"] = _hash_file(external_lock)
-        if rebuild_evidence is not None:
-            provenance["resolved_constraints"] = [rebuild_evidence]
+        if resolved_constraints:
+            provenance["resolved_constraints"] = resolved_constraints
         _write_json(temporary_stage / "COMPONENT_SOURCES.json", provenance)
         _write_source_manifest(temporary_stage)
         _create_deterministic_zip(temporary_stage, temporary_archive, destination.name)
@@ -2066,7 +3937,7 @@ def stage_bundle(args: argparse.Namespace) -> tuple[Path, Path]:
         os.replace(temporary_stage, destination)
         destination_moved = True
         os.replace(temporary_archive, archive)
-        print(f"Corresponding-source candidate staged: {destination}")
+        print(f"Corresponding-source bundle staged ({bundle_status}): {destination}")
         print(f"Verified archive: {archive}")
         print(f"Archive SHA-256: {_hash_file(archive).upper()}")
         return destination, archive
@@ -2094,8 +3965,11 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--external-archive-lock")
     parser.add_argument("--pytetwild-rebuild-lock")
     parser.add_argument("--pytetwild-wheel")
+    parser.add_argument("--pytetwild-raw-wheel")
+    parser.add_argument("--pytetwild-audit-logs")
     parser.add_argument("--pytetwild-build-recipe")
     parser.add_argument("--pytetwild-build-requirements")
+    parser.add_argument("--pytetwild-source-patch")
     parser.add_argument("--pytetwild-build-attestation")
     parser.add_argument("--application-requirements-lock")
     parser.add_argument("--offline", action="store_true")

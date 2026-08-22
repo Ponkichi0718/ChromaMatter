@@ -93,11 +93,11 @@ class ReleaseIdentityTests(unittest.TestCase):
         self.assertIn('APP_TAGLINE = "AI Model Print Studio"', package_init)
         self.assertIn('RELEASE_REVISION = "r32"', package_init)
         self.assertIn(
-            "ChromaMatter_0.8beta-r32-ai-model-print-studio_HANDOFF",
+            "ChromaMatter-0.8beta-r32-source-public-20260823",
             public_stage,
         )
         self.assertIn(
-            "ChromaMatter_0.8beta-r32-ai-model-print-studio",
+            "ChromaMatter-0.8beta-r32-win64",
             software_stage,
         )
         self.assertNotIn("r29-creator-studio_HANDOFF", public_stage)
@@ -112,7 +112,7 @@ class ReleaseIdentityTests(unittest.TestCase):
         ):
             with self.subTest(innovation_fund_document=relative):
                 self.assertIn(relative, public_stage)
-                self.assertIn(relative, software_stage)
+                self.assertNotIn(relative, software_stage)
 
     def test_handoff_state_records_exact_p2_r32_build_and_audited_preflight(self):
         state = json.loads(read_text(REPO_ROOT / "CURRENT_STATE.json"))
@@ -125,7 +125,7 @@ class ReleaseIdentityTests(unittest.TestCase):
         self.assertEqual("AI Model Print Studio r32", state["edition"])
         self.assertEqual("r32-ai-model-print-studio", state["artifact_slug"])
         self.assertEqual(
-            "r32-ai-model-print-studio-preflight-audited-final-publication-pending",
+            "r32-source-branch-validated-binary-publication-blocked",
             state["status"],
         )
         self.assertTrue(state["version_policy"]["pinned_until_explicit_user_request"])
@@ -148,10 +148,10 @@ class ReleaseIdentityTests(unittest.TestCase):
             with self.subTest(passed_gate=passed_gate):
                 self.assertTrue(validation[passed_gate].startswith("passed"))
         self.assertIn(
-            "Ran 1048 tests in 90.160s: OK (skipped=1)",
+            "Ran 1179 tests in 150.952s: OK (skipped=1)",
             validation["current_full_regression"],
         )
-        self.assertIn("1047 passed", validation["current_full_regression"])
+        self.assertIn("1178 passed", validation["current_full_regression"])
         self.assertIn("0 failed", validation["current_full_regression"])
         self.assertTrue(
             validation["current_clean_build_and_packaged_smoke"].startswith("passed")
@@ -159,7 +159,7 @@ class ReleaseIdentityTests(unittest.TestCase):
         self.assertIn("C:\\OBJAdjR32CM3", validation["current_clean_build_and_packaged_smoke"])
         self.assertTrue(
             validation["current_stage_archive_privacy_and_checksum_audit"].startswith(
-                "preflight passed"
+                "current source stage passed"
             )
         )
         previous_r29 = validation["previous_r29_candidate_validation"]
@@ -208,17 +208,34 @@ class ReleaseIdentityTests(unittest.TestCase):
 
         release = state["release"]
         self.assertEqual(
-            "preflight-artifacts-audited-final-publication-pending",
+            "source-branch-validated-binary-publication-blocked",
             release["state"],
         )
         self.assertEqual("r32-ai-model-print-studio", release["target_revision"])
         self.assertEqual(
-            "ChromaMatter_0.8beta-r32-source-public-20260821",
+            "ChromaMatter-0.8beta-r32-source-public-20260823",
             release["public_source_default"],
         )
         self.assertEqual(
-            "ChromaMatter_0.8beta-r32-ai-model-print-studio",
+            "ChromaMatter-0.8beta-r32-win64",
             release["software_package_default"],
+        )
+        latest = release["latest_source_branch_validation"]
+        self.assertEqual(
+            "source-branch-validated-for-draft-pr-update",
+            latest["status"],
+        )
+        self.assertIn("Ran 1179 tests", latest["source_full_regression"])
+        self.assertEqual(
+            273,
+            latest["public_source_stage"]["total_files_including_manifest"],
+        )
+        self.assertEqual(272, latest["public_source_stage"]["manifest_records"])
+        self.assertTrue(latest["source_publication_eligible"])
+        self.assertFalse(latest["binary_publication_eligible"])
+        self.assertIn(
+            "binary-component-specific-license-assets-incomplete",
+            latest["binary_publication_blockers"],
         )
         current = release["current_r32_candidate_validation"]
         self.assertEqual(
@@ -316,7 +333,7 @@ class ReleaseIdentityTests(unittest.TestCase):
         self.assertEqual("public", current["public_repository_visibility"])
         self.assertEqual("main", current["public_repository_default_branch"])
         self.assertFalse(current["binary_publication_eligible"])
-        self.assertIn("third-party binary redistribution", current["binary_publication_blocker"])
+        self.assertIn("component-specific licence", current["binary_publication_blocker"])
         self.assertFalse(current["innovation_fund_submission_ready"])
         self.assertNotIn(
             "public repository URL and handle",
@@ -394,11 +411,11 @@ class ReleaseIdentityTests(unittest.TestCase):
                     "Orca",
                     "manual",
                     "adaptive",
-                    "1048",
-                    "1047",
-                    "90.160",
-                    "13,997,622",
-                    "8BBABEACCF9B47AC2750C86B7C38966E46F00A624C648036D600C9601CF86EBB",
+                    "1179",
+                    "1178",
+                    "150.952",
+                    "80",
+                    "10",
                     "r31",
                     "1024",
                     "1023",
@@ -410,17 +427,14 @@ class ReleaseIdentityTests(unittest.TestCase):
                     "226",
                     "1,404",
                     "1,403",
-                    "230",
-                    "229",
-                    "33",
                     "SHA256SUMS-r31.txt",
                     "pending",
                     "XP-PEN",
                     "passed-by-creator-declaration",
                     "ZENITH DYNAMICS CORP.",
                     "binary publication eligibility",
-                    "ChromaMatter_0.8beta-r32-source-public-20260821",
-                    "source-only",
+                    "ChromaMatter-0.8beta-r32-source-public-20260823",
+                    "ChromaMatter-0.8beta-r32-win64",
                     "Innovation Fund",
                     "https://github.com/Ponkichi0718/ChromaMatter",
                     "Ponkichi0718",

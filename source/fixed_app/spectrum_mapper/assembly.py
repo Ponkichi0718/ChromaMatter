@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterable
+from typing import Iterable, Sequence
 
 import numpy as np
 import pymeshlab as ml
@@ -14,6 +14,82 @@ from shapely.ops import polylabel
 
 class AssemblyError(RuntimeError):
     pass
+
+
+class AssemblySelfIntersectionError(AssemblyError):
+    """A strict self-intersection gate failed and must not use geometry fallback."""
+
+
+MULTIPART_SOURCE_PRESERVED_WARNING = (
+    "normalized_multipart_source_preserved_warning"
+)
+MULTIPART_QEM_WARNING = "normalized_multipart_bounded_qem_warning"
+MULTIPART_INHERITED_SOURCE_WARNING = (
+    "normalized_multipart_inherited_source_warning"
+)
+MULTIPART_PART_SPECIFIC_WARNING = (
+    "normalized_multipart_part_specific_warning"
+)
+MULTIPART_QEM_MAX_OUTPUT_RATIO_NUMERATOR = 3
+MULTIPART_QEM_MAX_OUTPUT_RATIO_DENOMINATOR = 4
+
+
+def multipart_qem_reduction_is_significant(
+    pre_qem_face_count: int,
+    post_qem_face_count: int,
+) -> bool:
+    """Require at least a 25% real face reduction for the QEM budget."""
+
+    before = int(pre_qem_face_count)
+    after = int(post_qem_face_count)
+    return bool(
+        before > 0
+        and after > 0
+        and after < before
+        and after * MULTIPART_QEM_MAX_OUTPUT_RATIO_DENOMINATOR
+        <= before * MULTIPART_QEM_MAX_OUTPUT_RATIO_NUMERATOR
+    )
+
+
+def multipart_self_intersection_limits(
+    source_face_limit: int,
+    warning_policy: str,
+) -> tuple[int, float]:
+    """Return the fail-closed per-part warning bounds.
+
+    QEM may introduce a small number of local triangle overlaps, so only a
+    part whose output face count actually decreased receives the separate QEM
+    budget. Source-preserved parts retain the established stricter policy.
+    A fully normalized non-QEM part may use the resolution-independent
+    inherited-source budget only after exact triangle-ancestry proof. Callers
+    must independently prove which policy applies to each part.
+    """
+
+    source_faces = int(source_face_limit)
+    if source_faces <= 0:
+        raise AssemblyError("自己交差許可元面範囲が不正です")
+    if warning_policy == MULTIPART_QEM_WARNING:
+        # ceil(0.003 * source_faces), expressed with integers so validator and
+        # preparation cannot drift through floating-point rounding.
+        face_limit = min(
+            100,
+            max(8, (3 * source_faces + 999) // 1_000),
+        )
+        return int(face_limit), 0.002
+    if warning_policy == MULTIPART_INHERITED_SOURCE_WARNING:
+        # A fixed face-count ceiling is resolution-dependent: subdividing the
+        # same inherited contact can select hundreds of tiny triangles without
+        # increasing its physical area.  This wider count envelope is therefore
+        # available only when the caller independently proves that every source
+        # triangle descends from the imported surface without moving its
+        # coordinates.  Compatible multipart normalization already bounds one
+        # logical part to 650,000 faces, so the complete ID record is naturally
+        # bounded to at most 6,500 entries here.
+        face_limit = max(100, (source_faces + 99) // 100)
+        return int(face_limit), 0.002
+    if warning_policy == MULTIPART_SOURCE_PRESERVED_WARNING:
+        return max(100, (source_faces + 9_999) // 10_000), 1.0e-4
+    raise AssemblyError("自己交差警告ポリシーが不正です")
 
 
 @dataclass(frozen=True)
@@ -513,6 +589,12 @@ def _strict_mesh_record(
     faces: np.ndarray,
     *,
     part_id: int,
+    source_face_limit: int | None = None,
+    allow_bounded_source_self_intersections: bool = False,
+    bounded_self_intersection_policy: str = (
+        "normalized_multipart_source_preserved_warning"
+    ),
+    source_triangle_ancestry_proven: bool = False,
 ) -> tuple[np.ndarray, dict[str, object]]:
     """Validate a printable part and return outward-oriented faces."""
 
@@ -574,6 +656,41 @@ def _strict_mesh_record(
         raise AssemblyError(
             f"パーツ{part_id + 1}が {len(bodies)} 個の離れた立体に分かれています"
         )
+    if allow_bounded_source_self_intersections and (
+        source_face_limit is None
+        or int(source_face_limit) <= 0
+        or int(source_face_limit) > len(result_faces)
+    ):
+        raise AssemblyError(
+            f"パーツ{part_id + 1}の自己交差許可元面範囲が不正です"
+        )
+    allowed_warning_policies = {
+        MULTIPART_SOURCE_PRESERVED_WARNING,
+        MULTIPART_QEM_WARNING,
+        MULTIPART_INHERITED_SOURCE_WARNING,
+    }
+    if (
+        allow_bounded_source_self_intersections
+        and bounded_self_intersection_policy not in allowed_warning_policies
+    ):
+        raise AssemblyError(
+            f"パーツ{part_id + 1}の自己交差警告ポリシーが不正です"
+        )
+    inherited_source_policy = bool(
+        allow_bounded_source_self_intersections
+        and bounded_self_intersection_policy
+        == MULTIPART_INHERITED_SOURCE_WARNING
+    )
+    if inherited_source_policy and source_triangle_ancestry_proven is not True:
+        raise AssemblyError(
+            f"パーツ{part_id + 1}の入力由来三角形を証明できないため、"
+            "継承自己交差ポリシーを使用できません"
+        )
+    source_limit = (
+        int(source_face_limit)
+        if allow_bounded_source_self_intersections
+        else 0
+    )
     mesh_set = ml.MeshSet()
     mesh_set.add_mesh(
         ml.Mesh(vertex_matrix=vertices, face_matrix=result_faces),
@@ -583,17 +700,65 @@ def _strict_mesh_record(
         mesh_set.apply_filter(
             "compute_selection_by_self_intersections_per_face"
         )
-        self_intersections = int(
-            mesh_set.current_mesh().selected_face_number()
+        selected = np.asarray(
+            mesh_set.current_mesh().face_selection_array(), dtype=bool
         )
+        if selected.shape != (len(result_faces),):
+            raise AssemblyError(
+                f"パーツ{part_id + 1}の自己交差面IDを取得できません"
+            )
+        self_intersection_ids = np.flatnonzero(selected).astype(
+            np.int32, copy=False
+        )
+        self_intersections = int(len(self_intersection_ids))
     except Exception as exc:  # pragma: no cover - plugin failures vary
         raise AssemblyError(
             f"パーツ{part_id + 1}の自己交差検査を実行できません: {exc}"
         ) from exc
-    if self_intersections:
-        raise AssemblyError(
-            f"パーツ{part_id + 1}の共有組立面が元の外面と交差します "
-            f"({self_intersections} 面)。安全のため閉立体化を中止しました"
+    surface_areas = 0.5 * doubled_area
+    total_surface_area = float(surface_areas.sum())
+    self_intersection_area = (
+        float(surface_areas[self_intersection_ids].sum())
+        if self_intersections
+        else 0.0
+    )
+    self_intersection_area_fraction = (
+        self_intersection_area / total_surface_area
+        if total_surface_area > 0.0
+        else -1.0
+    )
+    if allow_bounded_source_self_intersections:
+        (
+            self_intersection_face_limit,
+            self_intersection_area_fraction_limit,
+        ) = multipart_self_intersection_limits(
+            source_limit,
+            bounded_self_intersection_policy,
+        )
+    else:
+        self_intersection_face_limit = 0
+        self_intersection_area_fraction_limit = 0.0
+    source_faces_only = bool(
+        self_intersections
+        and np.all(self_intersection_ids < source_limit)
+    )
+    bounded_warning = bool(
+        allow_bounded_source_self_intersections
+        and self_intersections > 0
+        and self_intersections <= self_intersection_face_limit
+        and source_faces_only
+        and 0.0
+        <= self_intersection_area_fraction
+        <= self_intersection_area_fraction_limit
+    )
+    if self_intersections and not bounded_warning:
+        raise AssemblySelfIntersectionError(
+            f"パーツ{part_id + 1}の表面に自己交差があります "
+            f"({self_intersections} 面 / 許容 {self_intersection_face_limit} 面、"
+            f"面積比 {self_intersection_area_fraction:.9g} / 許容 "
+            f"{self_intersection_area_fraction_limit:.9g}、"
+            f"元面のみ={source_faces_only})。"
+            "安全のため閉立体化を中止しました"
         )
     return result_faces, {
         "topology": topology,
@@ -601,7 +766,34 @@ def _strict_mesh_record(
         "volume_unit3": float(signed_volume),
         "positive_volume": True,
         "degenerate_faces": 0,
-        "self_intersections": 0,
+        "self_intersections": int(self_intersections),
+        "self_intersecting_face_ids": self_intersection_ids.astype(
+            int
+        ).tolist(),
+        "self_intersecting_area_unit2": float(self_intersection_area),
+        "self_intersecting_area_fraction": float(
+            self_intersection_area_fraction
+        ),
+        "self_intersection_source_face_limit": int(source_limit),
+        "self_intersection_face_limit": int(self_intersection_face_limit),
+        "self_intersection_area_fraction_limit": float(
+            self_intersection_area_fraction_limit
+        ),
+        "self_intersection_source_faces_only": bool(source_faces_only),
+        "source_triangle_ancestry_proven": bool(
+            source_triangle_ancestry_proven
+        ),
+        "self_intersection_inherited_from_source": bool(
+            bounded_warning
+            and inherited_source_policy
+            and source_triangle_ancestry_proven is True
+        ),
+        "self_intersection_warning": bool(bounded_warning),
+        "self_intersection_policy": (
+            bounded_self_intersection_policy
+            if bounded_warning
+            else "strict_zero"
+        ),
         "reoriented": bool(reoriented),
     }
 
@@ -969,6 +1161,13 @@ def solidify_partitioned_parts(
     seams: Iterable[SeamPair],
     *,
     height_mm: float,
+    source_face_limits: Sequence[int] | None = None,
+    allow_bounded_source_self_intersections: bool = False,
+    bounded_self_intersection_policy: str = (
+        MULTIPART_SOURCE_PRESERVED_WARNING
+    ),
+    bounded_self_intersection_policies: Sequence[str] | None = None,
+    source_triangle_ancestry_proven_parts: Sequence[bool] | None = None,
 ) -> tuple[
     list[tuple[np.ndarray, np.ndarray, np.ndarray]],
     dict[str, object],
@@ -987,6 +1186,39 @@ def solidify_partitioned_parts(
     if not np.isfinite(height_mm) or float(height_mm) <= 0.0:
         raise AssemblyError("造形高さが不正です")
     seam_list = list(seams)
+    if source_face_limits is None:
+        strict_source_limits: list[int | None] = [None] * len(meshes)
+    else:
+        if len(source_face_limits) != len(meshes):
+            raise AssemblyError("自己交差許可元面範囲のパーツ数が一致しません")
+        strict_source_limits = [int(value) for value in source_face_limits]
+    if allow_bounded_source_self_intersections and source_face_limits is None:
+        raise AssemblyError("自己交差許可には元面範囲が必要です")
+    if bounded_self_intersection_policies is None:
+        strict_warning_policies = [
+            str(bounded_self_intersection_policy)
+        ] * len(meshes)
+    else:
+        if len(bounded_self_intersection_policies) != len(meshes):
+            raise AssemblyError(
+                "自己交差警告ポリシーのパーツ数が一致しません"
+            )
+        strict_warning_policies = [
+            str(value) for value in bounded_self_intersection_policies
+        ]
+    if source_triangle_ancestry_proven_parts is None:
+        strict_source_ancestry = [False] * len(meshes)
+    else:
+        if len(source_triangle_ancestry_proven_parts) != len(meshes):
+            raise AssemblyError(
+                "入力由来三角形証明のパーツ数が一致しません"
+            )
+        if not all(
+            isinstance(value, bool)
+            for value in source_triangle_ancestry_proven_parts
+        ):
+            raise AssemblyError("入力由来三角形証明が不正です")
+        strict_source_ancestry = list(source_triangle_ancestry_proven_parts)
     output: list[list[np.ndarray]] = []
     before_topology: list[dict[str, int | bool]] = []
     actual_loops: list[BoundaryLoop] = []
@@ -1022,7 +1254,19 @@ def solidify_partitioned_parts(
         results: list[tuple[np.ndarray, np.ndarray, np.ndarray]] = []
         for part_id, (vertices, faces, colors) in enumerate(output):
             validated_faces, validation = _strict_mesh_record(
-                vertices, faces, part_id=part_id
+                vertices,
+                faces,
+                part_id=part_id,
+                source_face_limit=strict_source_limits[part_id],
+                allow_bounded_source_self_intersections=(
+                    allow_bounded_source_self_intersections
+                ),
+                bounded_self_intersection_policy=(
+                    strict_warning_policies[part_id]
+                ),
+                source_triangle_ancestry_proven=(
+                    strict_source_ancestry[part_id]
+                ),
             )
             results.append((vertices, validated_faces, colors))
             part_records.append(
@@ -1044,6 +1288,7 @@ def solidify_partitioned_parts(
             "source_parts": len(meshes),
             "output_parts": len(results),
             "matched_seams": 0,
+            "source_triangle_coordinates_preserved": True,
             "interfaces": [],
             "parts": part_records,
             "closed": True,
@@ -1074,6 +1319,7 @@ def solidify_partitioned_parts(
 
     tolerance_unit = 0.05 / float(height_mm)
     interfaces: list[dict[str, object]] = []
+    source_triangle_coordinates_preserved = True
     added_faces = np.zeros(len(meshes), dtype=np.int64)
     for seam in seam_list:
         first_part = int(seam.first.part_id)
@@ -1145,6 +1391,14 @@ def solidify_partitioned_parts(
             second_points[nearest],
             height_mm=height_mm,
         )
+        interface_coordinates_preserved = bool(
+            np.array_equal(canonical, first_points)
+            and np.array_equal(canonical, second_points[nearest])
+        )
+        source_triangle_coordinates_preserved = bool(
+            source_triangle_coordinates_preserved
+            and interface_coordinates_preserved
+        )
         first_vertices[first_ids] = canonical
         second_vertices[aligned_second_ids] = canonical
         first_cap = _orient_cap_against_source(
@@ -1183,6 +1437,9 @@ def solidify_partitioned_parts(
                 "cap_faces": int(len(local_faces)),
                 "maximum_boundary_mismatch_mm": maximum_mismatch
                 * float(height_mm),
+                "source_triangle_coordinates_preserved": bool(
+                    interface_coordinates_preserved
+                ),
                 "cap_face_range_by_part": {
                     str(first_part): [
                         first_start,
@@ -1209,7 +1466,20 @@ def solidify_partitioned_parts(
     part_records = []
     for part_id, (vertices, faces, colors) in enumerate(output):
         validated_faces, validation = _strict_mesh_record(
-            vertices, faces, part_id=part_id
+            vertices,
+            faces,
+            part_id=part_id,
+            source_face_limit=strict_source_limits[part_id],
+            allow_bounded_source_self_intersections=(
+                allow_bounded_source_self_intersections
+                and source_triangle_coordinates_preserved
+            ),
+            bounded_self_intersection_policy=(
+                strict_warning_policies[part_id]
+            ),
+            source_triangle_ancestry_proven=(
+                strict_source_ancestry[part_id]
+            ),
         )
         results.append(
             (
@@ -1237,6 +1507,9 @@ def solidify_partitioned_parts(
         "source_parts": len(meshes),
         "output_parts": len(results),
         "matched_seams": len(seam_list),
+        "source_triangle_coordinates_preserved": bool(
+            source_triangle_coordinates_preserved
+        ),
         "interfaces": interfaces,
         "parts": part_records,
         "closed": True,
@@ -2289,13 +2562,22 @@ def mesh_is_watertight(vertices: np.ndarray, faces: np.ndarray) -> bool:
 
 __all__ = [
     "AssemblyError",
+    "AssemblySelfIntersectionError",
     "BoundaryLoop",
+    "MULTIPART_PART_SPECIFIC_WARNING",
+    "MULTIPART_INHERITED_SOURCE_WARNING",
+    "MULTIPART_QEM_MAX_OUTPUT_RATIO_DENOMINATOR",
+    "MULTIPART_QEM_MAX_OUTPUT_RATIO_NUMERATOR",
+    "MULTIPART_QEM_WARNING",
+    "MULTIPART_SOURCE_PRESERVED_WARNING",
     "SeamPair",
     "add_keyed_joint_for_seam",
     "add_keyed_joints",
     "close_open_mesh",
     "find_boundary_loops",
     "mesh_is_watertight",
+    "multipart_qem_reduction_is_significant",
+    "multipart_self_intersection_limits",
     "pair_matching_loops",
     "repair_small_unmatched_boundaries",
     "solidify_coincident_shells",

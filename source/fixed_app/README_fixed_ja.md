@@ -12,15 +12,17 @@
 
 ## r32出力workflow
 
-- 3MF出力時に安全確認済みのpart境界またはGLB同一座標seamを検出した場合、閉立体化を宣言し、成功後だけ出力を再開します。本当の穴へ蓋は追加しません。
+- 3MF出力時に安全確認済みのpart境界またはGLB同一座標seamを検出した場合、閉立体化を宣言し、成功後だけ出力を再開します。対応する分割GLBは別パーツ同士を溶接せず、結合3MFと個別3MFの両方で厳格検証します。
+- Hi3D系の分割データに含まれる識別用`COLOR_0`は、exporter、node、material、texture、既知paletteの証拠がすべて一致した場合だけ除外し、通常の作者指定色は維持します。
 - 基本F1～F4を個別変更した後は「現在の4色をプレビュー・3MFへ反映」で右previewと3MF paletteを更新できます。自動提案は既定のままです。
 - 3MFは安定したFull Spectrum layer-cycleとprime tower baselineを記録します。実験的なLocal Z、advanced dithering、pointillismはOFF、supportはOrca側で選択します。
 
-## r30 GLB入力 β
+## GLB入力 β
 
 - 「OBJ / GLBを開く」は`v x y z r g b`頂点カラーOBJと、埋込baseColor／`COLOR_0`を持つ静的GLBを共通pipelineへ読み込みます。
 - GLBのscene／node transformとmesh-node partを保持し、sRGB textureを線形空間で補間・合成して頂点色へ焼き付けます。bundle v2は`source_asset`と`source.glb`を使い、旧OBJ bundle v1も読めます。
 - baseColor以外のPBR map、alpha、animation、skin、morph、Draco、meshopt、BasisU、GPU instancing、外部URIは対象外です。texture細部はmesh頂点解像度に制限され、上限は512 MiB／300万頂点／300万三角形です。
+- 対応するexploded multipart GLBは元のpart構成を保ってpart単位で正規化します。個別3MF出力ではpart IDと頂点参照を局所番号へ組み直し、不完全または古い対応情報はfail-closedで停止します。
 
 ## r30 単一GLBのUV seam閉立体化
 
@@ -84,12 +86,9 @@ repository rootの`BOOTSTRAP_WINDOWS.ps1`が標準の準備・test入口です�
 
 ## r32 validation state
 
-- P2後のexact-source full regression: Python `3.13.14`、`Ran 1048 tests in 90.160s: OK (skipped=1)`、1047 PASS／1 optional SKIP／0 FAIL
-- `C:\OBJAdjR32CM3`でのPyInstaller `6.20.0` clean build、packaged self-test exit 0、隔離profileの日英UI smoke: PASS
-- preflight `ChromaMatter.exe`: 13,997,622 bytes、FileVersion／ProductVersion `0.8beta`、SHA-256 `8BBABEACCF9B47AC2750C86B7C38966E46F00A624C648036D600C9601CF86EBB`
-- preflight source stage: 230 files／229 manifest records、manifest SHA-256 `C0D0A96570F83162B4B92E34FC463802C32A31600AEAE191D79D972E55CFE920`、fresh parity／privacy／source focused 33/33: PASS
-- preflight software stage: 1,404 files／1,403 manifest records、manifest SHA-256 `9764A61571421CC8C1773938C4CD724515C07D77C435BF2F4E0DB5DB5E68572C`、fresh self-test／日本語UI／英語UI: exit 0
-- final source backpatch／restage、Downloads配置、final detached `SHA256SUMS-r32.txt`、GitHub update: pending。preflight ZIP hashはfinal artifactと異なるためcanonical文書へ埋め込まない
+- 最新作業treeのfull regression: Python `3.13.14`、`Ran 1179 tests in 150.952s: OK (skipped=1)`、1178 PASS／1 optional SKIP／0 FAIL
+- binary compliance／対応ソース／release toolingの集中テスト80件とrelease identity 10件: PASS
+- 旧r32 EXE／ZIPは今回のsourceと一致しないため非公開。controlled PyTetWild再build、component固有license／静的link依存、完全対応ソース、clean build、packaged／日英UI／fresh-extract監査が完了するまでbinary publicationはNO-GO
 - 以下のr31結果は**previous evidence**であり、r32を検証しない
 
 - 公開UI非公開化直前のpost-GLB r28候補のprevious evidence: Python `3.13.14`、PyInstaller `6.20.0`、`Ran 992 tests in 87.406s: OK (skipped=1)`、991 PASS／1 optional SKIP
@@ -125,8 +124,8 @@ Creator Studio r26の結果も同様にprevious evidenceで、ChromaMatter r31�
 
 ## Package identity
 
-- pending source-only candidate: `ChromaMatter_0.8beta-r32-source-public-20260821`
-- pending non-public software preflight: `ChromaMatter_0.8beta-r32-ai-model-print-studio`
+- source candidate: `ChromaMatter-0.8beta-r32-source-public-20260823`
+- gated Windows package: `ChromaMatter-0.8beta-r32-win64`
 
 r32のdetached external `SHA256SUMS-r32.txt`はfinal artifact作成後までpendingです。完成済み`SHA256SUMS-r31.txt`はr31 previous evidenceだけに適用します。canonical文書への自己参照ZIP hashは埋め込みません。
 

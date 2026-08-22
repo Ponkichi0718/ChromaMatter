@@ -3,6 +3,7 @@
 from pathlib import Path
 import importlib.metadata
 import importlib.util
+import sys
 
 from PyInstaller.utils.hooks import collect_submodules, copy_metadata
 
@@ -12,6 +13,16 @@ from PyInstaller.utils.hooks import collect_submodules, copy_metadata
 # be built without an older executable or recovered bytecode.
 APP = Path(SPECPATH).resolve()
 PROJECT = APP.parents[1]
+
+# Bundle the complete license shipped with the exact CPython runtime used to
+# freeze the application.  BUILD_AND_TEST.ps1 already rejects any interpreter
+# other than 3.13.14, so this remains bound to the packaged python313.dll.
+CPYTHON_LICENSE = (Path(sys.base_prefix) / "LICENSE.txt").resolve()
+if not CPYTHON_LICENSE.is_file():
+    raise RuntimeError(
+        f"Required CPython runtime license is missing: {CPYTHON_LICENSE}"
+    )
+CPYTHON_LICENSE_DATAS = [(str(CPYTHON_LICENSE), "licenses/cpython")]
 
 
 def package_directory(package_name):
@@ -124,7 +135,7 @@ WHEEL_LICENSE_FILES = (
     ),
     (
         "pyinstaller",
-        "pyinstaller-6.20.0.dist-info/COPYING.txt",
+        "pyinstaller-6.20.0.dist-info/licenses/COPYING.txt",
         "licenses/pyinstaller",
     ),
     (
@@ -269,7 +280,8 @@ a = Analysis(
     + VOLUME_DATAS
     + WHEEL_LICENSE_DATAS
     + RESVG_DATAS
-    + APP_LICENSE_DATAS,
+    + APP_LICENSE_DATAS
+    + CPYTHON_LICENSE_DATAS,
     hiddenimports=[
         "spectrum_mapper",
         "spectrum_mapper.assembly",
@@ -358,6 +370,13 @@ def is_windows_import_library(entry):
     )
 
 
+def is_private_install_origin_metadata(entry):
+    """True for pip direct-URL metadata that can contain a local absolute path."""
+
+    destination = str(entry[0]).replace("\\", "/").casefold()
+    return ".dist-info/" in destination and destination.endswith("/direct_url.json")
+
+
 a.datas = [
     entry
     for entry in a.datas
@@ -366,10 +385,7 @@ a.datas = [
         .replace("\\", "/")
         .casefold()
         .startswith("pymeshlab/tests/")
-        and not entry[0]
-        .replace("\\", "/")
-        .casefold()
-        .endswith("resvg-0.2.0.dist-info/direct_url.json")
+        and not is_private_install_origin_metadata(entry)
         and not is_windows_import_library(entry)
     )
 ]

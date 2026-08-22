@@ -9,8 +9,8 @@ ChromaMatter — AI Model Print Studioは、AI生成された頂点カラー付�
 
 表示versionは利用者の指定どおり`0.8beta`、Windows数値versionは`0.8.0.0`に固定し、人向けeditionを`AI Model Print Studio r32`とします。
 
-- public source: `ChromaMatter_0.8beta-r32-ai-model-print-studio_HANDOFF`
-- software package: `ChromaMatter_0.8beta-r32-ai-model-print-studio`
+- public source: `ChromaMatter-0.8beta-r32-source-public-20260823`
+- software package: `ChromaMatter-0.8beta-r32-win64`
 
 ## 2. r32出力workflowとr31 identity継承
 

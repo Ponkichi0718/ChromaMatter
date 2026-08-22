@@ -72,7 +72,7 @@ Copyright (c) 2026 Ponkichi0718 and ChromaMatter contributors
 
 ```powershell
 .\tooling\stage_public_source.ps1 `
-  -Destination ".\artifacts\ChromaMatter_0.8beta-r32-source-public-20260821-candidate-1"
+  -Destination ".\artifacts\ChromaMatter-0.8beta-r32-source-public-20260823-candidate-1"
 ```
 
 スクリプトは既存フォルダーを上書きしません。内容を変更した場合は`r2`、`r3`のように新しい名前で作り直します。

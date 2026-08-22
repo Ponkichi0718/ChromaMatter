@@ -592,6 +592,11 @@ class ObjAsset:
     # that synthetic single "whole OBJ" entry.
     part_marker_kind: str | None = None
     has_explicit_parts: bool = False
+    # Conservative importer provenance used only to retain fail-closed feature
+    # boundaries across a portable project round-trip.  Geometry code must
+    # require a known schema and explicit booleans rather than infer trust from
+    # a file extension or part names.
+    import_metadata: dict[str, object] = field(default_factory=dict)
 
 
 @dataclass

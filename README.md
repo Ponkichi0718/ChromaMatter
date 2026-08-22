@@ -71,7 +71,7 @@ The public display version remains pinned to `0.8beta`. This edition is `AI Mode
 
 ## AI Model Print Studio r32
 
-r32 adds safe export-time solidification, explicit application of edited F1-F4 colours to the converted preview, and a conservative Snapmaker Orca Full Spectrum project baseline. The public name and icon established in r31, existing OBJ/GLB/3MF workflows, project schemas, and legacy settings locations remain compatible.
+r32 adds a multipart GLB path that preserves part structure through solidification and individual 3MF export, narrowly suppresses proven categorical identification colours, explicitly applies edited F1-F4 colours to the converted preview, and records a conservative Snapmaker Orca Full Spectrum project baseline. The public name and icon established in r31, existing OBJ/GLB/3MF workflows, project schemas, and legacy settings locations remain compatible.
 
 ### GLB input beta
 
@@ -87,6 +87,12 @@ r32 adds safe export-time solidification, explicit application of edited F1-F4 c
 - This path adds no caps. Unmatched, same-direction, or ambiguous seams, a non-manifold result, and true holes fail closed while retaining the pre-operation geometry.
 - Strict pre-export 3MF topology checks cover every `type=model` resource, not only direct build items. If only a bounded minor QEM self-intersection remains after mandatory solid checks pass, export warns and requires opening the file as a project in Snapmaker Orca and checking the slice preview.
 - The 3MF records a stable Full Spectrum layer-cycle and prime-tower baseline. Experimental Local Z, advanced dithering, and pointillism remain disabled, while support selection stays in Snapmaker Orca.
+
+### Multipart GLB solidification and individual 3MF export
+
+- Supported exploded GLB assets are normalised per source part while retaining the original part boundaries and placement. Separate parts are never welded together, and repair-generated faces remain distinguishable from imported source faces.
+- Categorical `COLOR_0` used by supported Hi3D-style part exports is suppressed only when exporter, node, material, texture, and known-palette evidence all agree. Ordinary authored vertex colours are left unchanged.
+- The same strict validation protects both combined 3MF and `save each print part as an individual 3MF`. Individual export rebases part IDs and vertex references locally, and fails closed when the mapping or proof is incomplete or stale.
 
 ### Stable Manual Editing feedback
 
@@ -157,9 +163,9 @@ project-folder/
 
 ## Validation and release gates
 
-The exact post-P2 r32 source regression passed on Python `3.13.14`: `Ran 1048 tests in 90.160s: OK (skipped=1)`, 1047 passed / 1 optional skip / 0 failed. A PyInstaller `6.20.0` clean build at `C:\OBJAdjR32CM3`, packaged self-test inside BUILD_AND_TEST (exit 0), and isolated-profile Japanese and English UI smoke passed. The preflight `C:\OBJAdjR32CM3\dist\ChromaMatter\ChromaMatter.exe` is 13,997,622 bytes with FileVersion/ProductVersion `0.8beta`, ProductName `ChromaMatter — AI Model Print Studio`, and SHA-256 `8BBABEACCF9B47AC2750C86B7C38966E46F00A624C648036D600C9601CF86EBB`.
+The latest working-tree regression, including multipart GLB and public-package gates, passed on Python `3.13.14`: `Ran 1179 tests in 150.952s: OK (skipped=1)`, 1178 passed / 1 optional skip / 0 failed. The focused binary-compliance, corresponding-source, and release-tooling set passed 80 tests, and the release-identity set passed 10 tests.
 
-The r32 preflight source stage passed with 230 files / 229 manifest records, manifest SHA-256 `C0D0A96570F83162B4B92E34FC463802C32A31600AEAE191D79D972E55CFE920`, fresh parity/privacy, and 33/33 source-focused tests. The software stage has 1,404 files / 1,403 manifest records and manifest SHA-256 `9764A61571421CC8C1773938C4CD724515C07D77C435BF2F4E0DB5DB5E68572C`; fresh self-test, Japanese UI, and English UI each exited 0. Final source backpatch/restage, Downloads placement, final detached `SHA256SUMS-r32.txt`, and the GitHub update are **pending**. Preflight ZIP hashes are not embedded because final artifacts will differ.
+The old r32 EXE/ZIP does not match this source and will not be published. A new Windows ZIP will be released only after the controlled PyTetWild rebuild, component-specific licence and static-link audits, a `release-approved` complete corresponding-source bundle, clean build, packaged self-test, Japanese/English UI smoke, and fresh-extract/manifest/privacy/checksum audits all pass. `binary publication eligibility` is currently **false**.
 
 The following r31 and Creator Studio r30 results are **previous evidence** for their own revisions and do not validate r32.
 
@@ -191,8 +197,8 @@ On Windows with Python 3.13, run:
 
 `-Build` creates a PyInstaller one-folder build after the full regression. The planned r32 stage names remain non-distributable until validation completes:
 
-- pending source-only candidate: `ChromaMatter_0.8beta-r32-source-public-20260821`
-- pending non-public software preflight: `ChromaMatter_0.8beta-r32-ai-model-print-studio`
+- source candidate: `ChromaMatter-0.8beta-r32-source-public-20260823`
+- gated Windows package: `ChromaMatter-0.8beta-r32-win64`
 
 ## Privacy and licensing
 

@@ -12,15 +12,17 @@ See the [visual feature overview and production flow](../../FEATURES_EN.md) and 
 
 ## r32 output workflow
 
-- When export finds safely matched part boundaries or coincident GLB seams, ChromaMatter announces solidification and resumes export only after it succeeds. It never guesses caps for true holes.
+- When export finds safely matched part boundaries or coincident GLB seams, ChromaMatter announces solidification and resumes export only after it succeeds. Supported multipart GLB keeps separate parts unwelded and applies strict validation to both combined and individual 3MF output.
+- Categorical `COLOR_0` in supported Hi3D-style multipart data is suppressed only when exporter, node, material, texture, and known-palette evidence all agree; ordinary authored colour remains unchanged.
 - After an individual F1-F4 edit, `Apply Current F1-F4 to Preview / 3MF` updates the right preview and 3MF palette. Automatic proposal remains the default.
 - The 3MF records a stable Full Spectrum layer-cycle and prime-tower baseline. Experimental Local Z, advanced dithering, and pointillism remain off, and support stays selectable in Orca.
 
-## r30 GLB input beta
+## GLB input beta
 
 - `Open OBJ / GLB` feeds both `v x y z r g b` vertex-colour OBJ and static GLB with embedded base colour / `COLOR_0` into the common pipeline.
 - Scene/node transforms and mesh-node parts are preserved. sRGB textures are filtered and composed in linear space before being baked to vertex colour. Bundle v2 uses `source_asset` and `source.glb`, while legacy OBJ bundle v1 remains readable.
 - PBR maps beyond base colour, alpha, animation, skinning, morph targets, Draco, meshopt, BasisU, GPU instancing, and external URIs are unsupported. Texture detail is limited to mesh-vertex resolution; limits are 512 MiB, three million vertices, and three million triangles.
+- Supported exploded multipart GLB assets retain their source part structure during per-part normalisation. Individual 3MF export rebases part IDs and vertex references locally and fails closed when the mapping or proof is incomplete or stale.
 
 ## r30 single-GLB UV-seam solidification
 
@@ -84,12 +86,9 @@ Repository-root `BOOTSTRAP_WINDOWS.ps1` is the standard setup and test entry poi
 
 ## r32 validation state
 
-- exact post-P2 source regression: Python `3.13.14`, `Ran 1048 tests in 90.160s: OK (skipped=1)`, 1047 passed / 1 optional skip / 0 failed
-- PyInstaller `6.20.0` clean build at `C:\OBJAdjR32CM3`, packaged self-test exit 0, and isolated-profile Japanese/English UI smoke: passed
-- preflight `ChromaMatter.exe`: 13,997,622 bytes, FileVersion/ProductVersion `0.8beta`, SHA-256 `8BBABEACCF9B47AC2750C86B7C38966E46F00A624C648036D600C9601CF86EBB`
-- preflight source stage: 230 files / 229 manifest records, manifest SHA-256 `C0D0A96570F83162B4B92E34FC463802C32A31600AEAE191D79D972E55CFE920`, fresh parity/privacy/source-focused 33/33: passed
-- preflight software stage: 1,404 files / 1,403 manifest records, manifest SHA-256 `9764A61571421CC8C1773938C4CD724515C07D77C435BF2F4E0DB5DB5E68572C`, fresh self-test/Japanese UI/English UI: exit 0
-- final source backpatch/restage, Downloads placement, final detached `SHA256SUMS-r32.txt`, and GitHub update: pending. Preflight ZIP hashes are not embedded because final artifacts will differ
+- latest working-tree regression: Python `3.13.14`, `Ran 1179 tests in 150.952s: OK (skipped=1)`, 1178 passed / 1 optional skip / 0 failed
+- focused binary-compliance, corresponding-source, and release-tooling set (80 tests) plus release identity (10 tests): passed
+- the old r32 EXE/ZIP does not match this source and remains private; binary publication is NO-GO until the controlled PyTetWild rebuild, component-specific licence/static-link audit, complete corresponding source, clean build, packaged/JA/EN/fresh-extract audits all pass
 - the r31 results below are **previous evidence** and do not validate r32
 
 - previous evidence for the post-GLB r28 candidate immediately before the public-UI change: Python `3.13.14`, PyInstaller `6.20.0`, `Ran 992 tests in 87.406s: OK (skipped=1)`, 991 passed / 1 optional skip
@@ -125,8 +124,8 @@ Creator Studio r26 results are previous evidence as well and do not validate Chr
 
 ## Package identity
 
-- pending source-only candidate: `ChromaMatter_0.8beta-r32-source-public-20260821`
-- pending non-public software preflight: `ChromaMatter_0.8beta-r32-ai-model-print-studio`
+- source candidate: `ChromaMatter-0.8beta-r32-source-public-20260823`
+- gated Windows package: `ChromaMatter-0.8beta-r32-win64`
 
 The detached `SHA256SUMS-r32.txt` remains pending until final r32 artifacts exist. Completed `SHA256SUMS-r31.txt` applies only to r31 previous evidence. Self-referential ZIP hashes are not embedded in canonical documents.
 

@@ -1,25 +1,361 @@
 {
-  "schema_version": 1,
-  "lock_status": "verified-official-release-assets",
+  "schema_version": 2,
+  "lock_status": "verified-official-release-inputs",
   "meshlab_commit": "d876376e3cc4f92d257e248023d82cbac5b03c7d",
+  "platform": "windows",
+  "platform_exclusions": {
+    "EMBREE_LINK": "Linux-only source branch; this bundle targets the Windows wheel",
+    "ISPC_LINK": "Linux-only source branch; this bundle targets the Windows wheel"
+  },
   "archives": [
+    {
+      "variable": "BOOST_LINK",
+      "url": "https://archives.boost.io/release/1.87.0/source/boost_1_87_0.zip",
+      "sha256": "f367a218d27b23b568956bacf56d08d2c1d9647211337136be8cac5cb2ff0828",
+      "byte_size": 226473738,
+      "upstream_md5": "78b0a6c31fc0cc78060455b6df38cf4a",
+      "cmake_path": "src/external/boost.cmake",
+      "provenance": {
+        "provenance_kind": "official-release-checksum",
+        "release_repository_url": "https://archives.boost.io/release/1.87.0/source/",
+        "checksum_url": "https://archives.boost.io/release/1.87.0/source/boost_1_87_0.zip.json",
+        "release_file": "boost_1_87_0.zip",
+        "source_commit": "c89e6267665516192015a9e40955e154466f4f68",
+        "created_at": "2024-12-05T00:48:16Z",
+        "resolved_download_url": "https://archives.boost.io/release/1.87.0/source/boost_1_87_0.zip",
+        "sha256_method": "downloaded-official-release-archive-verified-by-official-sha256",
+        "official_sha256": "f367a218d27b23b568956bacf56d08d2c1d9647211337136be8cac5cb2ff0828"
+      }
+    },
+    {
+      "variable": "CGAL_AUX_LINK",
+      "url": "https://github.com/CGAL/cgal/releases/download/v5.6/CGAL-5.6-win64-auxiliary-libraries-gmp-mpfr.zip",
+      "sha256": "91b10cf8e3cf830f52103d3669a1084399086b03e29c34fc157c7c6605936c27",
+      "byte_size": 515830,
+      "upstream_md5": "247f4dca741c6b9a9be76286414070fa",
+      "cmake_path": "src/external/cgal.cmake",
+      "provenance": {
+        "asset_api_url": "https://api.github.com/repos/CGAL/cgal/releases/assets/119059288",
+        "asset_created_at": "2023-07-28T13:24:17Z",
+        "asset_name": "CGAL-5.6-win64-auxiliary-libraries-gmp-mpfr.zip",
+        "asset_updated_at": "2023-07-28T13:24:17Z",
+        "github_asset_id": 119059288,
+        "github_release_id": 113993926,
+        "github_release_tag": "v5.6",
+        "release_api_url": "https://api.github.com/repos/CGAL/cgal/releases/113993926",
+        "release_repository_url": "https://github.com/CGAL/cgal",
+        "resolved_download_url": "https://github.com/CGAL/cgal/releases/download/v5.6/CGAL-5.6-win64-auxiliary-libraries-gmp-mpfr.zip",
+        "sha256_method": "downloaded-official-github-release-asset",
+        "provenance_kind": "github-release-asset"
+      }
+    },
+    {
+      "variable": "CGAL_LINK",
+      "url": "https://github.com/CGAL/cgal/releases/download/v5.6/CGAL-5.6.zip",
+      "sha256": "b80e4825c4dd24c32b7326842cabf997129cd4ec6f06d73be144e979e592c74a",
+      "byte_size": 37357734,
+      "upstream_md5": "6d1d067b88e20f7080d07d5108b4c772",
+      "cmake_path": "src/external/cgal.cmake",
+      "provenance": {
+        "asset_api_url": "https://api.github.com/repos/CGAL/cgal/releases/assets/119059262",
+        "asset_created_at": "2023-07-28T13:24:11Z",
+        "asset_name": "CGAL-5.6.zip",
+        "asset_updated_at": "2023-07-28T13:24:15Z",
+        "github_asset_id": 119059262,
+        "github_release_id": 113993926,
+        "github_release_tag": "v5.6",
+        "release_api_url": "https://api.github.com/repos/CGAL/cgal/releases/113993926",
+        "release_repository_url": "https://github.com/CGAL/cgal",
+        "resolved_download_url": "https://github.com/CGAL/cgal/releases/download/v5.6/CGAL-5.6.zip",
+        "sha256_method": "downloaded-official-github-release-asset",
+        "provenance_kind": "github-release-asset"
+      }
+    },
+    {
+      "variable": "CORTO_LINK",
+      "url": "https://github.com/cnr-isti-vclab/corto/archive/refs/tags/v2025.07.zip",
+      "sha256": "35f2cd92fa210f5754e54a3b89dc23c104d060ab250930e1b96e7e74a71a7fe4",
+      "byte_size": 5369562,
+      "upstream_md5": "93c78a0b5e238e0e7c35bfbd1ac4249c",
+      "cmake_path": "src/external/nexus.cmake",
+      "provenance": {
+        "provenance_kind": "github-tag-source-archive",
+        "repository_url": "https://github.com/cnr-isti-vclab/corto",
+        "tag": "v2025.07",
+        "ref_api_url": "https://api.github.com/repos/cnr-isti-vclab/corto/git/refs/tags/v2025.07",
+        "ref_object_type": "commit",
+        "ref_object_sha": "6a49a72f6f1935f3a197727ebfdb0dc9dd02b46a",
+        "peeled_commit_sha": "6a49a72f6f1935f3a197727ebfdb0dc9dd02b46a",
+        "peeled_commit_api_url": "https://api.github.com/repos/cnr-isti-vclab/corto/git/commits/6a49a72f6f1935f3a197727ebfdb0dc9dd02b46a",
+        "resolved_download_url": "https://github.com/cnr-isti-vclab/corto/archive/refs/tags/v2025.07.zip",
+        "sha256_method": "downloaded-github-tag-source-archive"
+      }
+    },
+    {
+      "variable": "EASYEXIF_LINK",
+      "url": "https://github.com/mayanklahiri/easyexif/archive/refs/tags/v1.0.zip",
+      "sha256": "4f9d347ffdddd9a86ea01f38007cd112af02aa1298fc9fe68145c74e310646fa",
+      "byte_size": 7564517,
+      "upstream_md5": "d46ec21b5c8ce13cda0fe66a4477a8c3",
+      "cmake_path": "src/external/easyexif.cmake",
+      "provenance": {
+        "provenance_kind": "github-tag-source-archive",
+        "repository_url": "https://github.com/mayanklahiri/easyexif",
+        "tag": "v1.0",
+        "ref_api_url": "https://api.github.com/repos/mayanklahiri/easyexif/git/refs/tags/v1.0",
+        "ref_object_type": "commit",
+        "ref_object_sha": "7e60481974a20b6735dad7179bce728d0c944dfe",
+        "peeled_commit_sha": "7e60481974a20b6735dad7179bce728d0c944dfe",
+        "peeled_commit_api_url": "https://api.github.com/repos/mayanklahiri/easyexif/git/commits/7e60481974a20b6735dad7179bce728d0c944dfe",
+        "resolved_download_url": "https://github.com/mayanklahiri/easyexif/archive/refs/tags/v1.0.zip",
+        "sha256_method": "downloaded-github-tag-source-archive"
+      }
+    },
     {
       "variable": "EMBREE_WIN_LINK",
       "url": "https://github.com/embree/embree/releases/download/v4.3.3/embree-4.3.3.x64.windows.zip",
       "sha256": "d4c07f88df9f009dd84e4e9b9dcec32ad7d96f927bd88de00b721b0923d481a9",
       "byte_size": 76444177,
+      "upstream_md5": null,
+      "cmake_path": "src/external/embree.cmake",
       "provenance": {
+        "asset_api_url": "https://api.github.com/repos/RenderKit/embree/releases/assets/181085852",
+        "asset_created_at": "2024-07-22T12:25:33Z",
         "asset_name": "embree-4.3.3.x64.windows.zip",
+        "asset_updated_at": "2024-07-22T12:28:12Z",
         "github_asset_id": 181085852,
         "github_release_id": 166503668,
         "github_release_tag": "v4.3.3",
-        "asset_created_at": "2024-07-22T12:25:33Z",
-        "asset_updated_at": "2024-07-22T12:28:12Z",
-        "release_repository_url": "https://github.com/RenderKit/embree",
         "release_api_url": "https://api.github.com/repos/RenderKit/embree/releases/166503668",
-        "asset_api_url": "https://api.github.com/repos/RenderKit/embree/releases/assets/181085852",
+        "release_repository_url": "https://github.com/RenderKit/embree",
         "resolved_download_url": "https://github.com/RenderKit/embree/releases/download/v4.3.3/embree-4.3.3.x64.windows.zip",
-        "sha256_method": "downloaded-official-github-release-asset"
+        "sha256_method": "downloaded-official-github-release-asset",
+        "provenance_kind": "github-release-asset"
+      }
+    },
+    {
+      "variable": "GLEW_LINK",
+      "url": "https://github.com/nigels-com/glew/releases/download/glew-2.2.0/glew-2.2.0.zip",
+      "sha256": "a9046a913774395a095edcc0b0ac2d81c3aacca61787b39839b941e9be14e0d4",
+      "byte_size": 1334840,
+      "upstream_md5": "970535b75b1b69ebd018a0fa05af63d1",
+      "cmake_path": "src/external/glew.cmake",
+      "provenance": {
+        "asset_api_url": "https://api.github.com/repos/nigels-com/glew/releases/assets/30489629",
+        "asset_created_at": "2021-01-10T01:38:01Z",
+        "asset_name": "glew-2.2.0.zip",
+        "asset_updated_at": "2021-01-10T01:38:02Z",
+        "github_asset_id": 30489629,
+        "github_release_id": 36187427,
+        "github_release_tag": "glew-2.2.0",
+        "release_api_url": "https://api.github.com/repos/nigels-com/glew/releases/36187427",
+        "release_repository_url": "https://github.com/nigels-com/glew",
+        "resolved_download_url": "https://github.com/nigels-com/glew/releases/download/glew-2.2.0/glew-2.2.0.zip",
+        "sha256_method": "downloaded-official-github-release-asset",
+        "provenance_kind": "github-release-asset"
+      }
+    },
+    {
+      "variable": "LEVMAR_LINK",
+      "url": "https://github.com/alemuntoni/levmar/archive/refs/tags/2.6.1.zip",
+      "sha256": "14d71a0e3be099e50424d8f016481a8ff4e9388b807f31304801fb4b6799da31",
+      "byte_size": 107938,
+      "upstream_md5": "ecc22109fcad6575645de6e1a87d2ea3",
+      "cmake_path": "src/external/levmar.cmake",
+      "provenance": {
+        "provenance_kind": "github-tag-source-archive",
+        "repository_url": "https://github.com/alemuntoni/levmar",
+        "tag": "2.6.1",
+        "ref_api_url": "https://api.github.com/repos/alemuntoni/levmar/git/refs/tags/2.6.1",
+        "ref_object_type": "commit",
+        "ref_object_sha": "fdb689a81ff771a650683fe8026b0780ac7160e0",
+        "peeled_commit_sha": "fdb689a81ff771a650683fe8026b0780ac7160e0",
+        "peeled_commit_api_url": "https://api.github.com/repos/alemuntoni/levmar/git/commits/fdb689a81ff771a650683fe8026b0780ac7160e0",
+        "resolved_download_url": "https://github.com/alemuntoni/levmar/archive/refs/tags/2.6.1.zip",
+        "sha256_method": "downloaded-github-tag-source-archive"
+      }
+    },
+    {
+      "variable": "LIB3DS_LINK",
+      "url": "https://www.meshlab.net/data/libs/lib3ds-1.3.0.zip",
+      "sha256": "f5b00c302955a67fa5fb1f2d3f2583767cdc61fdbc6fd843c0c7c9d95c5629e3",
+      "byte_size": 443675,
+      "upstream_md5": "2572f7b0f29b591d494c1a0658b35c86",
+      "cmake_path": "src/external/lib3ds.cmake",
+      "provenance": {
+        "provenance_kind": "official-archive-byte-equivalence",
+        "official_reference_url": "https://storage.googleapis.com/google-code-archive-downloads/v2/code.google.com/lib3ds/lib3ds-1.3.0.zip",
+        "official_reference_last_modified": "2016-01-23T04:13:27Z",
+        "official_reference_etag": "\"2572f7b0f29b591d494c1a0658b35c86\"",
+        "official_reference_sha256": "f5b00c302955a67fa5fb1f2d3f2583767cdc61fdbc6fd843c0c7c9d95c5629e3",
+        "resolved_download_url": "https://www.meshlab.net/data/libs/lib3ds-1.3.0.zip",
+        "sha256_method": "downloaded-meshlab-mirror-byte-identical-to-google-code-archive",
+        "official_reference_md5": "2572f7b0f29b591d494c1a0658b35c86",
+        "official_reference_byte_size": 443675
+      }
+    },
+    {
+      "variable": "LIB3MF_LINK",
+      "url": "https://github.com/3MFConsortium/lib3mf/releases/download/v2.4.1/lib3mf-2.4.1-source-with-submodules.zip",
+      "sha256": "4e9e1776f4dd1b3dfce684ce9bb4ad1157dadf29908a1f3aabb6cd4358bf3248",
+      "byte_size": 55681831,
+      "upstream_md5": "78109504b03157998467c4c69c27ee7e",
+      "cmake_path": "src/external/lib3mf.cmake",
+      "provenance": {
+        "asset_api_url": "https://api.github.com/repos/3MFConsortium/lib3mf/releases/assets/232808015",
+        "asset_created_at": "2025-02-26T17:26:40Z",
+        "asset_name": "lib3mf-2.4.1-source-with-submodules.zip",
+        "asset_updated_at": "2025-02-26T17:27:12Z",
+        "github_asset_id": 232808015,
+        "github_release_id": 202594119,
+        "github_release_tag": "v2.4.1",
+        "release_api_url": "https://api.github.com/repos/3MFConsortium/lib3mf/releases/202594119",
+        "release_repository_url": "https://github.com/3MFConsortium/lib3mf",
+        "resolved_download_url": "https://github.com/3MFConsortium/lib3mf/releases/download/v2.4.1/lib3mf-2.4.1-source-with-submodules.zip",
+        "sha256_method": "downloaded-official-github-release-asset",
+        "provenance_kind": "github-release-asset"
+      }
+    },
+    {
+      "variable": "LIBE57_LINK",
+      "url": "https://github.com/asmaloney/libE57Format/archive/refs/tags/v3.1.1.zip",
+      "sha256": "215001515d0aa44d7f2beb894fbaded2679a9b94e5b8f8dcd148aa86e3225b6b",
+      "byte_size": 309851,
+      "upstream_md5": "1da204e43a2e2e1ca5d23deb77dd8b8e",
+      "cmake_path": "src/external/e57.cmake",
+      "provenance": {
+        "provenance_kind": "github-tag-source-archive",
+        "repository_url": "https://github.com/asmaloney/libE57Format",
+        "tag": "v3.1.1",
+        "ref_api_url": "https://api.github.com/repos/asmaloney/libE57Format/git/refs/tags/v3.1.1",
+        "ref_object_type": "tag",
+        "ref_object_sha": "3163921d98f771c87b5567ed540f3011429c1ebf",
+        "peeled_commit_sha": "1914b8ea972251d3bb49a33828497dde683205d9",
+        "peeled_commit_api_url": "https://api.github.com/repos/asmaloney/libE57Format/git/commits/1914b8ea972251d3bb49a33828497dde683205d9",
+        "resolved_download_url": "https://github.com/asmaloney/libE57Format/archive/refs/tags/v3.1.1.zip",
+        "sha256_method": "downloaded-github-tag-source-archive",
+        "annotated_tag_sha": "3163921d98f771c87b5567ed540f3011429c1ebf",
+        "tag_signature_verified": false
+      }
+    },
+    {
+      "variable": "LIBIGL_LINK",
+      "url": "https://github.com/libigl/libigl/archive/refs/tags/v2.6.0.zip",
+      "sha256": "b7679fc8eba847b64ffa33a112caad1a1cfacc2a0621014d3b6829c08acfe979",
+      "byte_size": 2138908,
+      "upstream_md5": "b5f95849d6828fd1f41b7aff1a55f4b0",
+      "cmake_path": "src/external/libigl.cmake",
+      "provenance": {
+        "provenance_kind": "github-tag-source-archive",
+        "repository_url": "https://github.com/libigl/libigl",
+        "tag": "v2.6.0",
+        "ref_api_url": "https://api.github.com/repos/libigl/libigl/git/refs/tags/v2.6.0",
+        "ref_object_type": "commit",
+        "ref_object_sha": "40e7900ccbd767f1f360e0eb10f0f1a6432e0993",
+        "peeled_commit_sha": "40e7900ccbd767f1f360e0eb10f0f1a6432e0993",
+        "peeled_commit_api_url": "https://api.github.com/repos/libigl/libigl/git/commits/40e7900ccbd767f1f360e0eb10f0f1a6432e0993",
+        "resolved_download_url": "https://github.com/libigl/libigl/archive/refs/tags/v2.6.0.zip",
+        "sha256_method": "downloaded-github-tag-source-archive"
+      }
+    },
+    {
+      "variable": "MUPARSER_LINK",
+      "url": "https://github.com/beltoforion/muparser/archive/refs/tags/v2.3.5.zip",
+      "sha256": "70f16812f6941e45f85194d8c533d4d40769618deff0f84e573aaba86271bdb1",
+      "byte_size": 147403,
+      "upstream_md5": "274d3e3c8b9a48b94f3e281820a00c57",
+      "cmake_path": "src/external/muparser.cmake",
+      "provenance": {
+        "provenance_kind": "github-tag-source-archive",
+        "repository_url": "https://github.com/beltoforion/muparser",
+        "tag": "v2.3.5",
+        "ref_api_url": "https://api.github.com/repos/beltoforion/muparser/git/refs/tags/v2.3.5",
+        "ref_object_type": "commit",
+        "ref_object_sha": "fbafd7f8774af2b53f4d2de07c57353fcfc09216",
+        "peeled_commit_sha": "fbafd7f8774af2b53f4d2de07c57353fcfc09216",
+        "peeled_commit_api_url": "https://api.github.com/repos/beltoforion/muparser/git/commits/fbafd7f8774af2b53f4d2de07c57353fcfc09216",
+        "resolved_download_url": "https://github.com/beltoforion/muparser/archive/refs/tags/v2.3.5.zip",
+        "sha256_method": "downloaded-github-tag-source-archive"
+      }
+    },
+    {
+      "variable": "NEXUS_LINK",
+      "url": "https://github.com/cnr-isti-vclab/nexus/archive/refs/tags/v2025.05.zip",
+      "sha256": "595961fbcf5534601b3cab843e476127ff079990b9d1a5dfa2d0cb8f16faefab",
+      "byte_size": 1110209,
+      "upstream_md5": "e2be7636fb4c901c6ba12b3e4a0a3633",
+      "cmake_path": "src/external/nexus.cmake",
+      "provenance": {
+        "provenance_kind": "github-tag-source-archive",
+        "repository_url": "https://github.com/cnr-isti-vclab/nexus",
+        "tag": "v2025.05",
+        "ref_api_url": "https://api.github.com/repos/cnr-isti-vclab/nexus/git/refs/tags/v2025.05",
+        "ref_object_type": "commit",
+        "ref_object_sha": "ca03cc42f4ea30379d2fb83fd423d3bf24953ada",
+        "peeled_commit_sha": "ca03cc42f4ea30379d2fb83fd423d3bf24953ada",
+        "peeled_commit_api_url": "https://api.github.com/repos/cnr-isti-vclab/nexus/git/commits/ca03cc42f4ea30379d2fb83fd423d3bf24953ada",
+        "resolved_download_url": "https://github.com/cnr-isti-vclab/nexus/archive/refs/tags/v2025.05.zip",
+        "sha256_method": "downloaded-github-tag-source-archive"
+      }
+    },
+    {
+      "variable": "OPENCTM_LINK",
+      "url": "https://sourceforge.net/projects/openctm/files/OpenCTM-1.0.3/OpenCTM-1.0.3-src.zip/download",
+      "sha256": "1310346651d96dc310022fde23a7d1a7810f32bccdfda4be0ea1b7a3cfd2b583",
+      "byte_size": 1991696,
+      "upstream_md5": "a87b6a6509ae0712b4a55f8887dc6a54",
+      "cmake_path": "src/external/openctm.cmake",
+      "provenance": {
+        "provenance_kind": "official-project-file-release",
+        "project_url": "https://sourceforge.net/projects/openctm/",
+        "file_page_url": "https://sourceforge.net/projects/openctm/files/OpenCTM-1.0.3/",
+        "asset_name": "OpenCTM-1.0.3-src.zip",
+        "published_at": "2010-01-15T19:00:06Z",
+        "resolved_download_url": "https://sourceforge.net/projects/openctm/files/OpenCTM-1.0.3/OpenCTM-1.0.3-src.zip/download",
+        "sha256_method": "downloaded-official-sourceforge-release-file-verified-by-upstream-cmake-md5",
+        "official_md5": "a87b6a6509ae0712b4a55f8887dc6a54"
+      }
+    },
+    {
+      "variable": "QHULL_LINK",
+      "url": "https://github.com/qhull/qhull/archive/refs/tags/2020.2.zip",
+      "sha256": "4dd01b1ac550c0b0f3e39373bcf1d15850b91116f9b1cde06b6bdca656948e25",
+      "byte_size": 1571370,
+      "upstream_md5": "a0a9b0e69bdbd9461319b8d2ac3d2f2e",
+      "cmake_path": "src/external/qhull.cmake",
+      "provenance": {
+        "provenance_kind": "github-tag-source-archive",
+        "repository_url": "https://github.com/qhull/qhull",
+        "tag": "2020.2",
+        "ref_api_url": "https://api.github.com/repos/qhull/qhull/git/refs/tags/2020.2",
+        "ref_object_type": "tag",
+        "ref_object_sha": "5869d1f0a59f3c644544323a205ab9323aee7e07",
+        "peeled_commit_sha": "613debeaea72ee66626dace9ba1a2eff11b5d37d",
+        "peeled_commit_api_url": "https://api.github.com/repos/qhull/qhull/git/commits/613debeaea72ee66626dace9ba1a2eff11b5d37d",
+        "resolved_download_url": "https://github.com/qhull/qhull/archive/refs/tags/2020.2.zip",
+        "sha256_method": "downloaded-github-tag-source-archive",
+        "annotated_tag_sha": "5869d1f0a59f3c644544323a205ab9323aee7e07",
+        "tag_signature_verified": true
+      }
+    },
+    {
+      "variable": "SSYNTH_LINK",
+      "url": "https://github.com/alemuntoni/StructureSynth/archive/refs/tags/1.5.1.zip",
+      "sha256": "a53597c737f4562717abc87e00d68463da220c8317eb716b323fe7b9f02b9e36",
+      "byte_size": 1955342,
+      "upstream_md5": "e2122c5e6e370fb36c885bccf59562b7",
+      "cmake_path": "src/external/ssynth.cmake",
+      "provenance": {
+        "provenance_kind": "github-tag-source-archive",
+        "repository_url": "https://github.com/alemuntoni/StructureSynth",
+        "tag": "1.5.1",
+        "ref_api_url": "https://api.github.com/repos/alemuntoni/StructureSynth/git/refs/tags/1.5.1",
+        "ref_object_type": "commit",
+        "ref_object_sha": "e64dd6ccbb28cf8dd836e15e4f83419e3a13dfef",
+        "peeled_commit_sha": "e64dd6ccbb28cf8dd836e15e4f83419e3a13dfef",
+        "peeled_commit_api_url": "https://api.github.com/repos/alemuntoni/StructureSynth/git/commits/e64dd6ccbb28cf8dd836e15e4f83419e3a13dfef",
+        "resolved_download_url": "https://github.com/alemuntoni/StructureSynth/archive/refs/tags/1.5.1.zip",
+        "sha256_method": "downloaded-github-tag-source-archive"
       }
     },
     {
@@ -27,18 +363,95 @@
       "url": "https://github.com/oneapi-src/oneTBB/releases/download/v2021.6.0/oneapi-tbb-2021.6.0-win.zip",
       "sha256": "8e2b48500fe93ab77bad435eea7ed9c513eacb032ee6a90e086d99b7f96bd8d5",
       "byte_size": 15439347,
+      "upstream_md5": null,
+      "cmake_path": "src/external/embree.cmake",
       "provenance": {
+        "asset_api_url": "https://api.github.com/repos/uxlfoundation/oneTBB/releases/assets/78363962",
+        "asset_created_at": "2022-09-19T17:07:40Z",
         "asset_name": "oneapi-tbb-2021.6.0-win.zip",
+        "asset_updated_at": "2022-09-19T17:08:02Z",
         "github_asset_id": 78363962,
         "github_release_id": 77571286,
         "github_release_tag": "v2021.6.0",
-        "asset_created_at": "2022-09-19T17:07:40Z",
-        "asset_updated_at": "2022-09-19T17:08:02Z",
-        "release_repository_url": "https://github.com/uxlfoundation/oneTBB",
         "release_api_url": "https://api.github.com/repos/uxlfoundation/oneTBB/releases/77571286",
-        "asset_api_url": "https://api.github.com/repos/uxlfoundation/oneTBB/releases/assets/78363962",
+        "release_repository_url": "https://github.com/uxlfoundation/oneTBB",
         "resolved_download_url": "https://github.com/uxlfoundation/oneTBB/releases/download/v2021.6.0/oneapi-tbb-2021.6.0-win.zip",
-        "sha256_method": "downloaded-official-github-release-asset"
+        "sha256_method": "downloaded-official-github-release-asset",
+        "provenance_kind": "github-release-asset"
+      }
+    },
+    {
+      "variable": "TINYGLTF_LINK",
+      "url": "https://www.meshlab.net/data/libs/tinygltf-2.6.3.zip",
+      "sha256": "f977628515d6a754eaaf5549af3843f33a0f674da807441f7bce0d77ca794b2a",
+      "byte_size": 6904846,
+      "upstream_md5": "f63ab0fb59e5de059d9719cc14057dc8",
+      "cmake_path": "src/external/tinygltf.cmake",
+      "provenance": {
+        "provenance_kind": "meshlab-historical-tag-archive",
+        "repository_url": "https://github.com/syoyo/tinygltf",
+        "tag": "v2.6.3",
+        "ref_api_url": "https://api.github.com/repos/syoyo/tinygltf/git/refs/tags/v2.6.3",
+        "ref_object_type": "tag",
+        "ref_object_sha": "63e7f119ba96eca64e1acc102c35686519f818f8",
+        "peeled_commit_sha": "39cda35e60e817193d7b6c4bda5e6d940e085299",
+        "peeled_commit_api_url": "https://api.github.com/repos/syoyo/tinygltf/git/commits/39cda35e60e817193d7b6c4bda5e6d940e085299",
+        "current_github_tag_archive_sha256": "4ec91c13098eb1085cff93dd0fd5ba172144f2a2ecd6d80fac85240233698137",
+        "current_github_tag_archive_md5": "42c54d2a3b073a4f765bdc94852d0960",
+        "common_file_count": 1338,
+        "common_file_content_mismatches": 0,
+        "meshlab_only_paths": [
+          "tools/windows/premake5.exe"
+        ],
+        "resolved_download_url": "https://www.meshlab.net/data/libs/tinygltf-2.6.3.zip",
+        "sha256_method": "downloaded-meshlab-historical-archive-verified-by-upstream-cmake-md5-and-tag-tree-comparison",
+        "tag_tree_contains_meshlab_only_file": false,
+        "meshlab_only_file_sha256": "5b9cb9a2ffb775b1c7f7d4e2b979e9007fe25c4887f4aed7aee68f88f2815149",
+        "meshlab_only_file_authenticode_status": "NotSigned",
+        "security_review_required": true,
+        "known_difference": "meshlab-mirror-adds-one-unsigned-file-not-in-tag-tree",
+        "meshlab_only_file_execution_policy": "preserve-do-not-execute",
+        "release_review_status": "required-before-binary-release"
+      }
+    },
+    {
+      "variable": "U3D_LINK",
+      "url": "https://github.com/alemuntoni/u3d/archive/refs/tags/1.5.2.zip",
+      "sha256": "489805acef0d395ace4e130991cbe9016345e601b4716e3a2658cdda4ea57eda",
+      "byte_size": 16799765,
+      "upstream_md5": "28d28c03e39166bc2f756e7f6d769c02",
+      "cmake_path": "src/external/u3d.cmake",
+      "provenance": {
+        "provenance_kind": "github-tag-source-archive",
+        "repository_url": "https://github.com/alemuntoni/u3d",
+        "tag": "1.5.2",
+        "ref_api_url": "https://api.github.com/repos/alemuntoni/u3d/git/refs/tags/1.5.2",
+        "ref_object_type": "commit",
+        "ref_object_sha": "b0de4e7f829228d09552bd012c7376dd1d27c584",
+        "peeled_commit_sha": "b0de4e7f829228d09552bd012c7376dd1d27c584",
+        "peeled_commit_api_url": "https://api.github.com/repos/alemuntoni/u3d/git/commits/b0de4e7f829228d09552bd012c7376dd1d27c584",
+        "resolved_download_url": "https://github.com/alemuntoni/u3d/archive/refs/tags/1.5.2.zip",
+        "sha256_method": "downloaded-github-tag-source-archive"
+      }
+    },
+    {
+      "variable": "XERCES_C_LINK",
+      "url": "https://www.meshlab.net/data/libs/xerces-c-3.2.4.zip",
+      "sha256": "563a668b331ca5d1fc08ed52e5f62a13508b47557f88a068ad1db6f68e1f2eb2",
+      "byte_size": 9736608,
+      "upstream_md5": "f84488fc2b8f62c4afca2f9943a42c00",
+      "cmake_path": "src/external/xerces.cmake",
+      "provenance": {
+        "provenance_kind": "official-archive-byte-equivalence",
+        "official_reference_url": "https://archive.apache.org/dist/xerces/c/3/sources/xerces-c-3.2.4.zip",
+        "official_reference_last_modified": "2022-10-17T17:17:50Z",
+        "official_reference_etag": "\"9491a0-5eb3e27b32f15\"",
+        "official_reference_sha256": "563a668b331ca5d1fc08ed52e5f62a13508b47557f88a068ad1db6f68e1f2eb2",
+        "cmake_primary_url_status": 404,
+        "resolved_download_url": "https://www.meshlab.net/data/libs/xerces-c-3.2.4.zip",
+        "sha256_method": "downloaded-meshlab-mirror-byte-identical-to-apache-archive",
+        "official_reference_md5": "f84488fc2b8f62c4afca2f9943a42c00",
+        "official_reference_byte_size": 9736608
       }
     }
   ]

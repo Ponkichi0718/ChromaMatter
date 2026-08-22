@@ -90,6 +90,14 @@ STATIC_COMPONENTS = {
             "pkg:generic/cpython@3.13.14",
         ),
         _component(
+            "pyinstaller",
+            "PyInstaller bootloader and run-time hooks",
+            "6.20.0",
+            "(GPL-2.0-or-later WITH Bootloader-exception) AND Apache-2.0",
+            "https://github.com/pyinstaller/pyinstaller/tree/v6.20.0",
+            "pkg:pypi/pyinstaller@6.20.0",
+        ),
+        _component(
             "openssl",
             "OpenSSL",
             "3.0.21",
@@ -281,7 +289,7 @@ STATIC_COMPONENTS = {
             "qt",
             "Qt",
             "5.15.2",
-            "LGPL-3.0-only OR GPL-3.0-only",
+            "LGPL-3.0-only",
             "https://download.qt.io/archive/qt/5.15/5.15.2/single/",
             "pkg:generic/qt@5.15.2",
         ),
@@ -309,9 +317,9 @@ STATIC_COMPONENTS = {
         _component(
             "onetbb-pymeshlab",
             "oneTBB",
-            "2021.11",
+            "2021.11.0",
             "Apache-2.0",
-            "https://github.com/oneapi-src/oneTBB",
+            "https://github.com/uxlfoundation/oneTBB/tree/v2021.11.0",
         ),
         _component(
             "xerces-c",
@@ -368,7 +376,7 @@ STATIC_COMPONENTS = {
             "u3d",
             "U3D",
             "1.5.2",
-            "NOASSERTION",
+            "Apache-2.0",
             "https://github.com/alemuntoni/u3d/tree/1.5.2",
         ),
         _component(
@@ -390,7 +398,7 @@ STATIC_COMPONENTS = {
             "geos",
             "GEOS",
             "3.13.1",
-            "LGPL-2.1-only",
+            "LGPL-2.1-or-later",
             "https://github.com/libgeos/geos/tree/3.13.1",
             "pkg:generic/geos@3.13.1",
         ),
@@ -635,7 +643,11 @@ def explicit_native_mapping(path: str) -> tuple[list[str], str, str]:
     system_provenance = ""
 
     if lower == "chromamatter.exe":
-        return ["chromamatter"], "application-entry-point", ""
+        # A frozen entry point contains both the application archive and the
+        # PyInstaller bootloader.  Keep the embedded build tool visible in the
+        # component map/SBOM instead of attributing the whole executable only
+        # to ChromaMatter.
+        return ["chromamatter", "pyinstaller"], "frozen-application-entry-point", ""
 
     is_internal_root_file = lower.startswith("_internal/") and "/" not in (
         lower.removeprefix("_internal/")

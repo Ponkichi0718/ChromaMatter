@@ -17,6 +17,9 @@ MITですが、同梱されるTetGen 1.6.0本体は、WIASの別途商用ライ�
 --------------------------
 
 - ChromaMatter本体：GPL-3.0-or-later
+- CPython 3.13.14：Python Software Foundation License Version 2
+- PyInstaller 6.20.0ブートローダーおよびランタイムフック：
+  (GPL-2.0-or-later WITH Bootloader-exception) AND Apache-2.0
 - tetgen 0.8.3 Pythonラッパー：MIT
 - TetGen 1.6.0本体：AGPL-3.0-or-later（または別途商用ライセンス）
 - PyMeshLab 2025.7.post1：GPL-3.0-only
@@ -25,13 +28,18 @@ MITですが、同梱されるTetGen 1.6.0本体は、WIASの別途商用ライ�
 - PyTetWild 0.3.0および同梱fTetWild：MPL-2.0
 - Shapely 2.1.2：BSD-3-Clause
 - Shapely wheelが同梱するGEOS 3.13.1：LGPL-2.1-or-later
-- Microsoft Visual C++ Runtime 14.44.35112：Microsoft再頒布可能コード条項
+- PyMeshLabが同梱するU3D 1.5.2：Apache-2.0
+- Microsoft Visual C++ Runtime：Microsoft再頒布可能コード条項
+  （ファイル別の正確な版はBINARY_COMPONENT_MAP.jsonに記録）
 
 完全な依存関係一覧はTHIRD_PARTY_LICENSES.txtにあります。ライセンス原文と
 wheel由来の通知は、このファイルと同じ場所および各コンポーネント用の
 サブフォルダーに収録します。BINARY_COMPONENT_MAP.jsonには、そのリリースの
 実ファイルと所有コンポーネントを記録し、SBOM.cdx.jsonには対応するCycloneDX
 一覧を収録します。
+
+CPythonランタイムの完全なライセンスは`cpython/LICENSE.txt`、PyInstallerの
+適用条件は`pyinstaller/COPYING.txt`に収録します。
 
 SOURCE_OFFER_JA.txtは、対象バイナリと一致する完全な対応ソースの場所を示し
 ます。BUILD_ENVIRONMENT_JA.mdは再ビルド入口、RELINKING_JA.mdはPyInstaller

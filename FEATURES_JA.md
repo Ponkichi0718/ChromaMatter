@@ -12,7 +12,7 @@ ChromaMatter — AI Model Print Studioは、AI生成された色付き3Dモデ�
 
 ## AIモデルから3MFまでを、ひとつの流れに
 
-頂点カラー付きOBJ、または埋め込みbaseColor／`COLOR_0`を持つ静的GLBを読み込めます。TripoAIだけでなく、Hi3D AIのようにGLBを出力するサービスも同じ制作フローへ取り込めます。モデルの処理はローカルで行い、ChromaMatterから外部サーバーへアップロードしません。
+頂点カラー付きOBJ、または埋め込みbaseColor／`COLOR_0`を持つ静的GLBを読み込めます。TripoAIだけでなく、Hi3D AIのようにGLBを出力するサービスも同じ制作フローへ取り込めます。対応する分割GLBはパーツ構成を保ったまま閉立体化し、結合3MFまたはパーツ別3MFへ出力できます。モデルの処理はローカルで行い、ChromaMatterから外部サーバーへアップロードしません。
 
 <table>
   <tr>
@@ -75,7 +75,7 @@ ChromaMatter — AI Model Print Studioは、AI生成された色付き3Dモデ�
 - サイズ、面数、形状診断、対応するUV seamの閉立体化
 - 全体3MFまたはパーツ別3MF、持ち運べるproject folder
 
-閉立体化は、証明できる境界だけを安全に処理します。閉立体化前に3MF出力を始めた場合も、適格なmodelでは処理を宣言し、成功後に出力を再開します。すべての穴や壊れたモデルを自動修復する機能ではなく、本当の穴へ推測で蓋は追加しません。
+閉立体化は、証明できる境界だけを安全に処理します。対応する分割GLBでは別パーツ同士を溶接せず、元面と修復面を区別して追跡します。Hi3D系の識別用疑似色も、exporter・node・material・texture・既知paletteの条件がすべて揃った場合だけ除外し、通常の作者指定色は残します。閉立体化前に3MF出力を始めた場合も、適格なmodelでは処理を宣言し、成功後に出力を再開します。すべての穴や壊れたモデルを自動修復する機能ではありません。対応する分割GLBの修復では、閉じた未対応境界loopの幅が2.0 mm以下かつ平面性のずれが0.02 mm以下の場合だけ、厳密な局所平面capを追加できます。それより大きい穴、非平面・曖昧・non-manifoldな開口はfail-closedで停止し、単一GLBのUV seam溶接経路はcapを追加しません。
 
 出力3MFには安定したFull Spectrum layer-cycleとprime towerのbaselineを記録します。Local Z、advanced dithering、pointillism等の実験設定は有効化せず、supportはSnapmaker Orca側で選択します。最終判断は必ずOrcaのslice previewと実機testで行います。
 

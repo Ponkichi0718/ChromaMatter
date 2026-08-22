@@ -3,6 +3,9 @@ Corresponding source for @@RELEASE_ID@@
 
 Binary archive: @@BINARY_ARCHIVE_NAME@@
 Complete corresponding source: @@CORRESPONDING_SOURCE_URL@@
+Source archive: @@CORRESPONDING_SOURCE_ARCHIVE_NAME@@
+Source archive SHA-256: @@CORRESPONDING_SOURCE_SHA256@@
+ChromaMatter source commit: @@CORRESPONDING_SOURCE_PROJECT_COMMIT@@
 
 The source archive above is the source counterpart for this exact binary
 release. It is intended to contain the ChromaMatter application source, build

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import hashlib
 import html
 import io
@@ -24,10 +25,19 @@ from scipy.spatial import cKDTree
 from . import APP_DISPLAY_NAME, __version__
 from .assembly import (
     AssemblyError,
+    AssemblySelfIntersectionError,
     BoundaryLoop,
+    MULTIPART_INHERITED_SOURCE_WARNING,
+    MULTIPART_PART_SPECIFIC_WARNING,
+    MULTIPART_QEM_MAX_OUTPUT_RATIO_DENOMINATOR,
+    MULTIPART_QEM_MAX_OUTPUT_RATIO_NUMERATOR,
+    MULTIPART_QEM_WARNING,
+    MULTIPART_SOURCE_PRESERVED_WARNING,
     SeamPair,
     add_keyed_joints,
     find_boundary_loops,
+    multipart_qem_reduction_is_significant,
+    multipart_self_intersection_limits,
     pair_matching_loops,
     repair_small_unmatched_boundaries,
     solidify_coincident_shells,
@@ -35,6 +45,9 @@ from .assembly import (
 )
 from .generated_surface_color import (
     EXPORT_DIAGNOSTICS_ATTRIBUTE,
+    FACE_PROVENANCE_SOURCE,
+    KNOWN_FACE_PROVENANCE,
+    PROVENANCE_SCHEMA,
     derive_part_face_provenance,
     make_face_provenance_record,
 )
@@ -66,6 +79,11 @@ from .models import (
     ToneSettings,
     without_surface_shell_output,
 )
+from .multipart_topology import (
+    MULTIPART_TOPOLOGY_SCHEMA,
+    MultipartTopologyError,
+    normalize_multipart_part,
+)
 from .filament_materials import generic_filament_profile, normalize_filament_material
 from .parts import (
     assignment_palette_rgb_table,
@@ -78,6 +96,14 @@ from .parts import (
 from .volume_partition import (
     VolumePartitionError,
     solidify_complex_partitions,
+)
+
+
+MULTIPART_SELF_INTERSECTION_SCHEMA = (
+    "obj-adjuster.multipart-self-intersection.v1"
+)
+INDIVIDUAL_SHARED_INTERFACE_SCHEMA = (
+    "tripo-spectrum-mapper.individual-shared-interface.v1"
 )
 
 
@@ -746,7 +772,8 @@ def mesh_quality(
     faces: np.ndarray,
     *,
     check_self_intersections: bool = False,
-) -> dict[str, int | bool | float | str]:
+    self_intersection_face_id_limit: int | None = None,
+) -> dict[str, object]:
     """Return slicer-relevant solid checks for one intended print part."""
 
     vertices = np.asarray(vertices, dtype=np.float64)
@@ -777,7 +804,15 @@ def mesh_quality(
     result["self_intersecting_area"] = -1.0
     result["self_intersecting_area_fraction"] = -1.0
     result["maximum_self_intersecting_face_area"] = -1.0
+    result["self_intersecting_face_ids"] = []
+    result["self_intersecting_face_ids_complete"] = False
     if check_self_intersections:
+        if self_intersection_face_id_limit is not None and (
+            not isinstance(self_intersection_face_id_limit, int)
+            or isinstance(self_intersection_face_id_limit, bool)
+            or self_intersection_face_id_limit < 0
+        ):
+            raise EngineError("自己交差面ID取得上限が不正です")
         mesh_set = ml.MeshSet()
         mesh_set.add_mesh(
             ml.Mesh(vertex_matrix=vertices, face_matrix=faces),
@@ -804,6 +839,20 @@ def mesh_quality(
         )
         result["maximum_self_intersecting_face_area"] = (
             float(areas[selected].max(initial=0.0)) if selected_count else 0.0
+        )
+        selected_id_limit = (
+            int(self_intersection_face_id_limit)
+            if self_intersection_face_id_limit is not None
+            else max(100, (len(faces) + 9_999) // 10_000)
+        )
+        selected_ids_complete = selected_count <= selected_id_limit
+        result["self_intersecting_face_ids"] = (
+            np.flatnonzero(selected).astype(int).tolist()
+            if selected_ids_complete
+            else []
+        )
+        result["self_intersecting_face_ids_complete"] = bool(
+            selected_ids_complete
         )
     return result
 
@@ -1027,6 +1076,95 @@ def _compact_part_mesh(
     used = np.unique(np.asarray(faces, dtype=np.int32).reshape(-1))
     local_faces = np.searchsorted(used, faces).astype(np.int32)
     return vertices[used], local_faces, colors[used]
+
+
+def _triangle_coordinate_multiset_is_subset(
+    source_vertices: np.ndarray,
+    source_faces: np.ndarray,
+    candidate_vertices: np.ndarray,
+    candidate_faces: np.ndarray,
+) -> bool:
+    """Prove that every candidate triangle is inherited from ``source``.
+
+    Mesh cleanup may compact vertices, remove small connected components, and
+    reverse winding.  None of those operations should synthesize a triangle
+    for the compatible multipart path.  Compare exact coordinate triples as a
+    multiset so coincident vertices, face ordering, and winding cannot turn a
+    merely similar triangle into source ancestry.
+    """
+
+    source_vertices = np.asarray(source_vertices, dtype=np.float64)
+    source_faces = np.asarray(source_faces, dtype=np.int64)
+    candidate_vertices = np.asarray(candidate_vertices, dtype=np.float64)
+    candidate_faces = np.asarray(candidate_faces, dtype=np.int64)
+    if (
+        source_vertices.ndim != 2
+        or source_vertices.shape[1:] != (3,)
+        or candidate_vertices.ndim != 2
+        or candidate_vertices.shape[1:] != (3,)
+        or source_faces.ndim != 2
+        or source_faces.shape[1:] != (3,)
+        or candidate_faces.ndim != 2
+        or candidate_faces.shape[1:] != (3,)
+        or not len(source_faces)
+        or not len(candidate_faces)
+        or not np.isfinite(source_vertices).all()
+        or not np.isfinite(candidate_vertices).all()
+    ):
+        return False
+    if (
+        int(source_faces.min(initial=0)) < 0
+        or int(source_faces.max(initial=-1)) >= len(source_vertices)
+        or int(candidate_faces.min(initial=0)) < 0
+        or int(candidate_faces.max(initial=-1)) >= len(candidate_vertices)
+    ):
+        return False
+
+    source_positions, source_vertex_positions = np.unique(
+        source_vertices,
+        axis=0,
+        return_inverse=True,
+    )
+    combined_positions, combined_inverse = np.unique(
+        np.vstack((source_positions, candidate_vertices)),
+        axis=0,
+        return_inverse=True,
+    )
+    if len(combined_positions) != len(source_positions):
+        return False
+    candidate_vertex_positions = combined_inverse[len(source_positions) :]
+    source_triangles = np.sort(
+        source_vertex_positions[source_faces], axis=1
+    ).astype(np.int64, copy=False)
+    candidate_triangles = np.sort(
+        candidate_vertex_positions[candidate_faces], axis=1
+    ).astype(np.int64, copy=False)
+    source_unique, source_counts = np.unique(
+        source_triangles,
+        axis=0,
+        return_counts=True,
+    )
+    candidate_unique, candidate_counts = np.unique(
+        candidate_triangles,
+        axis=0,
+        return_counts=True,
+    )
+    row_dtype = np.dtype(
+        [("a", "<i8"), ("b", "<i8"), ("c", "<i8")]
+    )
+    source_rows = np.ascontiguousarray(source_unique, dtype="<i8").view(
+        row_dtype
+    ).reshape(-1)
+    candidate_rows = np.ascontiguousarray(
+        candidate_unique, dtype="<i8"
+    ).view(row_dtype).reshape(-1)
+    locations = np.searchsorted(source_rows, candidate_rows)
+    in_range = locations < len(source_rows)
+    if not np.all(in_range):
+        return False
+    if not np.array_equal(source_rows[locations], candidate_rows):
+        return False
+    return bool(np.all(candidate_counts <= source_counts[locations]))
 
 
 def _allocate_part_targets(counts: np.ndarray, requested_total: int) -> np.ndarray:
@@ -1450,6 +1588,22 @@ def _prepare_geometry_parts(
     # patches available for inspection; only an explicit setting may create
     # printable closed bodies.
     solidify_parts = bool(settings.solidify_parts)
+    normalize_multipart_gltf = bool(
+        solidify_parts
+        and asset.path.suffix.lower() in {".glb", ".gltf"}
+        and str(asset.part_marker_kind or "") == "gltf_node"
+    )
+    import_metadata = (
+        dict(asset.import_metadata)
+        if isinstance(asset.import_metadata, dict)
+        else {}
+    )
+    compatible_multipart_import = bool(
+        import_metadata.get("schema") == "obj-adjuster.gltf-import.v1"
+        and import_metadata.get("compatible_exploded_multipart") is True
+        and import_metadata.get("categorical_part_ids_detected") is True
+        and import_metadata.get("segmentation_vertex_colors_suppressed") is True
+    )
     part_count = len(asset.part_names)
     output_part_names = list(asset.part_names)
     output_part_keys = list(asset.part_keys)
@@ -1467,6 +1621,7 @@ def _prepare_geometry_parts(
     )
     clean_meshes: list[tuple[np.ndarray, np.ndarray, np.ndarray]] = []
     cleaning_diagnostics: list[dict[str, object]] = []
+    topology_normalization_records: list[dict[str, object]] = []
     boundary_loops = []
     part_stats: list[dict[str, object]] = []
     for part_id, (part_name, part_key) in enumerate(
@@ -1477,6 +1632,55 @@ def _prepare_geometry_parts(
         part_vertices, part_faces, part_colors = _compact_part_mesh(
             oriented_vertices, source_faces, asset.colors
         )
+        raw_part_vertex_count = int(len(part_vertices))
+        raw_part_face_count = int(len(part_faces))
+        normalization_record: dict[str, object] | None = None
+        if normalize_multipart_gltf:
+            try:
+                normalized = normalize_multipart_part(
+                    part_vertices,
+                    part_faces,
+                    part_colors,
+                    allow_color_merge=compatible_multipart_import,
+                )
+            except MultipartTopologyError as exc:
+                normalization_record = {
+                    "schema": MULTIPART_TOPOLOGY_SCHEMA,
+                    "method": "exact_coordinate_sector_split",
+                    "status": "rejected",
+                    "error_code": str(exc.code),
+                    "details": dict(exc.details),
+                    "source_vertices": raw_part_vertex_count,
+                    "source_faces": raw_part_face_count,
+                    "output_vertices": raw_part_vertex_count,
+                    "output_faces": raw_part_face_count,
+                    "removed_collapsed_faces": 0,
+                    "part_id": int(part_id),
+                    "part_key": str(part_key),
+                    "part_name": str(part_name),
+                }
+                topology_normalization_records.append(
+                    normalization_record
+                )
+                warnings.append(
+                    f"{part_name}: 同一座標トポロジーの正規化を"
+                    f"安全に証明できないため元形状を保持しました"
+                    f"（{exc.code}）"
+                )
+            else:
+                part_vertices = normalized.vertices
+                part_faces = normalized.faces
+                part_colors = normalized.colors
+                normalization_record = {
+                    **dict(normalized.metadata),
+                    "status": "applied",
+                    "part_id": int(part_id),
+                    "part_key": str(part_key),
+                    "part_name": str(part_name),
+                }
+                topology_normalization_records.append(
+                    normalization_record
+                )
         source_volume = signed_volume(part_vertices, part_faces)
         (
             clean_vertices,
@@ -1492,6 +1696,10 @@ def _prepare_geometry_parts(
         cleaning_diagnostic["part_id"] = int(part_id)
         cleaning_diagnostic["part_key"] = str(part_key)
         cleaning_diagnostic["part_name"] = str(part_name)
+        if normalization_record is not None:
+            cleaning_diagnostic["topology_normalization"] = (
+                normalization_record
+            )
         cleaning_diagnostics.append(cleaning_diagnostic)
         if bool(cleaning_diagnostic.get("component_filter_failed")):
             warnings.append(
@@ -1522,6 +1730,24 @@ def _prepare_geometry_parts(
             and source_volume * clean_volume < 0.0
         ):
             clean_faces[:, [1, 2]] = clean_faces[:, [2, 1]]
+        clean_source_triangle_ancestry_preserved = bool(
+            normalization_record is not None
+            and normalization_record.get("status") == "applied"
+            and normalization_record.get("face_order_preserved") is True
+            and normalization_record.get("output_face_source_map")
+            == "stable_source_filter"
+            and normalization_record.get("geometry_coordinates_preserved")
+            is True
+            and _triangle_coordinate_multiset_is_subset(
+                part_vertices,
+                part_faces,
+                clean_vertices,
+                clean_faces,
+            )
+        )
+        cleaning_diagnostic[
+            "normalized_source_triangle_ancestry_preserved"
+        ] = clean_source_triangle_ancestry_preserved
         clean_meshes.append((clean_vertices, clean_faces, clean_colors))
         part_loops = find_boundary_loops(
             part_id, clean_vertices, clean_faces
@@ -1532,12 +1758,64 @@ def _prepare_geometry_parts(
                 "id": part_id,
                 "key": part_key,
                 "name": part_name,
-                "source_vertices": int(len(part_vertices)),
-                "source_faces": int(len(part_faces)),
+                "source_vertices": raw_part_vertex_count,
+                "source_faces": raw_part_face_count,
+                "normalized_vertices": int(len(part_vertices)),
+                "normalized_faces": int(len(part_faces)),
+                "normalization_removed_collapsed_faces": int(
+                    normalization_record.get("removed_collapsed_faces", 0)
+                    if normalization_record is not None
+                    else 0
+                ),
+                "normalization_status": str(
+                    normalization_record.get("status", "not_applicable")
+                    if normalization_record is not None
+                    else "not_applicable"
+                ),
+                "normalization_exact_vertex_merges": int(
+                    normalization_record.get(
+                        "exact_coordinate_vertex_merges", 0
+                    )
+                    if normalization_record is not None
+                    else 0
+                ),
+                "normalization_collapsed_only_vertices": int(
+                    normalization_record.get(
+                        "collapsed_only_source_vertices", 0
+                    )
+                    if normalization_record is not None
+                    else 0
+                ),
+                "normalization_sector_split_vertices": int(
+                    normalization_record.get("sector_split_vertices", 0)
+                    if normalization_record is not None
+                    else 0
+                ),
+                "normalization_net_vertex_reduction": int(
+                    normalization_record.get("net_vertex_reduction", 0)
+                    if normalization_record is not None
+                    else 0
+                ),
                 "clean_vertices": int(len(clean_vertices)),
                 "clean_faces": int(len(clean_faces)),
-                "removed_vertices": int(len(part_vertices) - len(clean_vertices)),
-                "removed_faces": int(len(part_faces) - len(clean_faces)),
+                "removed_vertices": max(
+                    0, raw_part_vertex_count - len(clean_vertices)
+                ),
+                "removed_faces": max(
+                    0, raw_part_face_count - len(clean_faces)
+                ),
+                "component_cleanup_removed_vertices": max(
+                    0, len(part_vertices) - len(clean_vertices)
+                ),
+                "component_cleanup_removed_faces": max(
+                    0, len(part_faces) - len(clean_faces)
+                ),
+                "total_source_to_clean_vertex_delta": int(
+                    raw_part_vertex_count - len(clean_vertices)
+                ),
+                "total_source_to_clean_face_delta": int(
+                    raw_part_face_count - len(clean_faces)
+                ),
                 "open_boundary_loops": int(len(part_loops)),
                 "open_boundary_edges": int(
                     sum(len(loop.vertex_ids) for loop in part_loops)
@@ -1547,6 +1825,9 @@ def _prepare_geometry_parts(
                 ),
                 "cleaning_orientation_fallback": bool(
                     cleaning_diagnostic.get("orientation_fallback_used")
+                ),
+                "normalized_source_triangle_ancestry_preserved": (
+                    clean_source_triangle_ancestry_preserved
                 ),
             }
         )
@@ -1562,12 +1843,110 @@ def _prepare_geometry_parts(
         sum(len(mesh[0]) for mesh in clean_meshes)
     )
     source_clean_face_count = int(sum(len(mesh[1]) for mesh in clean_meshes))
+    normalized_input_vertex_count = int(
+        sum(int(stats["normalized_vertices"]) for stats in part_stats)
+    )
+    normalized_input_face_count = int(
+        sum(int(stats["normalized_faces"]) for stats in part_stats)
+    )
+    component_removed_vertices = max(
+        0, normalized_input_vertex_count - source_clean_vertex_count
+    )
+    component_removed_faces = max(
+        0, normalized_input_face_count - source_clean_face_count
+    )
+    # Preserve PreparedGeometry's established source-to-clean accounting.
+    # The normalization summary below decomposes true face filtering,
+    # topological reindexing, and later component cleanup.
     removed_vertices = max(
         0, asset.original_vertex_count - source_clean_vertex_count
     )
-    removed_faces = max(0, asset.original_face_count - source_clean_face_count)
-    if removed_faces:
-        warnings.append(f"微小な孤立形状など {removed_faces:,}面を除去しました")
+    removed_faces = max(
+        0, asset.original_face_count - source_clean_face_count
+    )
+    normalized_removed_faces = int(
+        sum(
+            int(record.get("removed_collapsed_faces", 0) or 0)
+            for record in topology_normalization_records
+        )
+    )
+    topology_normalization_summary = {
+        "schema": MULTIPART_TOPOLOGY_SCHEMA,
+        "eligible": bool(normalize_multipart_gltf),
+        "attempted_parts": int(len(topology_normalization_records)),
+        "applied_parts": int(
+            sum(
+                record.get("status") == "applied"
+                for record in topology_normalization_records
+            )
+        ),
+        "rejected_parts": int(
+            sum(
+                record.get("status") == "rejected"
+                for record in topology_normalization_records
+            )
+        ),
+        "source_vertices": int(
+            sum(
+                int(record.get("source_vertices", 0) or 0)
+                for record in topology_normalization_records
+            )
+        ),
+        "output_vertices": int(
+            sum(
+                int(record.get("output_vertices", 0) or 0)
+                for record in topology_normalization_records
+            )
+        ),
+        "exact_coordinate_vertex_merges": int(
+            sum(
+                int(
+                    record.get("exact_coordinate_vertex_merges", 0) or 0
+                )
+                for record in topology_normalization_records
+            )
+        ),
+        "collapsed_only_source_vertices": int(
+            sum(
+                int(
+                    record.get("collapsed_only_source_vertices", 0) or 0
+                )
+                for record in topology_normalization_records
+            )
+        ),
+        "input_unreferenced_vertices": int(
+            sum(
+                int(record.get("input_unreferenced_vertices", 0) or 0)
+                for record in topology_normalization_records
+            )
+        ),
+        "sector_split_vertices": int(
+            sum(
+                int(record.get("sector_split_vertices", 0) or 0)
+                for record in topology_normalization_records
+            )
+        ),
+        "net_vertex_reduction": int(
+            sum(
+                int(record.get("net_vertex_reduction", 0) or 0)
+                for record in topology_normalization_records
+            )
+        ),
+        "removed_collapsed_faces": normalized_removed_faces,
+        "component_cleanup_removed_vertices": int(
+            component_removed_vertices
+        ),
+        "component_cleanup_removed_faces": int(component_removed_faces),
+    }
+    if normalized_removed_faces:
+        warnings.append(
+            "GLBの同一座標頂点を対応付けたときだけ縮退すると証明できた"
+            f"三角形を {normalized_removed_faces:,} 面除外しました"
+        )
+    if component_removed_faces:
+        warnings.append(
+            f"微小な孤立形状など {component_removed_faces:,}面を除去しました"
+        )
     source_minimum = np.min(
         np.vstack([mesh[0].min(axis=0) for mesh in clean_meshes]), axis=0
     )
@@ -1585,6 +1964,8 @@ def _prepare_geometry_parts(
     source_part_stats = [dict(stats) for stats in part_stats]
     repair_records: list[dict[str, object]] = []
     local_boundary_repair_records: list[dict[str, object]] = []
+    strict_part_records: list[dict[str, object]] = []
+    multipart_interface_coordinates_preserved = False
     repair_method = "none"
     reconstructed_bodies: dict[str, object] = {}
     joint_records: list[dict[str, object]] = []
@@ -1651,6 +2032,153 @@ def _prepare_geometry_parts(
             float(transfer["p99"]) * float(settings.height_mm)
         )
         part_stats[part_id]["target_faces"] = int(target)
+
+    pre_qem_face_counts = [int(len(mesh[1])) for mesh in clean_meshes]
+    pre_local_cap_source_face_limits = [
+        int(len(mesh[1])) for mesh in simplified_open_meshes
+    ]
+    multipart_simplification_applied_parts = [
+        bool(post_qem_faces < pre_qem_faces)
+        for pre_qem_faces, post_qem_faces in zip(
+            pre_qem_face_counts,
+            pre_local_cap_source_face_limits,
+            strict=True,
+        )
+    ]
+    multipart_qem_warning_eligible_parts = [
+        multipart_qem_reduction_is_significant(
+            pre_qem_faces,
+            post_qem_faces,
+        )
+        for pre_qem_faces, post_qem_faces in zip(
+            pre_qem_face_counts,
+            pre_local_cap_source_face_limits,
+            strict=True,
+        )
+    ]
+    multipart_simplification_applied = any(
+        multipart_simplification_applied_parts
+    )
+    multipart_source_triangle_geometry_preserved_parts = [
+        bool(
+            not simplification_applied
+            and len(source_mesh[1]) == len(output_mesh[1])
+            and np.array_equal(
+                np.asarray(output_mesh[0])[np.asarray(output_mesh[1])],
+                np.asarray(source_mesh[0])[np.asarray(source_mesh[1])],
+            )
+        )
+        for source_mesh, output_mesh, simplification_applied in zip(
+            clean_meshes,
+            simplified_open_meshes,
+            multipart_simplification_applied_parts,
+            strict=True,
+        )
+    ]
+    multipart_source_triangle_geometry_preserved = bool(
+        not multipart_simplification_applied
+        and all(multipart_source_triangle_geometry_preserved_parts)
+    )
+    multipart_source_triangle_ancestry_preserved_parts = [
+        bool(
+            part_stats_value.get(
+                "normalized_source_triangle_ancestry_preserved"
+            )
+            is True
+            and source_geometry_preserved
+        )
+        for part_stats_value, source_geometry_preserved in zip(
+            part_stats,
+            multipart_source_triangle_geometry_preserved_parts,
+            strict=True,
+        )
+    ]
+    multipart_source_triangle_ancestry_preserved = bool(
+        not multipart_simplification_applied
+        and all(multipart_source_triangle_ancestry_preserved_parts)
+    )
+    all_multipart_normalizations_applied = bool(
+        solidify_parts
+        and normalize_multipart_gltf
+        and compatible_multipart_import
+        and len(topology_normalization_records) == part_count
+        and all(
+            record.get("schema") == MULTIPART_TOPOLOGY_SCHEMA
+            and record.get("method") == "exact_coordinate_sector_split"
+            and record.get("status") == "applied"
+            and record.get("face_order_preserved") is True
+            and record.get("output_face_source_map")
+            == "stable_source_filter"
+            and record.get("geometry_coordinates_preserved") is True
+            and record.get("part_identity_preserved") is True
+            and int(record.get("noncollapsed_degenerate_faces", -1)) == 0
+            and isinstance(record.get("edge_pairing"), dict)
+            and record["edge_pairing"].get("all_paired_halfedges_reversed")
+            is True
+            and isinstance(record.get("after"), dict)
+            and int(record["after"].get("nonmanifold_edges", -1)) == 0
+            and int(record["after"].get("inconsistent_winding_edges", -1))
+            == 0
+            for record in topology_normalization_records
+        )
+    )
+    multipart_bounded_self_intersection_enabled = bool(
+        all_multipart_normalizations_applied
+        and all(
+            qem_warning_eligible or inherited_source_proven
+            for qem_warning_eligible, inherited_source_proven in zip(
+                multipart_qem_warning_eligible_parts,
+                multipart_source_triangle_ancestry_preserved_parts,
+                strict=True,
+            )
+        )
+    )
+    multipart_self_intersection_policies = [
+        (
+            MULTIPART_QEM_WARNING
+            if qem_warning_eligible
+            else MULTIPART_INHERITED_SOURCE_WARNING
+        )
+        for qem_warning_eligible in multipart_qem_warning_eligible_parts
+    ]
+    multipart_policy_set = set(multipart_self_intersection_policies)
+    multipart_self_intersection_policy = (
+        next(iter(multipart_policy_set))
+        if len(multipart_policy_set) == 1
+        else MULTIPART_PART_SPECIFIC_WARNING
+    )
+    for part_id in range(part_count):
+        part_stats[part_id]["pre_qem_face_count"] = int(
+            pre_qem_face_counts[part_id]
+        )
+        part_stats[part_id]["post_qem_source_face_count"] = int(
+            pre_local_cap_source_face_limits[part_id]
+        )
+        part_stats[part_id]["simplification_applied"] = bool(
+            multipart_simplification_applied_parts[part_id]
+        )
+        part_stats[part_id]["qem_warning_eligible"] = bool(
+            multipart_qem_warning_eligible_parts[part_id]
+        )
+        part_stats[part_id][
+            "qem_max_output_ratio_numerator"
+        ] = MULTIPART_QEM_MAX_OUTPUT_RATIO_NUMERATOR
+        part_stats[part_id][
+            "qem_max_output_ratio_denominator"
+        ] = MULTIPART_QEM_MAX_OUTPUT_RATIO_DENOMINATOR
+        part_stats[part_id][
+            "source_triangle_geometry_preserved"
+        ] = bool(
+            multipart_source_triangle_geometry_preserved_parts[part_id]
+        )
+        part_stats[part_id][
+            "source_triangle_ancestry_preserved"
+        ] = bool(
+            multipart_source_triangle_ancestry_preserved_parts[part_id]
+        )
+        part_stats[part_id]["self_intersection_warning_policy"] = str(
+            multipart_self_intersection_policies[part_id]
+        )
 
     simplified_boundary_loops = []
     for part_id, (vertices, faces, _colors) in enumerate(
@@ -1735,7 +2263,26 @@ def _prepare_geometry_parts(
                     final_meshes,
                     seams,
                     height_mm=settings.height_mm,
+                    source_face_limits=pre_local_cap_source_face_limits,
+                    allow_bounded_source_self_intersections=(
+                        multipart_bounded_self_intersection_enabled
+                    ),
+                    bounded_self_intersection_policy=(
+                        multipart_self_intersection_policy
+                    ),
+                    bounded_self_intersection_policies=(
+                        multipart_self_intersection_policies
+                    ),
+                    source_triangle_ancestry_proven_parts=(
+                        multipart_source_triangle_ancestry_preserved_parts
+                    ),
                 )
+            except AssemblySelfIntersectionError as intersection_exc:
+                raise EngineError(
+                    "正規化済みGLBパーツの自己交差が安全な警告範囲を"
+                    "超えたため、閉立体化を停止しました。\n"
+                    f"詳細: {intersection_exc}"
+                ) from intersection_exc
             except AssemblyError as planar_exc:
                 warnings.append(
                     "継ぎ目が強く曲がっているため、"
@@ -1757,7 +2304,16 @@ def _prepare_geometry_parts(
             repair_method = str(repair.get("method", "partitioned_shared_caps"))
             repair_record = dict(repair)
             repair_records.append(repair_record)
+            multipart_interface_coordinates_preserved = bool(
+                repair.get("source_triangle_coordinates_preserved") is True
+            )
             repair_parts = repair.get("parts", [])
+            strict_part_records = (
+                [dict(value) for value in repair_parts]
+                if isinstance(repair_parts, list)
+                and all(isinstance(value, dict) for value in repair_parts)
+                else []
+            )
             for part_id, body_mesh in enumerate(final_meshes):
                 part_repair = (
                     repair_parts[part_id]
@@ -1811,32 +2367,53 @@ def _prepare_geometry_parts(
                     "安全に保証できないため、自動生成を省略しました"
                 )
         else:
-            open_parts: list[int] = []
-            for part_id, (vertices, faces, _colors) in enumerate(final_meshes):
-                part_topology = edge_topology(faces, len(vertices))
-                if not bool(part_topology["watertight"]):
-                    open_parts.append(part_id)
-                repair_records.append(
-                    {
-                        "part_id": int(part_id),
-                        "part_key": output_part_keys[part_id],
-                        "method": "already_watertight",
-                        "added_faces": 0,
-                        "before": part_topology,
-                        "after": part_topology,
-                        "closed": bool(part_topology["watertight"]),
-                    }
+            try:
+                final_meshes, repair = solidify_partitioned_parts(
+                    final_meshes,
+                    [],
+                    height_mm=settings.height_mm,
+                    source_face_limits=pre_local_cap_source_face_limits,
+                    allow_bounded_source_self_intersections=(
+                        multipart_bounded_self_intersection_enabled
+                    ),
+                    bounded_self_intersection_policy=(
+                        multipart_self_intersection_policy
+                    ),
+                    bounded_self_intersection_policies=(
+                        multipart_self_intersection_policies
+                    ),
+                    source_triangle_ancestry_proven_parts=(
+                        multipart_source_triangle_ancestry_preserved_parts
+                    ),
                 )
-                part_stats[part_id]["repair_added_faces"] = 0
-                part_stats[part_id]["watertight_after_repair"] = bool(
-                    part_topology["watertight"]
-                )
-            if open_parts:
-                labels = ", ".join(str(index + 1) for index in open_parts)
+            except AssemblySelfIntersectionError as intersection_exc:
                 raise EngineError(
-                    "閉じていないパーツを安全に再構成できませんでした: "
-                    f"{labels}"
-                )
+                    "正規化済みGLBパーツの自己交差が安全な警告範囲を"
+                    "超えたため、閉立体化を停止しました。\n"
+                    f"詳細: {intersection_exc}"
+                ) from intersection_exc
+            except AssemblyError as exc:
+                raise EngineError(
+                    "閉じているGLBパーツの厳格な立体検証に失敗しました。\n"
+                    f"詳細: {exc}"
+                ) from exc
+            repair_method = "already_watertight"
+            repair_record = dict(repair)
+            repair_record["method"] = repair_method
+            repair_records.append(repair_record)
+            multipart_interface_coordinates_preserved = bool(
+                repair.get("source_triangle_coordinates_preserved") is True
+            )
+            repair_parts = repair.get("parts", [])
+            strict_part_records = (
+                [dict(value) for value in repair_parts]
+                if isinstance(repair_parts, list)
+                and all(isinstance(value, dict) for value in repair_parts)
+                else []
+            )
+            for part_id in range(part_count):
+                part_stats[part_id]["repair_added_faces"] = 0
+                part_stats[part_id]["watertight_after_repair"] = True
             repair_method = "already_watertight"
 
     (
@@ -1858,6 +2435,199 @@ def _prepare_geometry_parts(
     for part_id, (vertices, faces, _colors) in enumerate(final_meshes):
         part_stats[part_id]["final_vertices"] = int(len(vertices))
         part_stats[part_id]["final_faces"] = int(len(faces))
+
+    multipart_self_intersection_parts: list[dict[str, object]] = []
+    multipart_prep_records_complete = bool(
+        multipart_bounded_self_intersection_enabled
+        and len(strict_part_records) == part_count
+        and not joint_records
+        and multipart_interface_coordinates_preserved
+    )
+    for part_id in range(part_count):
+        strict_record = (
+            strict_part_records[part_id]
+            if part_id < len(strict_part_records)
+            else {}
+        )
+        raw_ids = strict_record.get("self_intersecting_face_ids", [])
+        selected_ids = (
+            [int(value) for value in raw_ids]
+            if isinstance(raw_ids, list)
+            and all(
+                isinstance(value, int) and not isinstance(value, bool)
+                for value in raw_ids
+            )
+            else []
+        )
+        source_face_limit = int(pre_local_cap_source_face_limits[part_id])
+        part_warning_policy = str(
+            multipart_self_intersection_policies[part_id]
+        )
+        expected_face_limit, expected_area_limit = (
+            multipart_self_intersection_limits(
+                source_face_limit,
+                part_warning_policy,
+            )
+        )
+        final_part_face_count = int(len(final_meshes[part_id][1]))
+        pre_qem_face_count = int(pre_qem_face_counts[part_id])
+        qem_warning_eligible = bool(
+            multipart_qem_warning_eligible_parts[part_id]
+        )
+        simplification_applied = bool(
+            multipart_simplification_applied_parts[part_id]
+        )
+        source_geometry_preserved = bool(
+            multipart_source_triangle_geometry_preserved_parts[part_id]
+        )
+        source_ancestry_proven = bool(
+            multipart_source_triangle_ancestry_preserved_parts[part_id]
+        )
+        selected_count = int(strict_record.get("self_intersections", -1))
+        face_limit = int(
+            strict_record.get("self_intersection_face_limit", -1)
+        )
+        area_fraction = float(
+            strict_record.get("self_intersecting_area_fraction", -1.0)
+        )
+        selected_area_unit2 = float(
+            strict_record.get("self_intersecting_area_unit2", -1.0)
+        )
+        warning = bool(strict_record.get("self_intersection_warning"))
+        record_valid = bool(
+            int(strict_record.get("part_id", part_id)) == part_id
+            and int(
+                strict_record.get("self_intersection_source_face_limit", -1)
+            )
+            == source_face_limit
+            and selected_count == len(selected_ids)
+            and selected_ids == sorted(set(selected_ids))
+            and all(0 <= value < source_face_limit for value in selected_ids)
+            and face_limit == expected_face_limit
+            and strict_record.get(
+                "self_intersection_area_fraction_limit"
+            )
+            == expected_area_limit
+            and strict_record.get("self_intersection_policy")
+            in {"strict_zero", part_warning_policy}
+            and simplification_applied
+            is (source_face_limit < pre_qem_face_count)
+            and qem_warning_eligible
+            is multipart_qem_reduction_is_significant(
+                pre_qem_face_count,
+                source_face_limit,
+            )
+            and part_warning_policy
+            == (
+                MULTIPART_QEM_WARNING
+                if qem_warning_eligible
+                else MULTIPART_INHERITED_SOURCE_WARNING
+            )
+            and source_geometry_preserved
+            is (not simplification_applied)
+            and source_ancestry_proven
+            is (not simplification_applied)
+            and strict_record.get("source_triangle_ancestry_proven")
+            is source_ancestry_proven
+            and strict_record.get(
+                "self_intersection_inherited_from_source"
+            )
+            is bool(warning and not simplification_applied)
+            and (
+                (selected_count == 0 and not warning)
+                or (
+                    0 < selected_count <= face_limit
+                    and selected_area_unit2 >= 0.0
+                    and 0.0
+                    <= area_fraction
+                    <= expected_area_limit
+                    and warning
+                    and strict_record.get("self_intersection_policy")
+                    == part_warning_policy
+                )
+            )
+        )
+        multipart_prep_records_complete = bool(
+            multipart_prep_records_complete and record_valid
+        )
+        multipart_self_intersection_parts.append(
+            {
+                "part_id": int(part_id),
+                "part_key": str(output_part_keys[part_id]),
+                "pre_qem_face_count": pre_qem_face_count,
+                "post_qem_source_face_count": source_face_limit,
+                "qem_warning_eligible": qem_warning_eligible,
+                "qem_max_output_ratio_numerator": (
+                    MULTIPART_QEM_MAX_OUTPUT_RATIO_NUMERATOR
+                ),
+                "qem_max_output_ratio_denominator": (
+                    MULTIPART_QEM_MAX_OUTPUT_RATIO_DENOMINATOR
+                ),
+                "source_face_limit": source_face_limit,
+                "final_face_count": final_part_face_count,
+                "self_intersecting_face_ids": selected_ids,
+                "self_intersecting_faces": selected_count,
+                "self_intersecting_area_unit2": selected_area_unit2,
+                "self_intersecting_area_fraction": area_fraction,
+                "self_intersection_face_limit": face_limit,
+                "self_intersection_area_fraction_limit": (
+                    expected_area_limit
+                ),
+                "self_intersection_warning": warning,
+                "warning_policy": part_warning_policy,
+                "simplification_applied": simplification_applied,
+                "source_triangle_geometry_preserved": (
+                    source_geometry_preserved
+                ),
+                "source_triangle_ancestry_proven": source_ancestry_proven,
+                "self_intersection_inherited_from_source": bool(
+                    strict_record.get(
+                        "self_intersection_inherited_from_source"
+                    )
+                ),
+                "record_valid": record_valid,
+            }
+        )
+    multipart_self_intersection_provenance = {
+        "schema": MULTIPART_SELF_INTERSECTION_SCHEMA,
+        "eligible": bool(multipart_prep_records_complete),
+        "source_kind": "gltf_node",
+        "import_metadata_schema": import_metadata.get("schema"),
+        "compatible_exploded_multipart": bool(
+            import_metadata.get("compatible_exploded_multipart") is True
+        ),
+        "categorical_part_ids_detected": bool(
+            import_metadata.get("categorical_part_ids_detected") is True
+        ),
+        "segmentation_vertex_colors_suppressed": bool(
+            import_metadata.get("segmentation_vertex_colors_suppressed")
+            is True
+        ),
+        "normalization_schema": MULTIPART_TOPOLOGY_SCHEMA,
+        "part_count": int(part_count),
+        "all_normalizations_applied": bool(
+            all_multipart_normalizations_applied
+        ),
+        "simplification_applied": bool(multipart_simplification_applied),
+        "source_triangle_geometry_preserved": bool(
+            multipart_source_triangle_geometry_preserved
+        ),
+        "source_triangle_ancestry_proven": bool(
+            multipart_source_triangle_ancestry_preserved
+        ),
+        "qem_max_output_ratio_numerator": (
+            MULTIPART_QEM_MAX_OUTPUT_RATIO_NUMERATOR
+        ),
+        "qem_max_output_ratio_denominator": (
+            MULTIPART_QEM_MAX_OUTPUT_RATIO_DENOMINATOR
+        ),
+        "warning_policy": str(multipart_self_intersection_policy),
+        "joint_topology_changed": bool(joint_records),
+        "interface_source_triangle_coordinates_preserved": bool(
+            multipart_interface_coordinates_preserved
+        ),
+        "parts": multipart_self_intersection_parts,
+    }
 
     provenance_parts, provenance_diagnostic = derive_part_face_provenance(
         [len(mesh[1]) for mesh in final_meshes],
@@ -2026,6 +2796,13 @@ def _prepare_geometry_parts(
             "split_record": split_record,
             "source_clean_parts": int(source_clean_part_count),
             "cleaning_diagnostics": cleaning_diagnostics,
+            "multipart_topology_normalization": topology_normalization_records,
+            "multipart_topology_normalization_summary": (
+                topology_normalization_summary
+            ),
+            "multipart_self_intersection_provenance": (
+                multipart_self_intersection_provenance
+            ),
             "source_part_stats": source_part_stats,
             "reconstructed_bodies": reconstructed_bodies,
             "all_parts_watertight": bool(topology["watertight"]),
@@ -3194,8 +3971,12 @@ def _write_object_xml(
             out.write(b'''    <vertices>
 ''')
             for x, y, z in local_vertices:
+                # Preserve the exact binary64 coordinates used by the
+                # export-space safety record. Nine significant digits can
+                # move near-contact triangles on archive reload and change
+                # MeshLab self-intersection IDs.
                 out.write(
-                    f'     <vertex x="{x:.9g}" y="{y:.9g}" z="{z:.9g}"/>\n'.encode(
+                    f'     <vertex x="{x:.17g}" y="{y:.17g}" z="{z:.17g}"/>\n'.encode(
                         "ascii"
                     )
                 )
@@ -3218,6 +3999,449 @@ def _write_object_xml(
 </model>
 ''')
         out.flush()
+
+
+def _trusted_part_source_face_limits(
+    prepared: PreparedGeometry,
+    face_part_ids: np.ndarray,
+    part_count: int,
+) -> tuple[int, ...] | None:
+    """Anchor multipart source ranges outside mutable 3MF metadata.
+
+    The 3MF validator may accept a bounded self-intersection only on source
+    faces.  Repair JSON stored inside the same archive cannot prove where
+    source faces end because a coordinated edit could relabel generated caps
+    and all of their metadata together.  Derive the local limits directly
+    from the in-memory final-face provenance immediately before serialization
+    and pass them separately to :func:`validate_3mf`.
+
+    A malformed, unknown, interleaved, or all-generated provenance layout
+    returns ``None``.  That does not block strict-zero exports, but it disables
+    the bounded multipart warning path.
+    """
+
+    provenance = np.asarray(prepared.final.face_provenance)
+    part_ids = np.asarray(face_part_ids)
+    if (
+        provenance.shape != (len(prepared.final.faces),)
+        or part_ids.shape != (len(prepared.final.faces),)
+        or not np.issubdtype(provenance.dtype, np.integer)
+        or not np.issubdtype(part_ids.dtype, np.integer)
+        or part_count < 1
+    ):
+        return None
+    if any(
+        int(value) not in KNOWN_FACE_PROVENANCE
+        for value in np.unique(provenance)
+    ):
+        return None
+
+    limits: list[int] = []
+    for part_id in range(part_count):
+        local = provenance[part_ids == part_id]
+        if not len(local):
+            return None
+        generated_ids = np.flatnonzero(
+            local != FACE_PROVENANCE_SOURCE
+        )
+        source_limit = (
+            int(generated_ids[0]) if len(generated_ids) else len(local)
+        )
+        if (
+            source_limit <= 0
+            or np.any(
+                local[:source_limit] != FACE_PROVENANCE_SOURCE
+            )
+            or np.any(
+                local[source_limit:] == FACE_PROVENANCE_SOURCE
+            )
+        ):
+            return None
+        limits.append(source_limit)
+    return tuple(limits)
+
+
+def _trusted_part_pre_qem_face_counts(
+    prepared: PreparedGeometry,
+    source_face_limits: tuple[int, ...] | None,
+    part_count: int,
+) -> tuple[int, ...] | None:
+    """Anchor each QEM input count outside mutable archive metadata."""
+
+    stats = prepared.part_stats
+    if (
+        source_face_limits is None
+        or len(source_face_limits) != part_count
+        or not isinstance(stats, list)
+        or len(stats) != part_count
+        or not all(isinstance(value, dict) for value in stats)
+    ):
+        return None
+    pre_qem_counts: list[int] = []
+    for part_id, (source_limit, part_stats) in enumerate(
+        zip(source_face_limits, stats, strict=True)
+    ):
+        clean_faces = part_stats.get("clean_faces")
+        pre_qem_faces = part_stats.get("pre_qem_face_count")
+        post_qem_faces = part_stats.get("post_qem_source_face_count")
+        if not (
+            isinstance(clean_faces, int)
+            and not isinstance(clean_faces, bool)
+            and isinstance(pre_qem_faces, int)
+            and not isinstance(pre_qem_faces, bool)
+            and isinstance(post_qem_faces, int)
+            and not isinstance(post_qem_faces, bool)
+            and clean_faces == pre_qem_faces
+            and pre_qem_faces >= post_qem_faces == source_limit > 0
+        ):
+            return None
+        simplification_applied = post_qem_faces < pre_qem_faces
+        qem_warning_eligible = multipart_qem_reduction_is_significant(
+            pre_qem_faces,
+            post_qem_faces,
+        )
+        if (
+            part_stats.get("id") != part_id
+            or part_stats.get("simplification_applied")
+            is not simplification_applied
+            or part_stats.get("qem_warning_eligible")
+            is not qem_warning_eligible
+            or part_stats.get("qem_max_output_ratio_numerator")
+            != MULTIPART_QEM_MAX_OUTPUT_RATIO_NUMERATOR
+            or part_stats.get("qem_max_output_ratio_denominator")
+            != MULTIPART_QEM_MAX_OUTPUT_RATIO_DENOMINATOR
+        ):
+            return None
+        pre_qem_counts.append(int(pre_qem_faces))
+    return tuple(pre_qem_counts)
+
+
+def _trusted_part_warning_policies(
+    prepared: PreparedGeometry,
+    source_face_limits: tuple[int, ...] | None,
+    pre_qem_face_counts: tuple[int, ...] | None,
+    part_count: int,
+) -> tuple[str, ...] | None:
+    """Derive each warning class from non-archive preparation evidence."""
+
+    stats = prepared.part_stats
+    if (
+        source_face_limits is None
+        or pre_qem_face_counts is None
+        or len(source_face_limits) != part_count
+        or len(pre_qem_face_counts) != part_count
+        or not isinstance(stats, list)
+        or len(stats) != part_count
+        or not all(isinstance(value, dict) for value in stats)
+    ):
+        return None
+    policies: list[str] = []
+    for part_id, (source_limit, pre_qem_faces, part_stats) in enumerate(
+        zip(source_face_limits, pre_qem_face_counts, stats, strict=True)
+    ):
+        simplification_applied = source_limit < pre_qem_faces
+        qem_warning_eligible = multipart_qem_reduction_is_significant(
+            pre_qem_faces,
+            source_limit,
+        )
+        # A real but insignificant reduction is neither source-preserved nor
+        # eligible for the wider QEM budget.  It must remain strict-zero.
+        if simplification_applied and not qem_warning_eligible:
+            return None
+        expected_policy = (
+            MULTIPART_QEM_WARNING
+            if qem_warning_eligible
+            else MULTIPART_INHERITED_SOURCE_WARNING
+        )
+        if (
+            part_stats.get("id") != part_id
+            or part_stats.get("simplification_applied")
+            is not simplification_applied
+            or part_stats.get("qem_warning_eligible")
+            is not qem_warning_eligible
+            or part_stats.get("self_intersection_warning_policy")
+            != expected_policy
+            or part_stats.get("source_triangle_geometry_preserved")
+            is not (not simplification_applied)
+            or part_stats.get("source_triangle_ancestry_preserved")
+            is not (not simplification_applied)
+        ):
+            return None
+        policies.append(expected_policy)
+    return tuple(policies)
+
+
+def _export_part_geometry_sha256(
+    vertices_mm: np.ndarray,
+    faces: np.ndarray,
+) -> str:
+    digest = hashlib.sha256()
+    digest.update(
+        np.asarray([len(vertices_mm), len(faces)], dtype="<i8").tobytes()
+    )
+    digest.update(
+        np.ascontiguousarray(vertices_mm, dtype="<f8").tobytes()
+    )
+    digest.update(np.ascontiguousarray(faces, dtype="<i4").tobytes())
+    return digest.hexdigest()
+
+
+def _trusted_multipart_export_self_intersection_records(
+    export_vertices_mm: np.ndarray,
+    faces: np.ndarray,
+    face_part_ids: np.ndarray,
+    source_face_limits: tuple[int, ...] | None,
+    pre_qem_face_counts: tuple[int, ...] | None,
+    warning_policies: tuple[str, ...] | None,
+    *,
+    height_mm: float,
+    part_count: int,
+) -> tuple[dict[str, object], ...] | None:
+    """Recheck the exact export-space geometry before serializing it.
+
+    MeshLab's intersection predicate is scale-sensitive near contact.  The
+    preparation-space record remains an early gate, while this record is built
+    from the one binary64 millimetre array shared with the XML writer and is
+    passed to the validator outside the mutable archive.
+    """
+
+    vertices_mm = np.asarray(export_vertices_mm, dtype=np.float64)
+    face_array = np.asarray(faces, dtype=np.int32)
+    part_ids = np.asarray(face_part_ids)
+    if (
+        source_face_limits is None
+        or pre_qem_face_counts is None
+        or warning_policies is None
+        or len(source_face_limits) != part_count
+        or len(pre_qem_face_counts) != part_count
+        or len(warning_policies) != part_count
+        or vertices_mm.ndim != 2
+        or vertices_mm.shape[1:] != (3,)
+        or face_array.ndim != 2
+        or face_array.shape[1:] != (3,)
+        or part_ids.shape != (len(face_array),)
+        or not np.isfinite(vertices_mm).all()
+        or not np.isfinite(height_mm)
+        or float(height_mm) <= 0.0
+    ):
+        return None
+    records: list[dict[str, object]] = []
+    height_squared = float(height_mm) * float(height_mm)
+    for part_id in range(part_count):
+        selected_faces = np.flatnonzero(part_ids == part_id)
+        if not len(selected_faces):
+            return None
+        source_faces = np.asarray(face_array[selected_faces], dtype=np.int32)
+        used_vertices = np.unique(source_faces.reshape(-1))
+        local_faces = np.searchsorted(used_vertices, source_faces).astype(
+            np.int32,
+            copy=False,
+        )
+        local_vertices = np.asarray(
+            vertices_mm[used_vertices],
+            dtype=np.float64,
+        )
+        source_face_limit = int(source_face_limits[part_id])
+        pre_qem_face_count = int(pre_qem_face_counts[part_id])
+        warning_policy = str(warning_policies[part_id])
+        face_limit, area_fraction_limit = multipart_self_intersection_limits(
+            source_face_limit,
+            warning_policy,
+        )
+        quality = mesh_quality(
+            local_vertices,
+            local_faces,
+            check_self_intersections=True,
+            self_intersection_face_id_limit=face_limit,
+        )
+        ids_value = quality.get("self_intersecting_face_ids", [])
+        if not (
+            quality.get("self_intersecting_face_ids_complete") is True
+            and isinstance(ids_value, list)
+            and all(
+                isinstance(value, int) and not isinstance(value, bool)
+                for value in ids_value
+            )
+            and ids_value == sorted(set(ids_value))
+        ):
+            raise EngineError(
+                f"パーツ{part_id + 1}の書出座標で自己交差面IDを"
+                "完全に取得できません"
+            )
+        intersecting_faces = int(
+            quality.get("self_intersecting_faces", -1)
+        )
+        area_mm2 = float(quality.get("self_intersecting_area", -1.0))
+        area_fraction = float(
+            quality.get("self_intersecting_area_fraction", -1.0)
+        )
+        if (
+            intersecting_faces < 0
+            or not np.isfinite(area_mm2)
+            or not np.isfinite(area_fraction)
+        ):
+            raise EngineError(
+                f"パーツ{part_id + 1}の書出座標自己交差記録が不正です"
+            )
+        source_faces_only = bool(
+            intersecting_faces > 0
+            and len(ids_value) == intersecting_faces
+            and all(0 <= int(value) < source_face_limit for value in ids_value)
+        )
+        # The trusted preparation path proved that the complete source prefix
+        # is an exact-coordinate triangle subset of the normalized import.
+        # A complete full-mesh selection containing only that prefix therefore
+        # proves that no generated cap participates in the finding; running a
+        # second MeshLab pass over a multi-million-face source would add no
+        # ancestry information and can be unstable on very large assets.
+        inherited_source_match = bool(
+            intersecting_faces == 0 or source_faces_only
+        )
+        inherited_source_area_mm2 = float(
+            area_mm2
+            if warning_policy == MULTIPART_INHERITED_SOURCE_WARNING
+            and source_faces_only
+            else 0.0
+        )
+        bounded_warning = bool(
+            0 < intersecting_faces <= face_limit
+            and source_faces_only
+            and area_mm2 >= 0.0
+            and 0.0 <= area_fraction <= area_fraction_limit
+            and (
+                warning_policy != MULTIPART_INHERITED_SOURCE_WARNING
+                or inherited_source_match
+            )
+        )
+        if intersecting_faces > 0 and not bounded_warning:
+            raise EngineError(
+                "書出座標で再検査した自己交差が安全な警告範囲を"
+                f"超えました: part={part_id + 1}, "
+                f"faces={intersecting_faces}/{face_limit}, "
+                f"area={area_fraction:.9g}/{area_fraction_limit:.9g}, "
+                f"source_only={source_faces_only}"
+            )
+        if intersecting_faces == 0 and (
+            ids_value
+            or area_mm2 != 0.0
+            or area_fraction != 0.0
+        ):
+            raise EngineError(
+                f"パーツ{part_id + 1}の書出座標自己交差記録が不整合です"
+            )
+        records.append(
+            {
+                "part_id": int(part_id),
+                "coordinate_space": "final_centered_mm",
+                "vertex_count": int(len(local_vertices)),
+                "face_count": int(len(local_faces)),
+                "geometry_sha256": _export_part_geometry_sha256(
+                    local_vertices,
+                    local_faces,
+                ),
+                "pre_qem_face_count": pre_qem_face_count,
+                "source_face_limit": source_face_limit,
+                "warning_policy": warning_policy,
+                "self_intersecting_face_ids": list(ids_value),
+                "self_intersecting_faces": intersecting_faces,
+                "self_intersecting_area_mm2": area_mm2,
+                "self_intersecting_area_unit2": area_mm2 / height_squared,
+                "self_intersecting_area_fraction": area_fraction,
+                "self_intersection_face_limit": int(face_limit),
+                "self_intersection_area_fraction_limit": float(
+                    area_fraction_limit
+                ),
+                "self_intersection_source_faces_only": source_faces_only,
+                "source_triangle_ancestry_proven": bool(
+                    warning_policy == MULTIPART_INHERITED_SOURCE_WARNING
+                ),
+                "self_intersection_inherited_from_source": bool(
+                    bounded_warning
+                    and warning_policy
+                    == MULTIPART_INHERITED_SOURCE_WARNING
+                    and inherited_source_match
+                ),
+                "inherited_source_self_intersecting_area_mm2": float(
+                    inherited_source_area_mm2
+                ),
+                "self_intersection_warning": bounded_warning,
+                "self_intersection_policy": (
+                    warning_policy if bounded_warning else "strict_zero"
+                ),
+            }
+        )
+    return tuple(records)
+
+
+def _apply_export_self_intersection_records(
+    assembly_metadata: dict[str, object],
+    records: tuple[dict[str, object], ...] | None,
+) -> None:
+    if records is None:
+        return
+    provenance_value = assembly_metadata.get(
+        "multipart_self_intersection_provenance", {}
+    )
+    if not isinstance(provenance_value, dict):
+        return
+    parts_value = provenance_value.get("parts", [])
+    if not (
+        isinstance(parts_value, list)
+        and len(parts_value) == len(records)
+        and all(isinstance(value, dict) for value in parts_value)
+    ):
+        return
+    provenance_value["export_coordinate_space"] = "final_centered_mm"
+    provenance_value["export_revalidated"] = True
+    for part, record in zip(parts_value, records, strict=True):
+        part.update(
+            {
+                "final_face_count": record["face_count"],
+                "self_intersecting_face_ids": list(
+                    record["self_intersecting_face_ids"]
+                ),
+                "self_intersecting_faces": record[
+                    "self_intersecting_faces"
+                ],
+                "self_intersecting_area_unit2": record[
+                    "self_intersecting_area_unit2"
+                ],
+                "self_intersecting_area_mm2": record[
+                    "self_intersecting_area_mm2"
+                ],
+                "self_intersecting_area_fraction": record[
+                    "self_intersecting_area_fraction"
+                ],
+                "self_intersection_face_limit": record[
+                    "self_intersection_face_limit"
+                ],
+                "self_intersection_area_fraction_limit": record[
+                    "self_intersection_area_fraction_limit"
+                ],
+                "self_intersection_source_faces_only": record[
+                    "self_intersection_source_faces_only"
+                ],
+                "source_triangle_ancestry_proven": record[
+                    "source_triangle_ancestry_proven"
+                ],
+                "self_intersection_inherited_from_source": record[
+                    "self_intersection_inherited_from_source"
+                ],
+                "inherited_source_self_intersecting_area_mm2": record[
+                    "inherited_source_self_intersecting_area_mm2"
+                ],
+                "self_intersection_warning": record[
+                    "self_intersection_warning"
+                ],
+                "self_intersection_policy": record[
+                    "self_intersection_policy"
+                ],
+                "export_coordinate_space": record["coordinate_space"],
+                "export_vertex_count": record["vertex_count"],
+                "export_geometry_sha256": record["geometry_sha256"],
+                "record_valid": True,
+            }
+        )
 
 
 def write_3mf_atomic(
@@ -3252,6 +4476,75 @@ def write_3mf_atomic(
     part_face_counts = tuple(
         int(np.count_nonzero(face_part_ids == part_id))
         for part_id in range(part_count)
+    )
+    trusted_multipart_source_face_limits = (
+        _trusted_part_source_face_limits(
+            prepared,
+            face_part_ids,
+            part_count,
+        )
+    )
+    trusted_multipart_pre_qem_face_counts = (
+        _trusted_part_pre_qem_face_counts(
+            prepared,
+            trusted_multipart_source_face_limits,
+            part_count,
+        )
+    )
+    trusted_multipart_warning_policies = _trusted_part_warning_policies(
+        prepared,
+        trusted_multipart_source_face_limits,
+        trusted_multipart_pre_qem_face_counts,
+        part_count,
+    )
+    export_vertices_mm = np.asarray(
+        prepared.final.vertices_unit,
+        dtype=np.float64,
+    ) * float(height_mm)
+    prepared_multipart_value = (prepared.assembly or {}).get(
+        "multipart_self_intersection_provenance", {}
+    )
+    prepared_multipart = (
+        prepared_multipart_value
+        if isinstance(prepared_multipart_value, dict)
+        else {}
+    )
+    export_recheck_eligible = bool(
+        prepared_multipart.get("schema")
+        == MULTIPART_SELF_INTERSECTION_SCHEMA
+        and prepared_multipart.get("eligible") is True
+        and prepared_multipart.get("source_kind") == "gltf_node"
+        and prepared_multipart.get("import_metadata_schema")
+        == "obj-adjuster.gltf-import.v1"
+        and prepared_multipart.get("compatible_exploded_multipart") is True
+        and prepared_multipart.get("categorical_part_ids_detected") is True
+        and prepared_multipart.get(
+            "segmentation_vertex_colors_suppressed"
+        )
+        is True
+        and prepared_multipart.get("normalization_schema")
+        == MULTIPART_TOPOLOGY_SCHEMA
+        and prepared_multipart.get("part_count") == part_count
+        and prepared_multipart.get("all_normalizations_applied") is True
+        and prepared_multipart.get("joint_topology_changed") is False
+        and prepared_multipart.get(
+            "interface_source_triangle_coordinates_preserved"
+        )
+        is True
+    )
+    trusted_multipart_export_records = (
+        _trusted_multipart_export_self_intersection_records(
+            export_vertices_mm,
+            prepared.final.faces,
+            face_part_ids,
+            trusted_multipart_source_face_limits,
+            trusted_multipart_pre_qem_face_counts,
+            trusted_multipart_warning_policies,
+            height_mm=float(height_mm),
+            part_count=part_count,
+        )
+        if export_recheck_eligible
+        else None
     )
     palette_settings = AppSettings(
         palette=palette,
@@ -3375,12 +4668,18 @@ def write_3mf_atomic(
         ],
     }
     assembly_metadata = {
+        **copy.deepcopy(prepared.assembly or {}),
+        # Writer-owned values are assigned after the preparation metadata so
+        # an in-memory assembly record cannot relabel the serialized geometry.
         "schema": "tripo-spectrum-mapper.assembly.v1",
         "coordinates": "normalized source coordinates before final centering",
         "height_mm": float(height_mm),
         "part_count": int(part_count),
-        **dict(prepared.assembly or {}),
     }
+    _apply_export_self_intersection_records(
+        assembly_metadata,
+        trusted_multipart_export_records,
+    )
     export_diagnostic = getattr(
         prepared, EXPORT_DIAGNOSTICS_ATTRIBUTE, None
     )
@@ -3549,7 +4848,7 @@ def write_3mf_atomic(
             archive.writestr("3D/_rels/3dmodel.model.rels", model_rels)
             _write_object_xml(
                 archive,
-                prepared.final.vertices_unit * float(height_mm),
+                export_vertices_mm,
                 prepared.final.faces,
                 colors.palette_indices,
                 face_part_ids,
@@ -3595,6 +4894,18 @@ def write_3mf_atomic(
             expected_definitions=definitions,
             expected_parts=part_count,
             expected_filament_profile=generic_filament_profile(palette.material),
+            trusted_multipart_source_face_limits=(
+                trusted_multipart_source_face_limits
+            ),
+            trusted_multipart_pre_qem_face_counts=(
+                trusted_multipart_pre_qem_face_counts
+            ),
+            trusted_multipart_warning_policies=(
+                trusted_multipart_warning_policies
+            ),
+            trusted_multipart_export_records=(
+                trusted_multipart_export_records
+            ),
         )
         os.replace(temporary, destination)
         validation["bytes"] = destination.stat().st_size
@@ -3636,6 +4947,10 @@ def validate_3mf(
     expected_definitions: str,
     expected_parts: int = 1,
     expected_filament_profile: str = "Generic PLA",
+    trusted_multipart_source_face_limits: Sequence[int] | None = None,
+    trusted_multipart_pre_qem_face_counts: Sequence[int] | None = None,
+    trusted_multipart_warning_policies: Sequence[str] | None = None,
+    trusted_multipart_export_records: Sequence[dict[str, object]] | None = None,
 ) -> dict[str, object]:
     import xml.etree.ElementTree as ET
 
@@ -3654,8 +4969,31 @@ def validate_3mf(
     vertices = 0
     faces = 0
     mesh_objects = 0
-    object_topologies: list[dict[str, int | bool | float | str]] = []
+    object_topologies: list[dict[str, object]] = []
+    object_vertex_arrays: list[np.ndarray] = []
+    object_face_arrays: list[np.ndarray] = []
+    object_vertex_counts: list[int] = []
     paints: Counter[str] = Counter()
+    trusted_parse_id_limits: list[int] | None = None
+    if (
+        trusted_multipart_source_face_limits is not None
+        and trusted_multipart_warning_policies is not None
+        and len(trusted_multipart_source_face_limits) == expected_parts
+        and len(trusted_multipart_warning_policies) == expected_parts
+    ):
+        try:
+            trusted_parse_id_limits = [
+                multipart_self_intersection_limits(
+                    int(source_limit), str(policy)
+                )[0]
+                for source_limit, policy in zip(
+                    trusted_multipart_source_face_limits,
+                    trusted_multipart_warning_policies,
+                    strict=True,
+                )
+            ]
+        except (AssemblyError, TypeError, ValueError, OverflowError):
+            trusted_parse_id_limits = None
     with zipfile.ZipFile(path) as archive:
         names = set(archive.namelist())
         missing = sorted(required - names)
@@ -3692,13 +5030,29 @@ def validate_3mf(
                 elif event == "end" and tag == "object":
                     mesh_objects += 1
                     if object_vertices is not None and object_faces is not None:
+                        local_vertices_array = np.asarray(
+                            object_vertices, dtype=np.float64
+                        )
+                        local_faces_array = np.asarray(
+                            object_faces, dtype=np.int32
+                        )
                         object_topologies.append(
                             mesh_quality(
-                                np.asarray(object_vertices, dtype=np.float64),
-                                np.asarray(object_faces, dtype=np.int32),
+                                local_vertices_array,
+                                local_faces_array,
                                 check_self_intersections=require_watertight,
+                                self_intersection_face_id_limit=(
+                                    trusted_parse_id_limits[mesh_objects - 1]
+                                    if trusted_parse_id_limits is not None
+                                    and 0 < mesh_objects
+                                    <= len(trusted_parse_id_limits)
+                                    else None
+                                ),
                             )
                         )
+                        object_vertex_counts.append(len(local_vertices_array))
+                        object_vertex_arrays.append(local_vertices_array)
+                        object_face_arrays.append(local_faces_array)
                     object_vertices = None
                     object_faces = None
                 elif event == "end" and tag == "vertex":
@@ -3809,20 +5163,1048 @@ def validate_3mf(
         and final_validation.get("positive_volume_validated") is True
         and final_validation.get("closed") is True
     )
-    simplification_applied = bool(
+    generic_simplification_applied = bool(
         generic_repair_record.get("simplification_applied")
     )
     source_geometry_preserved = bool(
         generic_seam_warning_eligible
-        and not simplification_applied
+        and not generic_simplification_applied
         and generic_repair_record.get("source_triangle_geometry_preserved")
         is True
     )
+    multipart_provenance_value = assembly_metadata.get(
+        "multipart_self_intersection_provenance", {}
+    )
+    multipart_provenance = (
+        dict(multipart_provenance_value)
+        if isinstance(multipart_provenance_value, dict)
+        else {}
+    )
+    multipart_parts_value = multipart_provenance.get("parts", [])
+    multipart_parts = (
+        [dict(value) for value in multipart_parts_value]
+        if isinstance(multipart_parts_value, list)
+        and all(isinstance(value, dict) for value in multipart_parts_value)
+        else []
+    )
+    normalization_records_value = assembly_metadata.get(
+        "multipart_topology_normalization", []
+    )
+    normalization_records = (
+        [dict(value) for value in normalization_records_value]
+        if isinstance(normalization_records_value, list)
+        and all(
+            isinstance(value, dict) for value in normalization_records_value
+        )
+        else []
+    )
+    normalization_summary_value = assembly_metadata.get(
+        "multipart_topology_normalization_summary", {}
+    )
+    normalization_summary = (
+        dict(normalization_summary_value)
+        if isinstance(normalization_summary_value, dict)
+        else {}
+    )
+
+    def _finite_number(value: object) -> float | None:
+        if isinstance(value, bool):
+            return None
+        try:
+            result = float(value)
+        except (TypeError, ValueError, OverflowError):
+            return None
+        return result if np.isfinite(result) else None
+
+    archive_height_value = _finite_number(
+        assembly_metadata.get("height_mm", -1.0)
+    )
+    archive_height_mm = (
+        archive_height_value if archive_height_value is not None else -1.0
+    )
+
+    def _normalization_record_is_valid(
+        value: dict[str, object], part_id: int
+    ) -> bool:
+        edge_pairing = value.get("edge_pairing", {})
+        after = value.get("after", {})
+        source_faces_value = value.get("source_faces")
+        output_faces_value = value.get("output_faces")
+        removed_faces_value = value.get("removed_collapsed_faces")
+        if not all(
+            isinstance(item, int) and not isinstance(item, bool)
+            for item in (
+                source_faces_value,
+                output_faces_value,
+                removed_faces_value,
+            )
+        ):
+            return False
+        source_faces_value = int(source_faces_value)
+        output_faces_value = int(output_faces_value)
+        removed_faces_value = int(removed_faces_value)
+        return bool(
+            value.get("schema") == MULTIPART_TOPOLOGY_SCHEMA
+            and value.get("method") == "exact_coordinate_sector_split"
+            and value.get("status") == "applied"
+            and value.get("part_id") == part_id
+            and source_faces_value > 0
+            and output_faces_value > 0
+            and removed_faces_value >= 0
+            and source_faces_value - output_faces_value
+            == removed_faces_value
+            and value.get("removed_face_rule")
+            == "repeated_exact_coordinate_after_remap"
+            and value.get("face_order_preserved") is True
+            and value.get("output_face_source_map")
+            == "stable_source_filter"
+            and value.get("geometry_coordinates_preserved") is True
+            and value.get("part_identity_preserved") is True
+            and value.get("noncollapsed_degenerate_faces") == 0
+            and isinstance(edge_pairing, dict)
+            and edge_pairing.get("all_paired_halfedges_reversed") is True
+            and isinstance(after, dict)
+            and after.get("nonmanifold_edges") == 0
+            and after.get("inconsistent_winding_edges") == 0
+        )
+
+    normalization_provenance_complete = bool(
+        len(normalization_records) == expected_parts
+        and all(
+            _normalization_record_is_valid(record, part_id)
+            for part_id, record in enumerate(normalization_records)
+        )
+        and normalization_summary.get("schema")
+        == MULTIPART_TOPOLOGY_SCHEMA
+        and normalization_summary.get("eligible") is True
+        and normalization_summary.get("attempted_parts") == expected_parts
+        and normalization_summary.get("applied_parts") == expected_parts
+        and normalization_summary.get("rejected_parts") == 0
+    )
+    multipart_warning_policy = str(
+        multipart_provenance.get("warning_policy", "")
+    )
+    multipart_simplification_applied = (
+        multipart_provenance.get("simplification_applied") is True
+    )
+    multipart_source_geometry_preserved = (
+        multipart_provenance.get("source_triangle_geometry_preserved")
+        is True
+    )
+    multipart_source_ancestry_proven = (
+        multipart_provenance.get("source_triangle_ancestry_proven") is True
+    )
+    multipart_policy_kind_valid = False
+    repair_records = (
+        [dict(value) for value in repair_records_value]
+        if isinstance(repair_records_value, list)
+        and all(isinstance(value, dict) for value in repair_records_value)
+        else []
+    )
+    solidification_records = [
+        value
+        for value in repair_records
+        if value.get("method")
+        in {"partitioned_shared_caps", "already_watertight"}
+    ]
+    strict_prep_parts_value = (
+        solidification_records[0].get("parts", [])
+        if len(solidification_records) == 1
+        else []
+    )
+    strict_prep_parts = (
+        [dict(value) for value in strict_prep_parts_value]
+        if isinstance(strict_prep_parts_value, list)
+        and all(isinstance(value, dict) for value in strict_prep_parts_value)
+        else []
+    )
+    part_face_counts_for_provenance = [
+        int(value.get("face_count", 0) or 0)
+        for value in object_topologies
+    ]
+    safe_part_face_counts = (
+        part_face_counts_for_provenance
+        if len(part_face_counts_for_provenance) == expected_parts
+        else [0] * expected_parts
+    )
+    trusted_source_face_limits: list[int] = []
+    trusted_source_face_limits_complete = bool(
+        trusted_multipart_source_face_limits is not None
+        and isinstance(
+            trusted_multipart_source_face_limits, Sequence
+        )
+        and not isinstance(
+            trusted_multipart_source_face_limits, (str, bytes)
+        )
+        and len(trusted_multipart_source_face_limits) == expected_parts
+    )
+    if trusted_source_face_limits_complete:
+        for part_id, value in enumerate(
+            trusted_multipart_source_face_limits
+        ):
+            if not (
+                isinstance(value, int)
+                and not isinstance(value, bool)
+                and 0 < value <= safe_part_face_counts[part_id]
+            ):
+                trusted_source_face_limits_complete = False
+                trusted_source_face_limits = []
+                break
+            trusted_source_face_limits.append(int(value))
+    trusted_pre_qem_face_counts: list[int] = []
+    trusted_pre_qem_face_counts_complete = bool(
+        trusted_source_face_limits_complete
+        and trusted_multipart_pre_qem_face_counts is not None
+        and isinstance(trusted_multipart_pre_qem_face_counts, Sequence)
+        and not isinstance(
+            trusted_multipart_pre_qem_face_counts, (str, bytes)
+        )
+        and len(trusted_multipart_pre_qem_face_counts) == expected_parts
+    )
+    if trusted_pre_qem_face_counts_complete:
+        for part_id, value in enumerate(
+            trusted_multipart_pre_qem_face_counts
+        ):
+            if not (
+                isinstance(value, int)
+                and not isinstance(value, bool)
+                and value >= trusted_source_face_limits[part_id] > 0
+            ):
+                trusted_pre_qem_face_counts_complete = False
+                trusted_pre_qem_face_counts = []
+                break
+            trusted_pre_qem_face_counts.append(int(value))
+    trusted_warning_policies: list[str] = []
+    trusted_warning_policies_complete = bool(
+        trusted_pre_qem_face_counts_complete
+        and trusted_multipart_warning_policies is not None
+        and isinstance(trusted_multipart_warning_policies, Sequence)
+        and not isinstance(
+            trusted_multipart_warning_policies, (str, bytes)
+        )
+        and len(trusted_multipart_warning_policies) == expected_parts
+    )
+    trusted_simplification_applied: list[bool] = []
+    trusted_qem_warning_eligible: list[bool] = []
+    if trusted_warning_policies_complete:
+        for part_id, value in enumerate(
+            trusted_multipart_warning_policies
+        ):
+            pre_qem_faces = trusted_pre_qem_face_counts[part_id]
+            post_qem_faces = trusted_source_face_limits[part_id]
+            simplification_applied = post_qem_faces < pre_qem_faces
+            qem_warning_eligible = multipart_qem_reduction_is_significant(
+                pre_qem_faces,
+                post_qem_faces,
+            )
+            expected_policy = (
+                MULTIPART_QEM_WARNING
+                if qem_warning_eligible
+                else MULTIPART_INHERITED_SOURCE_WARNING
+            )
+            if (
+                value != expected_policy
+                or (simplification_applied and not qem_warning_eligible)
+            ):
+                trusted_warning_policies_complete = False
+                trusted_warning_policies = []
+                trusted_simplification_applied = []
+                trusted_qem_warning_eligible = []
+                break
+            trusted_warning_policies.append(str(value))
+            trusted_simplification_applied.append(simplification_applied)
+            trusted_qem_warning_eligible.append(qem_warning_eligible)
+    if trusted_warning_policies_complete:
+        trusted_policy_set = set(trusted_warning_policies)
+        expected_top_warning_policy = (
+            next(iter(trusted_policy_set))
+            if len(trusted_policy_set) == 1
+            else MULTIPART_PART_SPECIFIC_WARNING
+        )
+        expected_any_qem = any(trusted_qem_warning_eligible)
+        expected_all_source_preserved = not any(
+            trusted_simplification_applied
+        )
+        multipart_policy_kind_valid = bool(
+            multipart_warning_policy == expected_top_warning_policy
+            and multipart_simplification_applied == expected_any_qem
+            and multipart_source_geometry_preserved
+            == expected_all_source_preserved
+            and multipart_source_ancestry_proven
+            == expected_all_source_preserved
+            and multipart_provenance.get(
+                "qem_max_output_ratio_numerator"
+            )
+            == MULTIPART_QEM_MAX_OUTPUT_RATIO_NUMERATOR
+            and multipart_provenance.get(
+                "qem_max_output_ratio_denominator"
+            )
+            == MULTIPART_QEM_MAX_OUTPUT_RATIO_DENOMINATOR
+            and len(multipart_parts) == expected_parts
+            and all(
+                record.get("warning_policy")
+                == trusted_warning_policies[part_id]
+                and record.get("pre_qem_face_count")
+                == trusted_pre_qem_face_counts[part_id]
+                and record.get("post_qem_source_face_count")
+                == trusted_source_face_limits[part_id]
+                and record.get("source_face_limit")
+                == trusted_source_face_limits[part_id]
+                and record.get("simplification_applied")
+                is trusted_simplification_applied[part_id]
+                and record.get("qem_warning_eligible")
+                is trusted_qem_warning_eligible[part_id]
+                and record.get("qem_max_output_ratio_numerator")
+                == MULTIPART_QEM_MAX_OUTPUT_RATIO_NUMERATOR
+                and record.get("qem_max_output_ratio_denominator")
+                == MULTIPART_QEM_MAX_OUTPUT_RATIO_DENOMINATOR
+                and record.get("source_triangle_geometry_preserved")
+                is (not trusted_simplification_applied[part_id])
+                and record.get("source_triangle_ancestry_proven")
+                is (not trusted_simplification_applied[part_id])
+                for part_id, record in enumerate(multipart_parts)
+            )
+        )
+    trusted_export_records: list[dict[str, object]] = []
+    trusted_export_records_complete = bool(
+        trusted_warning_policies_complete
+        and trusted_multipart_export_records is not None
+        and isinstance(trusted_multipart_export_records, Sequence)
+        and not isinstance(trusted_multipart_export_records, (str, bytes))
+        and len(trusted_multipart_export_records) == expected_parts
+        and len(object_vertex_arrays) == expected_parts
+        and len(object_face_arrays) == expected_parts
+        and len(object_topologies) == expected_parts
+    )
+    if trusted_export_records_complete:
+        for part_id, value in enumerate(trusted_multipart_export_records):
+            if not isinstance(value, dict):
+                trusted_export_records_complete = False
+                trusted_export_records = []
+                break
+            record = dict(value)
+            topology = object_topologies[part_id]
+            local_vertices = object_vertex_arrays[part_id]
+            local_faces = object_face_arrays[part_id]
+            ids_value = record.get("self_intersecting_face_ids", [])
+            recomputed_ids = topology.get("self_intersecting_face_ids", [])
+            area_mm2 = _finite_number(
+                record.get("self_intersecting_area_mm2", -1.0)
+            )
+            area_unit2 = _finite_number(
+                record.get("self_intersecting_area_unit2", -1.0)
+            )
+            area_fraction = _finite_number(
+                record.get("self_intersecting_area_fraction", -1.0)
+            )
+            recomputed_area_mm2 = _finite_number(
+                topology.get("self_intersecting_area", -1.0)
+            )
+            recomputed_area_fraction = _finite_number(
+                topology.get("self_intersecting_area_fraction", -1.0)
+            )
+            source_limit = trusted_source_face_limits[part_id]
+            warning_policy = trusted_warning_policies[part_id]
+            face_limit, area_limit = multipart_self_intersection_limits(
+                source_limit,
+                warning_policy,
+            )
+            intersecting_faces = int(
+                topology.get("self_intersecting_faces", -1)
+            )
+            source_faces_only = bool(
+                intersecting_faces > 0
+                and isinstance(recomputed_ids, list)
+                and len(recomputed_ids) == intersecting_faces
+                and all(
+                    isinstance(item, int)
+                    and not isinstance(item, bool)
+                    and 0 <= item < source_limit
+                    for item in recomputed_ids
+                )
+            )
+            inherited_source_match = bool(
+                intersecting_faces == 0 or source_faces_only
+            )
+            inherited_source_area_mm2 = float(
+                recomputed_area_mm2
+                if warning_policy == MULTIPART_INHERITED_SOURCE_WARNING
+                and source_faces_only
+                and recomputed_area_mm2 is not None
+                else 0.0
+            )
+            bounded_warning = bool(
+                0 < intersecting_faces <= face_limit
+                and source_faces_only
+                and recomputed_area_mm2 is not None
+                and recomputed_area_mm2 >= 0.0
+                and recomputed_area_fraction is not None
+                and 0.0 <= recomputed_area_fraction <= area_limit
+                and (
+                    warning_policy != MULTIPART_INHERITED_SOURCE_WARNING
+                    or inherited_source_match
+                )
+            )
+            area_scale = max(
+                1.0,
+                abs(area_mm2 or 0.0),
+                abs(recomputed_area_mm2 or 0.0),
+            )
+            record_valid = bool(
+                record.get("part_id") == part_id
+                and record.get("coordinate_space") == "final_centered_mm"
+                and record.get("vertex_count") == len(local_vertices)
+                and record.get("face_count") == len(local_faces)
+                and record.get("geometry_sha256")
+                == _export_part_geometry_sha256(local_vertices, local_faces)
+                and record.get("pre_qem_face_count")
+                == trusted_pre_qem_face_counts[part_id]
+                and record.get("source_face_limit") == source_limit
+                and record.get("warning_policy") == warning_policy
+                and isinstance(ids_value, list)
+                and ids_value == recomputed_ids
+                and record.get("self_intersecting_faces")
+                == intersecting_faces
+                and topology.get("self_intersecting_face_ids_complete")
+                is True
+                and area_mm2 is not None
+                and recomputed_area_mm2 is not None
+                and abs(area_mm2 - recomputed_area_mm2)
+                <= 1.0e-6 * area_scale
+                and area_unit2 is not None
+                and archive_height_mm > 0.0
+                and abs(
+                    area_unit2 * archive_height_mm * archive_height_mm
+                    - recomputed_area_mm2
+                )
+                <= 1.0e-6 * area_scale
+                and area_fraction is not None
+                and recomputed_area_fraction is not None
+                and np.isclose(
+                    area_fraction,
+                    recomputed_area_fraction,
+                    rtol=1.0e-6,
+                    atol=1.0e-12,
+                )
+                and record.get("self_intersection_face_limit")
+                == face_limit
+                and record.get("self_intersection_area_fraction_limit")
+                == area_limit
+                and record.get("self_intersection_source_faces_only")
+                is source_faces_only
+                and record.get("source_triangle_ancestry_proven")
+                is bool(
+                    warning_policy
+                    == MULTIPART_INHERITED_SOURCE_WARNING
+                )
+                and record.get(
+                    "self_intersection_inherited_from_source"
+                )
+                is bool(
+                    bounded_warning
+                    and warning_policy
+                    == MULTIPART_INHERITED_SOURCE_WARNING
+                    and inherited_source_match
+                )
+                and _finite_number(
+                    record.get(
+                        "inherited_source_self_intersecting_area_mm2"
+                    )
+                )
+                is not None
+                and np.isclose(
+                    float(
+                        record[
+                            "inherited_source_self_intersecting_area_mm2"
+                        ]
+                    ),
+                    inherited_source_area_mm2,
+                    rtol=1.0e-12,
+                    atol=1.0e-12,
+                )
+                and record.get("self_intersection_warning")
+                is bounded_warning
+                and record.get("self_intersection_policy")
+                == (warning_policy if bounded_warning else "strict_zero")
+                and (intersecting_faces == 0 or bounded_warning)
+            )
+            if not record_valid:
+                trusted_export_records_complete = False
+                trusted_export_records = []
+                break
+            trusted_export_records.append(record)
+
+    def _archive_export_record_matches(
+        archive_record: dict[str, object],
+        trusted_record: dict[str, object],
+        part_id: int,
+    ) -> bool:
+        numeric_fields = (
+            "self_intersecting_area_mm2",
+            "self_intersecting_area_unit2",
+            "self_intersecting_area_fraction",
+            "self_intersection_area_fraction_limit",
+            "inherited_source_self_intersecting_area_mm2",
+        )
+        if not all(
+            _finite_number(archive_record.get(field)) is not None
+            and _finite_number(trusted_record.get(field)) is not None
+            and np.isclose(
+                float(archive_record[field]),
+                float(trusted_record[field]),
+                rtol=1.0e-12,
+                atol=1.0e-12,
+            )
+            for field in numeric_fields
+        ):
+            return False
+        return bool(
+            archive_record.get("part_id") == part_id
+            and archive_record.get("export_coordinate_space")
+            == trusted_record.get("coordinate_space")
+            == "final_centered_mm"
+            and archive_record.get("export_vertex_count")
+            == trusted_record.get("vertex_count")
+            and archive_record.get("final_face_count")
+            == trusted_record.get("face_count")
+            and archive_record.get("export_geometry_sha256")
+            == trusted_record.get("geometry_sha256")
+            and archive_record.get("pre_qem_face_count")
+            == trusted_record.get("pre_qem_face_count")
+            and archive_record.get("source_face_limit")
+            == trusted_record.get("source_face_limit")
+            and archive_record.get("warning_policy")
+            == trusted_record.get("warning_policy")
+            and archive_record.get("self_intersecting_face_ids")
+            == trusted_record.get("self_intersecting_face_ids")
+            and archive_record.get("self_intersecting_faces")
+            == trusted_record.get("self_intersecting_faces")
+            and archive_record.get("self_intersection_face_limit")
+            == trusted_record.get("self_intersection_face_limit")
+            and archive_record.get("self_intersection_source_faces_only")
+            is trusted_record.get("self_intersection_source_faces_only")
+            and archive_record.get("source_triangle_ancestry_proven")
+            is trusted_record.get("source_triangle_ancestry_proven")
+            and archive_record.get(
+                "self_intersection_inherited_from_source"
+            )
+            is trusted_record.get(
+                "self_intersection_inherited_from_source"
+            )
+            and archive_record.get("self_intersection_warning")
+            is trusted_record.get("self_intersection_warning")
+            and archive_record.get("self_intersection_policy")
+            == trusted_record.get("self_intersection_policy")
+            and archive_record.get("record_valid") is True
+        )
+
+    archive_export_records_match = bool(
+        trusted_export_records_complete
+        and multipart_provenance.get("export_revalidated") is True
+        and multipart_provenance.get("export_coordinate_space")
+        == "final_centered_mm"
+        and len(multipart_parts) == expected_parts
+        and all(
+            _archive_export_record_matches(
+                multipart_parts[part_id],
+                trusted_export_records[part_id],
+                part_id,
+            )
+            for part_id in range(expected_parts)
+        )
+    )
+
+    def _strict_prep_record_is_valid(
+        record: dict[str, object],
+        part_id: int,
+    ) -> bool:
+        if (
+            not trusted_warning_policies_complete
+            or part_id >= expected_parts
+        ):
+            return False
+        source_limit = trusted_source_face_limits[part_id]
+        warning_policy = trusted_warning_policies[part_id]
+        face_limit, area_limit = multipart_self_intersection_limits(
+            source_limit,
+            warning_policy,
+        )
+        count_value = record.get("self_intersections")
+        ids_value = record.get("self_intersecting_face_ids", [])
+        area_value = _finite_number(
+            record.get("self_intersecting_area_unit2", -1.0)
+        )
+        area_fraction_value = _finite_number(
+            record.get("self_intersecting_area_fraction", -1.0)
+        )
+        if not (
+            isinstance(count_value, int)
+            and not isinstance(count_value, bool)
+            and int(count_value) >= 0
+            and isinstance(ids_value, list)
+            and all(
+                isinstance(value, int) and not isinstance(value, bool)
+                for value in ids_value
+            )
+            and ids_value == sorted(set(ids_value))
+            and len(ids_value) == int(count_value)
+            and area_value is not None
+            and area_value >= 0.0
+            and area_fraction_value is not None
+            and 0.0 <= area_fraction_value <= area_limit
+        ):
+            return False
+        count = int(count_value)
+        source_faces_only = bool(
+            count > 0
+            and all(0 <= int(value) < source_limit for value in ids_value)
+        )
+        bounded_warning = bool(
+            0 < count <= face_limit and source_faces_only
+        )
+        ancestry_proven = bool(
+            warning_policy == MULTIPART_INHERITED_SOURCE_WARNING
+        )
+        strict_zero = bool(
+            count == 0
+            and not ids_value
+            and area_value == 0.0
+            and area_fraction_value == 0.0
+        )
+        return bool(
+            record.get("part_id") == part_id
+            and record.get("self_intersection_source_face_limit")
+            == source_limit
+            and record.get("self_intersection_face_limit") == face_limit
+            and record.get("self_intersection_area_fraction_limit")
+            == area_limit
+            and record.get("self_intersection_source_faces_only")
+            is source_faces_only
+            and record.get("source_triangle_ancestry_proven")
+            is ancestry_proven
+            and record.get("self_intersection_inherited_from_source")
+            is bool(bounded_warning and ancestry_proven)
+            and record.get("self_intersection_warning")
+            is bounded_warning
+            and record.get("self_intersection_policy")
+            == (warning_policy if bounded_warning else "strict_zero")
+            and (strict_zero or bounded_warning)
+        )
+
+    strict_prep_record_validity = [
+        _strict_prep_record_is_valid(record, part_id)
+        for part_id, record in enumerate(strict_prep_parts)
+    ]
+    strict_prep_records_valid = bool(
+        len(strict_prep_parts) == expected_parts
+        and len(strict_prep_record_validity) == expected_parts
+        and all(strict_prep_record_validity)
+    )
+    repair_cap_provenance_complete = bool(
+        len(solidification_records) == 1
+        and len(strict_prep_parts) == expected_parts
+        and len(part_face_counts_for_provenance) == expected_parts
+        and all(
+            value.get("method")
+            in {
+                "strict_planar_unmatched_boundary_caps",
+                "partitioned_shared_caps",
+                "already_watertight",
+            }
+            for value in repair_records
+        )
+    )
+    local_cap_ids: list[list[int]] = [[] for _ in range(expected_parts)]
+    shared_cap_ids: list[list[int]] = [[] for _ in range(expected_parts)]
+    local_records = [
+        value
+        for value in repair_records
+        if value.get("method") == "strict_planar_unmatched_boundary_caps"
+    ]
+    if len(local_records) > 1:
+        repair_cap_provenance_complete = False
+    for local_record in local_records:
+        loops_value = local_record.get("loops", [])
+        if not isinstance(loops_value, list) or not all(
+            isinstance(value, dict) for value in loops_value
+        ):
+            repair_cap_provenance_complete = False
+            continue
+        if local_record.get("repaired_loop_count") != len(loops_value):
+            repair_cap_provenance_complete = False
+        for loop in loops_value:
+            part_value = loop.get("part_id")
+            added_value = loop.get("added_faces")
+            ids_value = loop.get("cap_face_ids", [])
+            if not (
+                isinstance(part_value, int)
+                and not isinstance(part_value, bool)
+                and 0 <= part_value < expected_parts
+                and isinstance(added_value, int)
+                and not isinstance(added_value, bool)
+                and added_value > 0
+                and isinstance(ids_value, list)
+                and len(ids_value) == added_value
+                and all(
+                    isinstance(value, int) and not isinstance(value, bool)
+                    for value in ids_value
+                )
+                and ids_value
+                == list(range(int(ids_value[0]), int(ids_value[0]) + added_value))
+                and 0 <= int(ids_value[0])
+                and int(ids_value[-1])
+                < safe_part_face_counts[part_value]
+                and loop.get("method") == "strict_planar_local_cap"
+                and loop.get("closed_loop") is True
+            ):
+                repair_cap_provenance_complete = False
+                continue
+            local_cap_ids[part_value].extend(int(value) for value in ids_value)
+
+    solidification_record = (
+        solidification_records[0] if len(solidification_records) == 1 else {}
+    )
+    interfaces_value = solidification_record.get("interfaces", [])
+    interfaces = (
+        [dict(value) for value in interfaces_value]
+        if isinstance(interfaces_value, list)
+        and all(isinstance(value, dict) for value in interfaces_value)
+        else []
+    )
+    if interfaces_value != interfaces:
+        repair_cap_provenance_complete = False
+    if not (
+        solidification_record.get("source_triangle_coordinates_preserved")
+        is True
+        and solidification_record.get("matched_seams") == len(interfaces)
+    ):
+        repair_cap_provenance_complete = False
+    if solidification_record.get("method") == "already_watertight" and (
+        interfaces or solidification_record.get("matched_seams") != 0
+    ):
+        repair_cap_provenance_complete = False
+    individual_source_part_index = assembly_metadata.get("source_part_index")
+    individual_source_part_key = assembly_metadata.get("source_part_key")
+    individual_source_parent_part_count = assembly_metadata.get(
+        "source_parent_part_count"
+    )
+    part_palette_parts_value = part_palette_metadata.get("parts", [])
+    part_palette_parts = (
+        [dict(value) for value in part_palette_parts_value]
+        if isinstance(part_palette_parts_value, list)
+        and all(isinstance(value, dict) for value in part_palette_parts_value)
+        else []
+    )
+    individual_projection_context_valid = bool(
+        expected_parts == 1
+        and assembly_metadata.get("individual_part_export") is True
+        and isinstance(individual_source_part_index, int)
+        and not isinstance(individual_source_part_index, bool)
+        and isinstance(individual_source_part_key, str)
+        and bool(individual_source_part_key)
+        and isinstance(individual_source_parent_part_count, int)
+        and not isinstance(individual_source_parent_part_count, bool)
+        and individual_source_parent_part_count > 1
+        and 0
+        <= individual_source_part_index
+        < individual_source_parent_part_count
+        and len(multipart_parts) == 1
+        and multipart_parts[0].get("part_id") == 0
+        and multipart_parts[0].get("part_key")
+        == individual_source_part_key
+        and len(part_palette_parts) == 1
+        and part_palette_parts[0].get("index") == 0
+        and part_palette_parts[0].get("key")
+        == individual_source_part_key
+    )
+    for interface in interfaces:
+        parts_value = interface.get("parts", [])
+        cap_faces_value = interface.get("cap_faces")
+        ranges_value = interface.get("cap_face_range_by_part", {})
+        boundary_ids_value = interface.get("boundary_vertex_ids_by_part", {})
+        standard_interface_valid = bool(
+            isinstance(parts_value, list)
+            and len(parts_value) == 2
+            and all(
+                isinstance(value, int)
+                and not isinstance(value, bool)
+                and 0 <= value < expected_parts
+                for value in parts_value
+            )
+            and len(set(parts_value)) == 2
+            and isinstance(cap_faces_value, int)
+            and not isinstance(cap_faces_value, bool)
+            and cap_faces_value > 0
+            and isinstance(ranges_value, dict)
+            and set(ranges_value) == {str(value) for value in parts_value}
+            and isinstance(boundary_ids_value, dict)
+            and set(boundary_ids_value)
+            == {str(value) for value in parts_value}
+            and interface.get("source_triangle_coordinates_preserved") is True
+        )
+        source_interface_parts = interface.get("source_interface_parts", [])
+        boundary_vertices_value = interface.get("boundary_vertices")
+        projected_interface_valid = bool(
+            individual_projection_context_valid
+            and solidification_record.get("method")
+            == "partitioned_shared_caps"
+            and isinstance(solidification_record.get("source_parts"), int)
+            and not isinstance(
+                solidification_record.get("source_parts"), bool
+            )
+            and solidification_record.get("source_parts") == 1
+            and isinstance(solidification_record.get("output_parts"), int)
+            and not isinstance(
+                solidification_record.get("output_parts"), bool
+            )
+            and solidification_record.get("output_parts") == 1
+            and interface.get("individual_projection_schema")
+            == INDIVIDUAL_SHARED_INTERFACE_SCHEMA
+            and parts_value == [0]
+            and isinstance(source_interface_parts, list)
+            and len(source_interface_parts) == 2
+            and all(
+                isinstance(value, int)
+                and not isinstance(value, bool)
+                and 0 <= value < individual_source_parent_part_count
+                for value in source_interface_parts
+            )
+            and len(set(source_interface_parts)) == 2
+            and individual_source_part_index in source_interface_parts
+            and isinstance(interface.get("source_part_index"), int)
+            and not isinstance(interface.get("source_part_index"), bool)
+            and interface.get("source_part_index")
+            == individual_source_part_index
+            and isinstance(interface.get("source_part_key"), str)
+            and interface.get("source_part_key")
+            == individual_source_part_key
+            and isinstance(cap_faces_value, int)
+            and not isinstance(cap_faces_value, bool)
+            and cap_faces_value > 0
+            and isinstance(boundary_vertices_value, int)
+            and not isinstance(boundary_vertices_value, bool)
+            and boundary_vertices_value >= 3
+            and isinstance(ranges_value, dict)
+            and set(ranges_value) == {"0"}
+            and isinstance(boundary_ids_value, dict)
+            and set(boundary_ids_value) == {"0"}
+            and interface.get("source_triangle_coordinates_preserved") is True
+        )
+        interface_valid = bool(
+            standard_interface_valid or projected_interface_valid
+        )
+        if not interface_valid:
+            repair_cap_provenance_complete = False
+            continue
+        for part_id in parts_value:
+            range_value = ranges_value[str(part_id)]
+            boundary_ids = boundary_ids_value[str(part_id)]
+            if not (
+                isinstance(range_value, list)
+                and len(range_value) == 2
+                and all(
+                    isinstance(value, int) and not isinstance(value, bool)
+                    for value in range_value
+                )
+                and 0 <= range_value[0] < range_value[1]
+                <= safe_part_face_counts[part_id]
+                and range_value[1] - range_value[0] == cap_faces_value
+                and isinstance(boundary_ids, list)
+                and len(boundary_ids)
+                == int(interface.get("boundary_vertices", -1))
+                and all(
+                    isinstance(value, int) and not isinstance(value, bool)
+                    for value in boundary_ids
+                )
+                and (
+                    not projected_interface_valid
+                    or (
+                        len(boundary_ids) == len(set(boundary_ids))
+                        and len(object_vertex_arrays) == expected_parts
+                        and all(
+                            0 <= value < len(object_vertex_arrays[part_id])
+                            for value in boundary_ids
+                        )
+                    )
+                )
+            ):
+                repair_cap_provenance_complete = False
+                continue
+            shared_cap_ids[part_id].extend(
+                range(range_value[0], range_value[1])
+            )
+
+    independently_derived_source_limits: list[int] = []
+    for part_id, face_count_value in enumerate(
+        safe_part_face_counts
+    ):
+        local_ids = local_cap_ids[part_id]
+        shared_ids = shared_cap_ids[part_id]
+        all_generated_ids = local_ids + shared_ids
+        unique_generated_ids = sorted(set(all_generated_ids))
+        source_limit = (
+            unique_generated_ids[0]
+            if unique_generated_ids
+            else face_count_value
+        )
+        expected_generated_ids = list(range(source_limit, face_count_value))
+        strict_added = (
+            strict_prep_parts[part_id].get("added_faces")
+            if part_id < len(strict_prep_parts)
+            else None
+        )
+        if not (
+            len(all_generated_ids) == len(unique_generated_ids)
+            and unique_generated_ids == expected_generated_ids
+            and source_limit > 0
+            and strict_added == len(shared_ids)
+        ):
+            repair_cap_provenance_complete = False
+        independently_derived_source_limits.append(source_limit)
+    derived_face_provenance, derived_provenance_diagnostic = (
+        derive_part_face_provenance(
+            part_face_counts_for_provenance,
+            repair_records,
+            topology_changed=False,
+        )
+        if len(part_face_counts_for_provenance) == expected_parts
+        else (None, {"status": "unavailable"})
+    )
+    derived_source_face_limits: list[int] = []
+    derived_source_ranges_valid = bool(
+        derived_face_provenance is not None
+        and derived_provenance_diagnostic.get("status") == "fresh"
+    )
+    if derived_face_provenance is not None:
+        for part_provenance in derived_face_provenance:
+            values = np.asarray(part_provenance)
+            generated_ids = np.flatnonzero(
+                values != FACE_PROVENANCE_SOURCE
+            )
+            source_limit = (
+                int(generated_ids[0]) if len(generated_ids) else len(values)
+            )
+            range_valid = bool(
+                source_limit > 0
+                and np.all(values[:source_limit] == FACE_PROVENANCE_SOURCE)
+                and np.all(values[source_limit:] != FACE_PROVENANCE_SOURCE)
+            )
+            derived_source_ranges_valid = bool(
+                derived_source_ranges_valid and range_valid
+            )
+            derived_source_face_limits.append(source_limit)
+    if (
+        derived_source_face_limits != independently_derived_source_limits
+        or not repair_cap_provenance_complete
+    ):
+        derived_source_ranges_valid = False
+    generated_provenance_value = assembly_metadata.get(
+        "generated_surface_provenance", {}
+    )
+    generated_provenance = (
+        dict(generated_provenance_value)
+        if isinstance(generated_provenance_value, dict)
+        else {}
+    )
+    generated_face_count = (
+        int(
+            sum(
+                np.count_nonzero(
+                    np.asarray(value) != FACE_PROVENANCE_SOURCE
+                )
+                for value in derived_face_provenance
+            )
+        )
+        if derived_face_provenance is not None
+        else -1
+    )
+    expected_origin_counts = (
+        {
+            str(int(key)): int(value)
+            for key, value in zip(
+                *np.unique(
+                    np.concatenate(derived_face_provenance),
+                    return_counts=True,
+                ),
+                strict=True,
+            )
+        }
+        if derived_face_provenance is not None
+        else {}
+    )
+    topology_digest = hashlib.sha256()
+    topology_digest.update(
+        np.asarray([vertices, faces], dtype="<i8").tobytes()
+    )
+    vertex_offset = 0
+    for vertex_count_value, local_faces in zip(
+        object_vertex_counts, object_face_arrays, strict=True
+    ):
+        topology_digest.update(
+            np.ascontiguousarray(
+                np.asarray(local_faces, dtype=np.int64) + vertex_offset,
+                dtype="<i4",
+            ).tobytes()
+        )
+        vertex_offset += vertex_count_value
+    serialized_topology_sha256 = topology_digest.hexdigest()
+    generated_provenance_matches = bool(
+        generated_provenance.get("schema") == PROVENANCE_SCHEMA
+        and generated_provenance.get("status") == "fresh"
+        and generated_provenance.get("face_count") == faces
+        and generated_provenance.get("vertex_count") == vertices
+        and generated_provenance.get("topology_sha256")
+        == serialized_topology_sha256
+        and generated_provenance.get("generated_face_count")
+        == generated_face_count
+        and generated_provenance.get("origin_counts")
+        == expected_origin_counts
+        and generated_provenance.get("includes_topology_edits") is False
+    )
+    multipart_provenance_complete = bool(
+        not single_mesh_generic
+        and multipart_provenance.get("schema")
+        == MULTIPART_SELF_INTERSECTION_SCHEMA
+        and multipart_provenance.get("eligible") is True
+        and multipart_provenance.get("source_kind") == "gltf_node"
+        and multipart_provenance.get("import_metadata_schema")
+        == "obj-adjuster.gltf-import.v1"
+        and multipart_provenance.get("compatible_exploded_multipart") is True
+        and multipart_provenance.get("categorical_part_ids_detected") is True
+        and multipart_provenance.get(
+            "segmentation_vertex_colors_suppressed"
+        )
+        is True
+        and multipart_provenance.get("normalization_schema")
+        == MULTIPART_TOPOLOGY_SCHEMA
+        and multipart_provenance.get("part_count") == expected_parts
+        and multipart_provenance.get("all_normalizations_applied") is True
+        and multipart_provenance.get("joint_topology_changed") is False
+        and multipart_provenance.get(
+            "interface_source_triangle_coordinates_preserved"
+        )
+        is True
+        and len(multipart_parts) == expected_parts
+        and normalization_provenance_complete
+        and multipart_policy_kind_valid
+        and repair_cap_provenance_complete
+        and strict_prep_records_valid
+        and derived_source_ranges_valid
+        and generated_provenance_matches
+        and trusted_source_face_limits_complete
+        and trusted_pre_qem_face_counts_complete
+        and trusted_warning_policies_complete
+        and trusted_export_records_complete
+        and archive_export_records_match
+        and derived_source_face_limits == trusted_source_face_limits
+    )
+    if archive_height_mm <= 0.0:
+        multipart_provenance_complete = False
     expected_generic_body_count = int(
         assembly_metadata.get("body_count", 0) or 0
     )
     self_intersection_warning_parts = 0
-    for topology_record in object_topologies:
+    for part_id, topology_record in enumerate(object_topologies):
         face_count = int(topology_record.get("face_count", 0) or 0)
         intersecting_faces = int(
             topology_record.get("self_intersecting_faces", -1) or 0
@@ -3836,32 +6218,273 @@ def validate_3mf(
             else -1.0
         )
         face_limit = max(100, (face_count + 9_999) // 10_000)
-        warning_allowed = bool(
+        generic_warning_allowed = bool(
             generic_seam_warning_eligible
             and intersecting_faces > 0
             and intersecting_faces <= face_limit
             and 0.0 <= area_fraction <= 1.0e-4
         )
-        topology_record["self_intersection_face_limit"] = int(face_limit)
-        topology_record["self_intersection_area_fraction_limit"] = 1.0e-4
+        multipart_warning_allowed = False
+        multipart_record = (
+            multipart_parts[part_id]
+            if multipart_provenance_complete
+            and part_id < len(multipart_parts)
+            else {}
+        )
+        if multipart_record:
+            trusted_export_record = trusted_export_records[part_id]
+            source_face_limit_value = multipart_record.get(
+                "source_face_limit"
+            )
+            stored_ids_value = multipart_record.get(
+                "self_intersecting_face_ids", []
+            )
+            recomputed_ids_value = topology_record.get(
+                "self_intersecting_face_ids", []
+            )
+            ids_are_well_formed = bool(
+                isinstance(source_face_limit_value, int)
+                and not isinstance(source_face_limit_value, bool)
+                and 0 < int(source_face_limit_value) <= face_count
+                and part_id < len(derived_source_face_limits)
+                and int(source_face_limit_value)
+                == derived_source_face_limits[part_id]
+                and isinstance(stored_ids_value, list)
+                and all(
+                    isinstance(value, int) and not isinstance(value, bool)
+                    for value in stored_ids_value
+                )
+                and stored_ids_value == sorted(set(stored_ids_value))
+                and isinstance(recomputed_ids_value, list)
+                and all(
+                    isinstance(value, int) and not isinstance(value, bool)
+                    for value in recomputed_ids_value
+                )
+                and topology_record.get(
+                    "self_intersecting_face_ids_complete"
+                )
+                is True
+                and recomputed_ids_value == stored_ids_value
+                and stored_ids_value
+                == trusted_export_record.get(
+                    "self_intersecting_face_ids"
+                )
+            )
+            source_face_limit = (
+                int(source_face_limit_value)
+                if ids_are_well_formed
+                else 0
+            )
+            part_warning_policy = str(
+                multipart_record.get("warning_policy", "")
+            )
+            if (
+                source_face_limit > 0
+                and part_warning_policy
+                in {
+                    MULTIPART_SOURCE_PRESERVED_WARNING,
+                    MULTIPART_QEM_WARNING,
+                    MULTIPART_INHERITED_SOURCE_WARNING,
+                }
+            ):
+                (
+                    source_face_limit_bound,
+                    expected_area_fraction_limit,
+                ) = multipart_self_intersection_limits(
+                    source_face_limit,
+                    part_warning_policy,
+                )
+            else:
+                source_face_limit_bound = 0
+                expected_area_fraction_limit = -1.0
+            stored_area_value = _finite_number(
+                multipart_record.get("self_intersecting_area_unit2", -1.0)
+            )
+            stored_area_unit2 = (
+                stored_area_value if stored_area_value is not None else -1.0
+            )
+            recomputed_area_value = _finite_number(
+                topology_record.get("self_intersecting_area", -1.0)
+            )
+            recomputed_area_mm2 = (
+                recomputed_area_value
+                if recomputed_area_value is not None
+                else -1.0
+            )
+            stored_area_mm2_value = _finite_number(
+                multipart_record.get("self_intersecting_area_mm2", -1.0)
+            )
+            stored_area_mm2 = (
+                stored_area_mm2_value
+                if stored_area_mm2_value is not None
+                else -1.0
+            )
+            expected_area_mm2 = (
+                stored_area_unit2 * archive_height_mm * archive_height_mm
+            )
+            area_scale = max(
+                1.0, abs(expected_area_mm2), abs(recomputed_area_mm2)
+            )
+            stored_area_fraction = _finite_number(
+                multipart_record.get(
+                    "self_intersecting_area_fraction", -1.0
+                )
+            )
+            areas_match = bool(
+                stored_area_unit2 >= 0.0
+                and stored_area_mm2 >= 0.0
+                and recomputed_area_mm2 >= 0.0
+                and abs(expected_area_mm2 - recomputed_area_mm2)
+                <= 1.0e-6 * area_scale
+                and abs(stored_area_mm2 - recomputed_area_mm2)
+                <= 1.0e-6 * area_scale
+                and stored_area_fraction is not None
+                and np.isclose(
+                    stored_area_fraction,
+                    area_fraction,
+                    rtol=1.0e-6,
+                    atol=1.0e-12,
+                )
+            )
+            per_part_policy_valid = bool(
+                part_id < len(trusted_warning_policies)
+                and part_warning_policy
+                == trusted_warning_policies[part_id]
+                and part_id < len(trusted_pre_qem_face_counts)
+                and part_id < len(trusted_simplification_applied)
+                and part_id < len(trusted_qem_warning_eligible)
+                and multipart_record.get("pre_qem_face_count")
+                == trusted_pre_qem_face_counts[part_id]
+                and multipart_record.get("post_qem_source_face_count")
+                == source_face_limit
+                and multipart_record.get("simplification_applied")
+                is trusted_simplification_applied[part_id]
+                and multipart_record.get("qem_warning_eligible")
+                is trusted_qem_warning_eligible[part_id]
+                and multipart_record.get("qem_max_output_ratio_numerator")
+                == MULTIPART_QEM_MAX_OUTPUT_RATIO_NUMERATOR
+                and multipart_record.get("qem_max_output_ratio_denominator")
+                == MULTIPART_QEM_MAX_OUTPUT_RATIO_DENOMINATOR
+                and multipart_record.get(
+                    "source_triangle_geometry_preserved"
+                )
+                is (not trusted_simplification_applied[part_id])
+                and multipart_record.get(
+                    "source_triangle_ancestry_proven"
+                )
+                is (not trusted_simplification_applied[part_id])
+                and multipart_record.get(
+                    "self_intersection_inherited_from_source"
+                )
+                is bool(
+                    part_warning_policy
+                    == MULTIPART_INHERITED_SOURCE_WARNING
+                )
+            )
+            stored_area_limit = _finite_number(
+                multipart_record.get(
+                    "self_intersection_area_fraction_limit", -1.0
+                )
+            )
+            multipart_warning_allowed = bool(
+                ids_are_well_formed
+                and multipart_record.get("part_id") == part_id
+                and multipart_record.get("final_face_count") == face_count
+                and multipart_record.get("self_intersecting_faces")
+                == intersecting_faces
+                and len(stored_ids_value) == intersecting_faces
+                and intersecting_faces > 0
+                and intersecting_faces <= source_face_limit_bound
+                and all(
+                    0 <= int(value) < source_face_limit
+                    for value in stored_ids_value
+                )
+                and multipart_record.get("self_intersection_face_limit")
+                == source_face_limit_bound
+                and stored_area_limit
+                == expected_area_fraction_limit
+                and 0.0
+                <= area_fraction
+                <= expected_area_fraction_limit
+                and multipart_record.get("self_intersection_warning") is True
+                and multipart_record.get(
+                    "self_intersection_source_faces_only"
+                )
+                is True
+                and multipart_record.get("self_intersection_policy")
+                == part_warning_policy
+                and multipart_record.get("record_valid") is True
+                and strict_prep_record_validity[part_id]
+                and trusted_export_record.get("part_id") == part_id
+                and trusted_export_record.get("self_intersecting_faces")
+                == intersecting_faces
+                and trusted_export_record.get(
+                    "source_triangle_ancestry_proven"
+                )
+                is bool(
+                    part_warning_policy
+                    == MULTIPART_INHERITED_SOURCE_WARNING
+                )
+                and trusted_export_record.get(
+                    "self_intersection_inherited_from_source"
+                )
+                is bool(
+                    part_warning_policy
+                    == MULTIPART_INHERITED_SOURCE_WARNING
+                )
+                and areas_match
+                and per_part_policy_valid
+            )
+        warning_allowed = bool(
+            generic_warning_allowed or multipart_warning_allowed
+        )
+        effective_face_limit = (
+            source_face_limit_bound
+            if multipart_warning_allowed
+            else face_limit
+        )
+        effective_area_fraction_limit = (
+            expected_area_fraction_limit
+            if multipart_warning_allowed
+            else 1.0e-4
+        )
+        topology_record["self_intersection_face_limit"] = int(
+            effective_face_limit
+        )
+        topology_record["self_intersection_area_fraction_limit"] = float(
+            effective_area_fraction_limit
+        )
         topology_record["self_intersecting_face_fraction"] = face_fraction
         topology_record["self_intersection_source_geometry_preserved"] = bool(
             source_geometry_preserved
+            or (
+                multipart_warning_allowed
+                and part_warning_policy
+                in {
+                    MULTIPART_SOURCE_PRESERVED_WARNING,
+                    MULTIPART_INHERITED_SOURCE_WARNING,
+                }
+            )
+        )
+        topology_record["multipart_self_intersection_provenance_valid"] = bool(
+            multipart_warning_allowed
         )
         topology_record["self_intersection_warning"] = warning_allowed
         if intersecting_faces == 0:
             topology_record["self_intersection_policy"] = "strict_zero"
         elif warning_allowed:
             topology_record["self_intersection_policy"] = (
-                "bounded_qem_warning"
-                if simplification_applied
+                part_warning_policy
+                if multipart_warning_allowed
+                else "bounded_qem_warning"
+                if generic_simplification_applied
                 else "source_preserved_warning"
             )
             self_intersection_warning_parts += 1
         else:
             topology_record["self_intersection_policy"] = "blocked"
 
-    def body_count_is_valid(value: dict[str, int | bool | float | str]) -> bool:
+    def body_count_is_valid(value: dict[str, object]) -> bool:
         body_count = int(value.get("body_count", 0) or 0)
         if single_mesh_generic:
             return bool(
@@ -3872,7 +6495,7 @@ def validate_3mf(
         return body_count == 1
 
     def self_intersections_are_valid(
-        value: dict[str, int | bool | float | str],
+        value: dict[str, object],
     ) -> bool:
         return bool(
             int(value.get("self_intersecting_faces", -1)) == 0
@@ -3880,7 +6503,7 @@ def validate_3mf(
         )
 
     def solid_topology_is_valid(
-        value: dict[str, int | bool | float | str],
+        value: dict[str, object],
     ) -> bool:
         return bool(
             value.get("watertight")

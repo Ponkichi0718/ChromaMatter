@@ -75,6 +75,10 @@ tooling/*
 !tooling/generate_binary_compliance_inventory.py
 !tooling/update_budget_filament_library.py
 !tooling/corresponding_source_components.json
+!tooling/BUILD_PYTETWILD_WINDOWS.ps1
+!tooling/requirements-pytetwild-build.lock
+!tooling/patches/
+!tooling/patches/pytetwild-0.3.0-optional-pyvista.patch
 !tooling/meshlab_windows_external_archives.lock.json
 !tooling/pytetwild_rebuild_lock.template.json
 !tooling/stage_corresponding_source.py

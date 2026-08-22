@@ -317,10 +317,9 @@ class DecalPackagingTests(unittest.TestCase):
                 self.assertTrue(distribution.locate_file(relative).is_file())
         self.assertNotIn('copy_metadata("resvg")', spec)
         self.assertNotIn('f"{RESVG_DIST_INFO}/direct_url.json"', spec)
-        self.assertIn(
-            '.endswith("resvg-0.2.0.dist-info/direct_url.json")',
-            spec,
-        )
+        self.assertIn("def is_private_install_origin_metadata(entry):", spec)
+        self.assertIn('.endswith("/direct_url.json")', spec)
+        self.assertIn("and not is_private_install_origin_metadata(entry)", spec)
         for expected in (
             'RESVG_DIST_INFO = "resvg-0.2.0.dist-info"',
             'f"{RESVG_DIST_INFO}/METADATA"',

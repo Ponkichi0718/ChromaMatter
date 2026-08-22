@@ -2,6 +2,7 @@
 *.py text eol=lf
 *.md text eol=lf
 *.json text eol=lf
+*.patch text eol=lf
 # Public release manifests hash exact staged bytes. Keep Windows scripts and
 # plain-text metadata byte-for-byte in Git archives instead of normalizing
 # their line endings inside Git objects.

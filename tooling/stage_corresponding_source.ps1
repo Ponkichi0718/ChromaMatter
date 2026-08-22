@@ -18,8 +18,11 @@ param(
     [string]$ExternalArchiveLock = "",
     [string]$PyTetWildRebuildLock = "",
     [string]$PyTetWildWheel = "",
+    [string]$PyTetWildRawWheel = "",
+    [string]$PyTetWildAuditLogs = "",
     [string]$PyTetWildBuildRecipe = "",
     [string]$PyTetWildBuildRequirements = "",
+    [string]$PyTetWildSourcePatch = "",
     [string]$PyTetWildBuildAttestation = "",
     [string]$ApplicationRequirementsLock = "",
     [string]$PythonExe = "",
@@ -90,8 +93,11 @@ else {
     $rebuildArguments = @(
         @($PyTetWildRebuildLock, "--pytetwild-rebuild-lock"),
         @($PyTetWildWheel, "--pytetwild-wheel"),
+        @($PyTetWildRawWheel, "--pytetwild-raw-wheel"),
+        @($PyTetWildAuditLogs, "--pytetwild-audit-logs"),
         @($PyTetWildBuildRecipe, "--pytetwild-build-recipe"),
         @($PyTetWildBuildRequirements, "--pytetwild-build-requirements"),
+        @($PyTetWildSourcePatch, "--pytetwild-source-patch"),
         @($PyTetWildBuildAttestation, "--pytetwild-build-attestation"),
         @($ApplicationRequirementsLock, "--application-requirements-lock")
     )

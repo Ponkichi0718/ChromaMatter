@@ -1,0 +1,14 @@
+diff --git a/src/pytetwild/_accessor.py b/src/pytetwild/_accessor.py
+--- a/src/pytetwild/_accessor.py
++++ b/src/pytetwild/_accessor.py
+@@ -15 +15,6 @@
+-import pyvista as pv
++try:
++    import pyvista as pv
++except ModuleNotFoundError as error:
++    if error.name != "pyvista":
++        raise
++    pv = None
+@@ -18 +23 @@
+-HAS_ACCESSOR_REGISTRY = hasattr(pv, "register_dataset_accessor")
++HAS_ACCESSOR_REGISTRY = pv is not None and hasattr(pv, "register_dataset_accessor")

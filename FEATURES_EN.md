@@ -38,7 +38,7 @@ ChromaMatter accepts:
 - OBJ containing per-vertex colour as `v x y z r g b`
 - static GLB containing `COLOR_0`, embedded base-colour factors, or embedded base-colour textures
 
-Scene and node transforms are applied, supported GLB colour is baked into the existing vertex-colour pipeline, and the source model stays on the local PC. Unsupported compression, animation, skinning, external assets, and other ambiguous inputs fail closed instead of being silently approximated.
+Scene and node transforms are applied, supported GLB colour is baked into the existing vertex-colour pipeline, and the source model stays on the local PC. Supported multipart GLB assets retain their part structure through solidification and can be exported as a combined 3MF or one 3MF per print part. Unsupported compression, animation, skinning, external assets, and other ambiguous inputs fail closed instead of being silently approximated.
 
 ## 2. Four filaments, up to 32 printable colour states
 
@@ -68,9 +68,9 @@ Catalogue colours and on-screen previews are estimates, not promises of physical
 
 ## 4. Safer 3MF export for Snapmaker Orca
 
-Before export, ChromaMatter checks the prepared geometry. An eligible GLB can safely weld apparent openings only when coincident boundary edges prove exact 1:1 reversed UV or texture seams. If export needs that step, the app announces it, processes the model, and resumes only after success.
+Before export, ChromaMatter checks the prepared geometry. An eligible GLB can safely weld apparent openings only when coincident boundary edges prove exact 1:1 reversed UV or texture seams. Supported multipart assets are normalised independently per source part, without welding separate parts together, while source and repair-generated faces remain distinguishable. Hi3D-style categorical identification colour is suppressed only when exporter, node, material, texture, and known-palette evidence all agree; ordinary authored colour remains intact. If export needs solidification, the app announces it, processes the model, and resumes only after success.
 
-This is deliberately not a universal hole repair tool. It does not guess caps for true holes, and ambiguous or non-manifold results remain fail-closed.
+This is deliberately not a universal hole repair tool. During supported multipart repair, only a closed unmatched boundary loop with a span of at most 2.0 mm and planarity deviation of at most 0.02 mm may receive a strictly local planar cap. Larger, non-planar, ambiguous, or non-manifold openings remain fail-closed; the single-GLB UV-seam welding path never adds caps.
 
 The exported project records a conservative Full Spectrum layer-cycle and prime-tower baseline. Experimental Local Z, advanced dithering, and pointillism remain disabled. Support, material calibration, temperature, flow, speed, and retraction stay under the user's control in Snapmaker Orca.
 

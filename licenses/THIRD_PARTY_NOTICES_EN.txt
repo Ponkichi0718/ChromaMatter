@@ -18,6 +18,9 @@ High-impact bundled components
 ------------------------------
 
 - ChromaMatter application: GPL-3.0-or-later
+- CPython 3.13.14: Python Software Foundation License Version 2
+- PyInstaller 6.20.0 bootloader and run-time hooks:
+  (GPL-2.0-or-later WITH Bootloader-exception) AND Apache-2.0
 - tetgen 0.8.3 Python wrapper: MIT
 - TetGen 1.6.0 core: AGPL-3.0-or-later (or separate commercial license)
 - PyMeshLab 2025.7.post1: GPL-3.0-only
@@ -26,14 +29,19 @@ High-impact bundled components
 - PyTetWild 0.3.0 and its fTetWild components: MPL-2.0
 - Shapely 2.1.2: BSD-3-Clause
 - GEOS 3.13.1 carried by the Shapely wheel: LGPL-2.1-or-later
-- Microsoft Visual C++ Runtime 14.44.35112: Microsoft redistributable-code
-  terms
+- U3D 1.5.2 carried by PyMeshLab: Apache-2.0
+- Microsoft Visual C++ Runtime files: Microsoft redistributable-code terms;
+  exact per-file versions are recorded in BINARY_COMPONENT_MAP.json
 
 The complete dependency index is in THIRD_PARTY_LICENSES.txt. Governing
 license texts and wheel-supplied notices are stored beside this file and in
 component subdirectories. BINARY_COMPONENT_MAP.json records the exact files
 and owning components for the particular binary release; SBOM.cdx.json
 provides the matching CycloneDX inventory.
+
+The complete CPython runtime license is stored at
+`cpython/LICENSE.txt`. PyInstaller's governing notice is stored at
+`pyinstaller/COPYING.txt`.
 
 SOURCE_OFFER_EN.txt identifies the complete corresponding-source archive for
 the exact binary. BUILD_ENVIRONMENT_EN.md describes the reproducible build

@@ -996,6 +996,10 @@ def _validate_3mf_fixed(
     expected_definitions,
     expected_parts=1,
     expected_filament_profile="Generic PLA",
+    trusted_multipart_source_face_limits=None,
+    trusted_multipart_pre_qem_face_counts=None,
+    trusted_multipart_warning_policies=None,
+    trusted_multipart_export_records=None,
 ):
     validation = _original_validate_3mf(
         path,
@@ -1005,6 +1009,10 @@ def _validate_3mf_fixed(
         expected_definitions,
         expected_parts,
         expected_filament_profile,
+        trusted_multipart_source_face_limits,
+        trusted_multipart_pre_qem_face_counts,
+        trusted_multipart_warning_policies,
+        trusted_multipart_export_records,
     )
     try:
         validation.update(

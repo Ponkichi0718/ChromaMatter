@@ -12,7 +12,7 @@ $repoRoot = (Get-Item -LiteralPath (Split-Path -Parent $PSScriptRoot)).FullName
 if (-not $Destination) {
     $Destination = Join-Path `
         $repoRoot `
-        "artifacts\ChromaMatter_0.8beta-r32-ai-model-print-studio_HANDOFF"
+        "artifacts\ChromaMatter-0.8beta-r32-source-public-20260823"
 }
 elseif (-not [System.IO.Path]::IsPathRooted($Destination)) {
     $Destination = Join-Path $repoRoot $Destination
@@ -90,12 +90,21 @@ $requiredFixedAppFiles = @(
 $optionalFixedAppFiles = @(
     "source/fixed_app/assets/mixer_model_PROVENANCE.md"
 )
+$requiredPublicBinaryFiles = @(
+    "source/fixed_app/public_binary/README_JA.md",
+    "source/fixed_app/public_binary/README_EN.md",
+    "source/fixed_app/public_binary/PRIVACY.md",
+    "source/fixed_app/public_binary/START_CHROMAMATTER.cmd"
+)
 $requiredToolingFiles = @(
     "tooling/generate_public_icon.py",
     "tooling/audit_public_tree.ps1",
     "tooling/generate_binary_compliance_inventory.py",
     "tooling/update_budget_filament_library.py",
     "tooling/corresponding_source_components.json",
+    "tooling/BUILD_PYTETWILD_WINDOWS.ps1",
+    "tooling/requirements-pytetwild-build.lock",
+    "tooling/patches/pytetwild-0.3.0-optional-pyvista.patch",
     "tooling/meshlab_windows_external_archives.lock.json",
     "tooling/pytetwild_rebuild_lock.template.json",
     "tooling/stage_corresponding_source.py",
@@ -118,6 +127,7 @@ foreach ($relative in (
     $requiredGithubFiles +
     $requiredPublicationFiles +
     $requiredFixedAppFiles +
+    $requiredPublicBinaryFiles +
     $requiredToolingFiles
 )) {
     $source = Join-Path $repoRoot $relative
@@ -132,12 +142,40 @@ foreach ($relative in $requiredDirectories) {
     }
 }
 
+$publicBinaryDirectory = Join-Path $repoRoot "source/fixed_app/public_binary"
+if (-not (Test-Path -LiteralPath $publicBinaryDirectory -PathType Container)) {
+    throw "Required public-binary directory is missing: $publicBinaryDirectory"
+}
+$allowedPublicBinaryNames = @(
+    $requiredPublicBinaryFiles |
+        ForEach-Object { Split-Path -Leaf $_ }
+)
+foreach ($entry in @(Get-ChildItem -LiteralPath $publicBinaryDirectory -Force)) {
+    if (
+        $entry.PSIsContainer -or
+        ($entry.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0 -or
+        $entry.Name -notin $allowedPublicBinaryNames
+    ) {
+        throw "Unexpected public-binary entry is not allowlisted: $($entry.Name)"
+    }
+}
+if (@(Get-ChildItem -LiteralPath $publicBinaryDirectory -Force -File).Count -ne 4) {
+    throw "Public-binary directory must contain exactly four allowlisted files."
+}
+
 $destinationParent = Split-Path -Parent $destinationPath
 $destinationLeaf = Split-Path -Leaf $destinationPath
 if (-not $destinationParent -or -not $destinationLeaf) {
     throw "Public-source destination must have a parent and leaf: $destinationPath"
 }
-New-Item -ItemType Directory -Path $destinationParent -Force | Out-Null
+if (Test-Path -LiteralPath $destinationParent) {
+    if (-not (Test-Path -LiteralPath $destinationParent -PathType Container)) {
+        throw "Public-source destination parent is not a directory: $destinationParent"
+    }
+}
+else {
+    New-Item -ItemType Directory -Path $destinationParent -Force | Out-Null
+}
 
 $temporaryLeafPrefix = ".$destinationLeaf.staging-$PID-"
 $temporaryLeaf = $temporaryLeafPrefix + [Guid]::NewGuid().ToString("N")
@@ -298,6 +336,9 @@ foreach ($relative in $optionalFixedAppFiles) {
     }
 }
 Copy-PublicDirectory -RelativePath "source/fixed_app/resources/filament_db"
+foreach ($relative in $requiredPublicBinaryFiles) {
+    Copy-PublicFile -RelativePath $relative
+}
 foreach ($file in @(
     Get-ChildItem -LiteralPath (Join-Path $repoRoot "source/fixed_app/spectrum_mapper") `
         -File -Filter "*.py" |

@@ -1,6 +1,6 @@
 # r32 Windows バイナリ公開 引継ぎ
 
-更新日: 2026-08-21
+更新日: 2026-08-23
 対象リポジトリ: <https://github.com/Ponkichi0718/ChromaMatter>
 作業ブランチ: `codex/r32-full-spectrum-workflow`
 Draft PR: <https://github.com/Ponkichi0718/ChromaMatter/pull/1>
@@ -13,8 +13,10 @@ Draft PR: <https://github.com/Ponkichi0718/ChromaMatter/pull/1>
 - ChromaMatter本体のライセンスは `GPL-3.0-or-later` のまま維持する。
   TetGen 1.6.0部分は `AGPL-3.0-or-later`、その他の第三者部品は各自のライセンスを維持する。
   配布物全体を一語でAGPLへ「変更した」と説明しない。
-- Windows ZIPだけを単独公開しない。同じGitHub Releaseから、対応するアプリソース、
-  第三者対応ソース、SBOM、SHA256SUMSを同時に取得できる状態にしてから公開する。
+- Windows ZIPだけを単独公開しない。同じGitHub Releaseから、ChromaMatter本体と
+  第三者部品を一つにまとめた完全な対応ソースbundle、SBOM、component map、
+  SHA256SUMSを同時に取得できる状態にしてから公開する。GitHub自動生成source ZIPは
+  補助資料にとどめ、`SOURCE_OFFER`の取得先にはしない。
 - 対応ソース生成の `known_gaps` が1件でも未解決、clean build・full regression・
   fresh-extract監査のいずれかが未実施または失敗なら、バイナリ公開はNO-GOとする。
 
@@ -35,17 +37,35 @@ Draft PR: <https://github.com/Ponkichi0718/ChromaMatter/pull/1>
 - software stageで、最終ソースURL、SBOM、binary component map、各license、
   placeholder残存、native未分類をfail-closedに検査する処理。
 - 公開treeから欠けていた `tooling/update_budget_filament_library.py` を復元した。
+- PyTetWildのWindows再build用に、39個のPython wheelをSHA-256固定したlock、
+  全714ファイルを固定したVisual Studio offline layout、固定source commit、MPIR、
+  Eigen、通常importまで検証するbuild recipeを用意した。
+- PyVistaを入れないChromaMatter用途でも通常importできるよう、PyTetWild 0.3.0の
+  optional accessor修正を独立patchとしてhash固定し、対応ソース証拠へ結合した。
+- build、delvewheel、abi3、native closure、通常importなど8個の監査logを保存し、
+  それぞれのSHA-256をbuild attestationへ結合するようにした。
+- MeshLab Windows依存archive 21件の取得元・hash lockを完成させた。TinyGLTF履歴
+  archive内の署名なし`premake5.exe`は保存のみ、実行禁止として扱う。
+- 対応ソースのZIP/TAR展開は、NUL、非正規／Windows危険path、暗号化、特殊entry、
+  Unicode・大文字小文字衝突、file/ancestor衝突をfail-closedで拒否する。
+- 現在の作業treeから公開ソースpreviewを実生成し、privacy監査と全266 manifest
+  entryの独立SHA-256再検証に成功した。ただしこれは最終対応ソースbundleではない。
 
 ## 残っている公開ブロッカー
 
-1. **PyTetWild wheelのbuild provenance**
-   現在固定している公開wheelのSHA-256は分かるが、wheel作成時のnanobind等の正確な
-   build依存版がwheelと失効済みCIログから確定できない。推測で埋めない。
-   公開用には、build依存・toolchain・MPIRを固定してPyTetWild wheelを再buildし、
-   新wheelのSHA-256へrequirements lockを更新する。
+2026-08-23時点で、最新sourceはfull regression 1,179件（1 optional skip）、
+公開source stage 273 files／272 manifest records、独立SHA-256 parityまでPASSした。
+これはsource branch更新の証拠であり、Windows binaryの公開GOではない。
+
+1. **PyTetWild wheelの実build**
+   prospective build入力とrecipeは固定済みだが、管理者権限が必要なVisual Studio
+   Build Toolsのoffline installと、OSレベルで通信を遮断した実buildは未実施。
+   新wheelのSHA-256へapplication requirements lockを更新する。clean bootstrapには
+   `-PyTetWildWheel`または`-PyTetWildWheelhouse`でそのwheelを明示し、通常indexの
+   歴史wheelへ戻らないようにする。
 2. **対応ソースの最終取得**
-   MeshLab、VCGLib、PyMeshLab、Qt、GEOS、Shapely、TetGen、PyTetWild/fTetWild、
-   MPIRとnative外部依存を実際に取得し、manifestとarchiveを生成する。
+   MeshLab外部archive lockとPyTetWild証拠を使って実際のbundleを生成し、
+   `known_gaps=[]`と`release-approved`を確認する。
 3. **新specからのclean build**
    旧r32 build証拠は今回の変更後sourceを検証しない。新しい空build rootで作り直す。
 4. **実成果物監査**
@@ -53,6 +73,10 @@ Draft PR: <https://github.com/Ponkichi0718/ChromaMatter/pull/1>
    folder/ZIP/fresh-extract byte parity、Qt/GEOS差替えsmokeを実施する。
 5. **GitHub Release**
    PRをレビューしてmergeし、同じtag/Releaseへ全assetを同時掲載する。
+
+さらに、Qt／U3Dのcomponent固有license assetと、CPython、U3D、lib3mf、Mesaへ
+静的linkされたsubcomponentの完全なinventory／license対応を閉じる。file単位でnative
+component IDが付いているだけでは、この静的link監査の代用にしない。
 
 ## 自宅PCでの再開
 
@@ -89,39 +113,140 @@ $python = '.\.venv\Scripts\python.exe'
 
 固定環境とclean buildは、既存 `.venv` を再利用せず新しいcloneで行う。
 
+PyTetWild build前に、OS/hypervisorで外向き通信をdeny-allにするか物理的に切断する。
+recipe内の疎通probeとprocess proxyは補助防御であり、OSレベル遮断そのものではない。
+遮断を確認した作業者だけが次のswitchを付ける。
+
 ```powershell
-powershell.exe -ExecutionPolicy Bypass -File .\BOOTSTRAP_WINDOWS.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File .\tooling\BUILD_PYTETWILD_WINDOWS.ps1 `
+  -OsNetworkIsolationConfirmed `
+  -OutputRoot C:\ChromaMatterToolchain\pytetwild-controlled-build-001
+```
+
+将来buildが成功した場合は、repaired wheelと同名でもpre-repairのraw wheelを
+上書きせず別fileとして保存する。さらにattestation、recipe、39-package lock、
+source patch、次のexact 8 direct audit logsを同じrelease evidenceとして保存する。
+
+- `visual-studio-layout-verification.log`
+- `build-wheel.log`
+- `delvewheel-show-raw.log`
+- `delvewheel-repair.log`
+- `abi3audit.log`
+- `native-dependency-closure.log`
+- `native-smoke-install.log`
+- `native-normal-import.log`
+
+監査log用directoryにはこの8個のdirect fileだけを置く。extra file、nested entry、
+symlinkを含めない。その後にapplication lockを新しいrepaired wheelへ更新する。
+
+```powershell
+powershell.exe -ExecutionPolicy Bypass -File .\BOOTSTRAP_WINDOWS.ps1 `
+  -PyTetWildWheel C:\release-inputs\wheel\pytetwild-0.3.0-cp312-abi3-win_amd64.whl
 powershell.exe -ExecutionPolicy Bypass -File .\BUILD_AND_TEST.ps1 `
   -RuntimeRoot .\.venv `
   -Build `
   -BuildOutputRoot C:\CMR32AGPL1
 ```
 
-対応ソース取得は、manifestに記録された未解決gapをすべて閉じ、外部archive lockを
-指定してから実行する。大容量取得なので、空き容量を先に確認する。
+対応ソース取得は、外部archive lockとPyTetWild controlled rebuildの証拠一式を
+指定して実行する。入力manifestはcandidate固定であり、実取得・hash検証によって
+すべてのgapが閉じた場合だけ、出力`COMPONENT_SOURCES.json`が
+`release-approved`へ自動昇格する。大容量取得なので、空き容量を先に確認する。
+build recipe、PyTetWild build requirements lock、source patch、application lockは
+改行変換されたworking-tree fileではなく、指定commitの各canonical blobを
+byte-for-byteで書き出したものを使う。4入力とも最終stage前にcommitされている
+必要があり、working-tree-onlyの差し替えは拒否される。
 
 ```powershell
+$python = '.\.venv\Scripts\python.exe'
+$projectCommit = (git rev-parse HEAD).Trim()
+$releaseInputs = 'C:\release-inputs'
+@'
+from pathlib import Path
+import subprocess
+import sys
+
+commit, destination_root = sys.argv[1:]
+files = (
+    "tooling/BUILD_PYTETWILD_WINDOWS.ps1",
+    "tooling/requirements-pytetwild-build.lock",
+    "tooling/patches/pytetwild-0.3.0-optional-pyvista.patch",
+    "source/fixed_app/requirements-build.lock",
+)
+root = Path(destination_root)
+root.mkdir(parents=True, exist_ok=True)
+for relative in files:
+    payload = subprocess.run(
+        ["git", "cat-file", "blob", f"{commit}:{relative}"],
+        check=True,
+        stdout=subprocess.PIPE,
+    ).stdout
+    (root / Path(relative).name).write_bytes(payload)
+'@ | & $python -B - $projectCommit $releaseInputs
+if ($LASTEXITCODE -ne 0) { throw 'Exact committed build inputs export failed' }
+$buildRecipe = Join-Path $releaseInputs 'BUILD_PYTETWILD_WINDOWS.ps1'
+$buildRequirements = Join-Path $releaseInputs 'requirements-pytetwild-build.lock'
+$sourcePatch = Join-Path $releaseInputs 'pytetwild-0.3.0-optional-pyvista.patch'
+$applicationLock = Join-Path $releaseInputs 'requirements-build.lock'
+$sourceStage = 'C:\release\ChromaMatter-0.8beta-r32-complete-corresponding-source'
+$sourceArchive = "$sourceStage.zip"
+
 Get-PSDrive C
 powershell.exe -ExecutionPolicy Bypass -File .\tooling\stage_corresponding_source.ps1 `
-  -Destination C:\CMR32Source1 `
+  -Destination $sourceStage `
   -Cache C:\CMR32SourceCache `
   -ProjectRepository (Get-Location).Path `
-  -ProjectCommit (git rev-parse HEAD) `
+  -ProjectCommit $projectCommit `
   -ExternalArchiveLock .\tooling\meshlab_windows_external_archives.lock.json `
-  -Archive C:\CMR32Source1.zip
+  -PyTetWildRebuildLock C:\release-inputs\pytetwild-rebuild-lock.json `
+  -PyTetWildWheel C:\release-inputs\wheel\pytetwild-0.3.0-cp312-abi3-win_amd64.whl `
+  -PyTetWildRawWheel C:\release-inputs\raw-wheel\pytetwild-0.3.0-cp312-abi3-win_amd64.whl `
+  -PyTetWildAuditLogs C:\release-inputs\pytetwild-audit-logs `
+  -PyTetWildBuildRecipe $buildRecipe `
+  -PyTetWildBuildRequirements $buildRequirements `
+  -PyTetWildSourcePatch $sourcePatch `
+  -PyTetWildBuildAttestation C:\release-inputs\pytetwild-build-attestation.json `
+  -ApplicationRequirementsLock $applicationLock `
+  -Archive $sourceArchive
+
+$sourceManifest = Join-Path $sourceStage 'COMPONENT_SOURCES.json'
+$sourceSha256 = (Get-FileHash -LiteralPath $sourceArchive -Algorithm SHA256).Hash
+powershell.exe -ExecutionPolicy Bypass -File .\tooling\stage_software_package.ps1 `
+  -BuiltAppRoot C:\CMR32AGPL1\dist\ChromaMatter `
+  -Destination C:\release\ChromaMatter-0.8beta-r32-win64 `
+  -BinaryComponentMapPath C:\CMR32AGPL1\compliance\BINARY_COMPONENT_MAP.json `
+  -SbomPath C:\CMR32AGPL1\compliance\SBOM.cdx.json `
+  -CorrespondingSourceArchivePath $sourceArchive `
+  -CorrespondingSourceManifestPath $sourceManifest `
+  -CorrespondingSourceArchiveSha256 $sourceSha256 `
+  -CorrespondingSourceProjectCommit $projectCommit `
+  -CorrespondingSourceUrl https://github.com/Ponkichi0718/ChromaMatter/releases/download/TAG/ChromaMatter-0.8beta-r32-complete-corresponding-source.zip
 ```
+
+verified rebuild lockを渡す場合、`-PyTetWildRawWheel`と
+`-PyTetWildAuditLogs`も必須である。stage toolはrepaired wheelを
+`build-evidence/pytetwild/repaired-wheel/`、raw wheelを
+`build-evidence/pytetwild/raw-wheel/`へ別々に保存する。さらに上記8個だけが
+監査log directory直下にあることを確認し、それぞれのfilenameとSHA-256を
+attestationの`output.audit_logs`と照合してから
+`build-evidence/pytetwild/logs/`へ保存する。両wheelについてもattestationに
+結合された別々のidentity/hashを検証する。これは将来の最終stage手順であり、
+現時点でbuildまたはbuild-evidence stagingが完了したという記録ではない。
 
 ## 想定する同時公開asset
 
 - `ChromaMatter-0.8beta-r32-win64.zip`
-- `ChromaMatter-0.8beta-r32-app-source.zip`
-- `ChromaMatter-0.8beta-r32-third-party-source.zip`
-  （大きすぎる場合のみ番号付きで分割）
+- `ChromaMatter-0.8beta-r32-complete-corresponding-source.zip`
+  （ChromaMatter本体と第三者対応ソースを含む。大きすぎる場合だけ番号付きで分割し、
+  `SOURCE_OFFER`にも全partの取得方法を明記する）
 - `ChromaMatter-0.8beta-r32-SBOM.cdx.json`
+- `ChromaMatter-0.8beta-r32-BINARY_COMPONENT_MAP.json`
 - `SHA256SUMS-r32.txt`
 
 GitHubが自動生成する `Source code (zip)` はsubmoduleを含まないため、第三者対応ソースの
-代用にしない。最終Release URLを `SOURCE_OFFER_EN/JA.txt` に反映してからsoftware ZIPを作る。
+代用にしない。完全な対応ソースbundleの最終Release URLを
+`SOURCE_OFFER_EN/JA.txt` に反映してからsoftware ZIPを作る。
 
 ## 公開サンプルについて
 

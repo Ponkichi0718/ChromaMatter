@@ -2,6 +2,14 @@
   "schema_version": 1,
   "bundle_id": "chromamatter-windows-corresponding-source",
   "bundle_status": "candidate-only-not-release-approved",
+  "release_approval": {
+    "status": "release-approved",
+    "requires_all_known_gaps_resolved": true,
+    "required_gap_ids": [
+      "pytetwild-nanobind-exact-build-version",
+      "meshlab-md5-only-external-archives"
+    ]
+  },
   "default_external_archive_lock": "meshlab_windows_external_archives.lock.json",
   "project": {
     "id": "chromamatter",
@@ -13,12 +21,19 @@
     {
       "id": "pytetwild-nanobind-exact-build-version",
       "status": "unresolved",
-      "reason": "PyTetWild 0.3.0 declares nanobind >=1.3.2 without an exact build lock; recover the exact wheel-build version before release approval"
+      "reason": "PyTetWild 0.3.0 declares nanobind >=1.3.2 without an exact build lock; recover the exact wheel-build version before release approval",
+      "resolution_evidence": {
+        "kind": "pytetwild-controlled-rebuild"
+      }
     },
     {
       "id": "meshlab-md5-only-external-archives",
       "status": "unresolved",
-      "reason": "Other MeshLab external archives are verified against hashes from the exact CMake commit, but those upstream pins are MD5; release review should preserve the generated SHA-256 values in a final lock"
+      "reason": "Other MeshLab external archives are verified against hashes from the exact CMake commit, but those upstream pins are MD5; release review should preserve the generated SHA-256 values in a final lock",
+      "resolution_evidence": {
+        "kind": "complete-dynamic-archive-sha256-lock",
+        "rule_id": "meshlab-windows-external-build-inputs"
+      }
     }
   ],
   "pytetwild_rebuild_policy": {
@@ -26,6 +41,12 @@
     "known_gap_id": "pytetwild-nanobind-exact-build-version",
     "template": "pytetwild_rebuild_lock.template.json",
     "nanobind_destination": "components/pytetwild-build-dependencies/nanobind-controlled-rebuild",
+    "nanobind_required_gitlinks": [
+      {
+        "path": "ext/robin_map",
+        "url": "https://github.com/Tessil/robin-map.git"
+      }
+    ],
     "required_for_staging": true
   },
   "allowed_redirect_host_suffixes": [
@@ -141,7 +162,24 @@
       "url": "https://github.com/BrunoLevy/geogram.git",
       "commit": "fc3eb9bf44d2ee29686592e3ef5f5f4daeda27f8",
       "destination": "components/pytetwild-build-dependencies/geogram-1.9.6",
-      "required_paths": ["LICENSE", "CMakeLists.txt"]
+      "required_paths": ["LICENSE", "CMakeLists.txt"],
+      "required_gitlinks": [
+        {
+          "path": "src/lib/geogram/third_party/amgcl",
+          "url": "https://github.com/ddemidov/amgcl.git",
+          "commit": "ab57038d68ee372ed5df280631051b91f17ed2d1"
+        },
+        {
+          "path": "src/lib/geogram/third_party/libMeshb",
+          "url": "https://github.com/LoicMarechal/libMeshb.git",
+          "commit": "952a157c9d516b28cc6c69cd1550c3e48d4792f9"
+        },
+        {
+          "path": "src/lib/geogram/third_party/rply",
+          "url": "https://github.com/diegonehab/rply.git",
+          "commit": "4296cc91b5c8c26d4e7d7aac0cee2b194ffc5800"
+        }
+      ]
     },
     {
       "id": "ftetwild-onetbb-2022.2.0",
@@ -161,7 +199,7 @@
       "url": "https://github.com/jdumas/json.git",
       "commit": "0901d33bf6e7dfe6f70fd9d142c8f5c6695c6c5b",
       "destination": "components/pytetwild-build-dependencies/jdumas-json",
-      "required_paths": ["LICENSE.MIT", "CMakeLists.txt"]
+      "required_paths": ["LICENSE.MIT", "include/nlohmann/json.hpp"]
     },
     {
       "id": "mpir-3.0.0",
@@ -192,6 +230,16 @@
       "commit": "d876376e3cc4f92d257e248023d82cbac5b03c7d",
       "destination": "components/pymeshlab-2025.7.post1/src/meshlab",
       "required_paths": ["LICENSE.txt", "CMakeLists.txt", "src/external/CMakeLists.txt"]
+    },
+    {
+      "id": "pymeshlab-onetbb-2021.11.0",
+      "display_name": "oneTBB 2021.11.0 runtime carried by the Embree 4.3.3 Windows package used by MeshLab",
+      "version": "2021.11.0",
+      "kind": "git",
+      "url": "https://github.com/uxlfoundation/oneTBB.git",
+      "commit": "8b829acc65569019edb896c5150d427f288e8aba",
+      "destination": "components/pymeshlab-build-dependencies/oneTBB-2021.11.0",
+      "required_paths": ["LICENSE.txt", "CMakeLists.txt"]
     },
     {
       "id": "pymeshlab-pybind11-2.13.6",
@@ -312,6 +360,15 @@
       "required_literals": [
         "https://github.com/libigl/libigl-predicates.git",
         "decb7bc1260e689cbe008109e3cc5d3a5a433aea"
+      ]
+    },
+    {
+      "component": "meshlab-d876376",
+      "path": "src/external/embree.cmake",
+      "required_literals": [
+        "set(EMBREE_MINOR 3.3)",
+        "set(EMBREE_WIN_LINK https://github.com/embree/embree/releases/download/v${EMBREE_VER}/embree-${EMBREE_VER}.x64.windows.zip)",
+        "${EMBREE_WIN_DIR}/bin/tbb12.dll"
       ]
     }
   ],

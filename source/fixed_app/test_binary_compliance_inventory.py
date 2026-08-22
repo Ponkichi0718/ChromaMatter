@@ -19,6 +19,9 @@ REQUIREMENTS = (
 )
 BOOTSTRAP = REPO_ROOT / "BOOTSTRAP_WINDOWS.ps1"
 BUILD = REPO_ROOT / "BUILD_AND_TEST.ps1"
+SPEC = REPO_ROOT / "source" / "fixed_app" / "TripoSpectrumMapper_fixed.spec"
+THIRD_PARTY_INDEX = REPO_ROOT / "licenses" / "THIRD_PARTY_LICENSES.txt"
+APACHE_LICENSE = REPO_ROOT / "licenses" / "LICENSE_RESVG_APACHE_2.0.txt"
 
 
 class BinaryComplianceInventoryTests(unittest.TestCase):
@@ -177,6 +180,116 @@ class BinaryComplianceInventoryTests(unittest.TestCase):
                 component_map["validation"]["unmapped_native_files"],
                 ["_internal/mystery.dll"],
             )
+
+    def test_frozen_entry_point_and_high_impact_native_licenses_are_exact(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            package = base / "package"
+            package.mkdir()
+            self._fixture(package)
+            pymeshlab = package / "_internal" / "pymeshlab"
+            shapely_libs = package / "_internal" / "shapely.libs"
+            pymeshlab.mkdir()
+            shapely_libs.mkdir()
+            (pymeshlab / "Qt5Core.dll").write_bytes(b"synthetic-qt")
+            (pymeshlab / "IFXCore.dll").write_bytes(b"synthetic-u3d")
+            (pymeshlab / "tbb12.dll").write_bytes(b"synthetic-onetbb")
+            (shapely_libs / "geos-c.dll").write_bytes(b"synthetic-geos")
+
+            destination = base / "report"
+            result = self._run(package, destination)
+            self.assertEqual(result.returncode, 0, result.stderr)
+
+            component_map = json.loads(
+                (destination / "BINARY_COMPONENT_MAP.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            rows = {row["path"]: row for row in component_map["files"]}
+            self.assertEqual(
+                rows["ChromaMatter.exe"]["components"],
+                ["chromamatter", "pyinstaller"],
+            )
+            self.assertEqual(
+                rows["ChromaMatter.exe"]["mapping_basis"],
+                "frozen-application-entry-point",
+            )
+            licenses = {
+                component["id"]: component["license"]
+                for component in component_map["components"]
+            }
+            self.assertEqual(licenses["qt"], "LGPL-3.0-only")
+            self.assertEqual(licenses["geos"], "LGPL-2.1-or-later")
+            self.assertEqual(licenses["u3d"], "Apache-2.0")
+            self.assertEqual(licenses["onetbb-pymeshlab"], "Apache-2.0")
+            self.assertEqual(
+                licenses["pyinstaller"],
+                "(GPL-2.0-or-later WITH Bootloader-exception) AND Apache-2.0",
+            )
+            one_tbb = next(
+                component
+                for component in component_map["components"]
+                if component["id"] == "onetbb-pymeshlab"
+            )
+            self.assertEqual(one_tbb["version"], "2021.11.0")
+            self.assertEqual(
+                one_tbb["source"],
+                "https://github.com/uxlfoundation/oneTBB/tree/v2021.11.0",
+            )
+            self.assertTrue(
+                {"embree", "onetbb-pymeshlab"}.issubset(
+                    rows["_internal/pymeshlab/tbb12.dll"]["components"]
+                ),
+                rows["_internal/pymeshlab/tbb12.dll"]["components"],
+            )
+
+            sbom = json.loads(
+                (destination / "SBOM.cdx.json").read_text(encoding="utf-8")
+            )
+            sbom_refs = {
+                component["bom-ref"] for component in sbom["components"]
+            }
+            self.assertIn("component:pyinstaller", sbom_refs)
+
+    def test_spec_and_index_bundle_runtime_license_texts(self) -> None:
+        spec = SPEC.read_text(encoding="utf-8")
+        index = THIRD_PARTY_INDEX.read_text(encoding="utf-8")
+        self.assertIn('Path(sys.base_prefix) / "LICENSE.txt"', spec)
+        self.assertIn('"licenses/cpython"', spec)
+        self.assertIn(
+            '"pyinstaller-6.20.0.dist-info/licenses/COPYING.txt"', spec
+        )
+        self.assertIn("_internal/licenses/cpython/LICENSE.txt", index)
+        self.assertIn("_internal/licenses/pyinstaller/COPYING.txt", index)
+        apache = APACHE_LICENSE.read_text(encoding="utf-8")
+        self.assertIn("Apache License", apache)
+        self.assertIn("Version 2.0, January 2004", apache)
+        self.assertIn("_internal/licenses/LICENSE_RESVG_APACHE_2.0.txt", index)
+        for component_notice in (
+            "Qt ANGLE runtime",
+            "Mesa llvmpipe runtime",
+            "Intel Embree 4.3.3",
+            "oneTBB 2021.11",
+            "Xerces-C++ 3.2.4",
+            "lib3mf 2.4.1",
+            "GMP 5.0.1",
+            "MPFR 3.0.0",
+            "MPIR 3.0.0",
+            "libE57Format 3.1.1",
+            "GLEW 2.2.0",
+            "lib3ds 1.3.0",
+            "U3D 1.5.2",
+            "muparser 2.3.5",
+            "OpenSSL 3.0.21",
+            "SQLite 3.50.4",
+            "libffi runtime ABI 8",
+            "zlib 1.3.1",
+            "Microsoft Universal C Runtime 10.0.19041.1",
+        ):
+            with self.subTest(component_notice=component_notice):
+                self.assertIn(component_notice, index)
+        self.assertIn("Pillow 11.2.1\n  License expression: HPND", index)
+        self.assertNotIn("NOASSERTION", index)
 
     def test_system_runtime_allowlist_is_limited_to_internal_root(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

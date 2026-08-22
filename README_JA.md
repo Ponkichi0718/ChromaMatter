@@ -17,7 +17,7 @@ ChromaMatter — AI Model Print Studioは、AI生成された頂点カラー付�
 
 ## AI Model Print Studio r32
 
-r32は、3MF出力時の安全な自動閉立体化、手動変更したF1～F4の変換previewへの明示反映、保守的なSnapmaker Orca Full Spectrum設定を追加します。r31で統一した公開名とアイコン、OBJ／GLB／3MF、project schema、旧設定保存先はそのまま維持します。
+r32は、分割GLBをパーツ構成のまま閉立体化して個別3MFへ出力する経路、識別用の疑似色を限定条件で除外する処理、手動変更したF1～F4の変換previewへの明示反映、保守的なSnapmaker Orca Full Spectrum設定を追加します。r31で統一した公開名とアイコン、OBJ／GLB／3MF、project schema、旧設定保存先はそのまま維持します。
 
 ### GLB入力 β
 
@@ -33,6 +33,12 @@ r32は、3MF出力時の安全な自動閉立体化、手動変更したF1～F4�
 - この経路は蓋を追加しません。未対応・同方向・曖昧なseam、非manifold化、本当の穴はfail-closedで停止し、処理前のgeometryを維持します。
 - 3MF出力前のstrict topology検証は、build item直下だけでなく全`type=model` resourceを対象にします。必須の閉立体検証後にQEM由来の上限内の微小自己交差だけが残る場合はwarningとし、Snapmaker Orcaで「プロジェクトとして開く」を選んだslice preview確認を必須にします。
 - 3MFには安定したFull Spectrum layer-cycleとprime towerのbaselineを記録します。Local Z、advanced dithering、pointillism等の実験設定は有効化せず、supportはSnapmaker Orca側で選びます。
+
+### 分割GLBの閉立体化と個別3MF
+
+- 対応する分割GLBは、元のパーツ境界と配置を維持したままパーツ単位で正規化します。別パーツ同士を溶接せず、修復で追加した面も元面と区別して追跡します。
+- Hi3D系の分割データで使われる識別用`COLOR_0`は、exporter、node、material、texture、既知paletteの条件がすべて一致した場合だけ除外します。通常の作者指定頂点色は変更しません。
+- 結合3MFだけでなく「各印刷パーツを個別3MFで保存」にも同じ厳格検証を適用します。個別出力ではパーツIDと頂点参照を局所番号へ組み直し、不完全または古い対応情報はfail-closedで停止します。
 
 ### Manual Editingの表示安定化
 
@@ -103,9 +109,9 @@ project-folder/
 
 ## 検証とrelease gate
 
-P2後のr32 exact-source full regressionはPython `3.13.14`で`Ran 1048 tests in 90.160s: OK (skipped=1)`、1047 PASS／1 optional SKIP／0 FAILです。`C:\OBJAdjR32CM3`でPyInstaller `6.20.0` clean build、BUILD_AND_TEST内のpackaged self-test exit 0、隔離profileの日本語／英語UI smokeがPASSしました。preflight `C:\OBJAdjR32CM3\dist\ChromaMatter\ChromaMatter.exe`は13,997,622 bytes、FileVersion／ProductVersion `0.8beta`、ProductName `ChromaMatter — AI Model Print Studio`、SHA-256 `8BBABEACCF9B47AC2750C86B7C38966E46F00A624C648036D600C9601CF86EBB`です。
+分割GLBと公開package gateを含む最新作業treeのfull regressionは、Python `3.13.14`で`Ran 1179 tests in 150.952s: OK (skipped=1)`、1178 PASS／1 optional SKIP／0 FAILです。binary compliance／対応ソース／release toolingの集中テスト80件とrelease identity 10件もPASSしました。
 
-r32 preflight source stageは230 files／229 manifest records、manifest SHA-256 `C0D0A96570F83162B4B92E34FC463802C32A31600AEAE191D79D972E55CFE920`、fresh parity／privacy／source focused 33/33がPASSしました。software stageは1,404 files／1,403 manifest records、manifest SHA-256 `9764A61571421CC8C1773938C4CD724515C07D77C435BF2F4E0DB5DB5E68572C`で、fresh self-test／日本語UI／英語UIはいずれもexit 0です。final source backpatch／restage、Downloads配置、final detached `SHA256SUMS-r32.txt`、GitHub更新は**pending**です。preflight ZIP hashはfinal artifactと異なるためcanonical文書へ埋め込みません。
+旧r32 EXE／ZIPは今回のsourceと一致しないため公開しません。新しいWindows実行ZIPは、controlled PyTetWild再build、component固有license／静的link依存の監査、`release-approved`完全対応ソース、clean build、packaged self-test、日英UI smoke、fresh-extract／manifest／privacy／checksum監査がすべて完了した場合だけ公開します。現時点の`binary publication eligibility`は**false**です。
 
 以下のr31およびCreator Studio r30の結果は各revisionだけに適用する**previous evidence**で、r32へ流用しません。
 
@@ -137,8 +143,8 @@ WindowsとPython 3.13で次を実行します。
 
 `-Build`は全回帰後にPyInstaller one-folder buildを作成します。r32の予定stage名は次のとおりで、検証完了までは配布しません。
 
-- pending source-only candidate: `ChromaMatter_0.8beta-r32-source-public-20260821`
-- pending non-public software preflight: `ChromaMatter_0.8beta-r32-ai-model-print-studio`
+- source candidate: `ChromaMatter-0.8beta-r32-source-public-20260823`
+- gated Windows package: `ChromaMatter-0.8beta-r32-win64`
 
 ## プライバシーとライセンス
 

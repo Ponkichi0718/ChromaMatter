@@ -3,6 +3,9 @@
 
 バイナリアーカイブ：@@BINARY_ARCHIVE_NAME@@
 完全な対応ソース：@@CORRESPONDING_SOURCE_URL@@
+ソースアーカイブ：@@CORRESPONDING_SOURCE_ARCHIVE_NAME@@
+ソースアーカイブSHA-256：@@CORRESPONDING_SOURCE_SHA256@@
+ChromaMatterソースcommit：@@CORRESPONDING_SOURCE_PROJECT_COMMIT@@
 
 上記ソースアーカイブは、このバイナリリリースに対応するものです。
 ChromaMatter本体ソース、ビルド・インストール用スクリプト、固定した依存関係

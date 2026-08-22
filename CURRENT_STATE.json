@@ -4,8 +4,8 @@
   "package_version": "0.8beta",
   "edition": "AI Model Print Studio r32",
   "artifact_slug": "r32-ai-model-print-studio",
-  "status": "r32-ai-model-print-studio-preflight-audited-final-publication-pending",
-  "updated": "2026-08-21",
+  "status": "r32-source-branch-validated-binary-publication-blocked",
+  "updated": "2026-08-23",
   "version_policy": {
     "pinned_until_explicit_user_request": true,
     "edition_and_artifact_revision_may_advance_independently": true,
@@ -35,6 +35,7 @@
       "PLA is the default material; ABS and PETG are opt-in beta modes and never mix material families within one four-filament job.",
       "Automatic proposals use a material-specific, gamut-balanced set of real catalog products.",
       "The public model picker accepts vertex-coloured OBJ and static GLB; embedded baseColor texture is baked to the existing vertex-colour pipeline.",
+      "Compatible exploded multipart GLB assets can suppress categorical part-identification COLOR_0 only after narrow exporter, node, material, texture, and known-ID-palette proof; ordinary authored vertex colours remain unchanged.",
       "The public Filament Settings page does not expose the legacy reset-all-four-base-colours action.",
       "After an optional F1-F4 edit, Apply Current F1-F4 to Preview / 3MF explicitly rebuilds the converted preview while automatic proposal remains the default workflow."
     ],
@@ -55,6 +56,11 @@
       "Explicit Solidify supports a single GLB without Tripo part markers when its apparent openings prove to be exact 1:1 reversed boundary pairs at coincident UV or texture seams.",
       "The single GLB seam weld runs before cleanup and QEM so face-count reduction cannot destroy the exact seam proof.",
       "The seam path preserves every ordered triangle and part ID and does not add caps; ambiguous seams, non-manifold results, or true holes fail closed without replacing the current geometry.",
+      "Compatible exploded multipart GLB assets are normalized independently per source part with exact-coordinate evidence; parts are never welded to one another and generated closure faces retain non-source provenance.",
+      "With face-count reduction disabled, a fully normalized compatible multipart part may use a resolution-independent inherited-source warning only after every retained triangle is proven to be an exact-coordinate multiset subset of the imported part; QEM, joints, coordinate movement, incomplete proof, and generated-cap intersections remain ineligible.",
+      "The inherited-source warning is not a repair: every mandatory solid check must pass, all complete self-intersection IDs must remain in an externally anchored source prefix, the affected count is bounded by max(100, ceil(source_faces / 100)), and affected area is bounded to 0.002 of the part.",
+      "Multipart 3MF export rechecks the exact binary64 millimetre coordinates written to the archive and externally anchors source-face ranges, per-part QEM limits, and self-intersection records against coordinated metadata relabeling.",
+      "Per-part 3MF export rebases each selected part to local part ID zero and projects only complete live multipart proof; local repair caps and shared-interface caps retain distinct provenance, and incomplete or stale mappings fail closed.",
       "When export finds an eligible unsolidified model, ChromaMatter announces the safe solidification step, runs it, and resumes export only after success.",
       "Manual paint state and adaptive trees keep exact ordered-face carry across the seam-only vertex remap.",
       "Strict 3MF topology validation checks all type=model resources, including printable child objects that are not direct build items.",
@@ -67,9 +73,13 @@
     "implementation_focused_source": "passed within the exact P2-frozen r32 full regression on Python 3.13.14",
     "release_focused_identity_regression_tooling_gui_layout": "passed within the exact P2-frozen r32 full regression on Python 3.13.14",
     "current_public_ui_focused_regression": "passed within the exact P2-frozen r32 full regression; packaged isolated-profile Japanese and English UI smoke also passed",
-    "current_full_regression": "passed on Python 3.13.14: Ran 1048 tests in 90.160s: OK (skipped=1); 1047 passed, 1 optional skip, and 0 failed",
+    "current_full_regression": "passed on Python 3.13.14: Ran 1179 tests in 150.952s: OK (skipped=1); 1178 passed, 1 optional skip, and 0 failed",
+    "changed_worktree_full_regression": "passed on Python 3.13.14 after per-part multipart proof projection and release-package hardening: Ran 1179 tests in 150.952s: OK (skipped=1); 1178 passed, 1 optional skip, and 0 failed",
+    "changed_worktree_multipart_e2e": "passed on a non-public six-part full-resolution validation asset with face-count reduction disabled: 2016940 output faces, 6 watertight consistently wound positive-volume single bodies, categorical identification colours suppressed, combined exact 3MF validation passed, and all 6 individual 3MF files plus their manifest passed strict archive-reload topology and projected-provenance validation; generated repair caps were not accepted as source faces or source self-intersections, and no private asset identity or derived output is retained",
+    "changed_worktree_full_resolution_policy": "the inherited-source warning is not a repair or a trust in saved metadata: exact-coordinate triangle ancestry, externally anchored source prefixes, complete source-only intersection IDs, count <= max(100, ceil(source_faces / 100)), area fraction <= 0.002, and every mandatory solid check are required; individual output additionally requires exact part and boundary-vertex rebasing, complete direct parent proof, and distinct local-cap or shared-interface provenance; QEM, joints, moved coordinates, incomplete proof, stale layouts, and generated-face intersections remain fail-closed",
+    "changed_worktree_build_evidence": "the current owner-only internal build passed 1168 source tests with 1 optional skip, packaged and fresh-extracted self-tests, isolated Japanese and English UI smokes, binary inventory, deterministic component-map/SBOM regeneration, ZIP CRC/encryption/security/path/privacy checks, and 1355-file fresh-archive path/size/SHA-256 parity; archive ChromaMatter_0.8beta-r32-FullResMultipart-INTERNAL-TEST-20260822c.zip is 118851316 bytes with SHA-256 748E3C7962DB21AFB9DDFBABF9082E2E49DECBA4BAF2078EE99A737910E40C19, is unsigned and non-public, and is not public release evidence",
     "current_clean_build_and_packaged_smoke": "passed at C:\\OBJAdjR32CM3 with PyInstaller 6.20.0; packaged self-test exit 0 and isolated-profile Japanese and English UI smoke passed",
-    "current_stage_archive_privacy_and_checksum_audit": "preflight passed: source 230 files/229 manifest records and software 1404 files/1403 manifest records; manifests, privacy, archive CRC and byte parity, fresh extraction, detached checksum, source focused 33 tests, packaged self-test, and Japanese/English UI smoke passed; final Downloads restage and GitHub update remain pending",
+    "current_stage_archive_privacy_and_checksum_audit": "current source stage passed: 273 files/272 manifest records with public-tree privacy audit and independent full SHA-256 parity; the current worktree software archive, fresh extraction, packaged smoke, and detached release checksum remain blocked pending the controlled native rebuild and complete binary licence audit",
     "source_runtime": {
       "python": "3.13.14",
       "pyinstaller": "6.20.0"
@@ -91,11 +101,34 @@
     "physical_print": "pending"
   },
   "release": {
-    "state": "preflight-artifacts-audited-final-publication-pending",
+    "state": "source-branch-validated-binary-publication-blocked",
     "target_revision": "r32-ai-model-print-studio",
-    "revision": "AI Model Print Studio r32 adds export-time safe solidification, explicit application of manually edited F1-F4 colors to the converted preview, and a conservative Snapmaker Orca Full Spectrum project baseline. Public version 0.8beta, schemas, application identity, icon, and legacy settings compatibility remain unchanged. Exact P2-frozen regression, clean build, packaged smoke, preflight source/software staging, manifest/privacy/archive/checksum parity, and fresh-extract smoke passed. Final Downloads restage and the GitHub update remain pending; no r31 result is reused.",
-    "public_source_default": "ChromaMatter_0.8beta-r32-source-public-20260821",
-    "software_package_default": "ChromaMatter_0.8beta-r32-ai-model-print-studio",
+    "revision": "AI Model Print Studio r32 adds conservative multipart GLB closure, narrow identification-colour suppression, strict combined and individual 3MF provenance validation, explicit application of manually edited F1-F4 colours, and hardened public package/compliance gates. The exact current source regression and public-source stage passed. A new Windows binary remains blocked until the controlled PyTetWild rebuild, complete component-specific licence/static-link audit, release-approved corresponding source, clean build, packaged smoke, and fresh-extract audit all pass.",
+    "public_source_default": "ChromaMatter-0.8beta-r32-source-public-20260823",
+    "software_package_default": "ChromaMatter-0.8beta-r32-win64",
+    "latest_source_branch_validation": {
+      "status": "source-branch-validated-for-draft-pr-update",
+      "source_full_regression": "passed on Python 3.13.14: Ran 1179 tests in 150.952s: OK (skipped=1); 1178 passed, 1 optional skip, and 0 failed",
+      "focused_release_tooling": "passed: binary compliance, corresponding-source, and release tooling 80 tests; release identity 10 tests",
+      "public_source_stage": {
+        "expected_root": "ChromaMatter-0.8beta-r32-source-public-20260823",
+        "total_files_including_manifest": 273,
+        "manifest_records": 272,
+        "privacy_audit": "passed",
+        "independent_manifest_sha256_parity": "passed with zero missing, extra, or mismatched files"
+      },
+      "source_publication_eligible": true,
+      "binary_publication_eligible": false,
+      "binary_publication_blockers": [
+        "binary-component-specific-license-assets-incomplete",
+        "binary-static-linked-components-incomplete",
+        "controlled-pytetwild-rebuild-evidence-incomplete",
+        "release-approved-complete-corresponding-source-not-generated",
+        "current-source-clean-build-and-fresh-extract-audit-pending"
+      ],
+      "branch": "codex/r32-full-spectrum-workflow",
+      "draft_pull_request": "https://github.com/Ponkichi0718/ChromaMatter/pull/1"
+    },
     "current_r32_candidate_validation": {
       "status": "preflight-artifacts-audited-final-publication-pending",
       "source_full_regression": "passed on Python 3.13.14: Ran 1048 tests in 90.160s: OK (skipped=1); 1047 passed, 1 optional skip, and 0 failed",
@@ -155,7 +188,7 @@
       "source_publication_eligible": false,
       "source_publication_status": "r31 is published; the r32 preflight passed and the update is pending final Downloads restage, detached checksum, Git-tree parity, and GitHub pull request",
       "binary_publication_eligible": false,
-      "binary_publication_blocker": "third-party binary redistribution audit for PyTetWild/fTetWild, TetGen, PyMeshLab, Qt, GEOS, and the exact packaged dependency set remains incomplete",
+      "binary_publication_blocker": "current worktree binary is blocked by incomplete component-specific licence assets and static-linked component inventory, missing controlled PyTetWild rebuild evidence, missing release-approved complete corresponding source, and pending clean-build/fresh-extract audits",
       "innovation_fund_submission_ready": false,
       "innovation_fund_submission_blockers": "rights-cleared public sample, Orca/U1 evidence, cover, video, community post, and submitted form remain pending",
       "failure_contract": "Do not distribute or claim r32 publication when any exact-source regression, build, smoke, stage, archive, privacy, identity, layout, or checksum gate is pending or failed."

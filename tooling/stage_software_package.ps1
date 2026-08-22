@@ -6,6 +6,10 @@ param(
     [string]$Destination = "",
     [string]$ArchivePath = "",
     [string]$CorrespondingSourceUrl = "",
+    [string]$CorrespondingSourceArchivePath = "",
+    [string]$CorrespondingSourceManifestPath = "",
+    [string]$CorrespondingSourceArchiveSha256 = "",
+    [string]$CorrespondingSourceProjectCommit = "",
     [string]$BinaryComponentMapPath = "",
     [string]$SbomPath = ""
 )
@@ -23,7 +27,7 @@ if (-not (Test-Path -LiteralPath $builtRoot -PathType Container)) {
 if (-not $Destination) {
     $Destination = Join-Path `
         $repoRoot `
-        "artifacts\ChromaMatter_0.8beta-r32-ai-model-print-studio"
+        "artifacts\ChromaMatter-0.8beta-r32-win64"
 }
 elseif (-not [System.IO.Path]::IsPathRooted($Destination)) {
     $Destination = Join-Path $repoRoot $Destination
@@ -126,6 +130,8 @@ $requiredRuntimeFiles = @(
     "_internal/licenses/LICENSE_RESVG_MIT.txt",
     "_internal/licenses/LICENSE_RESVG_APACHE_2.0.txt",
     "_internal/licenses/THIRD_PARTY_LICENSES.txt",
+    "_internal/licenses/cpython/LICENSE.txt",
+    "_internal/licenses/pyinstaller/COPYING.txt",
     "_internal/licenses/resvg-py/LICENSE.txt",
     "_internal/licenses/resvg-py/resvg.cyclonedx.json",
     "_internal/licenses/pytetwild/LICENSE",
@@ -169,6 +175,177 @@ if (
     $sourceUri.Host -match "(?i)^(?:example\.(?:com|org|net)|localhost)$"
 ) {
     throw "CorrespondingSourceUrl must be a final public HTTPS release URL."
+}
+$correspondingSourceAssetName = [Uri]::UnescapeDataString(
+    [System.IO.Path]::GetFileName($sourceUri.AbsolutePath)
+)
+if ([string]::IsNullOrWhiteSpace($correspondingSourceAssetName)) {
+    throw "CorrespondingSourceUrl must identify one release asset."
+}
+if (Test-IncompleteReleaseValue -Value $CorrespondingSourceArchivePath) {
+    throw "CorrespondingSourceArchivePath is required for the final complete source bundle."
+}
+$correspondingSourceArchiveFullPath = if (
+    [System.IO.Path]::IsPathRooted($CorrespondingSourceArchivePath)
+) {
+    [System.IO.Path]::GetFullPath($CorrespondingSourceArchivePath)
+}
+else {
+    [System.IO.Path]::GetFullPath(
+        (Join-Path $repoRoot $CorrespondingSourceArchivePath)
+    )
+}
+if (-not (Test-Path -LiteralPath $correspondingSourceArchiveFullPath -PathType Leaf)) {
+    throw "Complete corresponding-source archive is missing: $correspondingSourceArchiveFullPath"
+}
+$correspondingSourceArchiveLeaf = Split-Path -Leaf $correspondingSourceArchiveFullPath
+if (-not $correspondingSourceArchiveLeaf.Equals(
+    "ChromaMatter-0.8beta-r32-complete-corresponding-source.zip",
+    [System.StringComparison]::Ordinal
+)) {
+    throw (
+        "Complete corresponding-source archive has the wrong release asset name: " +
+        $correspondingSourceArchiveLeaf
+    )
+}
+if (-not $correspondingSourceAssetName.Equals(
+    $correspondingSourceArchiveLeaf,
+    [System.StringComparison]::Ordinal
+)) {
+    throw (
+        "Corresponding source URL asset name does not match the verified archive: " +
+        "$correspondingSourceAssetName != $correspondingSourceArchiveLeaf"
+    )
+}
+if (
+    (Test-IncompleteReleaseValue -Value $CorrespondingSourceArchiveSha256) -or
+    $CorrespondingSourceArchiveSha256 -notmatch "^[0-9A-Fa-f]{64}$"
+) {
+    throw "CorrespondingSourceArchiveSha256 must be one complete SHA-256 digest."
+}
+$actualCorrespondingSourceArchiveSha256 = (
+    Get-FileHash -LiteralPath $correspondingSourceArchiveFullPath -Algorithm SHA256
+).Hash.ToUpperInvariant()
+if ($actualCorrespondingSourceArchiveSha256 -ne (
+    $CorrespondingSourceArchiveSha256.ToUpperInvariant()
+)) {
+    throw "Complete corresponding-source archive SHA-256 does not match."
+}
+if (Test-IncompleteReleaseValue -Value $CorrespondingSourceProjectCommit) {
+    throw "CorrespondingSourceProjectCommit is required."
+}
+if ($CorrespondingSourceProjectCommit -notmatch "^[0-9a-f]{40}$") {
+    throw "CorrespondingSourceProjectCommit must be one full lowercase Git commit."
+}
+if (Test-IncompleteReleaseValue -Value $CorrespondingSourceManifestPath) {
+    throw "CorrespondingSourceManifestPath is required."
+}
+$correspondingSourceManifestFullPath = if (
+    [System.IO.Path]::IsPathRooted($CorrespondingSourceManifestPath)
+) {
+    [System.IO.Path]::GetFullPath($CorrespondingSourceManifestPath)
+}
+else {
+    [System.IO.Path]::GetFullPath(
+        (Join-Path $repoRoot $CorrespondingSourceManifestPath)
+    )
+}
+if (-not (Test-Path -LiteralPath $correspondingSourceManifestFullPath -PathType Leaf)) {
+    throw "Complete corresponding-source manifest is missing: $correspondingSourceManifestFullPath"
+}
+$correspondingSourceManifestText = [System.IO.File]::ReadAllText(
+    $correspondingSourceManifestFullPath
+)
+if (Test-IncompleteReleaseValue -Value $correspondingSourceManifestText) {
+    throw "Complete corresponding-source manifest contains an incomplete placeholder."
+}
+try {
+    $correspondingSourceManifest = (
+        $correspondingSourceManifestText | ConvertFrom-Json -ErrorAction Stop
+    )
+}
+catch {
+    throw "Complete corresponding-source manifest is not valid JSON: $($_.Exception.Message)"
+}
+$knownGapsProperty = $correspondingSourceManifest.PSObject.Properties["known_gaps"]
+if (
+    [int]$correspondingSourceManifest.schema_version -ne 1 -or
+    [string]$correspondingSourceManifest.bundle_id -ne
+        "chromamatter-windows-corresponding-source" -or
+    [string]$correspondingSourceManifest.bundle_status -ne "release-approved" -or
+    $correspondingSourceManifest.deterministic_metadata -ne $true -or
+    $null -eq $knownGapsProperty -or
+    $null -eq $knownGapsProperty.Value -or
+    -not ($knownGapsProperty.Value -is [System.Array]) -or
+    @($knownGapsProperty.Value).Count -ne 0
+) {
+    throw (
+        "Complete corresponding-source manifest is not release-approved " +
+        "with an empty known_gaps array."
+    )
+}
+$correspondingSourceProjectRows = @(
+    $correspondingSourceManifest.components |
+        Where-Object { [string]$_.id -eq "chromamatter" }
+)
+if (
+    $correspondingSourceProjectRows.Count -ne 1 -or
+    [string]$correspondingSourceProjectRows[0].kind -ne
+        "local-git-commit-export" -or
+    [string]$correspondingSourceProjectRows[0].commit -ne
+        $CorrespondingSourceProjectCommit
+) {
+    throw "Complete corresponding-source manifest does not match the exact project commit."
+}
+
+Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction Stop
+$correspondingSourceZip = $null
+try {
+    $correspondingSourceZip = [System.IO.Compression.ZipFile]::OpenRead(
+        $correspondingSourceArchiveFullPath
+    )
+    $archivedManifestEntries = @(
+        $correspondingSourceZip.Entries |
+            Where-Object {
+                $_.FullName.Replace("\", "/") -match
+                    "(^|/)COMPONENT_SOURCES[.]json$"
+            }
+    )
+    if ($archivedManifestEntries.Count -ne 1) {
+        throw "Complete corresponding-source archive must contain one COMPONENT_SOURCES.json."
+    }
+    $archivedManifestStream = $null
+    $archivedManifestHasher = $null
+    try {
+        $archivedManifestStream = $archivedManifestEntries[0].Open()
+        $archivedManifestHasher = [System.Security.Cryptography.SHA256]::Create()
+        $archivedManifestSha256 = (
+            $archivedManifestHasher.ComputeHash($archivedManifestStream) |
+                ForEach-Object { $_.ToString("X2") }
+        ) -join ""
+    }
+    finally {
+        if ($null -ne $archivedManifestHasher) {
+            $archivedManifestHasher.Dispose()
+        }
+        if ($null -ne $archivedManifestStream) {
+            $archivedManifestStream.Dispose()
+        }
+    }
+}
+catch {
+    throw "Complete corresponding-source archive validation failed: $($_.Exception.Message)"
+}
+finally {
+    if ($null -ne $correspondingSourceZip) {
+        $correspondingSourceZip.Dispose()
+    }
+}
+$suppliedManifestSha256 = (
+    Get-FileHash -LiteralPath $correspondingSourceManifestFullPath -Algorithm SHA256
+).Hash.ToUpperInvariant()
+if ($archivedManifestSha256 -ne $suppliedManifestSha256) {
+    throw "Complete corresponding-source manifest does not byte-match the archive."
 }
 if (Test-IncompleteReleaseValue -Value $BinaryComponentMapPath) {
     throw "BinaryComponentMapPath is required; templates cannot be published."
@@ -216,6 +393,8 @@ if (-not $generatedInventory) {
     }
     foreach ($required in @{
         "chromamatter" = "GPL-3.0-or-later"
+        "cpython" = "Python-2.0"
+        "pyinstaller" = "(GPL-2.0-or-later WITH Bootloader-exception) AND Apache-2.0"
         "tetgen" = "MIT AND AGPL-3.0-or-later"
         "pymeshlab" = "GPL-3.0-only"
         "qt" = "LGPL-3.0-only"
@@ -230,6 +409,8 @@ if (-not $generatedInventory) {
     $exeRow = @($componentMap.files | Where-Object { $_.path -eq "ChromaMatter.exe" })
     if (
         $exeRow.Count -ne 1 -or
+        @($exeRow[0].components | Where-Object { $_ -eq "chromamatter" }).Count -ne 1 -or
+        @($exeRow[0].components | Where-Object { $_ -eq "pyinstaller" }).Count -ne 1 -or
         [string]$exeRow[0].sha256 -ne (
             Get-FileHash -LiteralPath (Join-Path $builtRoot "ChromaMatter.exe") -Algorithm SHA256
         ).Hash.ToLowerInvariant()
@@ -264,6 +445,12 @@ if (
     [string]$sbom.specVersion -ne "1.5"
 ) {
     throw "SbomPath must contain the generated CycloneDX 1.5 SBOM."
+}
+$sbomRefs = @($sbom.components | ForEach-Object { [string]$_.'bom-ref' })
+foreach ($requiredSbomRef in @("component:cpython", "component:pyinstaller")) {
+    if ($requiredSbomRef -notin $sbomRefs) {
+        throw "CycloneDX SBOM is missing required component: $requiredSbomRef"
+    }
 }
 
 # The PyInstaller runtime contains many legitimate binary formats, so the
@@ -439,13 +626,11 @@ function Assert-SoftwarePayloadSafe {
 }
 
 $packageFiles = @(
-    @{ Source = "CURRENT_STATE.json"; Destination = "CURRENT_STATE.json" },
-    @{ Source = "PROVENANCE.md"; Destination = "PROVENANCE.md" },
-    @{ Source = "source/fixed_app/README_fixed_ja.md"; Destination = "README_fixed_ja.md" },
-    @{ Source = "source/fixed_app/README_fixed_en.md"; Destination = "README_fixed_en.md" },
-    @{ Source = "source/fixed_app/START_FIXED.cmd"; Destination = "START_FIXED.cmd" },
-    @{ Source = "source/fixed_app/THIRD_PARTY_VOLUME_LICENSES_JA.md"; Destination = "THIRD_PARTY_VOLUME_LICENSES_JA.md" },
-    @{ Source = "source/fixed_app/VERSION_POLICY.md"; Destination = "VERSION_POLICY.md" },
+    @{ Source = "source/fixed_app/public_binary/README_JA.md"; Destination = "README_JA.md" },
+    @{ Source = "source/fixed_app/public_binary/README_EN.md"; Destination = "README_EN.md" },
+    @{ Source = "source/fixed_app/public_binary/PRIVACY.md"; Destination = "PRIVACY.md" },
+    @{ Source = "source/fixed_app/public_binary/START_CHROMAMATTER.cmd"; Destination = "START_CHROMAMATTER.cmd" },
+    @{ Source = "LICENSE"; Destination = "LICENSE.txt" },
     @{ Source = "licenses/GPL-3.0.txt"; Destination = "licenses/GPL-3.0.txt" },
     @{ Source = "licenses/AGPL-3.0.txt"; Destination = "licenses/AGPL-3.0.txt" },
     @{ Source = "licenses/LGPL-2.1.txt"; Destination = "licenses/LGPL-2.1.txt" },
@@ -463,14 +648,7 @@ $packageFiles = @(
     @{ Source = "licenses/LICENSE_RESVG_MIT.txt"; Destination = "licenses/LICENSE_RESVG_MIT.txt" },
     @{ Source = "licenses/LICENSE_RESVG_APACHE_2.0.txt"; Destination = "licenses/LICENSE_RESVG_APACHE_2.0.txt" },
     @{ Source = "licenses/THIRD_PARTY_LICENSES.txt"; Destination = "licenses/THIRD_PARTY_LICENSES.txt" },
-    @{ Source = "publication/LEGAL_AND_RIGHTS_JA.md"; Destination = "publication/LEGAL_AND_RIGHTS_JA.md" },
-    @{ Source = "publication/PRIVATE_SAMPLE_POLICY_JA.md"; Destination = "publication/PRIVATE_SAMPLE_POLICY_JA.md" },
-    @{ Source = "publication/CLEAN_CLONE_GUIDE_JA.md"; Destination = "publication/CLEAN_CLONE_GUIDE_JA.md" },
-    @{ Source = "publication/VIDEO_VALIDATION_CHECKLIST_JA.md"; Destination = "publication/VIDEO_VALIDATION_CHECKLIST_JA.md" },
-    @{ Source = "publication/PUBLICATION_CHECKLIST_JA.md"; Destination = "publication/PUBLICATION_CHECKLIST_JA.md" },
-    @{ Source = "publication/GITHUB_PUBLICATION_GUIDE_JA.md"; Destination = "publication/GITHUB_PUBLICATION_GUIDE_JA.md" },
-    @{ Source = "publication/INNOVATION_FUND_APPLICATION_DRAFT.md"; Destination = "publication/INNOVATION_FUND_APPLICATION_DRAFT.md" },
-    @{ Source = "publication/INNOVATION_FUND_STATUS_JA.md"; Destination = "publication/INNOVATION_FUND_STATUS_JA.md" }
+    @{ Source = "source/fixed_app/THIRD_PARTY_VOLUME_LICENSES_JA.md"; Destination = "licenses/THIRD_PARTY_VOLUME_LICENSES_JA.md" }
 )
 foreach ($record in $packageFiles) {
     $source = Join-Path $repoRoot $record.Source.Replace("/", "\")
@@ -487,8 +665,27 @@ foreach ($template in @(
     }
 }
 
-New-Item -ItemType Directory -Path $destinationParent -Force | Out-Null
-New-Item -ItemType Directory -Path $archiveParent -Force | Out-Null
+function Ensure-SoftwareOutputParent {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$Label
+    )
+
+    if (Test-Path -LiteralPath $Path) {
+        if (-not (Test-Path -LiteralPath $Path -PathType Container)) {
+            throw "$Label is not a directory: $Path"
+        }
+        return
+    }
+    New-Item -ItemType Directory -Path $Path -Force | Out-Null
+}
+
+Ensure-SoftwareOutputParent `
+    -Path $destinationParent `
+    -Label "Software-package destination parent"
+Ensure-SoftwareOutputParent `
+    -Path $archiveParent `
+    -Label "Software-package archive parent"
 
 $stagingContainer = Join-Path (
     $destinationParent
@@ -722,7 +919,19 @@ try {
         $rendered = [System.IO.File]::ReadAllText($templatePath).
             Replace("@@RELEASE_ID@@", $destinationLeaf).
             Replace("@@BINARY_ARCHIVE_NAME@@", $archiveLeaf).
-            Replace("@@CORRESPONDING_SOURCE_URL@@", $CorrespondingSourceUrl)
+            Replace("@@CORRESPONDING_SOURCE_URL@@", $CorrespondingSourceUrl).
+            Replace(
+                "@@CORRESPONDING_SOURCE_ARCHIVE_NAME@@",
+                $correspondingSourceArchiveLeaf
+            ).
+            Replace(
+                "@@CORRESPONDING_SOURCE_SHA256@@",
+                $actualCorrespondingSourceArchiveSha256
+            ).
+            Replace(
+                "@@CORRESPONDING_SOURCE_PROJECT_COMMIT@@",
+                $CorrespondingSourceProjectCommit
+            )
         if (Test-IncompleteReleaseValue -Value $rendered) {
             throw "Rendered source offer still contains a placeholder: $language"
         }

@@ -6,8 +6,8 @@
 - Windows string version: `0.8beta`
 - Windows numeric version: `0.8.0.0` (numeric resource fields cannot contain `beta`)
 - Public executable identity: `ChromaMatter.exe` / `ChromaMatter`
-- Public source artifact: `ChromaMatter_0.8beta-r32-ai-model-print-studio_HANDOFF`
-- Public software artifact: `ChromaMatter_0.8beta-r32-ai-model-print-studio`
+- Public source artifact: `ChromaMatter-0.8beta-r32-source-public-20260823`
+- Public software artifact: `ChromaMatter-0.8beta-r32-win64`
 - Detached distribution checksum record after final restage: `SHA256SUMS-r32.txt`
 - Do not change any public version string merely for fixes or beta features.
 - Advance the version only after an explicit user request.
