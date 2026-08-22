@@ -125,6 +125,9 @@ PYTETWILD_ATTESTATION_ENVIRONMENT_FIELDS = PYTETWILD_LOCK_ENVIRONMENT_FIELDS | {
     "compiler_path",
     "linker_path",
     "compiler_file_version",
+    "compiler_product_version",
+    "linker_file_version",
+    "linker_product_version",
     "signtool_path",
     "cmake_cli",
     "ninja_cli",
@@ -2518,15 +2521,26 @@ def _verify_pytetwild_attestation_binding(
     _validate_windows_executable_path(
         environment["signtool_path"], "signtool.exe", "PyTetWild signtool_path"
     )
-    compiler_file_version = environment["compiler_file_version"]
-    if (
-        not isinstance(compiler_file_version, str)
-        or not compiler_file_version.strip()
-        or compiler_file_version != compiler_file_version.strip()
-        or len(compiler_file_version) > 256
-        or any(ord(character) < 32 for character in compiler_file_version)
-    ):
-        raise StageError("PyTetWild compiler_file_version is not exact")
+    _require_exact_value(
+        environment["compiler_file_version"],
+        "19.44.35228.0",
+        "PyTetWild build attestation environment.compiler_file_version",
+    )
+    _require_exact_value(
+        environment["compiler_product_version"],
+        "14.44.35228.0",
+        "PyTetWild build attestation environment.compiler_product_version",
+    )
+    _require_exact_value(
+        environment["linker_file_version"],
+        "14.44.35228.0",
+        "PyTetWild build attestation environment.linker_file_version",
+    )
+    _require_exact_value(
+        environment["linker_product_version"],
+        "14.44.35228.0",
+        "PyTetWild build attestation environment.linker_product_version",
+    )
     _require_exact_value(
         environment["cmake_cli"],
         f"cmake version {lock_environment['cmake_version']}",
@@ -3211,7 +3225,7 @@ def _prepare_pytetwild_rebuild(
         "pip_version": "25.0.1",
         "cibuildwheel_version": requirements["cibuildwheel"][0],
         "runner_image": "self-hosted-windows-controlled-offline",
-        "compiler": "MSVC 14.44.35211",
+        "compiler": "MSVC 14.44.35207",
         "compiler_family_requested_from_vsdevcmd": "14.44",
         "visual_studio_installation_version": "17.14.37614.0",
         "cmake_version": requirements["cmake"][0],
@@ -3488,7 +3502,7 @@ def _evaluate_release_state(
                 "pip_version": "25.0.1",
                 "cibuildwheel_version": "3.3.1",
                 "runner_image": "self-hosted-windows-controlled-offline",
-                "compiler": "MSVC 14.44.35211",
+                "compiler": "MSVC 14.44.35207",
                 "compiler_family_requested_from_vsdevcmd": "14.44",
                 "visual_studio_installation_version": "17.14.37614.0",
                 "cmake_version": "3.29.6",

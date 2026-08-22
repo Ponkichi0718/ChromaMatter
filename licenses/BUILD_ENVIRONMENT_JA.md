@@ -26,9 +26,20 @@ powershell.exe -ExecutionPolicy Bypass -File .\BUILD_AND_TEST.ps1 `
 公開wheelは、`tooling/BUILD_PYTETWILD_WINDOWS.ps1`、
 `tooling/requirements-pytetwild-build.lock`、および
 `tooling/patches/pytetwild-0.3.0-optional-pyvista.patch`を一組で使用します。
-recipeはCPython 3.12.10、VS Build Tools 17.14.39、MSVC 14.44.35211、
+recipeはCPython 3.12.10、VS Build Tools 17.14.39、インストール済みVCTools
+directory version 14.44.35207、`cl.exe` file version 19.44.35228.0／product
+version 14.44.35228.0、`link.exe` file／product version 14.44.35228.0、
 Windows SDK 10.0.26100.7705、固定source commit、MPIR、Eigen、39個のhash済み
-Python wheelを検証します。
+Python wheelを検証します。近接して見える14.44.35211は
+CRT redistributableのversionであり、インストール済みVCTools directory version
+ではありません。
+
+`-WindowsSdkRoot`を明示しない場合、recipeは64-bit native、64-bit
+WOW6432Node、32-bit viewの`KitsRoot10` registry値を調べ、固定versionのx64
+`signtool.exe`と`kernel32.lib`の両方を含むdistinct rootが正確に1個だけある場合に
+採用します。native側のregistry rootが不完全でも、正確なSDKが
+`Program Files (x86)`側にある構成へ対応し、完全なrootが0個または複数ならbuildを
+停止します。
 
 実行前にOSまたはhypervisorで外向き通信をdeny-allにするか、builderを物理的に
 切断してください。次のswitchは作業者による確認記録であり、script自体がOSの

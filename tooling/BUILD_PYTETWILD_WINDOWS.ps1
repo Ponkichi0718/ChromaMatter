@@ -40,7 +40,11 @@ $Expected = [ordered]@{
     VsLayoutTotalBytes = [long]2651377645
     VsLayoutTreeSha256 = '2b6a89bb69aa7de013fc055828258a3a91c7c333f0c6be831a750990922fed3a'
     VsInstallationVersion = '17.14.37614.0'
-    MsvcVersion = '14.44.35211'
+    MsvcVersion = '14.44.35207'
+    CompilerFileVersion = '19.44.35228.0'
+    CompilerProductVersion = '14.44.35228.0'
+    LinkerFileVersion = '14.44.35228.0'
+    LinkerProductVersion = '14.44.35228.0'
     WindowsSdkVersion = '10.0.26100.0'
     WindowsSdkServicingVersion = '10.0.26100.7705'
     CMakeVersion = '3.29.6'
@@ -206,6 +210,92 @@ function Assert-GitCommit([string]$Git, [string]$Repository, [string]$Commit) {
 
 function ConvertTo-CMakePath([string]$Path) {
     return ([System.IO.Path]::GetFullPath($Path) -replace '\\', '/')
+}
+
+function Resolve-WindowsSdkRoot(
+    [string]$RequestedRoot,
+    [string]$WindowsSdkVersion
+) {
+    $candidateRoots = New-Object 'System.Collections.Generic.List[string]'
+    if (-not [string]::IsNullOrWhiteSpace($RequestedRoot)) {
+        $candidateRoots.Add($RequestedRoot)
+    } else {
+        $registryLocations = @(
+            [pscustomobject]@{
+                View = [Microsoft.Win32.RegistryView]::Registry64
+                Subkey = 'SOFTWARE\Microsoft\Windows Kits\Installed Roots'
+            },
+            [pscustomobject]@{
+                View = [Microsoft.Win32.RegistryView]::Registry64
+                Subkey = 'SOFTWARE\WOW6432Node\Microsoft\Windows Kits\Installed Roots'
+            },
+            [pscustomobject]@{
+                View = [Microsoft.Win32.RegistryView]::Registry32
+                Subkey = 'SOFTWARE\Microsoft\Windows Kits\Installed Roots'
+            }
+        )
+        foreach ($location in $registryLocations) {
+            $registryBase = [Microsoft.Win32.RegistryKey]::OpenBaseKey(
+                [Microsoft.Win32.RegistryHive]::LocalMachine,
+                $location.View
+            )
+            try {
+                $subkey = $registryBase.OpenSubKey($location.Subkey)
+                if ($null -eq $subkey) {
+                    continue
+                }
+                try {
+                    $candidate = [string]$subkey.GetValue(
+                        'KitsRoot10',
+                        $null,
+                        [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames
+                    )
+                } finally {
+                    $subkey.Dispose()
+                }
+                if (-not [string]::IsNullOrWhiteSpace($candidate)) {
+                    $candidateRoots.Add($candidate)
+                }
+            } finally {
+                $registryBase.Dispose()
+            }
+        }
+    }
+
+    $seenRoots = New-Object 'System.Collections.Generic.HashSet[string]' `
+        ([System.StringComparer]::OrdinalIgnoreCase)
+    $validRoots = New-Object 'System.Collections.Generic.List[string]'
+    foreach ($candidateRoot in $candidateRoots) {
+        $fullRoot = [System.IO.Path]::GetFullPath($candidateRoot).TrimEnd(
+            [char]'\', [char]'/'
+        )
+        if (-not $seenRoots.Add($fullRoot)) {
+            continue
+        }
+        $candidateSignTool = Join-Path `
+            $fullRoot "bin\$WindowsSdkVersion\x64\signtool.exe"
+        $candidateKernelLibrary = Join-Path `
+            $fullRoot "Lib\$WindowsSdkVersion\um\x64\kernel32.lib"
+        if (
+            (Test-Path -LiteralPath $candidateSignTool -PathType Leaf) -and
+            (Test-Path -LiteralPath $candidateKernelLibrary -PathType Leaf)
+        ) {
+            $validRoots.Add($fullRoot)
+        }
+    }
+    if ($validRoots.Count -ne 1) {
+        $sourceLabel = if ([string]::IsNullOrWhiteSpace($RequestedRoot)) {
+            '64-bit native, 64-bit WOW6432Node, and 32-bit registry candidates'
+        } else {
+            'the explicit -WindowsSdkRoot candidate'
+        }
+        throw (
+            "Expected exactly one Windows SDK root from $sourceLabel containing " +
+            "both signtool.exe and kernel32.lib for $WindowsSdkVersion; found " +
+            "$($validRoots.Count)"
+        )
+    }
+    return $validRoots[0]
 }
 
 function Import-VsEnvironment(
@@ -473,12 +563,40 @@ foreach ($required in @($Cl, $Link)) {
         throw "MSVC executable is missing: $required"
     }
 }
+$compilerVersionInfo = (Get-Item -LiteralPath $Cl).VersionInfo
+$CompilerFileVersion = [string]$compilerVersionInfo.FileVersion
+$CompilerProductVersion = [string]$compilerVersionInfo.ProductVersion
+$linkerVersionInfo = (Get-Item -LiteralPath $Link).VersionInfo
+$LinkerFileVersion = [string]$linkerVersionInfo.FileVersion
+$LinkerProductVersion = [string]$linkerVersionInfo.ProductVersion
+if ($CompilerFileVersion -cne $Expected.CompilerFileVersion) {
+    throw (
+        "MSVC compiler file version mismatch: expected " +
+        "$($Expected.CompilerFileVersion), got $CompilerFileVersion"
+    )
+}
+if ($CompilerProductVersion -cne $Expected.CompilerProductVersion) {
+    throw (
+        "MSVC compiler product version mismatch: expected " +
+        "$($Expected.CompilerProductVersion), got $CompilerProductVersion"
+    )
+}
+if ($LinkerFileVersion -cne $Expected.LinkerFileVersion) {
+    throw (
+        "MSVC linker file version mismatch: expected " +
+        "$($Expected.LinkerFileVersion), got $LinkerFileVersion"
+    )
+}
+if ($LinkerProductVersion -cne $Expected.LinkerProductVersion) {
+    throw (
+        "MSVC linker product version mismatch: expected " +
+        "$($Expected.LinkerProductVersion), got $LinkerProductVersion"
+    )
+}
 $MsvcFamilyVersion = (($MsvcVersion -split '\.')[0..1] -join '.')
 Import-VsEnvironment $DevCmd $MsvcFamilyVersion $Expected.WindowsSdkVersion
 
-if (-not $WindowsSdkRoot) {
-    $WindowsSdkRoot = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows Kits\Installed Roots').KitsRoot10
-}
+$WindowsSdkRoot = Resolve-WindowsSdkRoot $WindowsSdkRoot $Expected.WindowsSdkVersion
 $SignTool = Join-Path $WindowsSdkRoot "bin\$($Expected.WindowsSdkVersion)\x64\signtool.exe"
 $KernelLibrary = Join-Path $WindowsSdkRoot "Lib\$($Expected.WindowsSdkVersion)\um\x64\kernel32.lib"
 foreach ($required in @($SignTool, $KernelLibrary)) {
@@ -1232,7 +1350,10 @@ $attestation = [ordered]@{
         compiler_family_requested_from_vsdevcmd = $MsvcFamilyVersion
         compiler_path = $Cl
         linker_path = $Link
-        compiler_file_version = (Get-Item -LiteralPath $Cl).VersionInfo.FileVersion
+        compiler_file_version = $CompilerFileVersion
+        compiler_product_version = $CompilerProductVersion
+        linker_file_version = $LinkerFileVersion
+        linker_product_version = $LinkerProductVersion
         signtool_path = $SignTool
         windows_sdk_version = $Expected.WindowsSdkVersion
         windows_sdk_servicing_version = $sdkProductVersion

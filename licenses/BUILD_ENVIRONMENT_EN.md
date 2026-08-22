@@ -26,9 +26,20 @@ powershell.exe -ExecutionPolicy Bypass -File .\BUILD_AND_TEST.ps1 `
 Build a release wheel with `tooling/BUILD_PYTETWILD_WINDOWS.ps1`,
 `tooling/requirements-pytetwild-build.lock`, and
 `tooling/patches/pytetwild-0.3.0-optional-pyvista.patch` as one bound input set.
-The recipe checks CPython 3.12.10, VS Build Tools 17.14.39, MSVC 14.44.35211,
-Windows SDK 10.0.26100.7705, fixed source commits, MPIR, Eigen, and 39 hashed
-Python wheels.
+The recipe checks CPython 3.12.10, VS Build Tools 17.14.39, the installed
+VCTools directory version 14.44.35207, `cl.exe` file version 19.44.35228.0 and
+product version 14.44.35228.0, `link.exe` file and product version
+14.44.35228.0, Windows SDK 10.0.26100.7705, fixed source commits, MPIR, Eigen,
+and 39 hashed Python wheels. The nearby 14.44.35211
+value belongs to the CRT redistributable and is not the installed VCTools
+directory version.
+
+Unless `-WindowsSdkRoot` is supplied, the recipe examines the 64-bit native,
+64-bit WOW6432Node, and 32-bit-view `KitsRoot10` registry values and accepts
+exactly one distinct root that contains both the fixed-version x64
+`signtool.exe` and `kernel32.lib`. This is necessary when the native registry
+root is incomplete but the exact SDK is installed under `Program Files (x86)`;
+zero or multiple complete roots stop the build.
 
 Before running it, enforce outbound deny-all at the OS or hypervisor layer, or
 physically disconnect the builder. The switch below records the operator's

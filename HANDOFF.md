@@ -15,11 +15,11 @@ application source and all required third-party source, plus the SBOM,
 component map, notices, relinking instructions, and checksums.
 
 This continuation resumed from GitHub on the home PC. The latest pushed source
-checkpoint before the current compliance integration is
-`73f3eaa285cdeb302b704415aacd774ba553310f`; local `HEAD`, the upstream feature
-branch, and Draft PR #1 all point to it. The owner authorized updating the
-feature branch and Draft PR with the current source checkpoint. `main`, tags,
-and public Releases remain untouched.
+checkpoint before the current toolchain-contract correction is
+`195bf66cb6918326f77c4c668e600bcf1d617ec6`; local `HEAD`, the upstream feature
+branch, and Draft PR #1 all pointed to it at the start of this correction. The
+owner authorized updating the feature branch and Draft PR with the current
+source checkpoint. `main`, tags, and public Releases remain untouched.
 
 ## Completed in this session
 
@@ -184,6 +184,11 @@ current bytes.
   optional skips, zero failures. The obsolete Decal packaging assertions found
   on the first run were updated to enforce the intended source-only resvg and
   frozen-runtime exclusion contract before this final pass.
+- After installing the verified toolchain and correcting its exact identity
+  contract, the focused corresponding-source/release/static-closure/notices/
+  binary-inventory/release-identity set passed 137/137. The complete Python
+  3.13.14 regression then passed 1,236 tests: 1,234 passed, two optional skips,
+  and zero failures.
 - A fresh public-source stage passes at 395 files including the manifest and
   394 manifest records. Both the staged privacy audit and an independent
   path/SHA-256 parity check report zero missing, extra, or mismatched files.
@@ -195,7 +200,7 @@ current bytes.
 
 ## Current state
 
-- Latest pushed checkpoint `73f3eaa285cdeb302b704415aacd774ba553310f` is already on
+- Latest pushed checkpoint `195bf66cb6918326f77c4c668e600bcf1d617ec6` is already on
   `origin/codex/r32-full-spectrum-workflow` and Draft PR #1. At entry the branch
   was ahead 4 / behind 0 relative to `main` and ahead 0 / behind 0 relative to
   its upstream.
@@ -226,13 +231,13 @@ current bytes.
   acquisition lock is complete, but its final staged bundle has not yet been
   produced. The verified public-source preview above is a source-tree
   completeness check, not that final corresponding-source bundle.
-- All prospective native inputs are present and fixed. The remaining local
-  toolchain blocker is installation of the already downloaded Visual Studio
-  Build Tools/MSVC/Windows SDK payload; its elevation prompt has not yet been
-  accepted. One clearly announced install attempt on 2026-08-23 was cancelled
-  at the Windows elevation prompt; the install path remains absent. Do not
-  silently repeat the prompt. No PyTetWild wheel has therefore been built from
-  this recipe.
+- All prospective native inputs are present and fixed. The verified offline
+  Visual Studio Build Tools 17.14.39 layout was installed successfully on
+  2026-08-23 at `C:\ChromaMatterToolchain\VS2022BuildTools`. The installed
+  instance is complete and launchable, selects VCTools 14.44.35207 and Windows
+  SDK 10.0.26100.0, and matches the fixed layout evidence. No reinstall or
+  redownload is required. No PyTetWild wheel has yet been built from the
+  corrected recipe; the next blocker is the controlled outbound-isolated build.
 - The root `SOURCE_MANIFEST_SHA256.txt` is historical and stale for this changed
   tree. Regenerate it only through final source staging after release inputs are
   frozen; do not edit it manually as present evidence.
@@ -241,9 +246,10 @@ current bytes.
 
 1. Review Draft PR #1 from `codex/r32-full-spectrum-workflow`; keep `main`, tags,
    and public Releases unchanged until the binary publication gates below pass.
-2. Accept one administrator prompt and install the already verified offline VS
-   layout into `C:\ChromaMatterToolchain\VS2022BuildTools`. Do not redownload or
-   substitute a newer channel, MSVC toolset, or SDK.
+2. Keep the successful verified offline VS installation at
+   `C:\ChromaMatterToolchain\VS2022BuildTools`; do not reinstall, redownload, or
+   substitute a newer channel, MSVC toolset, or SDK. Commit and push the
+   corrected toolchain identity contract before producing rebuild evidence.
 3. Enforce an OS/hypervisor outbound deny-all policy (or physically disconnect
    the builder), then run `tooling/BUILD_PYTETWILD_WINDOWS.ps1` with
    `-OsNetworkIsolationConfirmed` and a new, unused output directory. Preserve
@@ -277,7 +283,9 @@ current bytes.
 
 Controlled prospective matrix (inputs acquired and hashed, but not yet a
 completed build): CPython 3.12.10 x64 builder; Visual Studio Build
-Tools 2022 17.14.39; MSVC v143 14.44.35211; Windows SDK 10.0.26100; CMake
+Tools 2022 17.14.39; VCTools directory 14.44.35207; `cl.exe` file version
+19.44.35228.0 and product version 14.44.35228.0; `link.exe` file and product
+version 14.44.35228.0; Windows SDK 10.0.26100; CMake
 3.29.6; Ninja Python distribution 1.13.0; nanobind 2.12.0 at commit
 `2a61ad2494d09fecb2e13322c1383342c299900d`; cibuildwheel 3.3.1;
 scikit-build-core 0.12.2; delvewheel 1.12.1; abi3audit 0.0.26; build 1.5.0;
@@ -286,6 +294,16 @@ The VS layout is fixed at 714 files, 2,651,377,645 bytes, tree SHA-256
 `2b6a89bb69aa7de013fc055828258a3a91c7c333f0c6be831a750990922fed3a`.
 This is a new prospective rebuild, not a claim about the expired historical CI
 environment.
+
+The installed-toolchain audit confirmed that 14.44.35211 is the CRT
+redistributable version, not `Microsoft.VCToolsVersion.default.txt`. The build
+recipe now checks the exact VCTools, compiler, and linker identities above. It
+also resolves the SDK from the 64-bit native, 64-bit WOW6432Node, and 32-bit
+view `KitsRoot10` values and accepts exactly one distinct candidate containing
+both the fixed x64 `signtool.exe` and `kernel32.lib`; the current native
+registry root is incomplete and the verified SDK root is the WOW6432Node
+candidate. An explicit `-WindowsSdkRoot` remains supported but must itself be
+the one complete root.
 
 For that future verified-lock stage, the `-PyTetWildAuditLogs` directory must
 contain exactly these eight direct files and nothing else:
@@ -479,8 +497,9 @@ Current compliance-integration validation on exact Python 3.13.14
 - Focused Qt/PyMeshLab/PyTetWild, binary inventory, corresponding-source,
   software-stage, notices, release identity, CLI, and Decal packaging-policy
   regression: 178 tests, 177 passed, one optional skip, zero failures.
-- Full source regression: 1,234 tests, 1,232 passed, two optional skips, zero
-  failures.
+- Latest full source regression after the corrected toolchain identity contract:
+  1,236 tests, 1,234 passed, two optional skips, zero failures. The preceding
+  1,234-test result remains the pre-toolchain-contract checkpoint.
 - Production corresponding-source manifest validation: PASS with intended
   status `candidate-only-not-release-approved`.
 - Public-source stage: 395 files including `SOURCE_MANIFEST_SHA256.txt`, 394

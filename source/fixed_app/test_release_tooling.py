@@ -854,6 +854,95 @@ foreach ($path in @('{success_log}', '{failure_log}')) {{
         ):
             self.assertIn(expected, text)
 
+    def test_recipe_pins_installed_msvc_and_selects_one_complete_sdk_root(self) -> None:
+        text = PYTETWILD_BUILD_RECIPE.read_text(encoding="utf-8")
+        for expected in (
+            "MsvcVersion = '14.44.35207'",
+            "CompilerFileVersion = '19.44.35228.0'",
+            "CompilerProductVersion = '14.44.35228.0'",
+            "LinkerFileVersion = '14.44.35228.0'",
+            "LinkerProductVersion = '14.44.35228.0'",
+            "function Resolve-WindowsSdkRoot",
+            "[Microsoft.Win32.RegistryView]::Registry64",
+            "[Microsoft.Win32.RegistryView]::Registry32",
+            "SOFTWARE\\Microsoft\\Windows Kits\\Installed Roots",
+            "SOFTWARE\\WOW6432Node\\Microsoft\\Windows Kits\\Installed Roots",
+            "both signtool.exe and kernel32.lib",
+            "$WindowsSdkRoot = Resolve-WindowsSdkRoot",
+            "compiler_file_version = $CompilerFileVersion",
+            "compiler_product_version = $CompilerProductVersion",
+            "linker_file_version = $LinkerFileVersion",
+            "linker_product_version = $LinkerProductVersion",
+        ):
+            with self.subTest(expected=expected):
+                self.assertIn(expected, text)
+
+        self.assertNotIn("MsvcVersion = '14.44.35211'", text)
+
+    def test_explicit_sdk_root_requires_both_fixed_sdk_files(self) -> None:
+        if POWERSHELL is None:
+            self.skipTest("Windows PowerShell is unavailable")
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            valid = root / "valid-sdk"
+            incomplete = root / "incomplete-sdk"
+            (valid / "bin" / "10.0.26100.0" / "x64").mkdir(parents=True)
+            (valid / "Lib" / "10.0.26100.0" / "um" / "x64").mkdir(
+                parents=True
+            )
+            (valid / "bin" / "10.0.26100.0" / "x64" / "signtool.exe").touch()
+            (valid / "Lib" / "10.0.26100.0" / "um" / "x64" / "kernel32.lib").touch()
+            (incomplete / "bin" / "10.0.26100.0" / "x64").mkdir(parents=True)
+            (
+                incomplete / "bin" / "10.0.26100.0" / "x64" / "signtool.exe"
+            ).touch()
+
+            recipe = str(PYTETWILD_BUILD_RECIPE).replace("'", "''")
+            valid_path = str(valid).replace("'", "''")
+            incomplete_path = str(incomplete).replace("'", "''")
+            command = f"""
+$tokens=$null
+$errors=$null
+$ast=[System.Management.Automation.Language.Parser]::ParseFile(
+    '{recipe}', [ref]$tokens, [ref]$errors
+)
+if ($errors.Count) {{ throw ($errors -join [Environment]::NewLine) }}
+$definitions = @($ast.FindAll({{
+    param($node)
+    $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and
+        $node.Name -eq 'Resolve-WindowsSdkRoot'
+}}, $true))
+if ($definitions.Count -ne 1) {{
+    throw 'Expected exactly one Resolve-WindowsSdkRoot definition'
+}}
+Invoke-Expression $definitions[0].Extent.Text
+$resolved = Resolve-WindowsSdkRoot '{valid_path}' '10.0.26100.0'
+if (-not [System.IO.Path]::GetFullPath($resolved).Equals(
+    [System.IO.Path]::GetFullPath('{valid_path}'),
+    [System.StringComparison]::OrdinalIgnoreCase
+)) {{
+    throw "Explicit complete SDK root resolved incorrectly: $resolved"
+}}
+$rejected = $false
+try {{
+    Resolve-WindowsSdkRoot '{incomplete_path}' '10.0.26100.0'
+}} catch {{
+    if ($_.Exception.Message -notlike 'Expected exactly one Windows SDK root*') {{
+        throw
+    }}
+    $rejected = $true
+}}
+if (-not $rejected) {{ throw 'Incomplete explicit SDK root was accepted' }}
+"""
+            result = subprocess.run(
+                [POWERSHELL, "-NoProfile", "-Command", command],
+                check=False,
+                capture_output=True,
+                text=True,
+                errors="replace",
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
     def test_build_inputs_are_explicitly_public_tree_candidates(self) -> None:
         ignored = (REPO_ROOT / ".gitignore").read_text(encoding="utf-8")
         self.assertIn("!tooling/BUILD_PYTETWILD_WINDOWS.ps1", ignored)

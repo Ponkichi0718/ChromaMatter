@@ -126,6 +126,15 @@ PyTetWild build前に、OS/hypervisorで外向き通信をdeny-allにするか�
 recipe内の疎通probeとprocess proxyは補助防御であり、OSレベル遮断そのものではない。
 遮断を確認した作業者だけが次のswitchを付ける。
 
+この環境の実測identityは、VCTools directory 14.44.35207、`cl.exe` file version
+19.44.35228.0／product version 14.44.35228.0、`link.exe` file／product version
+14.44.35228.0である。14.44.35211はCRT
+redistributableのversionなのでVCTools directoryとして使用しない。SDK rootを
+明示しない場合は、64-bit native／64-bit WOW6432Node／32-bit viewの
+`KitsRoot10`候補から、固定versionのx64 `signtool.exe`と`kernel32.lib`を両方持つ
+正確に1個のdistinct rootだけをrecipeが採用する。
+現在はnative候補が不完全で、WOW6432Node候補に正確なSDKがある。
+
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass `
   -File .\tooling\BUILD_PYTETWILD_WINDOWS.ps1 `
