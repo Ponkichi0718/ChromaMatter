@@ -109,9 +109,9 @@ project-folder/
 
 ## 検証とrelease gate
 
-分割GLBと公開package gateを含む最新作業treeのfull regressionは、Python `3.13.14`で`Ran 1179 tests in 150.952s: OK (skipped=1)`、1178 PASS／1 optional SKIP／0 FAILです。binary compliance／対応ソース／release toolingの集中テスト80件とrelease identity 10件もPASSしました。
+現在の作業treeはQt／PyMeshLab identity manifest、PyTetWild static-closure contract、resvgのfrozen runtime除外、追加fail-closed package testsを含め、Python `3.13.14`のfull regressionで`Ran 1234 tests: OK (skipped=2)`、1232 PASS／2 optional SKIP／0 FAILです。release／compliance集中テスト178件も1 optional SKIP以外PASSしました。public-source再stageは395 files／394 manifest recordsでprivacy auditと独立SHA-256 parityがPASSしました。
 
-旧r32 EXE／ZIPは今回のsourceと一致しないため公開しません。新しいWindows実行ZIPは、controlled PyTetWild再build、component固有license／静的link依存の監査、`release-approved`完全対応ソース、clean build、packaged self-test、日英UI smoke、fresh-extract／manifest／privacy／checksum監査がすべて完了した場合だけ公開します。現時点の`binary publication eligibility`は**false**です。
+component固有license原文と静的link componentのcoverageは実装済みで、fail-closedなinventory testもPASSしています。旧r32 EXE／ZIPは今回のsourceと一致しないため公開しません。新しいWindows実行ZIPには、controlled PyTetWild再build証拠、そのwheelへ更新したapplication lock、`release-approved`完全対応ソースbundle、現行sourceからのclean binary buildとpackaged self-test／日英UI smoke、fresh-extractのmanifest／privacy／archive／checksum parity、全assetを同時掲載するimmutable HTTPS Release URLが必要です。現時点の`binary publication eligibility`は**false**です。
 
 以下のr31およびCreator Studio r30の結果は各revisionだけに適用する**previous evidence**で、r32へ流用しません。
 
@@ -129,7 +129,7 @@ Icon publication-rights status: `passed-by-creator-declaration`（2026-08-20）�
 - software stage: 1,340 files／1,339 manifest records
 - source／software ZIP、manifest equality、path safety、CRC、privacy: PASS
 
-上記r31、r30、r27の証拠は各artifactだけに適用し、ChromaMatter r32の合格証拠には流用しません。r29、r28、r26の結果も同様に**previous evidence**です。icon publication rightsと当該asset scopeのowner legal acceptanceはcreator declarationにより記録済みです。physical XP-PEN validationとphysical printはpendingの既知制約です。`binary publication eligibility`はPyTetWild/fTetWild、TetGen、PyMeshLab、Qt、GEOS等の第三者binary再配布監査が完了するまでfalse、`Innovation Fund submission ready`も権利処理済みsampleとOrca／U1 evidenceが揃うまでfalseです。
+上記r31、r30、r27の証拠は各artifactだけに適用し、ChromaMatter r32の合格証拠には流用しません。r29、r28、r26の結果も同様に**previous evidence**です。icon publication rightsと当該asset scopeのowner legal acceptanceはcreator declarationにより記録済みです。physical XP-PEN validationとphysical printはpendingの既知制約です。`binary publication eligibility`は上記の最終release engineering gateがすべて通るまでfalse、`Innovation Fund submission ready`も権利処理済みsampleとOrca／U1 evidenceが揃うまでfalseです。
 
 正本は[CURRENT_STATE.json](CURRENT_STATE.json)と[PROVENANCE.md](PROVENANCE.md)です。
 

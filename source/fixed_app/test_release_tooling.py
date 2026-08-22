@@ -4,6 +4,7 @@ import base64
 import contextlib
 import csv
 import hashlib
+import importlib.metadata
 import io
 import json
 import os
@@ -35,6 +36,21 @@ PYTETWILD_BUILD_RECIPE = REPO_ROOT / "tooling" / "BUILD_PYTETWILD_WINDOWS.ps1"
 PYTETWILD_BUILD_LOCK = REPO_ROOT / "tooling" / "requirements-pytetwild-build.lock"
 SPEC_FILE = REPO_ROOT / "source" / "fixed_app" / "TripoSpectrumMapper_fixed.spec"
 POWERSHELL = shutil.which("powershell.exe")
+PYMESHLAB_NATIVE_IDENTITIES = json.loads(
+    (REPO_ROOT / "tooling" / "pymeshlab_audited_native_identities.json").read_text(
+        encoding="utf-8"
+    )
+)
+QT_STATIC_COMPONENTS = json.loads(
+    (REPO_ROOT / "tooling" / "qt_static_components.json").read_text(
+        encoding="utf-8"
+    )
+)
+PYTETWILD_STATIC_CLOSURE = json.loads(
+    (REPO_ROOT / "tooling" / "pytetwild_static_closure.json").read_text(
+        encoding="utf-8"
+    )
+)
 
 
 def _run_powershell(
@@ -994,6 +1010,10 @@ class SoftwarePackageStageTests(unittest.TestCase):
         "ChromaMatter-0.8beta-r32-complete-corresponding-source.zip"
     )
     CORRESPONDING_SOURCE_COMMIT = "1" * 40
+    QT_LICENSE_RUNTIME_FILES = tuple(
+        "_internal/" + source.removeprefix("source/fixed_app/")
+        for source in QT_STATIC_COMPONENTS["license_assets"]
+    )
     REQUIRED_RUNTIME_FILES = (
         "_internal/THIRD_PARTY_VOLUME_LICENSES_JA.md",
         "_internal/_tk_data/license.terms",
@@ -1010,14 +1030,51 @@ class SoftwarePackageStageTests(unittest.TestCase):
         "_internal/licenses/THIRD_PARTY_NOTICES_EN.txt",
         "_internal/licenses/THIRD_PARTY_NOTICES_JA.txt",
         "_internal/licenses/LICENSE_APP.txt",
-        "_internal/licenses/LICENSE_RESVG_PY.txt",
-        "_internal/licenses/LICENSE_RESVG_MIT.txt",
+        "_internal/licenses/LICENSE_CPYTHON_BZIP2.txt",
+        "_internal/licenses/LICENSE_CPYTHON_EXPAT.txt",
+        "_internal/licenses/LICENSE_CPYTHON_LIBMPDEC.txt",
+        "_internal/licenses/LICENSE_CPYTHON_XZ.txt",
+        "_internal/licenses/LICENSE_LIB3MF.txt",
+        "_internal/licenses/LICENSE_LIB3MF_CPP_BASE64.txt",
+        "_internal/licenses/LICENSE_LIB3MF_FAST_FLOAT.txt",
+        "_internal/licenses/LICENSE_LIB3MF_LIBZIP.txt",
+        "_internal/licenses/LICENSE_LIB3MF_ZLIB.txt",
+        "_internal/licenses/LICENSE_LLVM_3_6_2.txt",
+        "_internal/licenses/LICENSE_MESA_12_0_RC2.html",
+        "_internal/licenses/LICENSE_GLEW_2_2_0.txt",
+        "_internal/licenses/LICENSE_LIBE57FORMAT_3_1_1.md",
+        "_internal/licenses/LICENSE_LIBSPATIALINDEX_2_1_0.txt",
+        "_internal/licenses/LICENSE_MUPARSER_2_3_5.txt",
+        "_internal/licenses/LICENSE_QT_ANGLE.txt",
+        "_internal/licenses/LICENSE_QT_LGPL_3_0.txt",
+        "_internal/licenses/LICENSE_U3D.txt",
+        "_internal/licenses/LICENSE_U3D_IJG_JPEG.txt",
+        "_internal/licenses/LICENSE_U3D_LIBPNG.txt",
+        "_internal/licenses/LICENSE_U3D_NICK_BOBIC_QUATERNION.txt",
+        "_internal/licenses/LICENSE_U3D_WCMATCH.txt",
+        "_internal/licenses/LICENSE_U3D_ZLIB.txt",
+        "_internal/licenses/NOTICE_MESA_LLVM.txt",
+        "_internal/licenses/NOTICE_QT.txt",
+        "_internal/licenses/NOTICE_SQLITE_PUBLIC_DOMAIN.txt",
+        "_internal/licenses/NOTICE_U3D_ADDITIONAL.txt",
+        "_internal/licenses/NOTICE_U3D_FNVHASH.txt",
+        "_internal/licenses/NOTICE_U3D_GRAPHICS_GEMS_IV.txt",
+        "_internal/licenses/NOTICE_U3D_SHEWCHUK_PREDICATES.txt",
+        "_internal/licenses/NOTICE_XERCES_C_3_2_4.txt",
         "_internal/licenses/LICENSE_RESVG_APACHE_2.0.txt",
         "_internal/licenses/THIRD_PARTY_LICENSES.txt",
         "_internal/licenses/cpython/LICENSE.txt",
+        "_internal/licenses/tcl-tk/license.terms",
+        "_internal/licenses/numpy/LICENSE.txt",
+        "_internal/licenses/glcontext/LICENSE",
+        "_internal/licenses/manifold3d/LICENSE",
+        "_internal/licenses/mapbox-earcut/LICENSE.md",
+        "_internal/licenses/moderngl/LICENSE",
+        "_internal/licenses/pillow/LICENSE",
         "_internal/licenses/pyinstaller/COPYING.txt",
-        "_internal/licenses/resvg-py/LICENSE.txt",
-        "_internal/licenses/resvg-py/resvg.cyclonedx.json",
+        "_internal/licenses/rtree/LICENSE.txt",
+        "_internal/licenses/scipy/LICENSE.txt",
+        "_internal/licenses/trimesh/LICENSE.md",
         "_internal/licenses/pytetwild/LICENSE",
         "_internal/licenses/tetgen/LICENSE",
         "_internal/licenses/tetgen/tetgen-license",
@@ -1031,7 +1088,7 @@ class SoftwarePackageStageTests(unittest.TestCase):
         "_internal/resources/filament_db/ATTRIBUTION.md",
         "_internal/resources/filament_db/LICENSE_OPEN_FILAMENT_DATABASE.txt",
         "_internal/resources/filament_db/LICENSE_CC_BY_4.0.txt",
-    )
+    ) + QT_LICENSE_RUNTIME_FILES
 
     def _fake_build(self, root: Path) -> Path:
         built = root / "dist" / "ChromaMatter"
@@ -1041,12 +1098,114 @@ class SoftwarePackageStageTests(unittest.TestCase):
             path = built / Path(relative)
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(f"runtime fixture {index}\n".encode("utf-8"))
+        for source_relative in QT_STATIC_COMPONENTS["license_assets"]:
+            packaged_relative = "_internal/" + source_relative.removeprefix(
+                "source/fixed_app/"
+            )
+            (built / Path(packaged_relative)).write_bytes(
+                (REPO_ROOT / Path(source_relative)).read_bytes()
+            )
+        pymeshlab_distribution = importlib.metadata.distribution("pymeshlab")
+        audited_records = (
+            PYMESHLAB_NATIVE_IDENTITIES["identities"]
+            + QT_STATIC_COMPONENTS["files"]
+        )
+        for record in audited_records:
+            relative = Path(record["path"])
+            package_relative = relative.relative_to("_internal")
+            source = Path(
+                pymeshlab_distribution.locate_file(package_relative.as_posix())
+            ).resolve()
+            if not source.is_file():
+                raise AssertionError(f"Missing audited fixture binary: {source}")
+            destination = built / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                os.link(source, destination)
+            except OSError:
+                shutil.copy2(source, destination)
         (built / "_internal" / "runtime.dll").write_bytes(b"synthetic dll")
         # Real PyInstaller collections may contain legitimate zero-byte text
         # placeholders.  The privacy scanner must inspect them without
         # PowerShell rejecting the empty string before token matching.
         (built / "_internal" / "empty.txt").write_bytes(b"")
         return built
+
+    def test_public_package_does_not_require_resvg_runtime_assets(self) -> None:
+        stage_script = SOFTWARE_STAGE_SCRIPT.read_text(encoding="utf-8")
+        removed_runtime_assets = (
+            "_internal/resvg/",
+            "_internal/resvg-0.2.0.dist-info/",
+            "_internal/licenses/LICENSE_RESVG_PY.txt",
+            "_internal/licenses/LICENSE_RESVG_MIT.txt",
+            "_internal/licenses/resvg-py/LICENSE.txt",
+            "_internal/licenses/resvg-py/resvg.cyclonedx.json",
+        )
+        for relative in removed_runtime_assets:
+            with self.subTest(relative=relative):
+                prefix = relative.rstrip("/")
+                self.assertFalse(
+                    any(
+                        item == prefix or item.startswith(f"{prefix}/")
+                        for item in self.REQUIRED_RUNTIME_FILES
+                    )
+                )
+                self.assertNotIn(prefix, stage_script)
+
+    def test_stage_enforces_pytetwild_static_closure_contract(self) -> None:
+        stage_script = SOFTWARE_STAGE_SCRIPT.read_text(encoding="utf-8")
+        self.assertEqual(len(PYTETWILD_STATIC_CLOSURE["components"]), 20)
+        self.assertEqual(len(PYTETWILD_STATIC_CLOSURE["license_assets"]), 29)
+        for required_contract in (
+            "tooling\\pytetwild_static_closure.json",
+            "source\\fixed_app\\requirements-build.lock",
+            "controlled-pytetwild-static-closure",
+            "pytetwild_static_closure_violations",
+            (
+                "chromamatter:validation:"
+                "pytetwild-static-closure-violation-count"
+            ),
+            "application-lock-historical-wheel-forbidden",
+        ):
+            with self.subTest(required_contract=required_contract):
+                self.assertIn(required_contract, stage_script)
+
+    def test_blocked_pytetwild_runtime_never_reaches_package_staging(self) -> None:
+        self.assertFalse(
+            PYTETWILD_STATIC_CLOSURE["release_gate"]["release_eligible"]
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            built = self._fake_build(root)
+            wrapper = built / "_internal" / "pytetwild" / "PyfTetWildWrapper.pyd"
+            wrapper.parent.mkdir(parents=True, exist_ok=True)
+            wrapper.write_bytes(b"MZ\x00synthetic-unapproved-pytetwild-wrapper")
+            destination = root / "blocked-pytetwild-package"
+            archive = Path(f"{destination}.zip")
+
+            result = _run_powershell(
+                SOFTWARE_STAGE_SCRIPT,
+                "-BuiltAppRoot",
+                str(built),
+                "-Destination",
+                str(destination),
+            )
+
+            output = result.stdout + result.stderr
+            self.assertNotEqual(result.returncode, 0, output)
+            self.assertIn(
+                "PyTetWild static-closure release gate is blocked",
+                output,
+            )
+            self.assertIn("manifest-release-blocked", output)
+            self.assertIn("controlled-rebuild-not-approved", output)
+            self.assertIn(
+                "application-lock-historical-wheel-forbidden",
+                output,
+            )
+            self.assertFalse(destination.exists())
+            self.assertFalse(archive.exists())
+            self._assert_no_stage_debris(root, destination)
 
     def _assert_no_stage_debris(self, root: Path, destination: Path) -> None:
         prefix = f".{destination.name}."
@@ -1127,13 +1286,49 @@ class SoftwarePackageStageTests(unittest.TestCase):
         versions = {
             "chromamatter": ("0.8beta-r32", "GPL-3.0-or-later"),
             "cpython": ("3.13.14", "Python-2.0"),
+            "cpython-bzip2": ("1.0.8", "bzip2-1.0.6"),
+            "cpython-liblzma": (
+                "5.2.5",
+                "LicenseRef-XZ-Utils-Public-Domain",
+            ),
+            "cpython-expat": ("2.8.1", "MIT"),
+            "cpython-libmpdec": ("4.0.0", "BSD-2-Clause"),
             "pyinstaller": (
                 "6.20.0",
                 "(GPL-2.0-or-later WITH Bootloader-exception) AND Apache-2.0",
             ),
             "tetgen": ("0.8.3 / 1.6.0", "MIT AND AGPL-3.0-or-later"),
             "pymeshlab": ("2025.7.post1", "GPL-3.0-only"),
+            "meshlab": (
+                "d876376e3cc4f92d257e248023d82cbac5b03c7d",
+                "GPL-3.0-only",
+            ),
             "qt": ("5.15.2", "LGPL-3.0-only"),
+            "mesa-llvmpipe": ("12.0.0-rc2", "MIT AND BSL-1.0"),
+            "llvm-mesa": ("3.6.2", "NCSA"),
+            "lib3mf": ("2.4.1", "BSD-2-Clause"),
+            "lib3mf-cpp-base64": ("V2.rc.08", "Zlib"),
+            "lib3mf-fast-float": ("6.0.0", "MIT"),
+            "lib3mf-zlib": ("1.3.1", "Zlib"),
+            "lib3mf-libzip": ("1.10.1", "BSD-3-Clause"),
+            "u3d": ("1.5.2", "Apache-2.0"),
+            "u3d-zlib": ("1.2.8", "Zlib"),
+            "u3d-libpng": ("1.6.2", "Libpng"),
+            "u3d-ijg-jpeg": ("9", "IJG"),
+            "u3d-fnvhash": ("1.5", "LicenseRef-FNV-Public-Domain"),
+            "u3d-shewchuk-predicates": (
+                "1996-05-18",
+                "LicenseRef-Shewchuk-Public-Domain",
+            ),
+            "u3d-wcmatch": ("0.5", "LicenseRef-WCMATCH-Freeware"),
+            "u3d-graphics-gems-iv": (
+                "1994",
+                "Apache-2.0 AND LicenseRef-Graphics-Gems-Unrestricted",
+            ),
+            "u3d-nick-bobic-quaternion": (
+                "1998-02",
+                "Apache-2.0 AND Zlib",
+            ),
             "pytetwild": ("0.3.0", "MPL-2.0"),
             "shapely": ("2.1.2", "BSD-3-Clause"),
             "geos": ("3.13.1", "LGPL-2.1-or-later"),
@@ -1142,19 +1337,160 @@ class SoftwarePackageStageTests(unittest.TestCase):
                 "LicenseRef-Microsoft-Visual-Cpp-Redistributable",
             ),
         }
-        components = [
-            {
-                "id": component_id,
-                "name": component_id,
-                "version": version,
-                "license": license_expression,
-                "source": f"https://github.com/example/{component_id}",
-            }
-            for component_id, (version, license_expression) in versions.items()
-        ]
-        exe_sha256 = hashlib.sha256(
-            (built / "ChromaMatter.exe").read_bytes()
+        identity_records = (
+            PYMESHLAB_NATIVE_IDENTITIES["identities"]
+            + QT_STATIC_COMPONENTS["files"]
+        )
+        for record in identity_records:
+            component_key = (
+                "audited_components"
+                if "audited_components" in record
+                else "runtime_component_ids"
+            )
+            for component_id in record[component_key]:
+                versions.setdefault(component_id, ("fixture", "NOASSERTION"))
+        qt_static_by_id = {
+            record["id"]: record
+            for record in QT_STATIC_COMPONENTS["static_components"]
+        }
+        for component_id, record in qt_static_by_id.items():
+            versions[component_id] = (
+                record["version"],
+                record["license_expression"],
+            )
+        fixture_license_asset = "_internal/licenses/LICENSE_APP.txt"
+        fixture_license_sha256 = hashlib.sha256(
+            (built / Path(fixture_license_asset)).read_bytes()
         ).hexdigest()
+        qt_license_hashes = {
+            "_internal/" + source.removeprefix("source/fixed_app/"): record[
+                "sha256"
+            ]
+            for source, record in QT_STATIC_COMPONENTS["license_assets"].items()
+        }
+        components = []
+        for component_id, (version, license_expression) in versions.items():
+            qt_record = qt_static_by_id.get(component_id)
+            if qt_record is None:
+                name = "ChromaMatter" if component_id == "chromamatter" else component_id
+                if component_id == "qt":
+                    source = QT_STATIC_COMPONENTS["qt_runtime_component"][
+                        "source_url"
+                    ]
+                elif component_id == "pymeshlab":
+                    source = (
+                        "https://github.com/cnr-isti-vclab/PyMeshLab/"
+                        "tree/v2025.7.post1"
+                    )
+                else:
+                    source = f"https://github.com/example/{component_id}"
+                assets = [fixture_license_asset]
+                asset_hashes = {fixture_license_asset: fixture_license_sha256}
+            else:
+                name = qt_record["name"]
+                source = QT_STATIC_COMPONENTS["binary_provenance"][
+                    "source_archives"
+                ][0]["url"]
+                assets = [
+                    "_internal/"
+                    + asset.removeprefix("source/fixed_app/")
+                    for asset in qt_record["license_assets"]
+                ]
+                asset_hashes = {asset: qt_license_hashes[asset] for asset in assets}
+            components.append(
+                {
+                    "id": component_id,
+                    "name": name,
+                    "version": version,
+                    "license": license_expression,
+                    "source": source,
+                    "license_assets": assets,
+                    "license_asset_sha256": asset_hashes,
+                }
+            )
+        def inventory_file_type(relative: str) -> str:
+            suffix = Path(relative).suffix.lower()
+            if suffix == ".exe":
+                return "native-executable"
+            if suffix == ".dll":
+                return "native-library"
+            if suffix == ".pyd":
+                return "python-extension"
+            if suffix == ".pyc":
+                return "python-bytecode"
+            if suffix in {".txt", ".md"} and re.search(
+                r"(^|/)(license|copying|notice)",
+                relative,
+                re.IGNORECASE,
+            ):
+                return "license-or-notice"
+            if ".dist-info/" in relative.lower():
+                return "python-package-metadata"
+            return "data-or-source"
+
+        file_rows = []
+        all_component_ids = sorted(versions)
+        audited_by_path = {}
+        for record in identity_records:
+            component_key = (
+                "audited_components"
+                if "audited_components" in record
+                else "runtime_component_ids"
+            )
+            audited_by_path[record["path"].casefold()] = {
+                "path": record["path"],
+                "components": sorted(
+                    {"meshlab", "pymeshlab", *record[component_key]}
+                ),
+            }
+        for path in sorted(
+            (item for item in built.rglob("*") if item.is_file()),
+            key=lambda item: (
+                item.relative_to(built).as_posix().casefold(),
+                item.relative_to(built).as_posix(),
+            ),
+        ):
+            relative = path.relative_to(built).as_posix()
+            file_type = inventory_file_type(relative)
+            audited = audited_by_path.get(relative.casefold())
+            if audited is not None:
+                self.assertEqual(relative, audited["path"])
+                row_components = audited["components"]
+                mapping_basis = "pymeshlab-wheel-path+audited-native-identity"
+            elif relative == "ChromaMatter.exe":
+                row_components = all_component_ids
+                mapping_basis = "fixture"
+            else:
+                row_components = ["chromamatter"]
+                mapping_basis = "fixture"
+            file_rows.append(
+                {
+                    "path": relative,
+                    "size": path.stat().st_size,
+                    "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                    "file_type": file_type,
+                    "package_owners": [],
+                    "components": row_components,
+                    "mapping_basis": mapping_basis,
+                }
+            )
+        inventory_digest = hashlib.sha256()
+        for row in file_rows:
+            inventory_digest.update(row["path"].encode("utf-8"))
+            inventory_digest.update(b"\0")
+            inventory_digest.update(str(row["size"]).encode("ascii"))
+            inventory_digest.update(b"\0")
+            inventory_digest.update(row["sha256"].encode("ascii"))
+            inventory_digest.update(b"\n")
+        package_digest = inventory_digest.hexdigest()
+        native_types = {
+            "native-executable",
+            "native-library",
+            "python-extension",
+        }
+        native_count = sum(
+            row["file_type"] in native_types for row in file_rows
+        )
         component_map = {
             "schema": (
                 "https://github.com/Ponkichi0718/ChromaMatter/"
@@ -1166,27 +1502,22 @@ class SoftwarePackageStageTests(unittest.TestCase):
                 "name": "ChromaMatter",
                 "version": "0.8beta-r32",
                 "root": ".",
-                "content_sha256": exe_sha256,
+                "content_sha256": package_digest,
             },
             "components": components,
-            "files": [
-                {
-                    "path": "ChromaMatter.exe",
-                    "size": (built / "ChromaMatter.exe").stat().st_size,
-                    "sha256": exe_sha256,
-                    "file_type": "native",
-                    "package_owners": [],
-                    "components": ["chromamatter", "pyinstaller"],
-                    "mapping_basis": "fixture",
-                }
-            ],
+            "files": file_rows,
             "validation": {
                 "passed": True,
-                "file_count": 1,
-                "native_file_count": 1,
-                "mapped_native_file_count": 1,
+                "file_count": len(file_rows),
+                "native_file_count": native_count,
+                "mapped_native_file_count": native_count,
                 "unmapped_native_files": [],
                 "reparse_points_not_traversed": [],
+                "missing_audited_native_identities": [],
+                "mismatched_audited_native_identities": [],
+                "missing_component_license_assets": [],
+                "invalid_component_license_assets": [],
+                "pytetwild_static_closure_violations": [],
             },
         }
         map_path = root / f"{destination.name}-component-map.json"
@@ -1194,15 +1525,136 @@ class SoftwarePackageStageTests(unittest.TestCase):
             json.dumps(component_map, ensure_ascii=False),
             encoding="utf-8",
         )
+        component_by_id = {component["id"]: component for component in components}
+
+        def sbom_component(component_id: str, component_type: str) -> dict:
+            component = component_by_id[component_id]
+            return {
+                "type": component_type,
+                "bom-ref": f"component:{component_id}",
+                "name": component["name"],
+                "version": component["version"],
+                "licenses": [{"expression": component["license"]}],
+                "externalReferences": [
+                    {"type": "website", "url": component["source"]}
+                ],
+                "properties": [
+                    {
+                        "name": "chromamatter:component:license-assets",
+                        "value": json.dumps(
+                            component["license_asset_sha256"],
+                            sort_keys=True,
+                            separators=(",", ":"),
+                        ),
+                    }
+                ],
+            }
+
         sbom_path = root / f"{destination.name}-sbom.json"
         sbom_path.write_text(
             json.dumps(
                 {
                     "bomFormat": "CycloneDX",
                     "specVersion": "1.5",
+                    "metadata": {
+                        "component": {
+                            **sbom_component("chromamatter", "application"),
+                            "hashes": [
+                                {"alg": "SHA-256", "content": package_digest}
+                            ],
+                        },
+                        "properties": [
+                            {
+                                "name": "chromamatter:validation:passed",
+                                "value": "true",
+                            },
+                            {
+                                "name": (
+                                    "chromamatter:validation:"
+                                    "unmapped-native-count"
+                                ),
+                                "value": "0",
+                            },
+                            {
+                                "name": "chromamatter:validation:reparse-count",
+                                "value": "0",
+                            },
+                            {
+                                "name": (
+                                    "chromamatter:validation:"
+                                    "missing-audited-native-count"
+                                ),
+                                "value": "0",
+                            },
+                            {
+                                "name": (
+                                    "chromamatter:validation:"
+                                    "mismatched-audited-native-count"
+                                ),
+                                "value": "0",
+                            },
+                            {
+                                "name": (
+                                    "chromamatter:validation:"
+                                    "missing-license-asset-count"
+                                ),
+                                "value": "0",
+                            },
+                            {
+                                "name": (
+                                    "chromamatter:validation:"
+                                    "invalid-license-asset-count"
+                                ),
+                                "value": "0",
+                            },
+                            {
+                                "name": (
+                                    "chromamatter:validation:"
+                                    "pytetwild-static-closure-violation-count"
+                                ),
+                                "value": "0",
+                            },
+                        ],
+                    },
                     "components": [
-                        {"bom-ref": "component:cpython"},
-                        {"bom-ref": "component:pyinstaller"},
+                        sbom_component(component_id, "library")
+                        for component_id in versions
+                        if component_id != "chromamatter"
+                    ]
+                    + [
+                        {
+                            "type": "file",
+                            "bom-ref": f"file:{row['path']}",
+                            "name": row["path"],
+                            "hashes": [
+                                {"alg": "SHA-256", "content": row["sha256"]}
+                            ],
+                            "properties": [
+                                {
+                                    "name": "chromamatter:file:size",
+                                    "value": str(row["size"]),
+                                },
+                                {
+                                    "name": "chromamatter:file:type",
+                                    "value": row["file_type"],
+                                },
+                                {
+                                    "name": "chromamatter:file:components",
+                                    "value": ",".join(row["components"]),
+                                },
+                            ],
+                        }
+                        for row in file_rows
+                    ],
+                    "dependencies": [
+                        {
+                            "ref": "component:chromamatter",
+                            "dependsOn": [
+                                f"component:{component_id}"
+                                for component_id in sorted(versions)
+                                if component_id != "chromamatter"
+                            ],
+                        }
                     ],
                 }
             ),
@@ -1407,6 +1859,149 @@ class SoftwarePackageStageTests(unittest.TestCase):
                 self.assertFalse(destination.exists())
                 self.assertFalse(Path(f"{destination}.zip").exists())
 
+    def test_component_map_must_match_every_built_file_byte(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            built = self._fake_build(root)
+            destination = root / "rejected-stale-component-map"
+            arguments = self._compliance_arguments(
+                root,
+                built,
+                destination,
+            )
+            component_map_path = Path(
+                self._argument_value(arguments, "-BinaryComponentMapPath")
+            )
+            component_map = json.loads(component_map_path.read_text(encoding="utf-8"))
+            component_map["files"][0]["sha256"] = "0" * 64
+            component_map_path.write_text(
+                json.dumps(component_map),
+                encoding="utf-8",
+            )
+
+            result = _run_powershell(
+                SOFTWARE_STAGE_SCRIPT,
+                "-BuiltAppRoot",
+                str(built),
+                "-Destination",
+                str(destination),
+                *arguments,
+            )
+
+            output = result.stdout + result.stderr
+            self.assertNotEqual(result.returncode, 0, output)
+            self.assertIn("SHA-256 does not match BuiltAppRoot", output)
+            self.assertFalse(destination.exists())
+            self.assertFalse(Path(f"{destination}.zip").exists())
+            self._assert_no_stage_debris(root, destination)
+
+    def test_used_component_license_asset_declarations_fail_closed(self) -> None:
+        cases = (
+            (
+                "absent assets",
+                lambda component: component.pop("license_assets"),
+                "must declare license_assets and license_asset_sha256",
+            ),
+            (
+                "empty assets",
+                lambda component: component.__setitem__("license_assets", []),
+                "has empty license_assets",
+            ),
+            (
+                "missing hash map",
+                lambda component: component.__setitem__(
+                    "license_asset_sha256", {}
+                ),
+                "empty license_asset_sha256 map",
+            ),
+            (
+                "mismatched hash",
+                lambda component: component.__setitem__(
+                    "license_asset_sha256",
+                    {component["license_assets"][0]: "0" * 64},
+                ),
+                "does not match the generated file inventory",
+            ),
+        )
+        for label, mutate, expected_error in cases:
+            with self.subTest(case=label), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                built = self._fake_build(root)
+                destination = root / "rejected-license-assets"
+                arguments = self._compliance_arguments(
+                    root,
+                    built,
+                    destination,
+                )
+                component_map_path = Path(
+                    self._argument_value(arguments, "-BinaryComponentMapPath")
+                )
+                component_map = json.loads(
+                    component_map_path.read_text(encoding="utf-8")
+                )
+                component = next(
+                    item
+                    for item in component_map["components"]
+                    if item["id"] == "chromamatter"
+                )
+                mutate(component)
+                component_map_path.write_text(
+                    json.dumps(component_map),
+                    encoding="utf-8",
+                )
+
+                result = _run_powershell(
+                    SOFTWARE_STAGE_SCRIPT,
+                    "-BuiltAppRoot",
+                    str(built),
+                    "-Destination",
+                    str(destination),
+                    *arguments,
+                )
+
+                output = result.stdout + result.stderr
+                self.assertNotEqual(result.returncode, 0, output)
+                self.assertIn(expected_error, output)
+                self.assertFalse(destination.exists())
+                self.assertFalse(Path(f"{destination}.zip").exists())
+                self._assert_no_stage_debris(root, destination)
+
+    def test_sbom_must_match_component_map_files_and_hashes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            built = self._fake_build(root)
+            destination = root / "rejected-stale-sbom"
+            arguments = self._compliance_arguments(
+                root,
+                built,
+                destination,
+            )
+            sbom_path = Path(self._argument_value(arguments, "-SbomPath"))
+            sbom = json.loads(sbom_path.read_text(encoding="utf-8"))
+            file_component = next(
+                component
+                for component in sbom["components"]
+                if component.get("type") == "file"
+            )
+            file_component["hashes"][0]["content"] = "0" * 64
+            sbom_path.write_text(json.dumps(sbom), encoding="utf-8")
+
+            result = _run_powershell(
+                SOFTWARE_STAGE_SCRIPT,
+                "-BuiltAppRoot",
+                str(built),
+                "-Destination",
+                str(destination),
+                *arguments,
+            )
+
+            output = result.stdout + result.stderr
+            self.assertNotEqual(result.returncode, 0, output)
+            self.assertIn("CycloneDX SBOM file hash does not match", output)
+            self.assertFalse(destination.exists())
+            self.assertFalse(Path(f"{destination}.zip").exists())
+            self._assert_no_stage_debris(root, destination)
+
     def test_stage_reuses_existing_output_parent_directories(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -1521,10 +2116,46 @@ class SoftwarePackageStageTests(unittest.TestCase):
         for required in (
             '"_internal/licenses/cpython/LICENSE.txt"',
             '"_internal/licenses/pyinstaller/COPYING.txt"',
+            '"_internal/licenses/LICENSE_CPYTHON_BZIP2.txt"',
+            '"_internal/licenses/LICENSE_QT_LGPL_3_0.txt"',
+            '"_internal/licenses/NOTICE_QT.txt"',
+            '"_internal/licenses/LICENSE_U3D_ZLIB.txt"',
+            '"_internal/licenses/LICENSE_LIB3MF_LIBZIP.txt"',
+            '"_internal/licenses/LICENSE_LIB3MF_CPP_BASE64.txt"',
+            '"_internal/licenses/LICENSE_LIB3MF_FAST_FLOAT.txt"',
+            '"_internal/licenses/NOTICE_U3D_FNVHASH.txt"',
+            '"_internal/licenses/NOTICE_U3D_SHEWCHUK_PREDICATES.txt"',
+            '"_internal/licenses/LICENSE_U3D_WCMATCH.txt"',
+            '"_internal/licenses/NOTICE_U3D_GRAPHICS_GEMS_IV.txt"',
+            '"_internal/licenses/LICENSE_U3D_NICK_BOBIC_QUATERNION.txt"',
+            '"_internal/licenses/LICENSE_LLVM_3_6_2.txt"',
             '"cpython" = "Python-2.0"',
             '"pyinstaller" = "(GPL-2.0-or-later WITH Bootloader-exception) AND Apache-2.0"',
+            '"cpython-bzip2" = "bzip2-1.0.6"',
+            '"llvm-mesa" = "NCSA"',
+            '"u3d-ijg-jpeg" = "IJG"',
+            '"lib3mf-libzip" = "BSD-3-Clause"',
+            '"lib3mf-cpp-base64" = "Zlib"',
+            '"lib3mf-fast-float" = "MIT"',
+            '"u3d-fnvhash" = "LicenseRef-FNV-Public-Domain"',
+            '"u3d-shewchuk-predicates" = "LicenseRef-Shewchuk-Public-Domain"',
+            '"u3d-wcmatch" = "LicenseRef-WCMATCH-Freeware"',
+            '"u3d-graphics-gems-iv" = "Apache-2.0 AND LicenseRef-Graphics-Gems-Unrestricted"',
+            '"u3d-nick-bobic-quaternion" = "Apache-2.0 AND Zlib"',
             '"component:cpython"',
             '"component:pyinstaller"',
+            '"component:llvm-mesa"',
+            '"component:u3d-ijg-jpeg"',
+            '"component:lib3mf-libzip"',
+            '"component:lib3mf-cpp-base64"',
+            '"component:lib3mf-fast-float"',
+            '"component:u3d-fnvhash"',
+            '"component:u3d-shewchuk-predicates"',
+            '"component:u3d-wcmatch"',
+            '"component:u3d-graphics-gems-iv"',
+            '"component:u3d-nick-bobic-quaternion"',
+            "missing_component_license_assets",
+            "invalid_component_license_assets",
         ):
             with self.subTest(required=required):
                 self.assertIn(required, stage)
@@ -1783,6 +2414,13 @@ class SoftwarePackageStageTests(unittest.TestCase):
         self.assertIn('"tooling/meshlab_windows_external_archives.lock.json"', stage)
         self.assertIn('"tooling/pytetwild_rebuild_lock.template.json"', stage)
         self.assertIn('"tooling/generate_binary_compliance_inventory.py"', stage)
+        self.assertIn('"tooling/generate_pytetwild_rebuild_lock.py"', stage)
+        self.assertIn('"tooling/pymeshlab_audited_native_identities.json"', stage)
+        self.assertIn('"tooling/qt_static_components.json"', stage)
+        self.assertIn('"tooling/pytetwild_static_closure.json"', stage)
+        self.assertIn(
+            '"tooling/pytetwild_static_closure_contract.py"', stage
+        )
         self.assertIn('"tooling/update_budget_filament_library.py"', stage)
         self.assertIn('"source/fixed_app/requirements-build.lock"', stage)
         self.assertIn('"AGENTS.md"', stage)
@@ -1880,6 +2518,11 @@ class SoftwarePackageStageTests(unittest.TestCase):
             "!publication/INNOVATION_FUND_STATUS_JA.md",
             "!publication/BINARY_RELEASE_HANDOFF_JA.md",
             "!tooling/generate_binary_compliance_inventory.py",
+            "!tooling/generate_pytetwild_rebuild_lock.py",
+            "!tooling/pymeshlab_audited_native_identities.json",
+            "!tooling/qt_static_components.json",
+            "!tooling/pytetwild_static_closure.json",
+            "!tooling/pytetwild_static_closure_contract.py",
             "!tooling/update_budget_filament_library.py",
             "!tooling/corresponding_source_components.json",
             "!tooling/BUILD_PYTETWILD_WINDOWS.ps1",
@@ -1980,6 +2623,7 @@ class PublicSourceStageRollbackTests(unittest.TestCase):
         required_directories = (
             "licenses",
             "samples",
+            "source/fixed_app/licenses",
             "source/fixed_app/spectrum_mapper",
             "source/fixed_app/resources/filament_db",
             "source/fixed_app/public_binary",
@@ -2040,6 +2684,23 @@ class PublicSourceStageRollbackTests(unittest.TestCase):
         shutil.copy2(
             REPO_ROOT / "tooling" / "generate_binary_compliance_inventory.py",
             tooling / "generate_binary_compliance_inventory.py",
+        )
+        shutil.copy2(
+            REPO_ROOT / "tooling" / "generate_pytetwild_rebuild_lock.py",
+            tooling / "generate_pytetwild_rebuild_lock.py",
+        )
+        for manifest_name in (
+            "pymeshlab_audited_native_identities.json",
+            "qt_static_components.json",
+            "pytetwild_static_closure.json",
+        ):
+            shutil.copy2(
+                REPO_ROOT / "tooling" / manifest_name,
+                tooling / manifest_name,
+            )
+        shutil.copy2(
+            REPO_ROOT / "tooling" / "pytetwild_static_closure_contract.py",
+            tooling / "pytetwild_static_closure_contract.py",
         )
         shutil.copy2(
             REPO_ROOT / "tooling" / "update_budget_filament_library.py",

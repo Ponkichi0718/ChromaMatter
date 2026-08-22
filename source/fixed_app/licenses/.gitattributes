@@ -1,0 +1,3 @@
+# Preserve byte-for-byte copies of upstream license and notice files.
+* -text
+**/* -text

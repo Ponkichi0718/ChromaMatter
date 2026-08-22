@@ -19,6 +19,9 @@ High-impact bundled components
 
 - ChromaMatter application: GPL-3.0-or-later
 - CPython 3.13.14: Python Software Foundation License Version 2
+- CPython native-module components: bzip2 1.0.8 (bzip2-1.0.6 terms),
+  liblzma 5.2.5 (public domain), Expat 2.8.1 (MIT), and libmpdec 4.0.0
+  (BSD-2-Clause)
 - PyInstaller 6.20.0 bootloader and run-time hooks:
   (GPL-2.0-or-later WITH Bootloader-exception) AND Apache-2.0
 - tetgen 0.8.3 Python wrapper: MIT
@@ -26,10 +29,27 @@ High-impact bundled components
 - PyMeshLab 2025.7.post1: GPL-3.0-only
 - Qt 5.15.2 libraries carried by PyMeshLab: distributed here under the
   LGPL-3.0 option; Qt also offers other license options
-- PyTetWild 0.3.0 and its fTetWild components: MPL-2.0
+- Mesa llvmpipe 12.0.0-rc2 and its statically linked LLVM 3.6.2 component:
+  Mesa component terms (MIT AND BSL-1.0) and NCSA, respectively
+- Controlled PyTetWild 0.3.0 native closure: PyTetWild and fTetWild
+  (MPL-2.0); nanobind (BSD-3-Clause) and Tessil robin-map (MIT); fmt and
+  spdlog (MIT); libigl (MPL-2.0) and libigl predicates
+  (LicenseRef-Shewchuk-Public-Domain); Geogram (BSD-3-Clause); oneTBB
+  (Apache-2.0); jdumas/json (MIT); and Eigen (MPL-2.0 under the controlled
+  `EIGEN_MPL2_ONLY=ON` route)
+- Geogram-vendored closure: AMGCL, libMeshb, RPly, and xatlas (MIT); zlib
+  (Zlib); stb_image and stb_image_write
+  (MIT OR LicenseRef-STB-Public-Domain); and PoissonRecon (BSD-3-Clause)
 - Shapely 2.1.2: BSD-3-Clause
 - GEOS 3.13.1 carried by the Shapely wheel: LGPL-2.1-or-later
 - U3D 1.5.2 carried by PyMeshLab: Apache-2.0
+- U3D IFXCore static components: zlib 1.2.8 (Zlib), libpng 1.6.2
+  (Libpng), IJG JPEG release 9 (IJG), public-domain FNVHash and Shewchuk
+  predicates, wcmatch 0.5 (freeware terms), Graphics Gems IV Delaunay code,
+  and Nick Bobic quaternion code
+- lib3mf 2.4.1 (BSD-2-Clause), including static cpp-base64 V2.rc.08 (Zlib),
+  fast_float 6.0.0 (MIT), zlib 1.3.1 (Zlib), and libzip 1.10.1
+  (BSD-3-Clause) components
 - Microsoft Visual C++ Runtime files: Microsoft redistributable-code terms;
   exact per-file versions are recorded in BINARY_COMPONENT_MAP.json
 
@@ -39,9 +59,23 @@ component subdirectories. BINARY_COMPONENT_MAP.json records the exact files
 and owning components for the particular binary release; SBOM.cdx.json
 provides the matching CycloneDX inventory.
 
+PyTetWild release status: `tooling/pytetwild_static_closure.json` currently
+records `release_gate.status=blocked` and `release_eligible=false`. Its
+controlled static/header closure contains 20 components. The package contract
+requires all 29 byte-exact licence/notice assets below
+`_internal/licenses/pytetwild-closure/`, but the controlled wheel SHA-256, PYD
+SHA-256, and matching application-lock identity are still pending. The
+historical upstream PyPI wheel/PYD is audit-only and excluded from release
+approval. This inventory therefore does not declare any current Windows
+binary eligible for publication.
+
 The complete CPython runtime license is stored at
 `cpython/LICENSE.txt`. PyInstaller's governing notice is stored at
-`pyinstaller/COPYING.txt`.
+`pyinstaller/COPYING.txt`. Exact component-specific texts for Qt, Mesa/LLVM,
+U3D, lib3mf, the PyTetWild controlled closure, and CPython's listed
+native-module components are the files named `LICENSE_*` and `NOTICE_*`
+(including the Mesa HTML license) beside this notice or below the closure path;
+their mapping and required paths are recorded in BINARY_COMPONENT_MAP.json.
 
 SOURCE_OFFER_EN.txt identifies the complete corresponding-source archive for
 the exact binary. BUILD_ENVIRONMENT_EN.md describes the reproducible build

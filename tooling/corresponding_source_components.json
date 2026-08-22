@@ -55,6 +55,8 @@
     "github.com",
     "githubusercontent.com",
     "gitlab.com",
+    "freedesktop.org",
+    "llvm.org",
     "meshlab.net",
     "sourceforge.net",
     "apache.org",
@@ -282,6 +284,143 @@
       "required_paths": ["COPYING", "CMakeLists.txt"]
     },
     {
+      "id": "cpython-3.13.14",
+      "display_name": "CPython 3.13.14 runtime source",
+      "version": "3.13.14",
+      "kind": "git",
+      "url": "https://github.com/python/cpython.git",
+      "commit": "fd17997c3866d61e0e7bd8201b1d8f35b40a40bd",
+      "destination": "components/cpython-3.13.14",
+      "required_paths": [
+        "LICENSE",
+        "PCbuild/get_externals.bat",
+        "PCbuild/python.props",
+        "PCbuild/tcltk.props",
+        "PCbuild/_decimal.vcxproj",
+        "PCbuild/pyexpat.vcxproj",
+        "PCbuild/_elementtree.vcxproj",
+        "Modules/expat/COPYING",
+        "Modules/expat/expat.h"
+      ]
+    },
+    {
+      "id": "cpython-bzip2-1.0.8",
+      "display_name": "bzip2 1.0.8 used by CPython 3.13.14",
+      "version": "1.0.8",
+      "kind": "git",
+      "url": "https://github.com/python/cpython-source-deps.git",
+      "commit": "05301997b2f9590f49c672cf3dfd3d3dfa7ad521",
+      "destination": "components/cpython-build-dependencies/bzip2-1.0.8",
+      "required_paths": ["LICENSE", "README", "bzlib.h"]
+    },
+    {
+      "id": "cpython-xz-5.2.5",
+      "display_name": "XZ Utils liblzma 5.2.5 used by CPython 3.13.14",
+      "version": "5.2.5",
+      "kind": "git",
+      "url": "https://github.com/python/cpython-source-deps.git",
+      "commit": "c6bc0c612605622aaef101a33a751f9de2ecc193",
+      "destination": "components/cpython-build-dependencies/xz-5.2.5",
+      "required_paths": ["COPYING", "README", "configure.ac"]
+    },
+    {
+      "id": "cpython-mpdecimal-4.0.0",
+      "display_name": "libmpdec 4.0.0 used by CPython 3.13.14",
+      "version": "4.0.0",
+      "kind": "git",
+      "url": "https://github.com/python/cpython-source-deps.git",
+      "commit": "780e21d43a92832d12c2add68fcc8e03cee38bcf",
+      "destination": "components/cpython-build-dependencies/mpdecimal-4.0.0",
+      "required_paths": [
+        "COPYRIGHT.txt",
+        "README.txt",
+        "configure.ac",
+        "libmpdec/mpdecimal.h.in"
+      ]
+    },
+    {
+      "id": "cpython-openssl-3.0.21",
+      "display_name": "OpenSSL 3.0.21 used by CPython 3.13.14",
+      "version": "3.0.21",
+      "kind": "git",
+      "url": "https://github.com/python/cpython-source-deps.git",
+      "commit": "460451a0bb19cdbf0ab1add4de1420d143995467",
+      "destination": "components/cpython-build-dependencies/openssl-3.0.21",
+      "required_paths": [
+        "LICENSE.txt",
+        "README.md",
+        "VERSION.dat",
+        "Configure",
+        "include/openssl/ssl.h.in"
+      ]
+    },
+    {
+      "id": "cpython-sqlite-3.50.4.0",
+      "display_name": "SQLite 3.50.4.0 used by CPython 3.13.14",
+      "version": "3.50.4.0",
+      "kind": "git",
+      "url": "https://github.com/python/cpython-source-deps.git",
+      "commit": "c8123bc55da6467f4ef3e9b70cdb67cecf33b937",
+      "destination": "components/cpython-build-dependencies/sqlite-3.50.4.0",
+      "required_paths": ["README.md", "sqlite3.c", "sqlite3.h", "sqlite3ext.h"]
+    },
+    {
+      "id": "cpython-tcl-8.6.15.0",
+      "display_name": "Tcl 8.6.15.0 used by CPython 3.13.14",
+      "version": "8.6.15.0",
+      "kind": "git",
+      "url": "https://github.com/python/cpython-source-deps.git",
+      "commit": "275286594fd3e162af29e8c0ba4e365d3d1f7775",
+      "destination": "components/cpython-build-dependencies/tcl-core-8.6.15.0",
+      "required_paths": [
+        "license.terms",
+        "README.md",
+        "win/Makefile.in",
+        "generic/tcl.h"
+      ]
+    },
+    {
+      "id": "cpython-tk-8.6.15.0",
+      "display_name": "Tk 8.6.15.0 used by CPython 3.13.14",
+      "version": "8.6.15.0",
+      "kind": "git",
+      "url": "https://github.com/python/cpython-source-deps.git",
+      "commit": "a526badcf885e4986e13e68695398a0bb64d5ea1",
+      "destination": "components/cpython-build-dependencies/tk-8.6.15.0",
+      "required_paths": [
+        "license.terms",
+        "README.md",
+        "win/Makefile.in",
+        "generic/tk.h"
+      ]
+    },
+    {
+      "id": "cpython-libffi-3.4.4",
+      "display_name": "libffi 3.4.4 used by CPython 3.13.14",
+      "version": "3.4.4",
+      "kind": "git",
+      "url": "https://github.com/python/cpython-source-deps.git",
+      "commit": "73b247f34ef3ae1859b8c2c34d321d34ebc5db15",
+      "destination": "components/cpython-build-dependencies/libffi-3.4.4",
+      "required_paths": [
+        "LICENSE",
+        "README.md",
+        "configure.ac",
+        "include/ffi.h.in",
+        "msvc_build/aarch64/Ffi_staticLib.vcxproj"
+      ]
+    },
+    {
+      "id": "cpython-zlib-1.3.1",
+      "display_name": "zlib 1.3.1 used by CPython 3.13.14",
+      "version": "1.3.1",
+      "kind": "git",
+      "url": "https://github.com/python/cpython-source-deps.git",
+      "commit": "4dc98e1909830e2bdc2a9cc2236e3c5d5037335b",
+      "destination": "components/cpython-build-dependencies/zlib-1.3.1",
+      "required_paths": ["LICENSE", "README", "CMakeLists.txt", "zlib.h", "adler32.c"]
+    },
+    {
       "id": "qt-5.15.2",
       "display_name": "Qt 5.15.2 source archive",
       "version": "5.15.2",
@@ -291,6 +430,125 @@
       ],
       "sha256": "3a530d1b243b5dec00bc54937455471aaa3e56849d2593edb8ded07228202240",
       "destination": "components/qt-5.15.2/qt-everywhere-src-5.15.2.tar.xz",
+      "stage_mode": "preserve",
+      "validate_archive_members": true,
+      "required_source_members": [
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle/KHRONOS_LICENSE",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle/LICENSE",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle/qt_attribution.json",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle/src/common/third_party/base/README.angle",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle/src/common/third_party/smhasher/LICENSE",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle/src/third_party/compiler/LICENSE",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle/SYSTEMINFO_LICENSE",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle/TRACEEVENT_LICENSE",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/double-conversion/LICENSE",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/easing/LICENSE",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/freetype/BDF-LICENSE.txt",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/freetype/docs/LICENSE.TXT",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/freetype/LICENSE.txt",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/freetype/PCF-LICENSE.txt",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/freetype/ZLIB-LICENSE.txt",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/harfbuzz-ng/COPYING",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/harfbuzz/COPYING",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/icc/LICENSE.txt",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/libjpeg/LICENSE",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/libjpeg/src/README.ijg",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/libpng/LICENSE",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/md4/qt_attribution.json",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/md4c/LICENSE.md",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/md5/qt_attribution.json",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/pcre2/LICENCE",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/pcre2/LICENCE-SLJIT",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/rfc6234/LICENSE",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/sha1/qt_attribution.json",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/sha3/BRG_ENDIAN_LICENSE",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/sha3/CC0_LICENSE",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/tinycbor/LICENSE",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/VulkanMemoryAllocator/LICENSE.txt",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/zlib/LICENSE",
+        "qt-everywhere-src-5.15.2/qtbase/src/corelib/codecs/QBIG5CODEC_LICENSE.txt",
+        "qt-everywhere-src-5.15.2/qtbase/src/corelib/codecs/QBKCODEC_LICENSE.txt",
+        "qt-everywhere-src-5.15.2/qtbase/src/corelib/codecs/QEUCJPCODEC_LICENSE.txt",
+        "qt-everywhere-src-5.15.2/qtbase/src/corelib/codecs/QEUCKRCODEC_LICENSE.txt",
+        "qt-everywhere-src-5.15.2/qtbase/src/corelib/codecs/QJISCODEC_LICENSE.txt",
+        "qt-everywhere-src-5.15.2/qtbase/src/corelib/codecs/QSJISCODEC_LICENSE.txt",
+        "qt-everywhere-src-5.15.2/qtbase/src/corelib/codecs/QTSCIICODEC_LICENSE.txt",
+        "qt-everywhere-src-5.15.2/qtbase/src/corelib/io/PSL-LICENSE.txt",
+        "qt-everywhere-src-5.15.2/qtbase/src/corelib/text/UNICODE_LICENSE.txt",
+        "qt-everywhere-src-5.15.2/qtbase/src/gui/opengl/KHRONOS_LICENSE.txt",
+        "qt-everywhere-src-5.15.2/qtbase/src/gui/painting/qgrayraster.c",
+        "qt-everywhere-src-5.15.2/qtbase/src/gui/painting/qimagescale.cpp",
+        "qt-everywhere-src-5.15.2/qtbase/src/gui/painting/QIMAGETRANSFORM_LICENSE.txt",
+        "qt-everywhere-src-5.15.2/qtbase/src/gui/painting/qregion.cpp",
+        "qt-everywhere-src-5.15.2/qtbase/src/gui/painting/WEBGRADIENTS_LICENSE.txt",
+        "qt-everywhere-src-5.15.2/qtbase/src/gui/painting/webgradients.css",
+        "qt-everywhere-src-5.15.2/qtbase/src/gui/painting/XCONSORTIUM_LICENSE.txt",
+        "qt-everywhere-src-5.15.2/qtbase/src/gui/text/AGLFN_LICENSE.txt",
+        "qt-everywhere-src-5.15.2/qtbase/src/gui/vulkan/KHRONOS_LICENSE.txt",
+        "qt-everywhere-src-5.15.2/qtimageformats/src/3rdparty/libtiff/COPYRIGHT",
+        "qt-everywhere-src-5.15.2/qtimageformats/src/3rdparty/libwebp/COPYING"
+      ],
+      "required_source_prefixes": [
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle/include",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle/src/common/third_party/base",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle/src/common/third_party/smhasher",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle/src/third_party/compiler",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle/src/third_party/systeminfo",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle/src/third_party/trace_event",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/double-conversion",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/easing",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/freetype",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/harfbuzz",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/harfbuzz-ng",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/icc",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/libjpeg",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/libpng",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/md4",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/md4c",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/md5",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/pcre2",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/rfc6234",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/sha1",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/sha3",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/tinycbor",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/VulkanMemoryAllocator",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/zlib",
+        "qt-everywhere-src-5.15.2/qtbase/src/corelib/codecs",
+        "qt-everywhere-src-5.15.2/qtbase/src/corelib/io",
+        "qt-everywhere-src-5.15.2/qtbase/src/corelib/text",
+        "qt-everywhere-src-5.15.2/qtbase/src/gui/opengl",
+        "qt-everywhere-src-5.15.2/qtbase/src/gui/text",
+        "qt-everywhere-src-5.15.2/qtbase/src/gui/vulkan",
+        "qt-everywhere-src-5.15.2/qtimageformats/src/3rdparty/libtiff",
+        "qt-everywhere-src-5.15.2/qtimageformats/src/3rdparty/libwebp"
+      ]
+    },
+    {
+      "id": "mesa-12.0.0-rc2",
+      "display_name": "Mesa 12.0.0-rc2 source for Qt llvmpipe runtime",
+      "version": "12.0.0-rc2",
+      "kind": "git",
+      "url": "https://gitlab.freedesktop.org/mesa/mesa.git",
+      "commit": "a7649abe9fc19671493957a8ffbbf6053c77cab4",
+      "destination": "components/mesa-12.0.0-rc2",
+      "required_paths": [
+        "docs/license.html",
+        "VERSION",
+        "SConstruct",
+        "src/gallium/drivers/llvmpipe"
+      ]
+    },
+    {
+      "id": "llvm-3.6.2",
+      "display_name": "LLVM 3.6.2 source used by Mesa llvmpipe",
+      "version": "3.6.2",
+      "kind": "archive",
+      "urls": [
+        "https://releases.llvm.org/3.6.2/llvm-3.6.2.src.tar.xz"
+      ],
+      "sha256": "f60dc158bfda6822de167e87275848969f0558b3134892ff54fced87e4667b94",
+      "destination": "components/llvm-3.6.2/llvm-3.6.2.src.tar.xz",
       "stage_mode": "preserve",
       "validate_archive_members": true
     },
@@ -328,6 +586,61 @@
     }
   ],
   "pin_evidence": [
+    {
+      "component": "cpython-3.13.14",
+      "path": "PCbuild/get_externals.bat",
+      "required_literals": [
+        "bzip2-1.0.8",
+        "libffi-3.4.4",
+        "openssl-3.0.21",
+        "mpdecimal-4.0.0",
+        "sqlite-3.50.4.0",
+        "tcl-core-8.6.15.0",
+        "tk-8.6.15.0",
+        "xz-5.2.5",
+        "zlib-1.3.1"
+      ]
+    },
+    {
+      "component": "cpython-3.13.14",
+      "path": "Modules/expat/expat.h",
+      "required_literals": [
+        "#  define XML_MAJOR_VERSION 2",
+        "#  define XML_MINOR_VERSION 8",
+        "#  define XML_MICRO_VERSION 1"
+      ]
+    },
+    {
+      "component": "cpython-3.13.14",
+      "path": "PCbuild/_decimal.vcxproj",
+      "required_literals": [
+        "BUILD_LIBMPDEC",
+        "$(mpdecimalDir)\\libmpdec\\mpdecimal.c"
+      ]
+    },
+    {
+      "component": "cpython-3.13.14",
+      "path": "PCbuild/pyexpat.vcxproj",
+      "required_literals": [
+        "..\\Modules\\expat\\xmlparse.c",
+        "..\\Modules\\expat\\xmlrole.c",
+        "..\\Modules\\expat\\xmltok.c"
+      ]
+    },
+    {
+      "component": "cpython-3.13.14",
+      "path": "PCbuild/_elementtree.vcxproj",
+      "required_literals": [
+        "..\\Modules\\expat\\xmlparse.c",
+        "..\\Modules\\expat\\xmlrole.c",
+        "..\\Modules\\expat\\xmltok.c"
+      ]
+    },
+    {
+      "component": "mesa-12.0.0-rc2",
+      "path": "VERSION",
+      "required_literals": ["12.0.0-rc2"]
+    },
     {
       "component": "ftetwild-d7d99bb",
       "path": "cmake/FloatTetwildDependencies.cmake",

@@ -303,7 +303,7 @@ class SvgDecalTests(unittest.TestCase):
 
 
 class DecalPackagingTests(unittest.TestCase):
-    def test_resvg_is_pinned_and_explicitly_bundled(self) -> None:
+    def test_resvg_is_pinned_for_source_and_excluded_from_frozen_runtime(self) -> None:
         requirements = (HERE / "requirements-build.txt").read_text(encoding="utf-8")
         spec = (HERE / "TripoSpectrumMapper_fixed.spec").read_text(encoding="utf-8")
         self.assertIn("resvg==0.2.0", requirements)
@@ -320,19 +320,19 @@ class DecalPackagingTests(unittest.TestCase):
         self.assertIn("def is_private_install_origin_metadata(entry):", spec)
         self.assertIn('.endswith("/direct_url.json")', spec)
         self.assertIn("and not is_private_install_origin_metadata(entry)", spec)
-        for expected in (
+        self.assertIn('"spectrum_mapper.decal_image"', spec)
+        self.assertIn('excludes=["resvg", "resvg._resvg"]', spec)
+        self.assertIn("LICENSE_RESVG_APACHE_2.0.txt", spec)
+        for excluded_runtime_input in (
             'RESVG_DIST_INFO = "resvg-0.2.0.dist-info"',
             'f"{RESVG_DIST_INFO}/METADATA"',
             'f"{RESVG_DIST_INFO}/WHEEL"',
-            '"spectrum_mapper.decal_image"',
-            '"resvg._resvg"',
             "resvg.cyclonedx.json",
             "LICENSE_RESVG_PY.txt",
             "LICENSE_RESVG_MIT.txt",
-            "LICENSE_RESVG_APACHE_2.0.txt",
         ):
-            with self.subTest(expected=expected):
-                self.assertIn(expected, spec)
+            with self.subTest(excluded_runtime_input=excluded_runtime_input):
+                self.assertNotIn(excluded_runtime_input, spec)
 
     def test_privacy_safe_metadata_subset_still_exposes_version(self) -> None:
         installed = importlib.metadata.distribution("resvg")
@@ -359,7 +359,7 @@ class DecalPackagingTests(unittest.TestCase):
             self.assertEqual(matches[0].version, "0.2.0")
             self.assertFalse((root / dist_info / "direct_url.json").exists())
 
-    def test_resvg_attribution_and_license_files_are_public(self) -> None:
+    def test_resvg_source_attribution_is_public_but_runtime_is_excluded(self) -> None:
         notice = (PROJECT / "licenses" / "THIRD_PARTY_LICENSES.txt").read_text(
             encoding="utf-8"
         )
@@ -370,12 +370,14 @@ class DecalPackagingTests(unittest.TestCase):
         ):
             with self.subTest(filename=filename):
                 self.assertTrue((PROJECT / "licenses" / filename).is_file())
-                self.assertIn(filename, notice)
         self.assertIn("resvg-py 0.2.0", notice)
-        self.assertIn("resvg/usvg 0.47.0", notice)
-        self.assertIn("80-component", notice)
-        self.assertIn("direct_url.json", notice)
-        self.assertIn("intentionally omitted", notice)
+        self.assertIn("resvg/usvg Rust dependency closure", notice)
+        self.assertIn("Source-only development dependency", notice)
+        self.assertIn(
+            "intentionally excluded from the public r32 frozen application",
+            notice,
+        )
+        self.assertNotIn("80-component", notice)
 
     def test_security_limits_are_stric_release_constants(self) -> None:
         self.assertEqual(DEFAULT_DECAL_LIMITS.max_file_bytes, 8 * 1024 * 1024)

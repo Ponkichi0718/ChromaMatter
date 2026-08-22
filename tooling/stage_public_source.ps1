@@ -100,6 +100,11 @@ $requiredToolingFiles = @(
     "tooling/generate_public_icon.py",
     "tooling/audit_public_tree.ps1",
     "tooling/generate_binary_compliance_inventory.py",
+    "tooling/generate_pytetwild_rebuild_lock.py",
+    "tooling/pytetwild_static_closure_contract.py",
+    "tooling/pymeshlab_audited_native_identities.json",
+    "tooling/qt_static_components.json",
+    "tooling/pytetwild_static_closure.json",
     "tooling/update_budget_filament_library.py",
     "tooling/corresponding_source_components.json",
     "tooling/BUILD_PYTETWILD_WINDOWS.ps1",
@@ -118,6 +123,7 @@ $optionalToolingFiles = @(
 $requiredDirectories = @(
     "licenses",
     "samples",
+    "source/fixed_app/licenses",
     "source/fixed_app/spectrum_mapper",
     "source/fixed_app/resources/filament_db"
 )
@@ -336,6 +342,7 @@ foreach ($relative in $optionalFixedAppFiles) {
     }
 }
 Copy-PublicDirectory -RelativePath "source/fixed_app/resources/filament_db"
+Copy-PublicDirectory -RelativePath "source/fixed_app/licenses"
 foreach ($relative in $requiredPublicBinaryFiles) {
     Copy-PublicFile -RelativePath $relative
 }

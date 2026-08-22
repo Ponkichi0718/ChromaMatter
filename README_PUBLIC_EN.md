@@ -31,7 +31,7 @@ ChromaMatter is an independent Windows desktop project. It is not an official or
 
 - **Source code:** Public
 - **Windows binary:** Not yet public
-- **Reason:** [Third-party binary redistribution audit](licenses/THIRD_PARTY_LICENSES.txt) in progress
+- **Reason:** Component-specific licence/static-link coverage is implemented; the final release-engineering gates below are pending
 - **Public test model:** In preparation
 - **Physical U1 validation:** In progress
 - **Version:** `0.8beta`
@@ -163,9 +163,9 @@ project-folder/
 
 ## Validation and release gates
 
-The latest working-tree regression, including multipart GLB and public-package gates, passed on Python `3.13.14`: `Ran 1179 tests in 150.952s: OK (skipped=1)`, 1178 passed / 1 optional skip / 0 failed. The focused binary-compliance, corresponding-source, and release-tooling set passed 80 tests, and the release-identity set passed 10 tests.
+The current working tree passed the full Python `3.13.14` regression after the Qt/PyMeshLab identity manifests, PyTetWild static-closure contract, resvg frozen-runtime exclusion, and added fail-closed package tests: `Ran 1234 tests: OK (skipped=2)`, 1232 passed / 2 optional skips / 0 failed. The focused release/compliance set passed 178 tests with 1 optional skip. A fresh public-source stage passed at 395 files / 394 manifest records with privacy audit and independent SHA-256 parity.
 
-The old r32 EXE/ZIP does not match this source and will not be published. A new Windows ZIP will be released only after the controlled PyTetWild rebuild, component-specific licence and static-link audits, a `release-approved` complete corresponding-source bundle, clean build, packaged self-test, Japanese/English UI smoke, and fresh-extract/manifest/privacy/checksum audits all pass. `binary publication eligibility` is currently **false**.
+Component-specific licence texts and static-linked component coverage are implemented and covered by fail-closed inventory tests. The old r32 EXE/ZIP does not match this source and will not be published. A new Windows ZIP requires: controlled PyTetWild rebuild evidence; the application lock updated to that wheel; a `release-approved` complete corresponding-source bundle; a current clean binary build with packaged self-test and Japanese/English UI smoke; fresh-extract manifest/privacy/archive/checksum parity; and immutable HTTPS Release URLs with all assets published simultaneously. `binary publication eligibility` is currently **false**.
 
 The following r31 and Creator Studio r30 results are **previous evidence** for their own revisions and do not validate r32.
 
@@ -183,7 +183,7 @@ Icon publication-rights status: `passed-by-creator-declaration` (2026-08-20).
 - software stage: 1,340 files / 1,339 manifest records
 - source and software ZIP structure, manifest equality, path safety, CRC, and privacy: passed
 
-The r31, r30, and r27 evidence above applies only to those artifacts and does not validate ChromaMatter r32. The r29, r28, and r26 results are likewise **previous evidence**. Icon publication rights and owner legal acceptance for that declared asset scope are recorded. Physical XP-PEN and print validation remain pending limitations. `binary publication eligibility` stays false until the third-party binary redistribution audit for PyTetWild/fTetWild, TetGen, PyMeshLab, Qt, GEOS, and the exact packaged dependency set is complete; `Innovation Fund submission ready` also stays false until the rights-cleared sample and Orca/U1 evidence exist.
+The r31, r30, and r27 evidence above applies only to those artifacts and does not validate ChromaMatter r32. The r29, r28, and r26 results are likewise **previous evidence**. Icon publication rights and owner legal acceptance for that declared asset scope are recorded. Physical XP-PEN and print validation remain pending limitations. `binary publication eligibility` stays false until every final release-engineering gate listed above passes; `Innovation Fund submission ready` also stays false until the rights-cleared sample and Orca/U1 evidence exist.
 
 See [CURRENT_STATE.json](CURRENT_STATE.json) and [PROVENANCE.md](PROVENANCE.md) for the canonical boundary.
 

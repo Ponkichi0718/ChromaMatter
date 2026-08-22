@@ -1,8 +1,11 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 from pathlib import Path
+from pathlib import PurePosixPath
+import hashlib
 import importlib.metadata
 import importlib.util
+import json
 import sys
 
 from PyInstaller.utils.hooks import collect_submodules, copy_metadata
@@ -23,6 +26,15 @@ if not CPYTHON_LICENSE.is_file():
         f"Required CPython runtime license is missing: {CPYTHON_LICENSE}"
     )
 CPYTHON_LICENSE_DATAS = [(str(CPYTHON_LICENSE), "licenses/cpython")]
+
+TCL_TK_LICENSE = (
+    Path(sys.base_prefix) / "tcl" / "tk8.6" / "license.terms"
+).resolve()
+if not TCL_TK_LICENSE.is_file():
+    raise RuntimeError(
+        f"Required Tcl/Tk runtime license is missing: {TCL_TK_LICENSE}"
+    )
+TCL_TK_LICENSE_DATAS = [(str(TCL_TK_LICENSE), "licenses/tcl-tk")]
 
 
 def package_directory(package_name):
@@ -45,6 +57,73 @@ def distribution_file(distribution_name, relative_path):
             f"Required distribution file is missing: {distribution_name}/{relative_path}"
         )
     return path
+
+
+def audited_manifest_license_datas(manifest_name, *, path_is_key=False):
+    """Collect only byte-verified license assets declared by one manifest."""
+
+    manifest_path = (PROJECT / "tooling" / manifest_name).resolve()
+    if not manifest_path.is_file():
+        raise RuntimeError(f"Required license manifest is missing: {manifest_path}")
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise RuntimeError(f"Cannot read license manifest: {manifest_path}") from exc
+    if manifest.get("schema_version") != 1:
+        raise RuntimeError(f"Unsupported license manifest schema: {manifest_path}")
+    records = manifest.get("license_assets")
+    if not isinstance(records, dict) or not records:
+        raise RuntimeError(f"License manifest has no assets: {manifest_path}")
+
+    source_root = (PROJECT / "source" / "fixed_app" / "licenses").resolve()
+    datas = []
+    seen = set()
+    for record_key, record in sorted(records.items()):
+        if not isinstance(record, dict):
+            raise RuntimeError(f"Invalid license manifest record: {record_key}")
+        source_relative = record_key if path_is_key else record.get("path")
+        if not isinstance(source_relative, str):
+            raise RuntimeError(f"License manifest path is missing: {record_key}")
+        pure = PurePosixPath(source_relative)
+        if (
+            not source_relative.startswith("source/fixed_app/licenses/")
+            or "\\" in source_relative
+            or pure.is_absolute()
+            or any(part in {"", ".", ".."} for part in pure.parts)
+            or source_relative in seen
+        ):
+            raise RuntimeError(f"Unsafe or duplicate license asset: {source_relative}")
+        seen.add(source_relative)
+        source = (PROJECT / Path(*pure.parts)).resolve()
+        try:
+            relative_to_license_root = source.relative_to(source_root)
+        except ValueError as exc:
+            raise RuntimeError(f"License asset escaped its root: {source}") from exc
+        if not source.is_file():
+            raise RuntimeError(f"Required license asset is missing: {source}")
+        expected_size = record.get("size", record.get("bytes"))
+        expected_sha256 = record.get("sha256")
+        actual_sha256 = hashlib.sha256(source.read_bytes()).hexdigest()
+        if (
+            not isinstance(expected_size, int)
+            or expected_size < 0
+            or source.stat().st_size != expected_size
+            or not isinstance(expected_sha256, str)
+            or len(expected_sha256) != 64
+            or actual_sha256 != expected_sha256
+        ):
+            raise RuntimeError(f"License asset identity mismatch: {source_relative}")
+        destination = (PurePosixPath("licenses") / PurePosixPath(
+            relative_to_license_root.as_posix()
+        ).parent).as_posix()
+        datas.append((str(source), destination))
+    return datas
+
+
+AUDITED_LICENSE_DATAS = (
+    audited_manifest_license_datas("qt_static_components.json", path_is_key=True)
+    + audited_manifest_license_datas("pytetwild_static_closure.json")
+)
 
 
 # PyTetWild's public package imports optional PyVista.  The application instead
@@ -102,6 +181,11 @@ VOLUME_DATAS = (
 # do not consistently retain dist-info metadata, especially for PyMeshLab and
 # Shapely, so release builds copy these files to a stable visible location.
 WHEEL_LICENSE_FILES = (
+    (
+        "numpy",
+        "numpy-2.5.1.dist-info/licenses/LICENSE.txt",
+        "licenses/numpy",
+    ),
     (
         "pymeshlab",
         "pymeshlab-2025.7.post1.dist-info/licenses/LICENSE",
@@ -171,58 +255,6 @@ WHEEL_LICENSE_DATAS = [
     for distribution, relative, destination in WHEEL_LICENSE_FILES
 ]
 
-# The decal SVG loader uses the pinned resvg-py Windows wheel.  The extension
-# module itself is collected through the explicit hidden import below.  Keep
-# importlib.metadata.version("resvg") functional and expose the wheel's MIT
-# text plus its CycloneDX list of compiled Rust crates to end users.  Do not
-# use a whole-distribution metadata copy here: a wheel installed from a local
-# probe path can carry direct_url.json containing that workstation's absolute
-# path.
-# Instead copy the privacy-safe metadata subset required at runtime.
-RESVG_DIST_INFO = "resvg-0.2.0.dist-info"
-RESVG_DATAS = [
-    (
-        str(distribution_file("resvg", f"{RESVG_DIST_INFO}/METADATA")),
-        RESVG_DIST_INFO,
-    ),
-    (
-        str(distribution_file("resvg", f"{RESVG_DIST_INFO}/WHEEL")),
-        RESVG_DIST_INFO,
-    ),
-    (
-        str(
-            distribution_file(
-                "resvg", f"{RESVG_DIST_INFO}/licenses/LICENSE.txt"
-            )
-        ),
-        f"{RESVG_DIST_INFO}/licenses",
-    ),
-    (
-        str(
-            distribution_file(
-                "resvg", f"{RESVG_DIST_INFO}/sboms/resvg.cyclonedx.json"
-            )
-        ),
-        f"{RESVG_DIST_INFO}/sboms",
-    ),
-    (
-        str(
-            distribution_file(
-                "resvg", f"{RESVG_DIST_INFO}/licenses/LICENSE.txt"
-            )
-        ),
-        "licenses/resvg-py",
-    ),
-    (
-        str(
-            distribution_file(
-                "resvg", f"{RESVG_DIST_INFO}/sboms/resvg.cyclonedx.json"
-            )
-        ),
-        "licenses/resvg-py",
-    ),
-]
-
 APP_LICENSE_DATAS = [
     (str(PROJECT / "licenses" / filename), "licenses")
     for filename in (
@@ -231,6 +263,37 @@ APP_LICENSE_DATAS = [
         "BUILD_ENVIRONMENT_EN.md",
         "BUILD_ENVIRONMENT_JA.md",
         "LICENSE_APP.txt",
+        "LICENSE_CPYTHON_BZIP2.txt",
+        "LICENSE_CPYTHON_EXPAT.txt",
+        "LICENSE_CPYTHON_LIBMPDEC.txt",
+        "LICENSE_CPYTHON_XZ.txt",
+        "LICENSE_LIB3MF.txt",
+        "LICENSE_LIB3MF_CPP_BASE64.txt",
+        "LICENSE_LIB3MF_FAST_FLOAT.txt",
+        "LICENSE_LIB3MF_LIBZIP.txt",
+        "LICENSE_LIB3MF_ZLIB.txt",
+        "LICENSE_LLVM_3_6_2.txt",
+        "LICENSE_MESA_12_0_RC2.html",
+        "LICENSE_GLEW_2_2_0.txt",
+        "LICENSE_LIBE57FORMAT_3_1_1.md",
+        "LICENSE_LIBSPATIALINDEX_2_1_0.txt",
+        "LICENSE_MUPARSER_2_3_5.txt",
+        "LICENSE_QT_ANGLE.txt",
+        "LICENSE_QT_LGPL_3_0.txt",
+        "LICENSE_U3D.txt",
+        "LICENSE_U3D_IJG_JPEG.txt",
+        "LICENSE_U3D_LIBPNG.txt",
+        "LICENSE_U3D_NICK_BOBIC_QUATERNION.txt",
+        "LICENSE_U3D_WCMATCH.txt",
+        "LICENSE_U3D_ZLIB.txt",
+        "NOTICE_MESA_LLVM.txt",
+        "NOTICE_QT.txt",
+        "NOTICE_SQLITE_PUBLIC_DOMAIN.txt",
+        "NOTICE_U3D_ADDITIONAL.txt",
+        "NOTICE_U3D_FNVHASH.txt",
+        "NOTICE_U3D_GRAPHICS_GEMS_IV.txt",
+        "NOTICE_U3D_SHEWCHUK_PREDICATES.txt",
+        "NOTICE_XERCES_C_3_2_4.txt",
         "GPL-3.0.txt",
         "LGPL-2.1.txt",
         "LGPL-3.0.txt",
@@ -240,8 +303,6 @@ APP_LICENSE_DATAS = [
         "THIRD_PARTY_NOTICES_EN.txt",
         "THIRD_PARTY_NOTICES_JA.txt",
         "THIRD_PARTY_LICENSES.txt",
-        "LICENSE_RESVG_PY.txt",
-        "LICENSE_RESVG_MIT.txt",
         "LICENSE_RESVG_APACHE_2.0.txt",
     )
 ]
@@ -279,9 +340,10 @@ a = Analysis(
     + FILAMENT_DATABASE_DATAS
     + VOLUME_DATAS
     + WHEEL_LICENSE_DATAS
-    + RESVG_DATAS
     + APP_LICENSE_DATAS
-    + CPYTHON_LICENSE_DATAS,
+    + AUDITED_LICENSE_DATAS
+    + CPYTHON_LICENSE_DATAS
+    + TCL_TK_LICENSE_DATAS,
     hiddenimports=[
         "spectrum_mapper",
         "spectrum_mapper.assembly",
@@ -344,8 +406,6 @@ a = Analysis(
         "rtree",
         "moderngl",
         "glcontext",
-        "resvg",
-        "resvg._resvg",
         "PIL.ImageTk",
     ]
     + collect_submodules("scipy._external.array_api_compat.common")
@@ -353,7 +413,10 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[str(APP / "pymeshlab_runtime_hook.py")],
-    excludes=[],
+    # Decal beta has no public r32 entry point.  Keep its source and source-run
+    # tests, but do not ship the unused SVG/Rust renderer in the public frozen
+    # application.  PNG decoding remains available through Pillow.
+    excludes=["resvg", "resvg._resvg"],
     noarchive=False,
     optimize=0,
 )

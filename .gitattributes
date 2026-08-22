@@ -12,7 +12,14 @@ LICENSE -text
 *.ps1 -text
 *.cmd -text
 *.txt -text
+*.html -text
 *.spec -text
+# Vendored third-party notices are hash-pinned byte-for-byte. Some upstream
+# files intentionally retain trailing spaces/CRLF, so exclude them from Git's
+# whitespace-diff checks without rewriting their licensed contents.
+licenses/LICENSE_* -diff
+licenses/NOTICE_* -diff
+source/fixed_app/licenses/** -diff
 *.npz binary
 *.sqlite binary
 *.ico binary

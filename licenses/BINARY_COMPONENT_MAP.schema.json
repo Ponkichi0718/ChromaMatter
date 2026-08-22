@@ -18,15 +18,106 @@
         "content_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
       }
     },
-    "components": { "type": "array", "items": { "type": "object", "required": ["id", "name", "version", "license", "source"] } },
+    "components": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name", "version", "license", "source", "license_assets", "license_asset_sha256"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "name": { "type": "string", "minLength": 1 },
+          "version": { "type": "string", "minLength": 1 },
+          "license": { "type": "string", "minLength": 1 },
+          "source": { "type": "string", "format": "uri" },
+          "purl": { "type": "string", "minLength": 1 },
+          "license_assets": {
+            "type": "array",
+            "items": { "type": "string", "pattern": "^_internal/licenses/(?!.*(?:^|/)\\.\\.(?:/|$))[^\\\\]+$" },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "license_asset_sha256": {
+            "type": "object",
+            "minProperties": 1,
+            "propertyNames": { "pattern": "^_internal/licenses/(?!.*(?:^|/)\\.\\.(?:/|$))[^\\\\]+$" },
+            "additionalProperties": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          }
+        }
+      }
+    },
     "files": { "type": "array", "items": { "type": "object", "required": ["path", "size", "sha256", "file_type", "components", "mapping_basis"] } },
     "validation": {
       "type": "object",
-      "required": ["passed", "file_count", "native_file_count", "mapped_native_file_count", "unmapped_native_files", "reparse_points_not_traversed"],
+      "additionalProperties": false,
+      "required": ["passed", "file_count", "native_file_count", "mapped_native_file_count", "unmapped_native_files", "reparse_points_not_traversed", "missing_audited_native_identities", "mismatched_audited_native_identities", "pytetwild_static_closure_violations", "missing_component_license_assets", "invalid_component_license_assets"],
       "properties": {
         "passed": { "const": true },
+        "file_count": { "type": "integer", "minimum": 1 },
+        "native_file_count": { "type": "integer", "minimum": 1 },
+        "mapped_native_file_count": { "type": "integer", "minimum": 1 },
         "unmapped_native_files": { "type": "array", "maxItems": 0 },
-        "reparse_points_not_traversed": { "type": "array", "maxItems": 0 }
+        "reparse_points_not_traversed": { "type": "array", "maxItems": 0 },
+        "missing_audited_native_identities": {
+          "type": "array",
+          "maxItems": 0,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "expected_size", "expected_sha256", "source_manifest"],
+            "properties": {
+              "path": { "type": "string", "pattern": "^_internal/pymeshlab/[^\\\\]+\\.dll$" },
+              "expected_size": { "type": "integer", "minimum": 1 },
+              "expected_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+              "source_manifest": { "enum": ["tooling/pymeshlab_audited_native_identities.json", "tooling/qt_static_components.json"] }
+            }
+          }
+        },
+        "mismatched_audited_native_identities": {
+          "type": "array",
+          "maxItems": 0,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "expected_path", "expected_size", "actual_size", "expected_sha256", "actual_sha256", "reasons", "source_manifest"],
+            "properties": {
+              "path": { "type": "string", "pattern": "^_internal/pymeshlab/[^\\\\]+\\.dll$" },
+              "expected_path": { "type": "string", "pattern": "^_internal/pymeshlab/[^\\\\]+\\.dll$" },
+              "expected_size": { "type": "integer", "minimum": 1 },
+              "actual_size": { "type": "integer", "minimum": 0 },
+              "expected_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+              "actual_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+              "reasons": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": { "enum": ["path-case-mismatch", "size-mismatch", "sha256-mismatch"] }
+              },
+              "source_manifest": { "enum": ["tooling/pymeshlab_audited_native_identities.json", "tooling/qt_static_components.json"] }
+            }
+          }
+        },
+        "pytetwild_static_closure_violations": {
+          "type": "array",
+          "maxItems": 0,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "application-lock-historical-wheel-forbidden",
+              "application-lock-wheel-identity-mismatch",
+              "historical-wrapper-forbidden",
+              "manifest-release-blocked",
+              "wrapper-missing",
+              "wrapper-path-case-mismatch",
+              "wrapper-sha256-mismatch"
+            ]
+          }
+        },
+        "missing_component_license_assets": { "type": "array", "maxItems": 0 },
+        "invalid_component_license_assets": { "type": "array", "maxItems": 0 }
       }
     }
   }

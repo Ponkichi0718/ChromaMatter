@@ -201,6 +201,17 @@
       "byte_size": 55681831,
       "upstream_md5": "78109504b03157998467c4c69c27ee7e",
       "cmake_path": "src/external/lib3mf.cmake",
+      "required_source_members": [
+        "Libraries/cpp-base64/Source/base64.cpp",
+        "Libraries/cpp-base64/cpp-base64_V2.rc.08.txt",
+        "Libraries/libzip/Source/zip_add.c",
+        "Libraries/libzip/libzip_v1.10.1.txt",
+        "submodules/cpp-base64/LICENSE",
+        "submodules/fast_float/CMakeLists.txt",
+        "submodules/fast_float/LICENSE-MIT",
+        "submodules/fast_float/include/fast_float/fast_float.h",
+        "submodules/libzip/LICENSE"
+      ],
       "provenance": {
         "asset_api_url": "https://api.github.com/repos/3MFConsortium/lib3mf/releases/assets/232808015",
         "asset_created_at": "2025-02-26T17:26:40Z",
@@ -421,6 +432,16 @@
       "byte_size": 16799765,
       "upstream_md5": "28d28c03e39166bc2f756e7f6d769c02",
       "cmake_path": "src/external/u3d.cmake",
+      "required_source_members": [
+        "u3d-1.5.2/Docs/License.txt",
+        "u3d-1.5.2/Docs/LicensesAdditional.txt",
+        "u3d-1.5.2/RTL/Component/Generators/Glyph2D/CIFXQuadEdge.cpp",
+        "u3d-1.5.2/RTL/Dependencies/FNVHash/FNVPlusPlus.h",
+        "u3d-1.5.2/RTL/Dependencies/Predicates/predicates.cpp",
+        "u3d-1.5.2/RTL/Dependencies/WildCards/wcmatch.cpp",
+        "u3d-1.5.2/RTL/Dependencies/WildCards/wcmatch.htm",
+        "u3d-1.5.2/RTL/Kernel/Include/IFXQuaternion.h"
+      ],
       "provenance": {
         "provenance_kind": "github-tag-source-archive",
         "repository_url": "https://github.com/alemuntoni/u3d",

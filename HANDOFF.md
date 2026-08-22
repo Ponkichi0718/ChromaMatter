@@ -9,16 +9,17 @@ Public version: `0.8beta` (do not change without an explicit owner request)
 
 Prepare a redistributable Windows r32 release while retaining TetGen under its
 AGPL route. Keep the ChromaMatter application under `GPL-3.0-or-later`, preserve
-each third-party license, and publish the Windows ZIP only together with the
-a single complete corresponding-source bundle containing both the matching
+each third-party license, and publish the Windows ZIP only together with a
+single complete corresponding-source bundle containing both the matching
 application source and all required third-party source, plus the SBOM,
 component map, notices, relinking instructions, and checksums.
 
-This continuation resumed from GitHub on the home PC. At entry, local `HEAD`,
-the upstream feature branch, and Draft PR #1 all pointed to `10785ff`; the
-worktree was clean and the branch was four commits ahead of `main`. The owner
-authorized updating the feature branch and Draft PR with the current source
-checkpoint. `main`, tags, and public Releases remain untouched.
+This continuation resumed from GitHub on the home PC. The latest pushed source
+checkpoint before the current compliance integration is
+`73f3eaa285cdeb302b704415aacd774ba553310f`; local `HEAD`, the upstream feature
+branch, and Draft PR #1 all point to it. The owner authorized updating the
+feature branch and Draft PR with the current source checkpoint. `main`, tags,
+and public Releases remain untouched.
 
 ## Completed in this session
 
@@ -120,6 +121,12 @@ checkpoint. `main`, tags, and public Releases remain untouched.
 
 ## 2026-08-23 source-publication checkpoint
 
+The 1,179-test and 273/272 public-stage results in this section are the previous
+checkpoint only. They predate the current Qt/PyMeshLab identity manifests,
+PyTetWild static-closure contract, resvg frozen-runtime exclusion, and added
+fail-closed package tests, so they must not be reused as evidence for the
+current bytes.
+
 - The current multipart and release-hardening worktree passed the full Python
   3.13.14 regression: 1,179 tests in 150.952 seconds, 1,178 passed, one optional
   skip, and zero failures.
@@ -135,15 +142,60 @@ checkpoint. `main`, tags, and public Releases remain untouched.
   four short runtime help/privacy/launcher files, licence materials, SBOM,
   component map, source offers, and its manifest. Development handoff and
   publication-planning documents are excluded.
-- Binary publication remains NO-GO. Remaining gates include component-specific
-  Qt/U3D licence assets, static-linked component coverage (including CPython,
-  U3D, lib3mf, and Mesa subcomponents), a controlled PyTetWild rebuild, the
-  final complete corresponding-source bundle, and a current clean build plus
-  fresh-extract smoke/audit.
+- Component-specific licence assets and static-linked component coverage are
+  implemented in the spec, component map/SBOM generator, publication stage,
+  corresponding-source manifest, and fail-closed tests. This includes CPython
+  extension dependencies, Qt/Mesa/LLVM, U3D and lib3mf subcomponents,
+  PyInstaller, and the Embree-carried oneTBB runtime. The next clean binary must
+  still regenerate and validate those outputs.
+- Binary publication remains NO-GO. Remaining gates are controlled PyTetWild
+  rebuild evidence; updating the application lock to that wheel; a
+  `release-approved` complete corresponding-source bundle; a current clean
+  binary build with packaged self-test and Japanese/English UI smoke;
+  fresh-extract manifest/privacy/archive/checksum parity; and immutable HTTPS
+  Release URLs with every required asset published simultaneously.
+
+## 2026-08-23 binary-publication compliance continuation (current)
+
+- Added exact path/case/size/SHA-256 identities for 19 non-Qt PyMeshLab native
+  files and 7 Qt DLLs. The generator and software stage independently reject
+  missing or mismatched audited native identities.
+- Added a reviewed Qt closure manifest covering 50 static components and 51
+  byte-exact licence assets. The PyInstaller spec, component-map/SBOM generator,
+  and software stage all consume it fail closed.
+- Added a PyTetWild static/header closure contract covering 20 components, 29
+  byte-exact licence assets, and 15 source archives. It is intentionally
+  `release_gate.status=blocked`: the historical PyPI wheel/PYD is audit-only,
+  and a controlled rebuilt wheel/PYD plus matching application lock do not yet
+  exist.
+- The component map now records PyTetWild closure validation violations and the
+  SBOM carries the matching validation count. The software stage independently
+  enforces the wrapper identity, sorted 20-component mapping, 29 assets, and
+  blocked release gate whenever a PyTetWild runtime is present. Packages that
+  genuinely do not contain PyTetWild remain stageable.
+- The hidden Decal beta remains in source for development tests, but `resvg`
+  and `resvg._resvg` are deliberately excluded from the public frozen runtime.
+  Source attribution remains public; unused resvg runtime metadata and native
+  code are not packaged.
+- Focused Qt/PyMeshLab/PyTetWild, binary-compliance, corresponding-source,
+  notice, CLI, release-identity, Decal packaging-policy, and software-stage
+  tests pass: 178 tests, 177 passed, one optional skip, zero failures.
+- The full Python 3.13.14 regression passes: 1,234 tests, 1,232 passed, two
+  optional skips, zero failures. The obsolete Decal packaging assertions found
+  on the first run were updated to enforce the intended source-only resvg and
+  frozen-runtime exclusion contract before this final pass.
+- A fresh public-source stage passes at 395 files including the manifest and
+  394 manifest records. Both the staged privacy audit and an independent
+  path/SHA-256 parity check report zero missing, extra, or mismatched files.
+  Source publication eligibility is true for this validated source-only scope;
+  binary publication eligibility remains false.
+- A current generator probe against the old audit-only package failed closed as
+  designed. It reported the historical PyTetWild wheel/application-lock
+  mismatch and blocked closure gate; that old package is not release evidence.
 
 ## Current state
 
-- Entry checkpoint `10785ff197cb6a97c11596db835ce02210849c02` is already on
+- Latest pushed checkpoint `73f3eaa285cdeb302b704415aacd774ba553310f` is already on
   `origin/codex/r32-full-spectrum-workflow` and Draft PR #1. At entry the branch
   was ahead 4 / behind 0 relative to `main` and ahead 0 / behind 0 relative to
   its upstream.
@@ -177,7 +229,7 @@ checkpoint. `main`, tags, and public Releases remain untouched.
 - All prospective native inputs are present and fixed. The remaining local
   toolchain blocker is installation of the already downloaded Visual Studio
   Build Tools/MSVC/Windows SDK payload; its elevation prompt has not yet been
-  accepted. One clearly announced install attempt on 2026-08-22 was cancelled
+  accepted. One clearly announced install attempt on 2026-08-23 was cancelled
   at the Windows elevation prompt; the install path remains absent. Do not
   silently repeat the prompt. No PyTetWild wheel has therefore been built from
   this recipe.
@@ -197,9 +249,10 @@ checkpoint. `main`, tags, and public Releases remain untouched.
    `-OsNetworkIsolationConfirmed` and a new, unused output directory. Preserve
    the repaired wheel, distinct raw wheel, exact eight direct audit logs, build
    recipe, 39-package lock, source patch, and attestation together.
-4. Replace the historical PyTetWild hash in `requirements-build.lock`, then use
-   `BOOTSTRAP_WINDOWS.ps1 -PyTetWildWheel` from a new clone/venv. Preserve the
-   wheel, build lock, hashed build requirements, recipe, and attestation.
+4. Replace the historical PyTetWild hash in the application
+   `requirements-build.lock`, then use `BOOTSTRAP_WINDOWS.ps1 -PyTetWildWheel`
+   from a new clone/venv. Preserve the wheel, application lock, rebuild lock,
+   hashed build requirements, recipe, and attestation.
 5. Stage full corresponding source with the complete MeshLab archive lock and
    every PyTetWild bound evidence input. When passing a verified rebuild lock,
    pass the repaired release wheel with `-PyTetWildWheel`, the distinct
@@ -209,13 +262,18 @@ checkpoint. `main`, tags, and public Releases remain untouched.
    the recipe, hashed requirements, source patch, and application lock to
    byte-match their canonical paths at the exact project commit. Require output
    `COMPONENT_SOURCES.json` status `release-approved`.
-6. Freeze artifact names and source-offer URLs. From a new clean build root run
-   full regression and PyInstaller build, then generate SBOM/component map and
-   stage/fresh-extract the software and source archives.
-7. Run manifest, privacy, CRC, byte-parity, relinking, and packaged JA/EN smoke
-   audits. Backpatch `CURRENT_STATE.json` and public status documents only with
-   those exact new results. Keep `binary_publication_eligible=false` until every
-   gate passes.
+6. Freeze artifact names and immutable HTTPS source-offer URLs. From a new clean
+   build root run the full regression and PyInstaller build, then run
+   `tooling/generate_binary_compliance_inventory.py` with its required
+   `--package-root`, `--sbom-output`, and `--component-map-output` arguments.
+7. Stage and fresh-extract the software and source archives; run packaged
+   self-test, Japanese/English UI smoke, manifest, privacy, CRC, byte-parity,
+   relinking, and checksum audits.
+8. Publish the Windows ZIP, complete corresponding source, SBOM, component map,
+   and detached checksum simultaneously at the exact immutable HTTPS Release
+   URLs already embedded in the source offers. Backpatch `CURRENT_STATE.json`
+   and public status documents only with those exact results. Keep
+   `binary_publication_eligible=false` until every gate passes.
 
 Controlled prospective matrix (inputs acquired and hashed, but not yet a
 completed build): CPython 3.12.10 x64 builder; Visual Studio Build
@@ -277,6 +335,11 @@ Primary continuation paths in the source-publication checkpoint:
 - `tooling/patches/pytetwild-0.3.0-optional-pyvista.patch`
 - `tooling/meshlab_windows_external_archives.lock.json`
 - `tooling/pytetwild_rebuild_lock.template.json`
+- `tooling/generate_pytetwild_rebuild_lock.py`
+- `tooling/pymeshlab_audited_native_identities.json`
+- `tooling/qt_static_components.json`
+- `tooling/pytetwild_static_closure.json`
+- `tooling/pytetwild_static_closure_contract.py`
 - `tooling/stage_corresponding_source.py`
 - `tooling/stage_corresponding_source.ps1`
 - `tooling/stage_public_source.ps1`
@@ -410,6 +473,28 @@ Full-resolution multipart continuation on exact Python 3.13.14 (2026-08-22):
 - Snapmaker Orca project-open/slice-preview and physical-print confirmation are
   still pending.
 
+Current compliance-integration validation on exact Python 3.13.14
+(2026-08-23):
+
+- Focused Qt/PyMeshLab/PyTetWild, binary inventory, corresponding-source,
+  software-stage, notices, release identity, CLI, and Decal packaging-policy
+  regression: 178 tests, 177 passed, one optional skip, zero failures.
+- Full source regression: 1,234 tests, 1,232 passed, two optional skips, zero
+  failures.
+- Production corresponding-source manifest validation: PASS with intended
+  status `candidate-only-not-release-approved`.
+- Public-source stage: 395 files including `SOURCE_MANIFEST_SHA256.txt`, 394
+  manifest records, privacy audit PASS, independent exact path/SHA-256 parity
+  PASS with zero missing, extra, or mismatched files.
+- PyTetWild-containing old audit-package probes: FAIL-CLOSED as intended; no
+  publication destination/archive was retained and no old package became
+  release evidence.
+- PowerShell parser, nine machine-readable JSON manifests, 189 Python files,
+  `pip check`, and `git diff --check`: PASS. Two byte-preserved upstream Qt
+  `qt_attribution.json` assets contain upstream control characters and are not
+  treated as application JSON; their exact bytes are validated by the Qt
+  manifest/hash tests.
+
 ## Do not do
 
 - Do not commit directly to `main`.
@@ -444,3 +529,5 @@ Keep these outside Git and do not copy them to the public release by default:
 - Subscription receipts, account screenshots, job IDs, and other rights
   evidence containing personal information. Record only a redacted public
   provenance statement when needed.
+- `C:\CMR32PYTETPROBE1\` and any later fail-closed software-stage probe output;
+  these are local audit evidence only and must not be committed or published.

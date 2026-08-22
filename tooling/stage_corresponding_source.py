@@ -54,8 +54,11 @@ EXTERNAL_ARCHIVE_PROVENANCE_KINDS = {
     "meshlab-historical-tag-archive",
 }
 APPLICATION_REQUIREMENTS_LOCK_PATH = "source/fixed_app/requirements-build.lock"
+COMPONENT_MANIFEST_PATH = "tooling/corresponding_source_components.json"
+EXTERNAL_ARCHIVE_LOCK_PATH = "tooling/meshlab_windows_external_archives.lock.json"
 PYTETWILD_BUILD_RECIPE_PATH = "tooling/BUILD_PYTETWILD_WINDOWS.ps1"
 PYTETWILD_BUILD_REQUIREMENTS_PATH = "tooling/requirements-pytetwild-build.lock"
+PYTETWILD_REBUILD_TEMPLATE_PATH = "tooling/pytetwild_rebuild_lock.template.json"
 PYTETWILD_SOURCE_PATCH_PATH = (
     "tooling/patches/pytetwild-0.3.0-optional-pyvista.patch"
 )
@@ -146,14 +149,22 @@ class StageError(RuntimeError):
     """A validation or staging error that must fail the bundle closed."""
 
 
+def _json_load_bytes(payload: bytes, label: str) -> dict:
+    try:
+        value = json.loads(payload.decode("utf-8"))
+    except (UnicodeError, json.JSONDecodeError) as exc:
+        raise StageError(f"Cannot read JSON {label}: {exc}") from exc
+    if not isinstance(value, dict):
+        raise StageError(f"JSON root must be an object: {label}")
+    return value
+
+
 def _json_load(path: Path) -> dict:
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        payload = path.read_bytes()
+    except OSError as exc:
         raise StageError(f"Cannot read JSON {path.name}: {exc}") from exc
-    if not isinstance(value, dict):
-        raise StageError(f"JSON root must be an object: {path.name}")
-    return value
+    return _json_load_bytes(payload, path.name)
 
 
 def _safe_id(value: object, label: str) -> str:
@@ -162,15 +173,27 @@ def _safe_id(value: object, label: str) -> str:
     return value
 
 
-def _safe_relative(value: object, label: str) -> str:
-    if not isinstance(value, str) or not value or "\x00" in value:
+def _safe_relative(
+    value: object,
+    label: str,
+    *,
+    allow_glob_asterisk: bool = False,
+) -> str:
+    if not isinstance(value, str) or not value:
         raise StageError(f"{label} must be a non-empty relative path")
+    if any(unicodedata.category(character) == "Cc" for character in value):
+        raise StageError(f"{label} contains a control character: {value!r}")
+    if unicodedata.normalize("NFC", value) != value:
+        raise StageError(f"{label} is not NFC-normalized: {value!r}")
     if "\\" in value or WINDOWS_DRIVE_RE.match(value) or value.startswith("/"):
         raise StageError(f"{label} is not a normalized POSIX relative path: {value!r}")
     path = PurePosixPath(value)
     if str(path) != value or any(part in ("", ".", "..") for part in path.parts):
         raise StageError(f"{label} is not a normalized POSIX relative path: {value!r}")
     for part in path.parts:
+        forbidden = '<>:"|?' if allow_glob_asterisk else '<>:"|?*'
+        if any(character in forbidden for character in part):
+            raise StageError(f"{label} contains a Windows-unsafe segment: {part!r}")
         if part.endswith((".", " ")):
             raise StageError(f"{label} contains a Windows-unsafe segment: {part!r}")
         stem = part.split(".", 1)[0].casefold()
@@ -306,6 +329,27 @@ def _component_map(manifest: dict) -> dict[str, dict]:
                 raise StageError(
                     f"archive component {component_id} stage_mode must be preserve or extract"
                 )
+            for field in ("required_source_members", "required_source_prefixes"):
+                if field not in component:
+                    continue
+                required = component[field]
+                if not isinstance(required, list) or not required:
+                    raise StageError(
+                        f"archive component {component_id} {field} must be a non-empty array"
+                    )
+                seen_required: set[str] = set()
+                for required_index, value in enumerate(required):
+                    path = _safe_relative(
+                        value,
+                        f"archive component {component_id} {field}[{required_index}]",
+                    )
+                    folded_path = path.casefold()
+                    if folded_path in seen_required:
+                        raise StageError(
+                            f"archive component {component_id} {field} has a "
+                            f"duplicate case-insensitive path: {path}"
+                        )
+                    seen_required.add(folded_path)
         else:
             raise StageError(f"Unsupported component kind for {component_id}: {kind!r}")
         result[component_id] = component
@@ -523,7 +567,11 @@ def validate_component_manifest(manifest: dict) -> dict[str, dict]:
         component_id = rule.get("component")
         if component_id not in components or components[component_id]["kind"] != "git":
             raise StageError(f"Dynamic archive rule {rule_id} has invalid component")
-        _safe_relative(rule.get("source_glob"), f"dynamic rule {rule_id} source_glob")
+        _safe_relative(
+            rule.get("source_glob"),
+            f"dynamic rule {rule_id} source_glob",
+            allow_glob_asterisk=True,
+        )
         _safe_relative(rule.get("destination"), f"dynamic rule {rule_id} destination")
         for field in ("link_variable_suffix", "md5_variable_suffix"):
             if not isinstance(rule.get(field), str) or not rule[field].startswith("_"):
@@ -931,9 +979,10 @@ def _safe_extract_zip(archive: Path, destination: Path, *, strip_components: int
             target.chmod(0o755 if mode & 0o111 else 0o644)
 
 
-def _validate_archive_members(archive: Path) -> None:
+def _validate_archive_members(archive: Path) -> tuple[str, ...]:
     seen: dict[tuple[str, ...], str] = {}
     known_ancestors: set[tuple[str, ...]] = set()
+    file_members: set[str] = set()
     count = 0
     total = 0
     if zipfile.is_zipfile(archive):
@@ -952,10 +1001,12 @@ def _validate_archive_members(archive: Path) -> None:
                     member_kind,
                     raw_name,
                 )
+                if member_kind == "file":
+                    file_members.add("/".join(parts))
                 total += member.file_size
                 if total > MAX_ARCHIVE_UNCOMPRESSED_BYTES:
                     raise StageError("Archive expands beyond the safety limit")
-        return
+        return tuple(sorted(file_members))
     if tarfile.is_tarfile(archive):
         with tarfile.open(archive, mode="r:*") as package:
             for member in package:
@@ -982,11 +1033,61 @@ def _validate_archive_members(archive: Path) -> None:
                     member_kind,
                     member.name,
                 )
+                if member_kind == "file":
+                    file_members.add("/".join(parts))
                 total += member.size
                 if total > MAX_ARCHIVE_UNCOMPRESSED_BYTES:
                     raise StageError("Archive expands beyond the safety limit")
-        return
+        return tuple(sorted(file_members))
     raise StageError(f"Unsupported or damaged source archive: {archive.name}")
+
+
+def _verify_required_source_archive_coverage(
+    archive: Path,
+    component: dict,
+    *,
+    validated_file_members: tuple[str, ...] | None = None,
+) -> dict | None:
+    """Verify exact source members and populated source-tree prefixes."""
+
+    required_members = component.get("required_source_members", [])
+    required_prefixes = component.get("required_source_prefixes", [])
+    if not required_members and not required_prefixes:
+        return None
+
+    file_members = (
+        validated_file_members
+        if validated_file_members is not None
+        else _validate_archive_members(archive)
+    )
+    file_member_set = set(file_members)
+    missing_members = [
+        path for path in required_members if path not in file_member_set
+    ]
+    if missing_members:
+        raise StageError(
+            f"Source archive {component['id']} lacks required source members: "
+            + ", ".join(missing_members)
+        )
+
+    prefix_counts: list[dict[str, object]] = []
+    missing_prefixes: list[str] = []
+    for prefix in required_prefixes:
+        marker = f"{prefix}/"
+        count = sum(member.startswith(marker) for member in file_members)
+        if count == 0:
+            missing_prefixes.append(prefix)
+        prefix_counts.append({"prefix": prefix, "file_count": count})
+    if missing_prefixes:
+        raise StageError(
+            f"Source archive {component['id']} lacks files under required source "
+            f"prefixes: " + ", ".join(missing_prefixes)
+        )
+
+    return {
+        "required_source_members": list(required_members),
+        "required_source_prefixes": prefix_counts,
+    }
 
 
 def _hash_file(path: Path, algorithm: str = "sha256") -> str:
@@ -1919,16 +2020,58 @@ def _verify_declared_nonexecuted_archive_member(path: Path, entry: dict) -> None
         ) from exc
 
 
+def _verify_required_source_archive_members(path: Path, entry: dict) -> None:
+    required = entry.get("required_source_members", [])
+    if not required:
+        return
+    try:
+        if zipfile.is_zipfile(path):
+            with zipfile.ZipFile(path, "r") as package:
+                present = {
+                    member.filename
+                    for member in package.infolist()
+                    if not member.is_dir()
+                }
+        elif tarfile.is_tarfile(path):
+            with tarfile.open(path, mode="r:*") as package:
+                present = {
+                    member.name
+                    for member in package
+                    if member.isfile()
+                }
+        else:
+            raise StageError(
+                f"Required-source member lock targets an unsupported archive: {path.name}"
+            )
+    except StageError:
+        raise
+    except (OSError, RuntimeError, tarfile.TarError, zipfile.BadZipFile) as exc:
+        raise StageError(
+            f"Cannot verify required source members in {path.name}: {exc}"
+        ) from exc
+    missing = sorted(set(required) - present)
+    if missing:
+        raise StageError(
+            f"External source archive {entry['variable']} lacks required source members: "
+            f"{missing}"
+        )
+
+
 def _load_external_lock(
     path: Path | None,
     expected_commit: str,
     *,
     require_release_provenance: bool = False,
     expected_exclusions: dict[str, str] | None = None,
+    payload: bytes | None = None,
 ) -> dict[str, dict]:
-    if path is None:
+    if path is None and payload is None:
         return {}
-    lock = _json_load(path)
+    lock = (
+        _json_load_bytes(payload, path.name if path is not None else "external archive lock")
+        if payload is not None
+        else _json_load(path)
+    )
     schema_version = lock.get("schema_version")
     if schema_version not in (1, 2) or lock.get("meshlab_commit") != expected_commit:
         raise StageError("External archive lock schema or MeshLab commit does not match")
@@ -2008,7 +2151,7 @@ def _load_external_lock(
                 "cmake_path",
                 "provenance",
             }
-            allowed = required | {"fixture_file"}
+            allowed = required | {"fixture_file", "required_source_members"}
             actual = set(entry)
             if not required.issubset(actual) or not actual.issubset(allowed):
                 raise StageError(
@@ -2027,6 +2170,23 @@ def _load_external_lock(
                 raise StageError(f"External lock {variable} has an invalid CMake source path")
             if byte_size is None:
                 raise StageError(f"External lock {variable} v2 requires byte_size")
+            required_source_members = entry.get("required_source_members", [])
+            if not isinstance(required_source_members, list):
+                raise StageError(
+                    f"External lock {variable} required_source_members must be an array"
+                )
+            seen_required_source_members: set[str] = set()
+            for member in required_source_members:
+                canonical = _safe_relative(
+                    member,
+                    f"external lock {variable} required source member",
+                )
+                folded = canonical.casefold()
+                if folded in seen_required_source_members:
+                    raise StageError(
+                        f"External lock {variable} repeats a required source member"
+                    )
+                seen_required_source_members.add(folded)
             _validate_external_lock_v2_provenance(variable, entry, provenance)
         fixture_file = entry.get("fixture_file")
         if fixture_file is not None:
@@ -2196,11 +2356,15 @@ def _verify_pytetwild_attestation_binding(
         attestation_payload = path.read_bytes()
     except OSError as exc:
         raise StageError(f"Cannot read PyTetWild build attestation: {exc}") from exc
+    if hashlib.sha256(attestation_payload).hexdigest() != bound_evidence[
+        "attestation"
+    ]["sha256"]:
+        raise StageError("PyTetWild build attestation changed during verification")
     _reject_private_absolute_paths(
         attestation_payload,
         "PyTetWild build attestation",
     )
-    attestation = _json_load(path)
+    attestation = _json_load_bytes(attestation_payload, path.name)
     _require_exact_keys(
         attestation,
         {
@@ -2463,6 +2627,105 @@ def _verify_project_file_binding(
         )
 
 
+def _verify_release_input_project_binding(
+    supplied_path: Path,
+    project_repository: Path,
+    project_commit: str,
+    repository_relative_path: str,
+    label: str,
+) -> dict[str, object]:
+    if not supplied_path.is_file() or _is_link_like(supplied_path):
+        raise StageError(f"{label} is missing or linked")
+    committed = _git_file_at_exact_commit(
+        project_repository,
+        project_commit,
+        repository_relative_path,
+    )
+    try:
+        supplied = supplied_path.read_bytes()
+    except OSError as exc:
+        raise StageError(f"Cannot read {label}: {exc}") from exc
+    if supplied != committed:
+        raise StageError(f"{label} does not byte-match the exact project commit")
+    return {
+        "payload": committed,
+        "sha256": hashlib.sha256(committed).hexdigest(),
+    }
+
+
+def _verify_release_input_project_bindings(
+    manifest_path: Path,
+    project_repository: Path,
+    project_commit: str,
+    *,
+    external_lock_argument: str | os.PathLike[str] | None = None,
+    bind_external_lock: bool = True,
+) -> tuple[dict, Path | None, dict[str, dict[str, object]]]:
+    """Snapshot mutable release-control inputs from one exact project commit."""
+
+    evidence = {}
+    evidence["component_manifest"] = _verify_release_input_project_binding(
+        manifest_path,
+        project_repository,
+        project_commit,
+        COMPONENT_MANIFEST_PATH,
+        "Component manifest",
+    )
+    manifest = _json_load_bytes(
+        evidence["component_manifest"]["payload"],
+        manifest_path.name,
+    )
+
+    policy = manifest.get("pytetwild_rebuild_policy")
+    if policy is not None:
+        relative_template = _safe_relative(
+            policy.get("template"),
+            "pytetwild_rebuild_policy.template",
+        )
+        lexical_template = manifest_path.parent.joinpath(
+            *PurePosixPath(relative_template).parts
+        )
+        if _is_link_like(lexical_template):
+            raise StageError("PyTetWild rebuild template is missing or linked")
+        template_path = lexical_template.resolve()
+        if not _is_relative_to(template_path, manifest_path.parent.resolve()):
+            raise StageError("PyTetWild rebuild template escaped the manifest directory")
+        evidence["pytetwild_rebuild_template"] = _verify_release_input_project_binding(
+            template_path,
+            project_repository,
+            project_commit,
+            PYTETWILD_REBUILD_TEMPLATE_PATH,
+            "PyTetWild rebuild template",
+        )
+
+    external_lock_path = None
+    if bind_external_lock and external_lock_argument:
+        lexical_external_lock = Path(
+            os.path.abspath(os.fspath(external_lock_argument))
+        )
+        if not lexical_external_lock.is_file() or _is_link_like(lexical_external_lock):
+            raise StageError("External archive lock is missing or linked")
+        external_lock_path = lexical_external_lock.resolve()
+    elif bind_external_lock and manifest.get("default_external_archive_lock"):
+        lexical_external_lock = manifest_path.parent.joinpath(
+            *PurePosixPath(manifest["default_external_archive_lock"]).parts
+        )
+        if not lexical_external_lock.is_file() or _is_link_like(lexical_external_lock):
+            raise StageError("External archive lock is missing or linked")
+        external_lock_path = lexical_external_lock.resolve()
+        if not _is_relative_to(external_lock_path, manifest_path.parent.resolve()):
+            raise StageError("Default external archive lock escaped the manifest directory")
+    if external_lock_path is not None:
+        evidence["external_archive_lock"] = _verify_release_input_project_binding(
+            external_lock_path,
+            project_repository,
+            project_commit,
+            EXTERNAL_ARCHIVE_LOCK_PATH,
+            "External archive lock",
+        )
+    return manifest, external_lock_path, evidence
+
+
 def _hashed_python_requirements(
     path: Path,
     *,
@@ -2702,8 +2965,10 @@ def _verify_pytetwild_wheel(
             raise StageError("PyTetWild wheel lacks its repaired MPIR runtime DLL")
 
 
-def _validate_blocked_rebuild_template(path: Path, expected_commit: str) -> None:
-    template = _json_load(path)
+def _validate_blocked_rebuild_template_data(
+    template: dict,
+    expected_commit: str,
+) -> None:
     if (
         template.get("schema_version") != 1
         or template.get("lock_status") != "blocked-template-do-not-use"
@@ -2720,6 +2985,10 @@ def _validate_blocked_rebuild_template(path: Path, expected_commit: str) -> None
         raise StageError("Blocked PyTetWild rebuild template must not claim a result wheel")
 
 
+def _validate_blocked_rebuild_template(path: Path, expected_commit: str) -> None:
+    _validate_blocked_rebuild_template_data(_json_load(path), expected_commit)
+
+
 def _prepare_pytetwild_rebuild(
     manifest: dict,
     manifest_path: Path,
@@ -2727,7 +2996,8 @@ def _prepare_pytetwild_rebuild(
     *,
     project_repository: Path,
     project_commit: str,
-) -> tuple[dict | None, dict | None, list[tuple[Path, str]]]:
+    rebuild_template_payload: bytes | None = None,
+) -> tuple[dict | None, dict | None, list[tuple[Path, str, str]]]:
     policy = manifest.get("pytetwild_rebuild_policy")
     if policy is None:
         return None, None, []
@@ -2741,7 +3011,13 @@ def _prepare_pytetwild_rebuild(
         raise StageError("PyTetWild rebuild template escaped the manifest directory")
     if not template_path.is_file() or template_path.is_symlink():
         raise StageError("PyTetWild rebuild template is missing or linked")
-    _validate_blocked_rebuild_template(template_path, expected["commit"])
+    if rebuild_template_payload is None:
+        _validate_blocked_rebuild_template(template_path, expected["commit"])
+    else:
+        _validate_blocked_rebuild_template_data(
+            _json_load_bytes(rebuild_template_payload, template_path.name),
+            expected["commit"],
+        )
 
     lock_argument = getattr(args, "pytetwild_rebuild_lock", None)
     if not lock_argument:
@@ -2774,7 +3050,12 @@ def _prepare_pytetwild_rebuild(
     lock_path = Path(os.path.abspath(os.fspath(lock_argument)))
     if not lock_path.is_file() or _is_link_like(lock_path):
         raise StageError("PyTetWild rebuild lock is missing or linked")
-    lock = _json_load(lock_path)
+    try:
+        lock_payload = lock_path.read_bytes()
+    except OSError as exc:
+        raise StageError(f"Cannot read PyTetWild rebuild lock: {exc}") from exc
+    lock_sha256 = hashlib.sha256(lock_payload).hexdigest()
+    lock = _json_load_bytes(lock_payload, lock_path.name)
     expected_top = {
         "schema_version",
         "lock_status",
@@ -3011,7 +3292,7 @@ def _prepare_pytetwild_rebuild(
     evidence = {
         "id": policy["known_gap_id"],
         "resolution": "verified-controlled-rebuild",
-        "rebuild_lock_sha256": _hash_file(lock_path),
+        "rebuild_lock_sha256": lock_sha256,
         "historical_wheel": lock["historical_wheel"],
         "wheel": wheel_evidence,
         "raw_wheel": raw_wheel_evidence,
@@ -3024,34 +3305,50 @@ def _prepare_pytetwild_rebuild(
         "bound_evidence": bound_evidence,
         "audit_logs": audit_log_evidence,
     }
+    audit_log_hashes = {
+        item["filename"]: item["sha256"] for item in audit_log_evidence.values()
+    }
     files = [
-        (lock_path, "build-evidence/pytetwild/pytetwild_rebuild.lock.json"),
+        (
+            lock_path,
+            "build-evidence/pytetwild/pytetwild_rebuild.lock.json",
+            lock_sha256,
+        ),
         (
             raw_wheel_path,
             f"build-evidence/pytetwild/raw-wheel/{raw_wheel_evidence['filename']}",
+            raw_wheel_evidence["sha256"],
         ),
         (
             wheel_path,
             f"build-evidence/pytetwild/repaired-wheel/{wheel_evidence['filename']}",
+            wheel_evidence["sha256"],
         ),
         (
             bound_inputs["build_recipe"],
             f"build-evidence/pytetwild/{bound_evidence['build_recipe']['filename']}",
+            bound_evidence["build_recipe"]["sha256"],
         ),
         (
             bound_inputs["build_requirements_lock"],
             "build-evidence/pytetwild/"
             f"{bound_evidence['build_requirements_lock']['filename']}",
+            bound_evidence["build_requirements_lock"]["sha256"],
         ),
         (
             bound_inputs["source_patch"],
             f"build-evidence/pytetwild/{bound_evidence['source_patch']['filename']}",
+            bound_evidence["source_patch"]["sha256"],
         ),
         (
             bound_inputs["attestation"],
             f"build-evidence/pytetwild/{bound_evidence['attestation']['filename']}",
+            bound_evidence["attestation"]["sha256"],
         ),
-        *audit_log_files,
+        *[
+            (source, relative, audit_log_hashes[source.name])
+            for source, relative in audit_log_files
+        ],
     ]
     return component, evidence, files
 
@@ -3331,6 +3628,8 @@ class _Stager:
         project_commit: str,
         *,
         external_lock_path: Path | None,
+        external_lock_payload: bytes | None,
+        external_lock_sha256: str | None,
         offline: bool,
         fixture_root: Path | None,
     ) -> None:
@@ -3341,6 +3640,8 @@ class _Stager:
         self.project_repository = project_repository
         self.project_commit = project_commit
         self.external_lock_path = external_lock_path
+        self.external_lock_payload = external_lock_payload
+        self.external_lock_sha256 = external_lock_sha256
         self.offline = offline
         self.fixture_root = fixture_root
         self.records: list[dict] = []
@@ -3490,8 +3791,18 @@ class _Stager:
             offline=self.offline,
             fixture_file=fixture_file,
         )
-        if component.get("validate_archive_members", False):
-            _validate_archive_members(cached)
+        validated_file_members: tuple[str, ...] | None = None
+        if (
+            component.get("validate_archive_members", False)
+            or component.get("required_source_members")
+            or component.get("required_source_prefixes")
+        ):
+            validated_file_members = _validate_archive_members(cached)
+        source_coverage = _verify_required_source_archive_coverage(
+            cached,
+            component,
+            validated_file_members=validated_file_members,
+        )
         destination = self.stage_root.joinpath(*PurePosixPath(component["destination"]).parts)
         if destination.exists():
             raise StageError(f"Refusing to overwrite staged archive: {component_id}")
@@ -3502,19 +3813,20 @@ class _Stager:
             _safe_extract_zip(cached, destination) if zipfile.is_zipfile(cached) else _safe_extract_tar(
                 cached, destination
             )
-        self.records.append(
-            {
-                "destination": component["destination"],
-                "display_name": component.get("display_name", component_id),
-                "id": component_id,
-                "kind": "source-archive",
-                "selected_url": selected_url,
-                "sha256": actual_sha256,
-                "source_urls": component["urls"],
-                "stage_mode": component["stage_mode"],
-                "version": component.get("version"),
-            }
-        )
+        record = {
+            "destination": component["destination"],
+            "display_name": component.get("display_name", component_id),
+            "id": component_id,
+            "kind": "source-archive",
+            "selected_url": selected_url,
+            "sha256": actual_sha256,
+            "source_urls": component["urls"],
+            "stage_mode": component["stage_mode"],
+            "version": component.get("version"),
+        }
+        if source_coverage is not None:
+            record["verified_source_archive_coverage"] = source_coverage
+        self.records.append(record)
 
     def _stage_project(self) -> None:
         if not SHA1_RE.fullmatch(self.project_commit):
@@ -3594,6 +3906,7 @@ class _Stager:
                     "require_release_asset_provenance", False
                 ),
                 expected_exclusions=excluded,
+                payload=self.external_lock_payload,
             )
             unknown_locks = sorted(set(lock) - set(active))
             if unknown_locks:
@@ -3649,6 +3962,7 @@ class _Stager:
                     _validate_archive_members(cached)
                 if lock_entry is not None:
                     _verify_declared_nonexecuted_archive_member(cached, lock_entry)
+                    _verify_required_source_archive_members(cached, lock_entry)
                 extension = _archive_extension(selected_url)
                 output = output_root / f"{variable.casefold()}{extension}"
                 if output.exists():
@@ -3683,11 +3997,13 @@ class _Stager:
             if gap_id is not None and all_active_archives_locked:
                 if self.external_lock_path is None:
                     raise StageError("A complete dynamic archive lock has no source file")
+                if self.external_lock_sha256 is None:
+                    raise StageError("A complete dynamic archive lock has no bound SHA-256")
                 locked_variables = sorted(active)
                 self.resolved_constraints.append(
                     {
                         "archive_count": len(locked_variables),
-                        "external_archive_lock_sha256": _hash_file(self.external_lock_path),
+                        "external_archive_lock_sha256": self.external_lock_sha256,
                         "id": gap_id,
                         "locked_variables": locked_variables,
                         "resolution": DYNAMIC_ARCHIVE_LOCK_RESOLUTION,
@@ -3814,14 +4130,47 @@ def _verified_temporary_path(parent: Path, leaf_prefix: str) -> Path:
     return candidate
 
 
+def _copy_verified_file(
+    source: Path,
+    output: Path,
+    expected_sha256: str,
+    label: str,
+) -> None:
+    if not isinstance(expected_sha256, str) or not SHA256_RE.fullmatch(
+        expected_sha256
+    ):
+        raise StageError(f"{label} has an invalid expected SHA-256")
+    output_created = False
+    try:
+        with source.open("rb") as source_stream:
+            with output.open("xb") as output_stream:
+                output_created = True
+                shutil.copyfileobj(source_stream, output_stream, length=1024 * 1024)
+        actual_sha256 = _hash_file(output)
+    except OSError as exc:
+        if output_created:
+            output.unlink(missing_ok=True)
+        raise StageError(f"Cannot copy {label}: {exc}") from exc
+    except Exception:
+        if output_created:
+            output.unlink(missing_ok=True)
+        raise
+    if actual_sha256 != expected_sha256:
+        output.unlink(missing_ok=True)
+        raise StageError(f"{label} changed after verification")
+
+
 def stage_bundle(args: argparse.Namespace) -> tuple[Path, Path]:
-    manifest_path = Path(args.manifest).resolve()
-    manifest = _json_load(manifest_path)
-    components = validate_component_manifest(manifest)
+    manifest_argument = Path(os.path.abspath(os.fspath(args.manifest)))
+    if not manifest_argument.is_file() or _is_link_like(manifest_argument):
+        raise StageError("Component manifest is missing or linked")
+    manifest_path = manifest_argument.resolve()
     rebuild_component: dict | None = None
     rebuild_evidence: dict | None = None
-    rebuild_files: list[tuple[Path, str]] = []
+    rebuild_files: list[tuple[Path, str, str]] = []
     if args.validate_manifest_only:
+        manifest = _json_load(manifest_path)
+        components = validate_component_manifest(manifest)
         policy = manifest.get("pytetwild_rebuild_policy")
         if policy is not None:
             template = manifest_path.parent.joinpath(
@@ -3837,12 +4186,28 @@ def stage_bundle(args: argparse.Namespace) -> tuple[Path, Path]:
 
     project_repository = Path(args.project_repository).resolve()
     project_commit = args.project_commit
+    fixture_root = Path(args.fixture_root).resolve() if args.fixture_root else None
+    manifest, external_lock, release_input_evidence = _verify_release_input_project_bindings(
+        manifest_path,
+        project_repository,
+        project_commit,
+        external_lock_argument=args.external_archive_lock,
+    )
+    components = validate_component_manifest(manifest)
+    rebuild_template_evidence = release_input_evidence.get(
+        "pytetwild_rebuild_template"
+    )
     rebuild_component, rebuild_evidence, rebuild_files = _prepare_pytetwild_rebuild(
         manifest,
         manifest_path,
         args,
         project_repository=project_repository,
         project_commit=project_commit,
+        rebuild_template_payload=(
+            rebuild_template_evidence["payload"]
+            if rebuild_template_evidence is not None
+            else None
+        ),
     )
     if rebuild_component is not None:
         if rebuild_component["id"] in components:
@@ -3852,18 +4217,6 @@ def stage_bundle(args: argparse.Namespace) -> tuple[Path, Path]:
     destination = Path(args.destination).resolve()
     cache_root = Path(args.cache).resolve()
     archive = Path(args.archive).resolve() if args.archive else Path(f"{destination}.zip")
-    external_lock = Path(args.external_archive_lock).resolve() if args.external_archive_lock else None
-    if external_lock is None and manifest.get("default_external_archive_lock"):
-        external_lock = manifest_path.parent.joinpath(
-            *PurePosixPath(manifest["default_external_archive_lock"]).parts
-        ).resolve()
-        if not _is_relative_to(external_lock, manifest_path.parent.resolve()):
-            raise StageError("Default external archive lock escaped the manifest directory")
-    if external_lock is not None and (
-        not external_lock.is_file() or external_lock.is_symlink()
-    ):
-        raise StageError("External archive lock is missing or linked")
-    fixture_root = Path(args.fixture_root).resolve() if args.fixture_root else None
     if destination.exists():
         raise StageError(f"Refusing to overwrite existing destination: {destination}")
     if archive.exists():
@@ -3887,7 +4240,11 @@ def stage_bundle(args: argparse.Namespace) -> tuple[Path, Path]:
     temporary_archive = _verified_temporary_path(archive.parent, archive.name)
     temporary_stage.mkdir()
     destination_moved = False
+    archive_published = False
     try:
+        external_lock_evidence = release_input_evidence.get(
+            "external_archive_lock"
+        )
         stager = _Stager(
             manifest,
             dict(components),
@@ -3896,17 +4253,32 @@ def stage_bundle(args: argparse.Namespace) -> tuple[Path, Path]:
             project_repository,
             project_commit,
             external_lock_path=external_lock,
+            external_lock_payload=(
+                external_lock_evidence["payload"]
+                if external_lock_evidence is not None
+                else None
+            ),
+            external_lock_sha256=(
+                external_lock_evidence["sha256"]
+                if external_lock_evidence is not None
+                else None
+            ),
             offline=args.offline,
             fixture_root=fixture_root,
         )
         records = stager.stage()
-        for source, relative in rebuild_files:
+        for source, relative, expected_sha256 in rebuild_files:
             relative = _safe_relative(relative, "PyTetWild rebuild evidence destination")
             output = temporary_stage.joinpath(*PurePosixPath(relative).parts)
             if output.exists():
                 raise StageError(f"Duplicate PyTetWild rebuild evidence: {relative}")
             output.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(source, output)
+            _copy_verified_file(
+                source,
+                output,
+                expected_sha256,
+                f"PyTetWild rebuild evidence {relative}",
+            )
         verified_evidence = list(stager.resolved_constraints)
         if rebuild_evidence is not None:
             verified_evidence.append(rebuild_evidence)
@@ -3917,7 +4289,9 @@ def stage_bundle(args: argparse.Namespace) -> tuple[Path, Path]:
         provenance = {
             "bundle_id": manifest["bundle_id"],
             "bundle_status": bundle_status,
-            "component_manifest_sha256": _hash_file(manifest_path),
+            "component_manifest_sha256": release_input_evidence[
+                "component_manifest"
+            ]["sha256"],
             "components": records,
             "deterministic_metadata": True,
             "known_gaps": unresolved_gaps,
@@ -3925,23 +4299,46 @@ def stage_bundle(args: argparse.Namespace) -> tuple[Path, Path]:
             "tool_version": TOOL_VERSION,
         }
         if external_lock is not None:
-            provenance["external_archive_lock_sha256"] = _hash_file(external_lock)
+            provenance["external_archive_lock_sha256"] = release_input_evidence[
+                "external_archive_lock"
+            ]["sha256"]
         if resolved_constraints:
             provenance["resolved_constraints"] = resolved_constraints
         _write_json(temporary_stage / "COMPONENT_SOURCES.json", provenance)
         _write_source_manifest(temporary_stage)
         _create_deterministic_zip(temporary_stage, temporary_archive, destination.name)
         _verify_output_zip(temporary_archive, destination.name)
+        archive_sha256 = _hash_file(temporary_archive)
         if destination.exists() or archive.exists():
             raise StageError("Output appeared during staging; refusing to overwrite it")
-        os.replace(temporary_stage, destination)
+        try:
+            os.rename(temporary_stage, destination)
+        except FileExistsError as exc:
+            raise StageError(
+                "Output destination appeared during publication; refusing to overwrite it"
+            ) from exc
+        except OSError as exc:
+            raise StageError(f"Cannot publish staged source directory: {exc}") from exc
         destination_moved = True
-        os.replace(temporary_archive, archive)
+        try:
+            os.link(temporary_archive, archive)
+        except FileExistsError as exc:
+            raise StageError(
+                "Output archive appeared during publication; refusing to overwrite it"
+            ) from exc
+        except OSError as exc:
+            raise StageError(f"Cannot publish source archive atomically: {exc}") from exc
+        archive_published = True
+        if _hash_file(archive) != archive_sha256:
+            raise StageError("Published source archive changed during atomic publication")
+        temporary_archive.unlink()
         print(f"Corresponding-source bundle staged ({bundle_status}): {destination}")
         print(f"Verified archive: {archive}")
-        print(f"Archive SHA-256: {_hash_file(archive).upper()}")
+        print(f"Archive SHA-256: {archive_sha256.upper()}")
         return destination, archive
     except Exception:
+        if archive_published and archive.exists():
+            archive.unlink()
         if destination_moved and destination.exists():
             shutil.rmtree(destination)
         raise

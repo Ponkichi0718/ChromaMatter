@@ -86,9 +86,10 @@ Repository-root `BOOTSTRAP_WINDOWS.ps1` is the standard setup and test entry poi
 
 ## r32 validation state
 
-- latest working-tree regression: Python `3.13.14`, `Ran 1179 tests in 150.952s: OK (skipped=1)`, 1178 passed / 1 optional skip / 0 failed
+- current full regression on Python `3.13.14`: `Ran 1234 tests: OK (skipped=2)`, 1232 passed / 2 optional skips / 0 failed; focused release/compliance set 178 tests with 1 optional skip; current public-source stage 395 files / 394 manifest records with privacy and independent SHA-256 parity passed
 - focused binary-compliance, corresponding-source, and release-tooling set (80 tests) plus release identity (10 tests): passed
-- the old r32 EXE/ZIP does not match this source and remains private; binary publication is NO-GO until the controlled PyTetWild rebuild, component-specific licence/static-link audit, complete corresponding source, clean build, packaged/JA/EN/fresh-extract audits all pass
+- component-specific licence texts and static-linked component coverage are implemented and covered by fail-closed inventory tests
+- the old r32 EXE/ZIP does not match this source and remains private; binary publication is NO-GO until controlled PyTetWild rebuild evidence, the matching application lock update, a `release-approved` complete corresponding-source bundle, a current clean binary build with packaged self-test and Japanese/English smoke, fresh-extract manifest/privacy/archive/checksum parity, and immutable HTTPS simultaneous Release assets all pass
 - the r31 results below are **previous evidence** and do not validate r32
 
 - previous evidence for the post-GLB r28 candidate immediately before the public-UI change: Python `3.13.14`, PyInstaller `6.20.0`, `Ran 992 tests in 87.406s: OK (skipped=1)`, 991 passed / 1 optional skip
@@ -112,13 +113,13 @@ Repository-root `BOOTSTRAP_WINDOWS.ps1` is the standard setup and test entry poi
 - final ZIP SHA-256: `null`
 - icon publication rights: `passed-by-creator-declaration` (2026-08-20); the project owner accepted publication for that asset scope, without claiming independent legal clearance
 - publication eligibility: true only for `publication_scope=source-only`
-- source publication eligibility: true
-- binary publication eligibility: false until the third-party binary redistribution audit is complete
+- source publication eligibility: true for the validated source-only scope; binary publication remains false
+- binary publication eligibility: false until every final release-engineering gate above passes
 - public repository: [https://github.com/Ponkichi0718/ChromaMatter](https://github.com/Ponkichi0718/ChromaMatter) (owner handle `Ponkichi0718`)
 - Innovation Fund submission ready: false pending the rights-cleared sample, Orca/U1 evidence, cover/video, and community post
 - physical XP-PEN validation and physical print: pending disclosed limitations, not source-publication blockers
 
-The r31, r30, r29, r28, and r27 results above are **previous evidence** for their respective revisions only. The exact r32 regression, build, packaged smoke, and preflight artifact audit are the current evidence recorded above; final Downloads/checksum/GitHub gates remain pending. The unchanged icon, including its robot and fictional `ZENITH DYNAMICS CORP.` wording, retains the 2026-08-20 creator declaration and owner acceptance without claiming independent legal clearance. Binary publication eligibility remains false until the third-party redistribution audit is complete.
+The r31, r30, r29, r28, and r27 results above are **previous evidence** for their respective revisions only. The exact r32 source regression, focused compliance tests, and public-source stage are the current evidence recorded above. Any earlier r32 build, packaged-smoke, or preflight-artifact result predates the present compliance/spec changes and is historical evidence only; a current clean binary build and all remaining binary gates are still pending. The unchanged icon, including its robot and fictional `ZENITH DYNAMICS CORP.` wording, retains the 2026-08-20 creator declaration and owner acceptance without claiming independent legal clearance. Binary publication eligibility remains false until every final release-engineering gate above passes.
 
 Creator Studio r26 results are previous evidence as well and do not validate ChromaMatter r31.
 

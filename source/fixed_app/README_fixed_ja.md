@@ -86,9 +86,10 @@ repository rootの`BOOTSTRAP_WINDOWS.ps1`が標準の準備・test入口です�
 
 ## r32 validation state
 
-- 最新作業treeのfull regression: Python `3.13.14`、`Ran 1179 tests in 150.952s: OK (skipped=1)`、1178 PASS／1 optional SKIP／0 FAIL
+- 現行full regression: Python `3.13.14`、`Ran 1234 tests: OK (skipped=2)`、1232 PASS／2 optional SKIP／0 FAIL。release／compliance集中テスト178件は1 optional SKIP以外PASS。現行public-source stageは395 files／394 manifest recordsでprivacyと独立SHA-256 parity PASS
 - binary compliance／対応ソース／release toolingの集中テスト80件とrelease identity 10件: PASS
-- 旧r32 EXE／ZIPは今回のsourceと一致しないため非公開。controlled PyTetWild再build、component固有license／静的link依存、完全対応ソース、clean build、packaged／日英UI／fresh-extract監査が完了するまでbinary publicationはNO-GO
+- component固有license原文と静的link componentのcoverageは実装済みで、fail-closedなinventory testもPASS
+- 旧r32 EXE／ZIPは今回のsourceと一致しないため非公開。controlled PyTetWild再build証拠、そのwheelへ更新したapplication lock、`release-approved`完全対応ソースbundle、現行sourceからのclean binary buildとpackaged self-test／日英UI smoke、fresh-extractのmanifest／privacy／archive／checksum parity、immutable HTTPS URLで全assetを同時掲載するReleaseが揃うまでbinary publicationはNO-GO
 - 以下のr31結果は**previous evidence**であり、r32を検証しない
 
 - 公開UI非公開化直前のpost-GLB r28候補のprevious evidence: Python `3.13.14`、PyInstaller `6.20.0`、`Ran 992 tests in 87.406s: OK (skipped=1)`、991 PASS／1 optional SKIP
@@ -112,13 +113,13 @@ repository rootの`BOOTSTRAP_WINDOWS.ps1`が標準の準備・test入口です�
 - final ZIP SHA-256: `null`
 - icon publication rights: `passed-by-creator-declaration`（2026-08-20）。当該asset scopeはproject ownerが公開を承認。独立した法的clearanceではない
 - publication eligibility: true only for `publication_scope=source-only`
-- source publication eligibility: true
-- binary publication eligibility: 第三者binary再配布監査完了までfalse
+- source publication eligibility: 検証済みsource-only scopeではtrue。binary publicationはfalseのまま
+- binary publication eligibility: 上記の最終release engineering gateがすべて通るまでfalse
 - public repository: [https://github.com/Ponkichi0718/ChromaMatter](https://github.com/Ponkichi0718/ChromaMatter)（owner handle `Ponkichi0718`）
 - Innovation Fund submission ready: 権利処理済みsample、Orca／U1 evidence、cover／video／community postまでfalse
 - physical XP-PEN validation、physical print: pendingの既知制約（source公開blockerではない）
 
-上記r31、r30、r29、r28、r27の結果は各revisionだけの**previous evidence**です。r32のexact regression／build／packaged smokeとpreflight artifact auditは上記の現行証拠で、final Downloads／checksum／GitHub gateはpendingです。2026-08-20のcreator declarationとproject ownerによる公開GOは、ロボットと創作文言`ZENITH DYNAMICS CORP.`を含む変更していないアイコンassetについて保持します。これは独立した商標／意匠clearanceや法的意見ではありません。binaryは第三者再配布監査が完了するまでpublication eligible=falseです。
+上記r31、r30、r29、r28、r27の結果は各revisionだけの**previous evidence**です。r32のexact source regression、focused compliance test、public-source stageが上記の現行証拠です。以前のr32 build／packaged smoke／preflight artifact結果は現在のcompliance／spec変更より前のhistorical evidenceに限られ、現行sourceからのclean binary buildと残りのbinary gateはpendingです。2026-08-20のcreator declarationとproject ownerによる公開GOは、ロボットと創作文言`ZENITH DYNAMICS CORP.`を含む変更していないアイコンassetについて保持します。これは独立した商標／意匠clearanceや法的意見ではありません。binaryは上記の最終release engineering gateがすべて通るまでpublication eligible=falseです。
 
 Creator Studio r26の結果も同様にprevious evidenceで、ChromaMatter r31へ流用しません。
 

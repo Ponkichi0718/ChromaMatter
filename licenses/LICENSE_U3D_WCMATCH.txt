@@ -1,0 +1,8 @@
+Verbatim copying terms from
+RTL/Dependencies/WildCards/wcmatch.htm in U3D 1.5.2:
+
+This library is freeware, and you may use it for whatever you
+want. There is no warranty of any kind, and the author doesn't
+guarantee its suitability for any purpose.
+
+The source identifies the author as Ville Vainio (vvainio@tp.spt.fi).

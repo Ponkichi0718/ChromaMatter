@@ -8,7 +8,7 @@ import hashlib
 import importlib.util
 import io
 import json
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import stat
 import subprocess
 import tarfile
@@ -23,12 +23,24 @@ HELPER = REPO_ROOT / "tooling" / "stage_corresponding_source.py"
 COMPONENT_MANIFEST = REPO_ROOT / "tooling" / "corresponding_source_components.json"
 EXTERNAL_LOCK = REPO_ROOT / "tooling" / "meshlab_windows_external_archives.lock.json"
 REBUILD_TEMPLATE = REPO_ROOT / "tooling" / "pytetwild_rebuild_lock.template.json"
+REBUILD_LOCK_GENERATOR = (
+    REPO_ROOT / "tooling" / "generate_pytetwild_rebuild_lock.py"
+)
+QT_STATIC_COMPONENTS = REPO_ROOT / "tooling" / "qt_static_components.json"
 POWERSHELL_WRAPPER = REPO_ROOT / "tooling" / "stage_corresponding_source.ps1"
 
 SPEC = importlib.util.spec_from_file_location("stage_corresponding_source", HELPER)
 assert SPEC is not None and SPEC.loader is not None
 stage_tool = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(stage_tool)
+
+GENERATOR_SPEC = importlib.util.spec_from_file_location(
+    "generate_pytetwild_rebuild_lock",
+    REBUILD_LOCK_GENERATOR,
+)
+assert GENERATOR_SPEC is not None and GENERATOR_SPEC.loader is not None
+rebuild_lock_tool = importlib.util.module_from_spec(GENERATOR_SPEC)
+GENERATOR_SPEC.loader.exec_module(rebuild_lock_tool)
 
 
 def _git(repository: Path, *arguments: str) -> str:
@@ -163,6 +175,17 @@ class CorrespondingSourceManifestTests(unittest.TestCase):
             "shapely-2.1.2": "5fb639d1056888d135fe56bfaf750c9648addeec",
             "geos-3.13.1": "431568d6e311e0bbfb057b4ec3d44d0d3ba3335f",
             "mpir-3.0.0": "cdd444aedfcbb190f00328526ef278428702d56e",
+            "cpython-3.13.14": "fd17997c3866d61e0e7bd8201b1d8f35b40a40bd",
+            "cpython-bzip2-1.0.8": "05301997b2f9590f49c672cf3dfd3d3dfa7ad521",
+            "cpython-xz-5.2.5": "c6bc0c612605622aaef101a33a751f9de2ecc193",
+            "cpython-mpdecimal-4.0.0": "780e21d43a92832d12c2add68fcc8e03cee38bcf",
+            "cpython-openssl-3.0.21": "460451a0bb19cdbf0ab1add4de1420d143995467",
+            "cpython-sqlite-3.50.4.0": "c8123bc55da6467f4ef3e9b70cdb67cecf33b937",
+            "cpython-tcl-8.6.15.0": "275286594fd3e162af29e8c0ba4e365d3d1f7775",
+            "cpython-tk-8.6.15.0": "a526badcf885e4986e13e68695398a0bb64d5ea1",
+            "cpython-libffi-3.4.4": "73b247f34ef3ae1859b8c2c34d321d34ebc5db15",
+            "cpython-zlib-1.3.1": "4dc98e1909830e2bdc2a9cc2236e3c5d5037335b",
+            "mesa-12.0.0-rc2": "a7649abe9fc19671493957a8ffbbf6053c77cab4",
             "pyinstaller-6.20.0": "8a6172796b56aa428980c3628663ba08e77ad81e",
         }
         for component_id, commit in expected_commits.items():
@@ -173,7 +196,34 @@ class CorrespondingSourceManifestTests(unittest.TestCase):
             components["qt-5.15.2"]["sha256"],
             "3a530d1b243b5dec00bc54937455471aaa3e56849d2593edb8ded07228202240",
         )
+        self.assertEqual(
+            components["llvm-3.6.2"]["sha256"],
+            "f60dc158bfda6822de167e87275848969f0558b3134892ff54fced87e4667b94",
+        )
         self.assertIn("gitlab.com", manifest["allowed_redirect_host_suffixes"])
+        self.assertIn(
+            "freedesktop.org", manifest["allowed_redirect_host_suffixes"]
+        )
+        self.assertIn("llvm.org", manifest["allowed_redirect_host_suffixes"])
+        self.assertEqual(
+            components["cpython-3.13.14"]["required_paths"],
+            [
+                "LICENSE",
+                "PCbuild/get_externals.bat",
+                "PCbuild/python.props",
+                "PCbuild/tcltk.props",
+                "PCbuild/_decimal.vcxproj",
+                "PCbuild/pyexpat.vcxproj",
+                "PCbuild/_elementtree.vcxproj",
+                "Modules/expat/COPYING",
+                "Modules/expat/expat.h",
+            ],
+        )
+        self.assertIn(
+            "docs/license.html",
+            components["mesa-12.0.0-rc2"]["required_paths"],
+        )
+        self.assertEqual(components["llvm-3.6.2"]["stage_mode"], "preserve")
         mpir_required = set(components["mpir-3.0.0"]["required_paths"])
         self.assertTrue({"COPYING", "COPYING.LIB"}.issubset(mpir_required))
         self.assertEqual(
@@ -253,6 +303,29 @@ class CorrespondingSourceManifestTests(unittest.TestCase):
             ],
         )
 
+        evidence_by_path = {
+            (item["component"], item["path"]): item["required_literals"]
+            for item in manifest["pin_evidence"]
+        }
+        self.assertEqual(
+            evidence_by_path[("cpython-3.13.14", "PCbuild/get_externals.bat")],
+            [
+                "bzip2-1.0.8",
+                "libffi-3.4.4",
+                "openssl-3.0.21",
+                "mpdecimal-4.0.0",
+                "sqlite-3.50.4.0",
+                "tcl-core-8.6.15.0",
+                "tk-8.6.15.0",
+                "xz-5.2.5",
+                "zlib-1.3.1",
+            ],
+        )
+        self.assertEqual(
+            evidence_by_path[("mesa-12.0.0-rc2", "VERSION")],
+            ["12.0.0-rc2"],
+        )
+
         rule = manifest["dynamic_archive_rules"][0]
         self.assertEqual(
             sorted(rule["known_unhashed_variables"]),
@@ -315,6 +388,49 @@ class CorrespondingSourceManifestTests(unittest.TestCase):
             "8e2b48500fe93ab77bad435eea7ed9c513eacb032ee6a90e086d99b7f96bd8d5",
         )
         self.assertEqual(
+            external["U3D_LINK"]["sha256"],
+            "489805acef0d395ace4e130991cbe9016345e601b4716e3a2658cdda4ea57eda",
+        )
+        self.assertEqual(
+            external["U3D_LINK"]["provenance"]["peeled_commit_sha"],
+            "b0de4e7f829228d09552bd012c7376dd1d27c584",
+        )
+        self.assertEqual(
+            external["LIB3MF_LINK"]["sha256"],
+            "4e9e1776f4dd1b3dfce684ce9bb4ad1157dadf29908a1f3aabb6cd4358bf3248",
+        )
+        self.assertEqual(
+            external["LIB3MF_LINK"]["provenance"]["github_asset_id"],
+            232808015,
+        )
+        self.assertEqual(
+            set(external["LIB3MF_LINK"]["required_source_members"]),
+            {
+                "Libraries/cpp-base64/Source/base64.cpp",
+                "Libraries/cpp-base64/cpp-base64_V2.rc.08.txt",
+                "Libraries/libzip/Source/zip_add.c",
+                "Libraries/libzip/libzip_v1.10.1.txt",
+                "submodules/cpp-base64/LICENSE",
+                "submodules/fast_float/CMakeLists.txt",
+                "submodules/fast_float/LICENSE-MIT",
+                "submodules/fast_float/include/fast_float/fast_float.h",
+                "submodules/libzip/LICENSE",
+            },
+        )
+        self.assertEqual(
+            set(external["U3D_LINK"]["required_source_members"]),
+            {
+                "u3d-1.5.2/Docs/License.txt",
+                "u3d-1.5.2/Docs/LicensesAdditional.txt",
+                "u3d-1.5.2/RTL/Component/Generators/Glyph2D/CIFXQuadEdge.cpp",
+                "u3d-1.5.2/RTL/Dependencies/FNVHash/FNVPlusPlus.h",
+                "u3d-1.5.2/RTL/Dependencies/Predicates/predicates.cpp",
+                "u3d-1.5.2/RTL/Dependencies/WildCards/wcmatch.cpp",
+                "u3d-1.5.2/RTL/Dependencies/WildCards/wcmatch.htm",
+                "u3d-1.5.2/RTL/Kernel/Include/IFXQuaternion.h",
+            },
+        )
+        self.assertEqual(
             components["pymeshlab-onetbb-2021.11.0"]["version"],
             "2021.11.0",
         )
@@ -330,6 +446,190 @@ class CorrespondingSourceManifestTests(unittest.TestCase):
             REBUILD_TEMPLATE,
             components["pytetwild-0.3.0"]["commit"],
         )
+
+    def test_qt_archive_proof_matches_the_audited_static_inventory(self) -> None:
+        manifest = json.loads(COMPONENT_MANIFEST.read_text(encoding="utf-8"))
+        components = stage_tool.validate_component_manifest(manifest)
+        qt_component = components["qt-5.15.2"]
+        audit = json.loads(QT_STATIC_COMPONENTS.read_text(encoding="utf-8"))
+
+        license_members: set[str] = set()
+        external_license_assets: list[dict] = []
+        for asset in audit["license_assets"].values():
+            source_member = asset["upstream"].get("corresponding_source_member")
+            if source_member is None:
+                external_license_assets.append(asset)
+            else:
+                license_members.add(source_member)
+
+        audited_roots = {
+            component["source"]["corresponding_source_member_root"]
+            for component in audit["static_components"]
+        }
+        exact_source_files = {
+            path for path in audited_roots if PurePosixPath(path).suffix
+        }
+        source_prefixes = audited_roots - exact_source_files
+
+        self.assertEqual(len(license_members), 50)
+        self.assertEqual(len(exact_source_files), 4)
+        self.assertEqual(len(source_prefixes), 33)
+        self.assertEqual(
+            set(qt_component["required_source_members"]),
+            license_members | exact_source_files,
+        )
+        self.assertEqual(
+            len(qt_component["required_source_members"]),
+            len(license_members | exact_source_files),
+        )
+        self.assertEqual(
+            set(qt_component["required_source_prefixes"]),
+            source_prefixes,
+        )
+        self.assertEqual(
+            len(qt_component["required_source_prefixes"]),
+            len(source_prefixes),
+        )
+        self.assertEqual(len(external_license_assets), 1)
+        self.assertEqual(
+            external_license_assets[0]["upstream"]["source_archive_id"],
+            "chromium-base-license-28b5",
+        )
+
+    def test_archive_source_proof_paths_are_strict_and_canonical(self) -> None:
+        base = {
+            "id": "source-archive",
+            "kind": "archive",
+            "urls": ["https://example.com/source.zip"],
+            "sha256": "0" * 64,
+            "destination": "components/source/source.zip",
+            "stage_mode": "preserve",
+            "required_source_members": ["source/LICENSE"],
+            "required_source_prefixes": ["source/lib"],
+        }
+        self.assertIn(
+            "source-archive",
+            stage_tool._component_map({"components": [base]}),
+        )
+
+        for field, value, message in (
+            ("required_source_members", ["source//LICENSE"], "normalized"),
+            ("required_source_prefixes", ["source/../lib"], "normalized"),
+            (
+                "required_source_members",
+                ["source/LICENSE", "SOURCE/license"],
+                "duplicate case-insensitive",
+            ),
+        ):
+            with self.subTest(field=field, value=value):
+                component = copy.deepcopy(base)
+                component[field] = value
+                with self.assertRaisesRegex(stage_tool.StageError, message):
+                    stage_tool._component_map({"components": [component]})
+
+    def test_cpython_31314_windows_source_dependencies_are_exact(self) -> None:
+        manifest = json.loads(COMPONENT_MANIFEST.read_text(encoding="utf-8"))
+        components = stage_tool.validate_component_manifest(manifest)
+        source_deps_url = "https://github.com/python/cpython-source-deps.git"
+        expected = {
+            "cpython-openssl-3.0.21": {
+                "version": "3.0.21",
+                "commit": "460451a0bb19cdbf0ab1add4de1420d143995467",
+                "destination": (
+                    "components/cpython-build-dependencies/openssl-3.0.21"
+                ),
+                "required_paths": [
+                    "LICENSE.txt",
+                    "README.md",
+                    "VERSION.dat",
+                    "Configure",
+                    "include/openssl/ssl.h.in",
+                ],
+            },
+            "cpython-sqlite-3.50.4.0": {
+                "version": "3.50.4.0",
+                "commit": "c8123bc55da6467f4ef3e9b70cdb67cecf33b937",
+                "destination": (
+                    "components/cpython-build-dependencies/sqlite-3.50.4.0"
+                ),
+                "required_paths": [
+                    "README.md",
+                    "sqlite3.c",
+                    "sqlite3.h",
+                    "sqlite3ext.h",
+                ],
+            },
+            "cpython-tcl-8.6.15.0": {
+                "version": "8.6.15.0",
+                "commit": "275286594fd3e162af29e8c0ba4e365d3d1f7775",
+                "destination": (
+                    "components/cpython-build-dependencies/tcl-core-8.6.15.0"
+                ),
+                "required_paths": [
+                    "license.terms",
+                    "README.md",
+                    "win/Makefile.in",
+                    "generic/tcl.h",
+                ],
+            },
+            "cpython-tk-8.6.15.0": {
+                "version": "8.6.15.0",
+                "commit": "a526badcf885e4986e13e68695398a0bb64d5ea1",
+                "destination": (
+                    "components/cpython-build-dependencies/tk-8.6.15.0"
+                ),
+                "required_paths": [
+                    "license.terms",
+                    "README.md",
+                    "win/Makefile.in",
+                    "generic/tk.h",
+                ],
+            },
+            "cpython-libffi-3.4.4": {
+                "version": "3.4.4",
+                "commit": "73b247f34ef3ae1859b8c2c34d321d34ebc5db15",
+                "destination": (
+                    "components/cpython-build-dependencies/libffi-3.4.4"
+                ),
+                "required_paths": [
+                    "LICENSE",
+                    "README.md",
+                    "configure.ac",
+                    "include/ffi.h.in",
+                    "msvc_build/aarch64/Ffi_staticLib.vcxproj",
+                ],
+            },
+            "cpython-zlib-1.3.1": {
+                "version": "1.3.1",
+                "commit": "4dc98e1909830e2bdc2a9cc2236e3c5d5037335b",
+                "destination": (
+                    "components/cpython-build-dependencies/zlib-1.3.1"
+                ),
+                "required_paths": [
+                    "LICENSE",
+                    "README",
+                    "CMakeLists.txt",
+                    "zlib.h",
+                    "adler32.c",
+                ],
+            },
+        }
+        for component_id, specification in expected.items():
+            with self.subTest(component_id=component_id):
+                component = components[component_id]
+                self.assertEqual(component["url"], source_deps_url)
+                self.assertEqual(
+                    {
+                        field: component[field]
+                        for field in (
+                            "version",
+                            "commit",
+                            "destination",
+                            "required_paths",
+                        )
+                    },
+                    specification,
+                )
 
     def test_complete_windows_external_lock_v2_is_strict_and_review_bound(self) -> None:
         manifest = json.loads(COMPONENT_MANIFEST.read_text(encoding="utf-8"))
@@ -619,6 +919,113 @@ class CorrespondingSourceManifestTests(unittest.TestCase):
             stage_tool._safe_extract_zip(duplicate_directory, extracted)
             self.assertEqual((extracted / "lib" / "source.txt").read_bytes(), b"ok")
 
+    def test_locked_required_source_members_are_verified_fail_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            archive = Path(temporary) / "sources.zip"
+            with zipfile.ZipFile(archive, "w") as package:
+                package.writestr("source/component.cpp", b"source\n")
+                package.writestr("source/LICENSE", b"terms\n")
+            entry = {
+                "variable": "FIXTURE_LINK",
+                "required_source_members": [
+                    "source/component.cpp",
+                    "source/LICENSE",
+                ],
+            }
+            stage_tool._verify_required_source_archive_members(archive, entry)
+            entry["required_source_members"].append("source/missing.h")
+            with self.assertRaisesRegex(
+                stage_tool.StageError,
+                "lacks required source members.*source/missing.h",
+            ):
+                stage_tool._verify_required_source_archive_members(archive, entry)
+
+    def test_archive_component_source_coverage_is_verified_and_recorded(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture_root = root / "fixtures"
+            archive = fixture_root / "archives" / "source-component"
+            archive.parent.mkdir(parents=True)
+            with zipfile.ZipFile(archive, "w") as package:
+                package.writestr("source/LICENSE", b"terms\n")
+                package.writestr("source/lib/component.cpp", b"source\n")
+                package.writestr("source/lib/include/component.h", b"header\n")
+
+            component = {
+                "id": "source-archive",
+                "display_name": "Source archive",
+                "version": "1",
+                "kind": "archive",
+                "urls": ["https://example.com/source.zip"],
+                "sha256": hashlib.sha256(archive.read_bytes()).hexdigest(),
+                "destination": "components/source/source.zip",
+                "stage_mode": "preserve",
+                "validate_archive_members": True,
+                "required_source_members": [
+                    "source/LICENSE",
+                    "source/lib/component.cpp",
+                ],
+                "required_source_prefixes": ["source/lib"],
+                "fixture_file": "archives/source-component",
+            }
+            stage_root = root / "stage"
+            stage_root.mkdir()
+            stager = stage_tool._Stager(
+                {"allowed_redirect_host_suffixes": ["example.com"]},
+                {component["id"]: component},
+                stage_root,
+                root / "cache",
+                root / "project",
+                "0" * 40,
+                external_lock_path=None,
+                external_lock_payload=None,
+                external_lock_sha256=None,
+                offline=True,
+                fixture_root=fixture_root,
+            )
+            stager._stage_archive_component(component)
+            self.assertEqual(len(stager.records), 1)
+            self.assertEqual(
+                stager.records[0]["verified_source_archive_coverage"],
+                {
+                    "required_source_members": [
+                        "source/LICENSE",
+                        "source/lib/component.cpp",
+                    ],
+                    "required_source_prefixes": [
+                        {"prefix": "source/lib", "file_count": 2}
+                    ],
+                },
+            )
+
+            missing_member = dict(
+                component,
+                id="missing-member",
+                required_source_members=["source/missing.cpp"],
+            )
+            with self.assertRaisesRegex(
+                stage_tool.StageError,
+                "lacks required source members.*source/missing.cpp",
+            ):
+                stage_tool._verify_required_source_archive_coverage(
+                    archive,
+                    missing_member,
+                )
+
+            missing_prefix = dict(
+                component,
+                id="missing-prefix",
+                required_source_prefixes=["source/missing"],
+            )
+            with self.assertRaisesRegex(
+                stage_tool.StageError,
+                "lacks files under required source prefixes.*source/missing",
+            ):
+                stage_tool._verify_required_source_archive_coverage(
+                    archive,
+                    missing_prefix,
+                )
+
     def test_archive_member_paths_reject_noncanonical_windows_and_unicode_names(self) -> None:
         cases = {
             "source//file.txt": "non-normal",
@@ -645,6 +1052,32 @@ class CorrespondingSourceManifestTests(unittest.TestCase):
         self.assertEqual(
             stage_tool._archive_member_parts("source/lib/", is_directory=True),
             ("source", "lib"),
+        )
+
+    def test_safe_relative_rejects_windows_forbidden_and_noncanonical_names(self) -> None:
+        cases = {
+            "source/file.txt:stream": "Windows-unsafe",
+            "source/file?.txt": "Windows-unsafe",
+            'source/file".txt': "Windows-unsafe",
+            "source/control\n.txt": "control character",
+            "source/cafe\u0301.txt": "NFC-normalized",
+        }
+        for name, message in cases.items():
+            with self.subTest(name=name):
+                with self.assertRaisesRegex(stage_tool.StageError, message):
+                    stage_tool._safe_relative(name, "fixture path")
+
+        self.assertEqual(
+            stage_tool._safe_relative("source/safe-file.txt", "fixture path"),
+            "source/safe-file.txt",
+        )
+        self.assertEqual(
+            stage_tool._safe_relative(
+                "source/*.cmake",
+                "fixture glob",
+                allow_glob_asterisk=True,
+            ),
+            "source/*.cmake",
         )
 
     def test_zip_original_name_encryption_special_and_reparse_are_rejected(self) -> None:
@@ -913,9 +1346,15 @@ class CorrespondingSourceManifestTests(unittest.TestCase):
                 repository,
                 {
                     stage_tool.APPLICATION_REQUIREMENTS_LOCK_PATH: application_text,
+                    stage_tool.COMPONENT_MANIFEST_PATH: COMPONENT_MANIFEST.read_text(
+                        encoding="utf-8"
+                    ),
                     stage_tool.PYTETWILD_BUILD_RECIPE_PATH: recipe_text,
                     stage_tool.PYTETWILD_BUILD_REQUIREMENTS_PATH: (
                         build_requirements_text
+                    ),
+                    stage_tool.PYTETWILD_REBUILD_TEMPLATE_PATH: (
+                        REBUILD_TEMPLATE.read_text(encoding="utf-8")
                     ),
                     stage_tool.PYTETWILD_SOURCE_PATCH_PATH: source_patch_text,
                 },
@@ -1107,39 +1546,193 @@ class CorrespondingSourceManifestTests(unittest.TestCase):
 
             manifest = json.loads(COMPONENT_MANIFEST.read_text(encoding="utf-8"))
             rebuild_lock = root / "release-inputs" / "pytetwild-rebuild-lock.json"
-            rebuild_data = {
-                "schema_version": 1,
-                "lock_status": "verified-controlled-rebuild",
-                "scope": "prospective-rebuild-only",
-                "historical_wheel": {
-                    "sha256": "11964e295a54cf9e2f6920a920aeeba27668c9b14e369a86f72ec5baa4f46060",
-                    "nanobind_version_status": "unknown-not-asserted",
-                    "release_disposition": "excluded",
-                },
-                "pytetwild": {
-                    "version": "0.3.0",
-                    "commit": "eea46df87ef58e861956b7a710f42ab58eaa02a0",
-                },
-                "ftetwild": {"commit": "d7d99bb4387a07895b9adce058dc7305f6b6e5ab"},
-                "wheel": wheel_specification,
-                "nanobind": {
-                    "version": "2.12.0",
-                    "source_url": "https://github.com/wjakob/nanobind.git",
-                    "commit": "2a61ad2494d09fecb2e13322c1383342c299900d",
-                    "required_paths": ["LICENSE", "CMakeLists.txt"],
-                },
-                "build_recipe": bound(recipe),
-                "build_requirements_lock": bound(build_requirements),
-                "source_patch": bound(source_patch),
-                "environment": lock_environment,
-                "attestation": bound(attestation),
-                "release_binding": bound(committed_copy),
+            generation = rebuild_lock_tool.generate_rebuild_lock(
+                output=rebuild_lock,
+                component_manifest=COMPONENT_MANIFEST,
+                project_repository=repository,
+                project_commit=commit,
+                repaired_wheel=wheel,
+                raw_wheel=raw_wheel,
+                audit_logs=audit_logs,
+                build_recipe=recipe,
+                build_requirements=build_requirements,
+                source_patch=source_patch,
+                build_attestation=attestation,
+                application_requirements_lock=committed_copy,
+                validator=stage_tool,
+            )
+            self.assertEqual(generation["status"], "verified-controlled-rebuild")
+            self.assertEqual(generation["filename"], rebuild_lock.name)
+            self.assertEqual(generation["audit_log_count"], 8)
+            self.assertEqual(generation["project_commit"], commit)
+            self.assertEqual(
+                generation["sha256"],
+                hashlib.sha256(rebuild_lock.read_bytes()).hexdigest(),
+            )
+            self.assertEqual(
+                generation["wheel"]["sha256"],
+                wheel_specification["sha256"],
+            )
+            rebuild_data = json.loads(rebuild_lock.read_text(encoding="utf-8"))
+
+            generation_inputs = {
+                "component_manifest": COMPONENT_MANIFEST,
+                "project_repository": repository,
+                "project_commit": commit,
+                "repaired_wheel": wheel,
+                "raw_wheel": raw_wheel,
+                "audit_logs": audit_logs,
+                "build_recipe": recipe,
+                "build_requirements": build_requirements,
+                "source_patch": source_patch,
+                "build_attestation": attestation,
+                "application_requirements_lock": committed_copy,
+                "validator": stage_tool,
             }
-            rebuild_lock.write_text(
-                json.dumps(rebuild_data, indent=2) + "\n",
+
+            def reject_generation(
+                label: str,
+                message: str,
+                **overrides: object,
+            ) -> None:
+                rejection_root = root / "rejected-locks" / label
+                rejection_root.mkdir(parents=True)
+                rejected_lock = rejection_root / "pytetwild-rebuild-lock.json"
+                with self.assertRaisesRegex(stage_tool.StageError, message):
+                    rebuild_lock_tool.generate_rebuild_lock(
+                        output=rejected_lock,
+                        **(generation_inputs | overrides),
+                    )
+                self.assertFalse(rejected_lock.exists())
+                self.assertEqual(list(rejection_root.iterdir()), [])
+
+            for label, drift_target, message in (
+                (
+                    "component-manifest-commit-drift",
+                    "manifest",
+                    "Component manifest does not byte-match the exact project commit",
+                ),
+                (
+                    "rebuild-template-commit-drift",
+                    "template",
+                    "PyTetWild rebuild template does not byte-match the exact project commit",
+                ),
+            ):
+                control_root = root / "drifted-control-inputs" / label
+                control_root.mkdir(parents=True)
+                control_manifest = control_root / COMPONENT_MANIFEST.name
+                control_template = control_root / REBUILD_TEMPLATE.name
+                control_manifest.write_bytes(COMPONENT_MANIFEST.read_bytes())
+                control_template.write_bytes(REBUILD_TEMPLATE.read_bytes())
+                target = (
+                    control_manifest if drift_target == "manifest" else control_template
+                )
+                target.write_bytes(target.read_bytes() + b"\n")
+                reject_generation(
+                    label,
+                    message,
+                    component_manifest=control_manifest,
+                )
+
+            ads_recipe = Path(f"{recipe}:evidence")
+            ads_recipe.write_bytes(recipe.read_bytes())
+            try:
+                reject_generation(
+                    "ads-build-recipe",
+                    "Windows-unsafe",
+                    build_recipe=ads_recipe,
+                )
+            finally:
+                ads_recipe.unlink(missing_ok=True)
+
+            reject_generation(
+                "missing-raw-wheel",
+                "raw wheel .*missing or linked",
+                raw_wheel=root / "release-inputs" / "missing-raw-wheel.whl",
+            )
+
+            mismatched_attestation = copy.deepcopy(attestation_data)
+            mismatched_attestation["output"]["sha256"] = "0" * 64
+            attestation.write_text(
+                json.dumps(mismatched_attestation, indent=2) + "\n",
                 encoding="utf-8",
                 newline="\n",
             )
+            reject_generation(
+                "attestation-wheel-mismatch",
+                "attestation output.sha256 differs",
+            )
+
+            identical_wheels_attestation = copy.deepcopy(attestation_data)
+            identical_wheels_attestation["output"]["raw_wheel_filename"] = wheel.name
+            identical_wheels_attestation["output"]["raw_wheel_sha256"] = (
+                wheel_specification["sha256"]
+            )
+            attestation.write_text(
+                json.dumps(identical_wheels_attestation, indent=2) + "\n",
+                encoding="utf-8",
+                newline="\n",
+            )
+            reject_generation(
+                "identical-raw-and-repaired",
+                "must be distinct artifacts",
+                raw_wheel=wheel,
+            )
+            attestation.write_text(
+                json.dumps(attestation_data, indent=2) + "\n",
+                encoding="utf-8",
+                newline="\n",
+            )
+
+            extra_audit_log = audit_logs / "unexpected.log"
+            extra_audit_log.write_text(
+                "exit_code=0\n",
+                encoding="utf-8",
+                newline="\n",
+            )
+            reject_generation(
+                "extra-audit-log",
+                "exactly the eight bound logs",
+            )
+            extra_audit_log.unlink()
+
+            committed_copy.write_text(
+                application_text + "# release-binding drift\n",
+                encoding="utf-8",
+                newline="\n",
+            )
+            reject_generation(
+                "release-binding-commit-drift",
+                "does not byte-match the exact project commit",
+            )
+            committed_copy.write_bytes(application_text.encode("utf-8"))
+
+            post_link_root = root / "rejected-locks" / "post-link-read-failure"
+            post_link_root.mkdir(parents=True)
+            post_link_output = post_link_root / "pytetwild-rebuild-lock.json"
+            real_hash_file = stage_tool._hash_file
+
+            def fail_only_for_published_output(path: Path) -> str:
+                if Path(path) == post_link_output:
+                    raise OSError("injected post-link read failure")
+                return real_hash_file(path)
+
+            with mock.patch.object(
+                stage_tool,
+                "_hash_file",
+                side_effect=fail_only_for_published_output,
+            ):
+                with self.assertRaisesRegex(
+                    OSError,
+                    "injected post-link read failure",
+                ):
+                    rebuild_lock_tool.generate_rebuild_lock(
+                        output=post_link_output,
+                        **generation_inputs,
+                    )
+            self.assertFalse(post_link_output.exists())
+            self.assertEqual(list(post_link_root.iterdir()), [])
+
             arguments = argparse.Namespace(
                 pytetwild_rebuild_lock=str(rebuild_lock),
                 pytetwild_wheel=str(wheel),
@@ -1193,6 +1786,7 @@ class CorrespondingSourceManifestTests(unittest.TestCase):
                 (
                     source_patch.resolve(),
                     f"build-evidence/pytetwild/{source_patch.name}",
+                    bound(source_patch)["sha256"],
                 ),
                 files,
             )
@@ -1202,6 +1796,7 @@ class CorrespondingSourceManifestTests(unittest.TestCase):
                 (
                     raw_wheel.resolve(),
                     f"build-evidence/pytetwild/raw-wheel/{raw_wheel.name}",
+                    bound(raw_wheel)["sha256"],
                 ),
                 files,
             )
@@ -1209,14 +1804,16 @@ class CorrespondingSourceManifestTests(unittest.TestCase):
                 (
                     wheel.resolve(),
                     f"build-evidence/pytetwild/repaired-wheel/{wheel.name}",
+                    bound(wheel)["sha256"],
                 ),
                 files,
             )
-            for filename in stage_tool.PYTETWILD_AUDIT_LOG_FILES.values():
+            for key, filename in stage_tool.PYTETWILD_AUDIT_LOG_FILES.items():
                 self.assertIn(
                     (
                         (audit_logs / filename).resolve(),
                         f"build-evidence/pytetwild/logs/{filename}",
+                        audit_log_evidence[key]["sha256"],
                     ),
                     files,
                 )
@@ -1615,6 +2212,76 @@ class CorrespondingSourceManifestTests(unittest.TestCase):
         self.assertEqual(parsed.pytetwild_raw_wheel, "raw.whl")
         self.assertEqual(parsed.pytetwild_audit_logs, "audit-logs")
 
+    def test_production_control_input_drift_fails_before_bundle_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            project = root / "project"
+            project_commit = _new_repository(
+                project,
+                {
+                    stage_tool.COMPONENT_MANIFEST_PATH: COMPONENT_MANIFEST.read_text(
+                        encoding="utf-8"
+                    ),
+                    stage_tool.PYTETWILD_REBUILD_TEMPLATE_PATH: (
+                        REBUILD_TEMPLATE.read_text(encoding="utf-8")
+                    ),
+                    stage_tool.EXTERNAL_ARCHIVE_LOCK_PATH: EXTERNAL_LOCK.read_text(
+                        encoding="utf-8"
+                    ),
+                },
+            )
+
+            cases = {
+                "component-manifest": (
+                    COMPONENT_MANIFEST.name,
+                    "Component manifest does not byte-match the exact project commit",
+                ),
+                "rebuild-template": (
+                    REBUILD_TEMPLATE.name,
+                    "PyTetWild rebuild template does not byte-match the exact project commit",
+                ),
+                "external-archive-lock": (
+                    EXTERNAL_LOCK.name,
+                    "External archive lock does not byte-match the exact project commit",
+                ),
+            }
+            for label, (drift_name, message) in cases.items():
+                with self.subTest(control_input=label):
+                    inputs = root / "inputs" / label
+                    inputs.mkdir(parents=True)
+                    supplied = {
+                        COMPONENT_MANIFEST.name: COMPONENT_MANIFEST,
+                        REBUILD_TEMPLATE.name: REBUILD_TEMPLATE,
+                        EXTERNAL_LOCK.name: EXTERNAL_LOCK,
+                    }
+                    for name, source in supplied.items():
+                        (inputs / name).write_bytes(source.read_bytes())
+                    drifted = inputs / drift_name
+                    drifted.write_bytes(drifted.read_bytes() + b"\n")
+
+                    destination = root / "outputs" / label / "bundle"
+                    stderr = io.StringIO()
+                    with mock.patch("sys.stderr", stderr):
+                        result = stage_tool.main(
+                            [
+                                "--manifest",
+                                str(inputs / COMPONENT_MANIFEST.name),
+                                "--destination",
+                                str(destination),
+                                "--cache",
+                                str(root / "cache" / label),
+                                "--project-repository",
+                                str(project),
+                                "--project-commit",
+                                project_commit,
+                                "--offline",
+                            ]
+                        )
+                    self.assertEqual(result, 2)
+                    self.assertIn(message, stderr.getvalue())
+                    self.assertFalse(destination.exists())
+                    self.assertFalse(Path(f"{destination}.zip").exists())
+
 
 class CorrespondingSourceFixtureTests(unittest.TestCase):
     def _fixture(self, root: Path) -> tuple[Path, Path, Path, str, Path]:
@@ -1662,13 +2329,6 @@ class CorrespondingSourceFixtureTests(unittest.TestCase):
         )
         _git(parent, "commit", "-m", "pin child gitlink")
         parent_commit = _git(parent, "rev-parse", "HEAD")
-
-        project = root / "project-repository"
-        project_commit = _new_repository(project, {"tracked.txt": "tracked source\n"})
-        (project / "untracked-private.txt").write_text(
-            "C:" + "\\" + "Users" + "\\" + "private" + "\\" + "secret\n",
-            encoding="utf-8",
-        )
 
         manifest = {
             "schema_version": 1,
@@ -1779,6 +2439,23 @@ class CorrespondingSourceFixtureTests(unittest.TestCase):
         lock_path = root / "external-lock.json"
         lock_path.write_text(
             json.dumps(lock, indent=2) + "\n", encoding="utf-8", newline="\n"
+        )
+        project = root / "project-repository"
+        project_commit = _new_repository(
+            project,
+            {
+                "tracked.txt": "tracked source\n",
+                stage_tool.COMPONENT_MANIFEST_PATH: manifest_path.read_text(
+                    encoding="utf-8"
+                ),
+                stage_tool.EXTERNAL_ARCHIVE_LOCK_PATH: lock_path.read_text(
+                    encoding="utf-8"
+                ),
+            },
+        )
+        (project / "untracked-private.txt").write_text(
+            "C:" + "\\" + "Users" + "\\" + "private" + "\\" + "secret\n",
+            encoding="utf-8",
         )
         return manifest_path, fixture_root, project, project_commit, lock_path
 
@@ -1894,6 +2571,8 @@ class CorrespondingSourceFixtureTests(unittest.TestCase):
                 parent,
                 parent_commit,
                 external_lock_path=None,
+                external_lock_payload=None,
+                external_lock_sha256=None,
                 offline=True,
                 fixture_root=fixture_root,
             )
@@ -1942,6 +2621,8 @@ class CorrespondingSourceFixtureTests(unittest.TestCase):
                 parent,
                 parent_commit,
                 external_lock_path=None,
+                external_lock_payload=None,
+                external_lock_sha256=None,
                 offline=True,
                 fixture_root=fixture_root,
             )
@@ -1965,6 +2646,120 @@ class CorrespondingSourceFixtureTests(unittest.TestCase):
             self.assertEqual(result, 2)
             self.assertFalse(destination.exists())
             self.assertFalse(Path(f"{destination}.zip").exists())
+
+    def test_publication_failure_removes_only_our_bundle_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            manifest, fixture_root, project, project_commit, lock = self._fixture(root)
+
+            def arguments(destination: Path, cache: Path) -> argparse.Namespace:
+                return stage_tool._parser().parse_args(
+                    [
+                        "--manifest",
+                        str(manifest),
+                        "--destination",
+                        str(destination),
+                        "--cache",
+                        str(cache),
+                        "--project-repository",
+                        str(project),
+                        "--project-commit",
+                        project_commit,
+                        "--fixture-root",
+                        str(fixture_root),
+                        "--external-archive-lock",
+                        str(lock),
+                        "--offline",
+                    ]
+                )
+
+            destination = root / "hash-failure" / "bundle"
+            archive = Path(f"{destination}.zip").resolve()
+            real_hash_file = stage_tool._hash_file
+
+            def fail_only_for_published_archive(
+                path: Path,
+                algorithm: str = "sha256",
+            ) -> str:
+                if Path(path) == archive and algorithm == "sha256":
+                    raise OSError("injected final archive hash failure")
+                return real_hash_file(path, algorithm)
+
+            with mock.patch.object(
+                stage_tool,
+                "_hash_file",
+                side_effect=fail_only_for_published_archive,
+            ):
+                with self.assertRaisesRegex(
+                    OSError,
+                    "injected final archive hash failure",
+                ):
+                    stage_tool.stage_bundle(
+                        arguments(destination, root / "cache-hash-failure")
+                    )
+            self.assertFalse(destination.exists())
+            self.assertFalse(archive.exists())
+            self.assertEqual(list(destination.parent.iterdir()), [])
+
+            raced_destination = root / "publication-race" / "bundle"
+            raced_archive = Path(f"{raced_destination}.zip").resolve()
+            competitor_payload = b"competing archive; must not be overwritten\n"
+            real_link = stage_tool.os.link
+
+            def inject_competing_archive(source: Path, output: Path) -> None:
+                raced_archive.write_bytes(competitor_payload)
+                real_link(source, output)
+
+            with mock.patch.object(
+                stage_tool.os,
+                "link",
+                side_effect=inject_competing_archive,
+            ):
+                with self.assertRaisesRegex(
+                    stage_tool.StageError,
+                    "archive appeared during publication",
+                ):
+                    stage_tool.stage_bundle(
+                        arguments(raced_destination, root / "cache-publication-race")
+                    )
+            self.assertFalse(raced_destination.exists())
+            self.assertEqual(raced_archive.read_bytes(), competitor_payload)
+
+    def test_verified_evidence_copy_rejects_postverification_drift(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "evidence.bin"
+            output = root / "staged-evidence.bin"
+            verified_payload = b"verified evidence\n"
+            source.write_bytes(verified_payload)
+            expected_sha256 = hashlib.sha256(verified_payload).hexdigest()
+
+            source.write_bytes(b"evidence changed after verification\n")
+            with self.assertRaisesRegex(
+                stage_tool.StageError,
+                "changed after verification",
+            ):
+                stage_tool._copy_verified_file(
+                    source,
+                    output,
+                    expected_sha256,
+                    "test evidence",
+                )
+            self.assertFalse(output.exists())
+
+            competitor_payload = b"pre-existing output\n"
+            output.write_bytes(competitor_payload)
+            with self.assertRaisesRegex(
+                stage_tool.StageError,
+                "Cannot copy test evidence",
+            ):
+                stage_tool._copy_verified_file(
+                    source,
+                    output,
+                    expected_sha256,
+                    "test evidence",
+                )
+            self.assertEqual(output.read_bytes(), competitor_payload)
 
     def test_fixture_stage_is_recursive_private_path_free_and_deterministic(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -2043,30 +2838,60 @@ class CorrespondingSourceFixtureTests(unittest.TestCase):
                 encoding="utf-8",
                 newline="\n",
             )
+            committed_external_lock = project / stage_tool.EXTERNAL_ARCHIVE_LOCK_PATH
+            committed_external_lock.write_bytes(final_lock.read_bytes())
+            _git(project, "add", stage_tool.EXTERNAL_ARCHIVE_LOCK_PATH)
+            _git(project, "commit", "-m", "update fixture external archive lock")
+            project_commit = _git(project, "rev-parse", "HEAD")
+            bound_external_lock_sha256 = hashlib.sha256(
+                final_lock.read_bytes()
+            ).hexdigest()
             destination = root / "out" / "bundle"
-            result = self._run(
-                manifest,
-                fixture_root,
-                project,
-                project_commit,
-                destination,
-                root / "cache",
-                final_lock,
-            )
+            real_verify_bindings = stage_tool._verify_release_input_project_bindings
+
+            def mutate_controls_after_snapshot(*args: object, **kwargs: object) -> object:
+                result = real_verify_bindings(*args, **kwargs)
+                drifted_manifest = json.loads(manifest.read_text(encoding="utf-8"))
+                drifted_manifest["bundle_id"] = "drifted-after-binding"
+                manifest.write_text(
+                    json.dumps(drifted_manifest, indent=2) + "\n",
+                    encoding="utf-8",
+                    newline="\n",
+                )
+                final_lock.write_bytes(final_lock.read_bytes() + b"\n")
+                return result
+
+            with mock.patch.object(
+                stage_tool,
+                "_verify_release_input_project_bindings",
+                side_effect=mutate_controls_after_snapshot,
+            ):
+                result = self._run(
+                    manifest,
+                    fixture_root,
+                    project,
+                    project_commit,
+                    destination,
+                    root / "cache",
+                    final_lock,
+                )
             self.assertEqual(result, 0)
             provenance = json.loads(
                 (destination / "COMPONENT_SOURCES.json").read_text(encoding="utf-8")
             )
             self.assertEqual(provenance["bundle_status"], "release-approved")
+            self.assertEqual(provenance["bundle_id"], "fixture-corresponding-source")
             self.assertEqual(provenance["known_gaps"], [])
+            self.assertEqual(
+                provenance["external_archive_lock_sha256"],
+                bound_external_lock_sha256,
+            )
             self.assertEqual(
                 provenance["resolved_constraints"],
                 [
                     {
                         "archive_count": 2,
-                        "external_archive_lock_sha256": hashlib.sha256(
-                            final_lock.read_bytes()
-                        ).hexdigest(),
+                        "external_archive_lock_sha256": bound_external_lock_sha256,
                         "id": "fixture-md5-only-external-archives",
                         "locked_variables": ["EXTERNAL_LINK", "LEGACY_LINK"],
                         "resolution": "verified-complete-dynamic-archive-sha256-lock",

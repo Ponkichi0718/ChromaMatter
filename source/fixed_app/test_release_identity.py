@@ -114,7 +114,7 @@ class ReleaseIdentityTests(unittest.TestCase):
                 self.assertIn(relative, public_stage)
                 self.assertNotIn(relative, software_stage)
 
-    def test_handoff_state_records_exact_p2_r32_build_and_audited_preflight(self):
+    def test_handoff_state_records_current_source_and_blocked_binary_scope(self):
         state = json.loads(read_text(REPO_ROOT / "CURRENT_STATE.json"))
         self.assertEqual(
             "ChromaMatter — AI Model Print Studio",
@@ -148,19 +148,33 @@ class ReleaseIdentityTests(unittest.TestCase):
             with self.subTest(passed_gate=passed_gate):
                 self.assertTrue(validation[passed_gate].startswith("passed"))
         self.assertIn(
-            "Ran 1179 tests in 150.952s: OK (skipped=1)",
+            "Ran 1234 tests: OK (skipped=2)",
             validation["current_full_regression"],
         )
-        self.assertIn("1178 passed", validation["current_full_regression"])
+        self.assertIn("1232 passed", validation["current_full_regression"])
         self.assertIn("0 failed", validation["current_full_regression"])
         self.assertTrue(
-            validation["current_clean_build_and_packaged_smoke"].startswith("passed")
+            validation["current_clean_build_and_packaged_smoke"].startswith(
+                "previous pre-compliance/spec evidence only"
+            )
         )
-        self.assertIn("C:\\OBJAdjR32CM3", validation["current_clean_build_and_packaged_smoke"])
         self.assertTrue(
             validation["current_stage_archive_privacy_and_checksum_audit"].startswith(
-                "current source stage passed"
+                "current public-source stage passed"
             )
+        )
+        self.assertTrue(
+            validation["binary_component_licence_and_static_link_coverage"].startswith(
+                "current source contracts cover"
+            )
+        )
+        self.assertIn(
+            "50 Qt static components",
+            validation["binary_component_licence_and_static_link_coverage"],
+        )
+        self.assertIn(
+            "20-component/29-asset PyTetWild",
+            validation["binary_component_licence_and_static_link_coverage"],
         )
         previous_r29 = validation["previous_r29_candidate_validation"]
         self.assertEqual("previous evidence only", previous_r29["status"])
@@ -225,17 +239,24 @@ class ReleaseIdentityTests(unittest.TestCase):
             "source-branch-validated-for-draft-pr-update",
             latest["status"],
         )
-        self.assertIn("Ran 1179 tests", latest["source_full_regression"])
+        self.assertIn("Ran 1234 tests", latest["source_full_regression"])
         self.assertEqual(
-            273,
+            395,
             latest["public_source_stage"]["total_files_including_manifest"],
         )
-        self.assertEqual(272, latest["public_source_stage"]["manifest_records"])
+        self.assertEqual(394, latest["public_source_stage"]["manifest_records"])
         self.assertTrue(latest["source_publication_eligible"])
         self.assertFalse(latest["binary_publication_eligible"])
-        self.assertIn(
-            "binary-component-specific-license-assets-incomplete",
+        self.assertEqual(
             latest["binary_publication_blockers"],
+            [
+                "controlled-pytetwild-rebuild-evidence-incomplete",
+                "application-lock-not-updated-to-controlled-pytetwild-wheel",
+                "release-approved-complete-corresponding-source-not-generated",
+                "current-clean-binary-build-packaged-self-test-and-ja-en-smoke-pending",
+                "fresh-extract-manifest-privacy-archive-checksum-parity-pending",
+                "immutable-https-release-url-and-simultaneous-assets-pending",
+            ],
         )
         current = release["current_r32_candidate_validation"]
         self.assertEqual(
@@ -333,7 +354,9 @@ class ReleaseIdentityTests(unittest.TestCase):
         self.assertEqual("public", current["public_repository_visibility"])
         self.assertEqual("main", current["public_repository_default_branch"])
         self.assertFalse(current["binary_publication_eligible"])
-        self.assertIn("component-specific licence", current["binary_publication_blocker"])
+        self.assertIn("controlled PyTetWild rebuild evidence", current["binary_publication_blocker"])
+        self.assertIn("application lock", current["binary_publication_blocker"])
+        self.assertIn("immutable HTTPS Release URLs", current["binary_publication_blocker"])
         self.assertFalse(current["innovation_fund_submission_ready"])
         self.assertNotIn(
             "public repository URL and handle",
@@ -411,11 +434,11 @@ class ReleaseIdentityTests(unittest.TestCase):
                     "Orca",
                     "manual",
                     "adaptive",
-                    "1179",
-                    "1178",
-                    "150.952",
-                    "80",
-                    "10",
+                    "1234",
+                    "1232",
+                    "178",
+                    "395",
+                    "394",
                     "r31",
                     "1024",
                     "1023",
@@ -433,6 +456,9 @@ class ReleaseIdentityTests(unittest.TestCase):
                     "passed-by-creator-declaration",
                     "ZENITH DYNAMICS CORP.",
                     "binary publication eligibility",
+                    "application lock",
+                    "release-approved",
+                    "immutable HTTPS",
                     "ChromaMatter-0.8beta-r32-source-public-20260823",
                     "ChromaMatter-0.8beta-r32-win64",
                     "Innovation Fund",
@@ -483,7 +509,7 @@ class ReleaseIdentityTests(unittest.TestCase):
             "## Current status",
             "**Source code:** Public",
             "**Windows binary:** Not yet public",
-            "Third-party binary redistribution audit",
+            "final release-engineering gates",
             "**Public test model:** In preparation",
             "**Physical U1 validation:** In progress",
             "## Four things ChromaMatter does",

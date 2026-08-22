@@ -73,13 +73,14 @@
     "implementation_focused_source": "passed within the exact P2-frozen r32 full regression on Python 3.13.14",
     "release_focused_identity_regression_tooling_gui_layout": "passed within the exact P2-frozen r32 full regression on Python 3.13.14",
     "current_public_ui_focused_regression": "passed within the exact P2-frozen r32 full regression; packaged isolated-profile Japanese and English UI smoke also passed",
-    "current_full_regression": "passed on Python 3.13.14: Ran 1179 tests in 150.952s: OK (skipped=1); 1178 passed, 1 optional skip, and 0 failed",
-    "changed_worktree_full_regression": "passed on Python 3.13.14 after per-part multipart proof projection and release-package hardening: Ran 1179 tests in 150.952s: OK (skipped=1); 1178 passed, 1 optional skip, and 0 failed",
+    "current_full_regression": "passed on Python 3.13.14: Ran 1234 tests: OK (skipped=2); 1232 passed, 2 optional skips, and 0 failed",
+    "changed_worktree_full_regression": "passed after the Qt/PyMeshLab identity manifests, PyTetWild static-closure contract, resvg frozen-runtime exclusion, and added fail-closed package tests: Ran 1234 tests: OK (skipped=2); 1232 passed, 2 optional skips, and 0 failed",
     "changed_worktree_multipart_e2e": "passed on a non-public six-part full-resolution validation asset with face-count reduction disabled: 2016940 output faces, 6 watertight consistently wound positive-volume single bodies, categorical identification colours suppressed, combined exact 3MF validation passed, and all 6 individual 3MF files plus their manifest passed strict archive-reload topology and projected-provenance validation; generated repair caps were not accepted as source faces or source self-intersections, and no private asset identity or derived output is retained",
     "changed_worktree_full_resolution_policy": "the inherited-source warning is not a repair or a trust in saved metadata: exact-coordinate triangle ancestry, externally anchored source prefixes, complete source-only intersection IDs, count <= max(100, ceil(source_faces / 100)), area fraction <= 0.002, and every mandatory solid check are required; individual output additionally requires exact part and boundary-vertex rebasing, complete direct parent proof, and distinct local-cap or shared-interface provenance; QEM, joints, moved coordinates, incomplete proof, stale layouts, and generated-face intersections remain fail-closed",
     "changed_worktree_build_evidence": "the current owner-only internal build passed 1168 source tests with 1 optional skip, packaged and fresh-extracted self-tests, isolated Japanese and English UI smokes, binary inventory, deterministic component-map/SBOM regeneration, ZIP CRC/encryption/security/path/privacy checks, and 1355-file fresh-archive path/size/SHA-256 parity; archive ChromaMatter_0.8beta-r32-FullResMultipart-INTERNAL-TEST-20260822c.zip is 118851316 bytes with SHA-256 748E3C7962DB21AFB9DDFBABF9082E2E49DECBA4BAF2078EE99A737910E40C19, is unsigned and non-public, and is not public release evidence",
-    "current_clean_build_and_packaged_smoke": "passed at C:\\OBJAdjR32CM3 with PyInstaller 6.20.0; packaged self-test exit 0 and isolated-profile Japanese and English UI smoke passed",
-    "current_stage_archive_privacy_and_checksum_audit": "current source stage passed: 273 files/272 manifest records with public-tree privacy audit and independent full SHA-256 parity; the current worktree software archive, fresh extraction, packaged smoke, and detached release checksum remain blocked pending the controlled native rebuild and complete binary licence audit",
+    "current_clean_build_and_packaged_smoke": "previous pre-compliance/spec evidence only; the next clean release build, packaged self-test, and isolated-profile Japanese and English UI smoke are pending",
+    "binary_component_licence_and_static_link_coverage": "current source contracts cover 19 non-Qt PyMeshLab DLL identities plus 7 Qt DLL identities, 50 Qt static components with 51 exact Qt licence assets, and a 20-component/29-asset PyTetWild static/header closure. PyTetWild remains release-blocked because the controlled wheel/PYD and matching application-lock identities do not exist; no current binary has regenerated and passed these inventories",
+    "current_stage_archive_privacy_and_checksum_audit": "current public-source stage passed: 395 files/394 manifest records with public-tree privacy audit and independent full SHA-256 parity; the current release binary build, software archive, fresh extraction, packaged smoke, detached checksum, and simultaneous immutable-URL Release remain pending",
     "source_runtime": {
       "python": "3.13.14",
       "pyinstaller": "6.20.0"
@@ -103,28 +104,29 @@
   "release": {
     "state": "source-branch-validated-binary-publication-blocked",
     "target_revision": "r32-ai-model-print-studio",
-    "revision": "AI Model Print Studio r32 adds conservative multipart GLB closure, narrow identification-colour suppression, strict combined and individual 3MF provenance validation, explicit application of manually edited F1-F4 colours, and hardened public package/compliance gates. The exact current source regression and public-source stage passed. A new Windows binary remains blocked until the controlled PyTetWild rebuild, complete component-specific licence/static-link audit, release-approved corresponding source, clean build, packaged smoke, and fresh-extract audit all pass.",
+    "revision": "AI Model Print Studio r32 adds conservative multipart GLB closure, narrow identification-colour suppression, strict combined and individual 3MF provenance validation, explicit application of manually edited F1-F4 colours, and hardened public package/compliance gates. Component-specific licence and static-linked component coverage is implemented. A new Windows binary remains blocked until controlled PyTetWild rebuild evidence and the matching application lock exist, a release-approved complete corresponding-source bundle is generated, a current clean binary build plus packaged self-test and Japanese/English smoke passes, fresh-extract manifest/privacy/archive/checksum parity passes, and every asset is simultaneously available from its immutable HTTPS Release URL.",
     "public_source_default": "ChromaMatter-0.8beta-r32-source-public-20260823",
     "software_package_default": "ChromaMatter-0.8beta-r32-win64",
     "latest_source_branch_validation": {
       "status": "source-branch-validated-for-draft-pr-update",
-      "source_full_regression": "passed on Python 3.13.14: Ran 1179 tests in 150.952s: OK (skipped=1); 1178 passed, 1 optional skip, and 0 failed",
-      "focused_release_tooling": "passed: binary compliance, corresponding-source, and release tooling 80 tests; release identity 10 tests",
+      "source_full_regression": "passed on Python 3.13.14: Ran 1234 tests: OK (skipped=2); 1232 passed, 2 optional skips, and 0 failed",
+      "focused_release_tooling": "passed: Qt/PyMeshLab/PyTetWild, binary compliance, corresponding-source, release tooling, notices, release identity, CLI, and Decal packaging policy; 178 tests, 177 passed, 1 optional skip, and 0 failed",
       "public_source_stage": {
         "expected_root": "ChromaMatter-0.8beta-r32-source-public-20260823",
-        "total_files_including_manifest": 273,
-        "manifest_records": 272,
-        "privacy_audit": "passed",
+        "total_files_including_manifest": 395,
+        "manifest_records": 394,
+        "privacy_audit": "passed on current restage",
         "independent_manifest_sha256_parity": "passed with zero missing, extra, or mismatched files"
       },
       "source_publication_eligible": true,
       "binary_publication_eligible": false,
       "binary_publication_blockers": [
-        "binary-component-specific-license-assets-incomplete",
-        "binary-static-linked-components-incomplete",
         "controlled-pytetwild-rebuild-evidence-incomplete",
+        "application-lock-not-updated-to-controlled-pytetwild-wheel",
         "release-approved-complete-corresponding-source-not-generated",
-        "current-source-clean-build-and-fresh-extract-audit-pending"
+        "current-clean-binary-build-packaged-self-test-and-ja-en-smoke-pending",
+        "fresh-extract-manifest-privacy-archive-checksum-parity-pending",
+        "immutable-https-release-url-and-simultaneous-assets-pending"
       ],
       "branch": "codex/r32-full-spectrum-workflow",
       "draft_pull_request": "https://github.com/Ponkichi0718/ChromaMatter/pull/1"
@@ -188,7 +190,7 @@
       "source_publication_eligible": false,
       "source_publication_status": "r31 is published; the r32 preflight passed and the update is pending final Downloads restage, detached checksum, Git-tree parity, and GitHub pull request",
       "binary_publication_eligible": false,
-      "binary_publication_blocker": "current worktree binary is blocked by incomplete component-specific licence assets and static-linked component inventory, missing controlled PyTetWild rebuild evidence, missing release-approved complete corresponding source, and pending clean-build/fresh-extract audits",
+      "binary_publication_blocker": "component-specific licence and static-linked component coverage is implemented; publication remains blocked by missing controlled PyTetWild rebuild evidence, the matching application lock update, a release-approved complete corresponding-source bundle, a current clean binary build with packaged self-test and Japanese/English smoke, fresh-extract manifest/privacy/archive/checksum parity, and immutable HTTPS Release URLs with simultaneous assets",
       "innovation_fund_submission_ready": false,
       "innovation_fund_submission_blockers": "rights-cleared public sample, Orca/U1 evidence, cover, video, community post, and submitted form remain pending",
       "failure_contract": "Do not distribute or claim r32 publication when any exact-source regression, build, smoke, stage, archive, privacy, identity, layout, or checksum gate is pending or failed."
@@ -254,7 +256,7 @@
       "source_publication_eligible": true,
       "source_publication_status": "published at https://github.com/Ponkichi0718/ChromaMatter from the approved r31 source-only scope; exact final restage, Downloads placement, detached checksum record, archive parity, CRC, privacy, and staged identity/icon/tooling verification passed",
       "binary_publication_eligible": false,
-      "binary_publication_blocker": "third-party binary redistribution audit for PyTetWild/fTetWild, TetGen, PyMeshLab, Qt, GEOS, and the exact packaged dependency set remains incomplete; owner GO does not waive licence obligations",
+      "binary_publication_blocker": "historical r31 evidence only: its Windows binary was held under the then-current dependency-compliance gate and is not r32 release evidence; the current r32 blocker set is recorded in latest_source_branch_validation",
       "innovation_fund_submission_ready": false,
       "innovation_fund_submission_blockers": "rights-cleared public sample, Orca/U1 evidence, cover, video, community post, and submitted form remain pending",
       "publication_eligibility_note": "publication_eligible is true only for publication_scope=source-only. Binary publication remains ineligible. Physical XP-PEN and printer tests remain disclosed limitations rather than source-publication blockers",
@@ -298,7 +300,7 @@
       "downloads_placement_claimed": false,
       "legal_review": "owner-accepted for the declared ChromaMatter icon asset scope on 2026-08-20; no independent legal clearance claimed",
       "source_publication_policy": "the repository already contains the published r31 source; publish the r32 source-only update only after exact final restage, manifest, privacy, archive, and Git-tree parity checks",
-      "binary_publication_policy": "withhold the software ZIP and executable until the exact third-party binary redistribution audit is complete",
+      "binary_publication_policy": "withhold the software ZIP and executable until controlled PyTetWild evidence and the matching application lock, a release-approved complete corresponding-source bundle, current clean-build/package smoke, fresh-extract manifest/privacy/archive/checksum parity, and immutable HTTPS simultaneous Release assets all pass",
       "final_failure_contract": "Do not distribute or claim publication while any r32 final gate is pending or failed."
     }
   },
