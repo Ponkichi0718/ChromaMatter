@@ -1,0 +1,21 @@
+Qt 5.15.2 runtime notice
+========================
+
+ChromaMatter's Windows package carries Qt 5.15.2 shared libraries supplied by
+the pinned PyMeshLab runtime.  This distribution uses Qt's LGPL-3.0-only
+licensing option.  Qt also offers other licensing options; those alternatives
+do not change the option used for this package.
+
+The corresponding source is the exact Qt 5.15.2 source archive pinned by the
+ChromaMatter corresponding-source manifest:
+
+  https://download.qt.io/archive/qt/5.15/5.15.2/single/
+  qt-everywhere-src-5.15.2.tar.xz
+  SHA-256: 3a530d1b243b5dec00bc54937455471aaa3e56849d2593edb8ded07228202240
+
+The full LGPL text used for the Qt component is provided in
+LICENSE_QT_LGPL_3_0.txt.  Qt's ANGLE component has its own license text in
+LICENSE_QT_ANGLE.txt.  RELINKING_EN.md and RELINKING_JA.md describe how to
+replace the separately shipped Qt libraries in the PyInstaller one-folder
+package.
+

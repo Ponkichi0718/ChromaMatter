@@ -1,0 +1,17 @@
+SQLite 3.50.4 public-domain status
+==================================
+
+All of the code and documentation in SQLite has been dedicated to the public
+domain by the authors. Anyone is free to copy, modify, publish, use, compile,
+sell, or distribute SQLite, in source code form or as a compiled binary, for
+any purpose, commercial or non-commercial, and by any means.
+
+SQLite source files carry this blessing:
+
+    May you do good and not evil
+    May you find forgiveness for yourself and forgive others
+    May you share freely, never taking more than you give.
+
+Official status and blessing:
+https://www.sqlite.org/copyright.html
+https://sqlite.org/different.html

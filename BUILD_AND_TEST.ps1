@@ -128,7 +128,7 @@ if (-not $RuntimeRoot) {
 
 if (-not $RuntimeRoot) {
     throw (
-        "Python 3.13 environment not found. Run BOOTSTRAP_WINDOWS.ps1 first, " +
+        "Python 3.13.14 environment not found. Run BOOTSTRAP_WINDOWS.ps1 first, " +
         "or pass -RuntimeRoot C:\path\to\venv."
     )
 }
@@ -149,8 +149,8 @@ foreach ($filename in $filamentResourceFiles) {
 }
 
 $pythonVersion = & $python -c "import sys; print('.'.join(map(str, sys.version_info[:3])))"
-if ($LASTEXITCODE -ne 0 -or -not $pythonVersion.StartsWith("3.13.")) {
-    throw "The tested build environment requires Python 3.13; found $pythonVersion"
+if ($LASTEXITCODE -ne 0 -or $pythonVersion -ne "3.13.14") {
+    throw "The tested build environment requires Python 3.13.14; found $pythonVersion"
 }
 
 $env:PYTHONPATH = "$handoffRoot;$fixedApp"
@@ -209,4 +209,25 @@ foreach ($language in @("ja", "en")) {
     Invoke-PackagedUiSmoke -Executable $exe -Language $language
 }
 
+$inventoryScript = Join-Path $handoffRoot `
+    "tooling\generate_binary_compliance_inventory.py"
+if (-not (Test-Path -LiteralPath $inventoryScript -PathType Leaf)) {
+    throw "Binary compliance inventory generator is missing: $inventoryScript"
+}
+$complianceRoot = Join-Path $buildOutput "compliance"
+New-Item -ItemType Directory -Path $complianceRoot -Force | Out-Null
+$sbomOutput = Join-Path $complianceRoot "SBOM.cdx.json"
+$componentMapOutput = Join-Path $complianceRoot `
+    "BINARY_COMPONENT_MAP.json"
+$packageRoot = Split-Path -Parent $exe
+& $python $inventoryScript `
+    --package-root $packageRoot `
+    --sbom-output $sbomOutput `
+    --component-map-output $componentMapOutput
+if ($LASTEXITCODE -ne 0) {
+    throw "Built binary compliance inventory failed."
+}
+
 Write-Host "Build and smoke tests completed: $exe"
+Write-Host "CycloneDX SBOM: $sbomOutput"
+Write-Host "Binary component map: $componentMapOutput"

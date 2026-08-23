@@ -12,7 +12,18 @@ ChromaMatter — AI Model Print Studioは、AI生成された色付き3Dモデ�
 
 ## AIモデルから3MFまでを、ひとつの流れに
 
-頂点カラー付きOBJ、または埋め込みbaseColor／`COLOR_0`を持つ静的GLBを読み込めます。TripoAIだけでなく、Hi3D AIのようにGLBを出力するサービスも同じ制作フローへ取り込めます。モデルの処理はローカルで行い、ChromaMatterから外部サーバーへアップロードしません。
+頂点カラー付きOBJ、または埋め込みbaseColor／`COLOR_0`を持つ静的GLBを読み込めます。TripoAIだけでなく、Hi3D AIのようにGLBを出力するサービスも同じ制作フローへ取り込めます。対応する分割GLBはパーツ構成を保ったまま閉立体化し、結合3MFまたはパーツ別3MFへ出力できます。モデルの処理はローカルで行い、ChromaMatterから外部サーバーへアップロードしません。
+
+## Hi3D系分割GLB対応（β・非公式）
+
+ChromaMatterは独立projectであり、Hi3D AIの公式・提携製品ではありません。Hi3Dから出力されるすべてのfileとの互換性を保証するものではありません。対応する静的・埋込assetのGLBに限り、mesh node単位のpartと配置を保って、色変換と3MF出力へ進めます。
+
+- パーツ識別用の`COLOR_0`は、exporter由来、node構造、material、共通baseColor texture、既知の識別palette順がすべて一致した場合だけ除外します。証明が不足する場合、通常の作者指定頂点色はglTF標準どおりbaseColorへ乗算して保持します。
+- 元のpartは一つずつ正規化・閉立体化し、別part同士を溶接しません。importした面と修復で追加した面も区別して追跡します。
+- 検証に合格したassemblyは、結合3MFに加えて、指定時には各印刷partの独立3MFとmanifestを出力できます。part対応やprovenanceが不完全・古い場合は、検証を弱めず安全停止します。
+- exactに証明できたseamと、利用者が明示した上限内の微小平面修復だけが対象です。animation、skin、morph、Draco、meshopt、BasisU、外部URI、曖昧または非対応のgeometryはβ対応外です。
+
+[公開sampleの実機結果と分割GLBの開発記録](https://note.com/ponkichi0718/n/nf6c77165127c)では、識別色を本来のbaseColorから分離する必要性と、現在のpart別出力経路を記録しています。
 
 <table>
   <tr>
@@ -40,6 +51,8 @@ ChromaMatter — AI Model Print Studioは、AI生成された色付き3Dモデ�
 印刷に使う基本色はF1～F4の4本です。ChromaMatterはモデルの色域を見て、実在する同一素材のフィラメントから4本を提案し、その組み合わせで16／24／32色の印刷用パレットを構成します。
 
 混色はF1+F2、F1+F3……という組み合わせごとにグラデーション順で表示します。画面、3MF、実機比較チャートで同じ並びと番号を使うため、「どの混色が、モデルのどこに使われているか」を追いやすくしています。
+
+自動提案後にF1～F4を試しに変更した場合は、「現在の4色をプレビュー・3MFへ反映」で右側の変換previewと3MF paletteを更新できます。自動提案は既定のままで、現在の色番号とmanual paintを保って比較できます。
 
 - PLAを既定とし、ABS／PETGはβです。
 - 1つの印刷ジョブでは、PLAならPLAだけというように4本を同じ素材で揃えます。
@@ -73,7 +86,9 @@ ChromaMatter — AI Model Print Studioは、AI生成された色付き3Dモデ�
 - サイズ、面数、形状診断、対応するUV seamの閉立体化
 - 全体3MFまたはパーツ別3MF、持ち運べるproject folder
 
-閉立体化は、証明できる境界だけを安全に処理します。すべての穴や壊れたモデルを自動修復できる機能ではなく、危険な形状は出力前に停止します。
+閉立体化は、証明できる境界だけを安全に処理します。対応する分割GLBでは別パーツ同士を溶接せず、元面と修復面を区別して追跡します。Hi3D系の識別用疑似色も、exporter・node・material・texture・既知paletteの条件がすべて揃った場合だけ除外し、通常の作者指定色は残します。閉立体化前に3MF出力を始めた場合も、適格なmodelでは処理を宣言し、成功後に出力を再開します。すべての穴や壊れたモデルを自動修復する機能ではありません。対応する分割GLBの修復では、閉じた未対応境界loopの幅が2.0 mm以下かつ平面性のずれが0.02 mm以下の場合だけ、厳密な局所平面capを追加できます。それより大きい穴、非平面・曖昧・non-manifoldな開口はfail-closedで停止し、単一GLBのUV seam溶接経路はcapを追加しません。
+
+出力3MFには安定したFull Spectrum layer-cycleとprime towerのbaselineを記録します。Local Z、advanced dithering、pointillism等の実験設定は有効化せず、supportはSnapmaker Orca側で選択します。最終判断は必ずOrcaのslice previewと実機testで行います。
 
 ## AI×3Dプリンタを、もう一つ前へ
 
@@ -89,8 +104,9 @@ AI 3D生成は、専門的なモデリング技術がなくても「作りたい
 
 - [ChromaMatterへの改名と現行機能](https://note.com/ponkichi0718/n/n711977c75aa4)
 - [公開用オリジナルモデルをAIで作る工程](https://note.com/ponkichi0718/n/nad23088e6f2d)
+- [公開sampleの実機結果と分割GLB対応](https://note.com/ponkichi0718/n/nf6c77165127c)
 - [このソフトを作り始めた理由と初期機能](https://note.com/ponkichi0718/n/nc7f466bf8078)
 
 > **AI利用について：** ChromaMatterは、企画整理、仕様設計、実装、テスト、文書化、画像制作、GitHub公開作業の各段階でChatGPT／OpenAI CodexなどのAIを活用しています。最終的な仕様、採否、実機検証、公開判断はプロジェクト作者が行っています。AI生成のコード、画像、説明文には、不自然な表現や技術的な誤りが残る可能性があります。重要な印刷設定はソース、生成3MF、スライサープレビュー、ご自身の実機で確認してください。お気づきの点は[GitHub Issues](https://github.com/Ponkichi0718/ChromaMatter/issues)でお知らせください。
 
-現時点でGitHubに公開しているのはソースコードです。Windowsバイナリは第三者依存関係の再配布条件を確認中のため、まだ公開していません。
+r32は`v0.8beta-r32`のWindows ZIP、完全対応ソース、SBOM、component map、privacy確認済み操作動画、detached checksumを一組としてだけ同時公開します。固定Releaseリンクが無効なら公開は未完了で、その時点の最新公開ソースはr31です。単独のEXE／ZIPは正式なr32配布物ではありません。

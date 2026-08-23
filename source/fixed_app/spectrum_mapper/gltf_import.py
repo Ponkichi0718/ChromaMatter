@@ -6,12 +6,17 @@ the static, rendered base colour of a glTF/GLB scene into that representation:
 * scene and node transforms are baked into positions;
 * each instantiated mesh node remains one stable application part;
 * triangle lists, strips, and fans become indexed triangles;
-* ``COLOR_0``, ``baseColorFactor``, and ``baseColorTexture`` are multiplied in
-  linear space and encoded back to sRGB for the existing colour pipeline.
+* ``COLOR_0``, ``baseColorFactor``, and ``baseColorTexture`` are normally
+  multiplied in linear space and encoded back to sRGB for the existing colour
+  pipeline;
+* the default ``auto`` policy recognizes a narrow multipart-segmentation
+  signature and omits those categorical ``COLOR_0`` display IDs.  Callers can
+  force either standards-compliant multiplication or omission explicitly.
 
-The importer deliberately does not guess when a feature would change geometry
-or colour.  Animation, skinning, morph targets, Draco/meshopt compression,
-BasisU textures, and external URIs therefore stop with ``GltfImportError``.
+Outside that documented compatibility signature, the importer deliberately
+does not guess when a feature would change geometry or colour.  Animation,
+skinning, morph targets, Draco/meshopt compression, BasisU textures, and
+external URIs therefore stop with ``GltfImportError``.
 """
 
 from __future__ import annotations
@@ -26,7 +31,7 @@ import re
 import struct
 import urllib.parse
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any, Literal, Mapping, Sequence
 
 import numpy as np
 from PIL import Image, UnidentifiedImageError
@@ -36,6 +41,9 @@ from .models import ObjAsset, ProgressCallback
 
 class GltfImportError(RuntimeError):
     """The file cannot be represented safely by the static colour pipeline."""
+
+
+VertexColorPolicy = Literal["auto", "multiply", "ignore"]
 
 
 _GLB_MAGIC = b"glTF"
@@ -53,6 +61,35 @@ _MAX_IMPORTED_FACES = 3_000_000
 _MAX_NODES = 10_000
 _MAX_PRIMITIVES = 10_000
 _MAX_NODE_DEPTH = 512
+_VERTEX_COLOR_POLICIES = frozenset({"auto", "multiply", "ignore"})
+_GLTF_IMPORT_METADATA_SCHEMA = "obj-adjuster.gltf-import.v1"
+_AUTO_SEGMENTATION_MIN_DOMINANT_SHARE = 0.85
+_AUTO_SEGMENTATION_MIN_CHANNEL_RANGE = 32
+# Known categorical sequence written by the compatible exploded-part export.
+# Requiring the exact prefix makes an arbitrary authored per-part tint retain
+# normal glTF multiplication even when it comes from the same Three.js stack.
+_EXPLODED_PART_ID_PALETTE = (
+    (31, 119, 180),
+    (174, 199, 232),
+    (255, 127, 14),
+    (255, 187, 120),
+    (44, 160, 44),
+    (152, 223, 138),
+    (214, 39, 40),
+    (255, 152, 150),
+    (148, 103, 189),
+    (197, 176, 213),
+    (140, 86, 75),
+    (196, 156, 148),
+    (227, 119, 194),
+    (247, 182, 210),
+    (127, 127, 127),
+    (199, 199, 199),
+    (188, 189, 34),
+    (219, 219, 141),
+    (23, 190, 207),
+    (158, 218, 229),
+)
 
 _COMPONENTS = {
     5120: (np.dtype("i1"), 1),
@@ -977,6 +1014,8 @@ def _material_colour(
     primitive: Mapping[str, Any],
     attributes: Mapping[str, Any],
     vertex_count: int,
+    *,
+    apply_vertex_colour: bool = True,
 ) -> tuple[np.ndarray, bool, bool]:
     rgba_linear = np.ones((vertex_count, 4), dtype=np.float64)
     used_vertex_colour = False
@@ -1000,8 +1039,9 @@ def _material_colour(
         colours = np.asarray(colours, dtype=np.float64)
         if not np.isfinite(colours).all() or np.any(colours < -1e-6) or np.any(colours > 1.000001):
             raise GltfImportError("COLOR_0 values must be finite and within 0..1")
-        rgba_linear[:, : colours.shape[1]] *= np.clip(colours, 0.0, 1.0)
-        used_vertex_colour = True
+        if apply_vertex_colour:
+            rgba_linear[:, : colours.shape[1]] *= np.clip(colours, 0.0, 1.0)
+            used_vertex_colour = True
     material_value = primitive.get("material")
     material: dict[str, Any] = {}
     if material_value is not None:
@@ -1089,17 +1129,298 @@ def _scene_roots(
     return roots, None
 
 
+def _selected_mesh_ids(
+    nodes: Sequence[Any], meshes: Sequence[Any], roots: Sequence[int]
+) -> list[int]:
+    """Return distinct mesh definitions reachable from the selected scene."""
+
+    selected: list[int] = []
+    seen_meshes: set[int] = set()
+    seen_nodes: set[int] = set()
+    stack = list(reversed(roots))
+    while stack:
+        node_id = stack.pop()
+        if node_id in seen_nodes:
+            # The main traversal reports cycles and multiply-referenced nodes.
+            # Avoid making an appearance-policy decision on an invalid graph.
+            continue
+        seen_nodes.add(node_id)
+        node = _object(nodes[node_id], f"nodes[{node_id}]")
+        mesh_value = node.get("mesh")
+        if mesh_value is not None:
+            mesh_id = _index(mesh_value, meshes, f"nodes[{node_id}].mesh")
+            if mesh_id not in seen_meshes:
+                seen_meshes.add(mesh_id)
+                selected.append(mesh_id)
+        children = _array(node.get("children", []), f"nodes[{node_id}].children")
+        for child in reversed(children):
+            stack.append(_index(child, nodes, f"nodes[{node_id}].children"))
+    return selected
+
+
+def _has_exploded_multipart_provenance(
+    reader: _Reader,
+    nodes: Sequence[Any],
+    meshes: Sequence[Any],
+    roots: Sequence[int],
+) -> bool:
+    """Return whether the scene carries the known part-explosion metadata.
+
+    A shared texture plus nearly uniform per-part ``COLOR_0`` is valid authored
+    glTF and is not, by itself, proof that the colours are disposable IDs.  The
+    compatible multipart exporter also records every printable part beneath a
+    ``world`` node with explicit original-position and explosion-direction
+    vectors.  Auto suppression is restricted to that provenance; ordinary
+    glTF keeps the standards-defined colour multiplication.
+    """
+
+    asset = _object(reader.document.get("asset"), "asset")
+    generator = asset.get("generator")
+    if not isinstance(generator, str) or not generator.startswith(
+        "THREE.GLTFExporter "
+    ):
+        return False
+
+    mesh_nodes: list[tuple[int, int]] = []
+    reachable: list[int] = []
+    seen_nodes: set[int] = set()
+    stack = list(reversed(roots))
+    while stack:
+        node_id = stack.pop()
+        if node_id in seen_nodes:
+            return False
+        seen_nodes.add(node_id)
+        reachable.append(node_id)
+        node = _object(nodes[node_id], f"nodes[{node_id}]")
+        mesh_value = node.get("mesh")
+        if mesh_value is not None:
+            mesh_nodes.append(
+                (node_id, _index(mesh_value, meshes, f"nodes[{node_id}].mesh"))
+            )
+        children = _array(node.get("children", []), f"nodes[{node_id}].children")
+        for child in reversed(children):
+            stack.append(_index(child, nodes, f"nodes[{node_id}].children"))
+
+    if len(mesh_nodes) < 2 or len({mesh_id for _, mesh_id in mesh_nodes}) != len(
+        mesh_nodes
+    ):
+        return False
+
+    mesh_node_ids = {node_id for node_id, _ in mesh_nodes}
+    world_parent_found = False
+    for node_id in reachable:
+        node = _object(nodes[node_id], f"nodes[{node_id}]")
+        extras_value = node.get("extras")
+        extras = extras_value if isinstance(extras_value, dict) else {}
+        children = {
+            _index(child, nodes, f"nodes[{node_id}].children")
+            for child in _array(
+                node.get("children", []), f"nodes[{node_id}].children"
+            )
+        }
+        if (
+            node.get("name") == "world"
+            and extras.get("name") == "world"
+            and mesh_node_ids.issubset(children)
+        ):
+            world_parent_found = True
+    if not world_parent_found:
+        return False
+
+    for node_id, _mesh_id in mesh_nodes:
+        node = _object(nodes[node_id], f"nodes[{node_id}]")
+        name = node.get("name")
+        extras_value = node.get("extras")
+        if not isinstance(extras_value, dict):
+            return False
+        extras = extras_value
+        if not isinstance(name, str) or not name or extras.get("name") != name:
+            return False
+        for key in ("_explodeOrigLocalPos", "_explodeWorldDir"):
+            vector_value = extras.get(key)
+            if not isinstance(vector_value, dict):
+                return False
+            vector = vector_value
+            if set(vector) != {"x", "y", "z"}:
+                return False
+            values: list[float] = []
+            for axis in ("x", "y", "z"):
+                value = vector[axis]
+                if isinstance(value, bool) or not isinstance(value, (int, float)):
+                    return False
+                values.append(float(value))
+            if not np.isfinite(values).all():
+                return False
+    return True
+
+
+def _auto_segmentation_vertex_colours(
+    reader: _Reader,
+    nodes: Sequence[Any],
+    meshes: Sequence[Any],
+    roots: Sequence[int],
+) -> tuple[set[tuple[int, int]], int | None]:
+    """Detect a narrow signature for categorical part-display ``COLOR_0``.
+
+    There is no glTF semantic which marks a vertex colour as a segmentation
+    overlay, so auto mode must fail closed.  A decision is made only when every
+    colour-bearing primitive in the selected scene has all of these signals:
+
+    * known multipart part-explosion provenance on every printable node;
+    * its own material with an unchanged white baseColorFactor;
+    * the same baseColorTexture declaration as the other primitives;
+    * normalized unsigned-byte colour IDs with opaque alpha;
+    * exactly one dominant chromatic ID plus a small white sentinel minority;
+    * a distinct dominant ID and material for every primitive; and
+    * the dominant IDs are exactly the exporter category-palette prefix for
+      the detected part count.
+
+    Anything else retains the glTF-standard multiplication path.
+    """
+
+    if not _has_exploded_multipart_provenance(reader, nodes, meshes, roots):
+        return set(), None
+
+    candidates: list[
+        tuple[tuple[int, int], int, int, dict[str, Any], tuple[int, int, int]]
+    ] = []
+    selected_primitive_count = 0
+    for mesh_id in _selected_mesh_ids(nodes, meshes, roots):
+        mesh = _object(meshes[mesh_id], f"meshes[{mesh_id}]")
+        primitives = _array(
+            mesh.get("primitives", []), f"meshes[{mesh_id}].primitives"
+        )
+        for primitive_id, raw_primitive in enumerate(primitives):
+            selected_primitive_count += 1
+            primitive = _object(
+                raw_primitive, f"meshes[{mesh_id}].primitives[{primitive_id}]"
+            )
+            attributes = _object(
+                primitive.get("attributes"),
+                f"meshes[{mesh_id}].primitives[{primitive_id}].attributes",
+            )
+            if "COLOR_0" not in attributes:
+                return set(), None
+
+            material_value = primitive.get("material")
+            if material_value is None:
+                return set(), None
+            material_id = _index(
+                material_value,
+                reader.materials,
+                f"meshes[{mesh_id}].primitives[{primitive_id}].material",
+            )
+            material = _object(
+                reader.materials[material_id], f"materials[{material_id}]"
+            )
+            pbr = _object(
+                material.get("pbrMetallicRoughness", {}),
+                f"materials[{material_id}].pbrMetallicRoughness",
+            )
+            factor = _float_vector(
+                pbr.get("baseColorFactor", [1.0, 1.0, 1.0, 1.0]),
+                4,
+                f"materials[{material_id}].baseColorFactor",
+            )
+            if not np.allclose(factor, 1.0, rtol=0.0, atol=1e-9):
+                return set(), None
+            texture_value = pbr.get("baseColorTexture")
+            if texture_value is None:
+                return set(), None
+            texture_info = _object(
+                texture_value, f"materials[{material_id}].baseColorTexture"
+            )
+            texture_id = _index(
+                texture_info.get("index"),
+                reader.textures,
+                f"materials[{material_id}].baseColorTexture.index",
+            )
+
+            colours, definition = reader.accessor(
+                _integer(attributes["COLOR_0"], "COLOR_0"), "COLOR_0"
+            )
+            if (
+                definition.get("type") not in {"VEC3", "VEC4"}
+                or int(definition.get("componentType", -1)) != 5121
+                or not bool(definition.get("normalized", False))
+                or definition.get("sparse") is not None
+                or not len(colours)
+            ):
+                return set(), None
+            encoded = np.rint(np.clip(np.asarray(colours), 0.0, 1.0) * 255.0).astype(
+                np.uint8
+            )
+            if encoded.shape[1] == 4 and not np.all(encoded[:, 3] == 255):
+                return set(), None
+            unique, counts = np.unique(encoded[:, :3], axis=0, return_counts=True)
+            if len(unique) != 2:
+                return set(), None
+            dominant_index = int(np.argmax(counts))
+            dominant = unique[dominant_index]
+            minority = unique[1 - dominant_index]
+            if (
+                float(counts[dominant_index]) / len(encoded)
+                < _AUTO_SEGMENTATION_MIN_DOMINANT_SHARE
+                or np.array_equal(dominant, [255, 255, 255])
+                or not np.array_equal(minority, [255, 255, 255])
+                or int(np.max(dominant)) - int(np.min(dominant))
+                < _AUTO_SEGMENTATION_MIN_CHANNEL_RANGE
+            ):
+                return set(), None
+            candidates.append(
+                (
+                    (mesh_id, primitive_id),
+                    texture_id,
+                    material_id,
+                    dict(texture_info),
+                    tuple(int(value) for value in dominant),
+                )
+            )
+
+    if len(candidates) < 2 or len(candidates) != selected_primitive_count:
+        return set(), None
+    texture_ids = {item[1] for item in candidates}
+    material_ids = {item[2] for item in candidates}
+    dominant_ids = {item[4] for item in candidates}
+    expected_dominant_ids = set(
+        _EXPLODED_PART_ID_PALETTE[: len(candidates)]
+    )
+    first_texture_info = candidates[0][3]
+    if (
+        len(candidates) > len(_EXPLODED_PART_ID_PALETTE)
+        or len(texture_ids) != 1
+        or len(material_ids) != len(candidates)
+        or len(dominant_ids) != len(candidates)
+        or dominant_ids != expected_dominant_ids
+        or any(item[3] != first_texture_info for item in candidates[1:])
+    ):
+        return set(), None
+    return {item[0] for item in candidates}, next(iter(texture_ids))
+
+
 def load_gltf_asset(
     path: Path,
     progress: ProgressCallback | None = None,
+    *,
+    vertex_color_policy: VertexColorPolicy = "auto",
 ) -> ObjAsset:
     """Load a static GLB/glTF scene and bake its base colour to ``ObjAsset``.
 
     ``.gltf`` is intentionally limited to data URIs.  This keeps an imported
     document self-contained and prevents a model from reading arbitrary files
-    next to it.  Hi3D's normal binary ``.glb`` output is the primary path.
+    next to it.  ``vertex_color_policy='multiply'`` always follows the glTF
+    colour equation, while ``'ignore'`` always omits ``COLOR_0``.  The default
+    ``'auto'`` only omits it for the conservative multipart segmentation
+    signature documented by :func:`_auto_segmentation_vertex_colours`.
     """
 
+    if (
+        not isinstance(vertex_color_policy, str)
+        or vertex_color_policy not in _VERTEX_COLOR_POLICIES
+    ):
+        raise ValueError(
+            "vertex_color_policy must be 'auto', 'multiply', or 'ignore'"
+        )
     path = Path(path)
     if not path.is_file():
         raise GltfImportError(f"GLB/glTF file was not found: {path}")
@@ -1130,6 +1451,15 @@ def load_gltf_asset(
     roots, scene_id = _scene_roots(document, nodes, warnings)
     if not roots:
         raise GltfImportError("The selected glTF scene has no root nodes")
+    auto_ignored_colours: set[tuple[int, int]] = set()
+    auto_shared_texture: int | None = None
+    compatible_exploded_multipart = _has_exploded_multipart_provenance(
+        reader, nodes, meshes, roots
+    )
+    if vertex_color_policy == "auto":
+        auto_ignored_colours, auto_shared_texture = (
+            _auto_segmentation_vertex_colours(reader, nodes, meshes, roots)
+        )
 
     vertices_parts: list[np.ndarray] = []
     colours_parts: list[np.ndarray] = []
@@ -1143,6 +1473,7 @@ def load_gltf_asset(
     seen_nodes: set[int] = set()
     used_textures = False
     used_vertex_colours = False
+    suppressed_vertex_colours = 0
     discarded_alpha = False
     primitive_count = 0
     dropped_degenerate = 0
@@ -1263,9 +1594,19 @@ def load_gltf_asset(
                 triangles = triangles[nondegenerate]
                 if not len(triangles):
                     raise GltfImportError("A mesh primitive contains only degenerate triangles")
-                rgba_linear, vertex_colour, texture_colour = _material_colour(
-                    reader, primitive, attributes, len(positions)
+                suppress_vertex_colour = "COLOR_0" in attributes and (
+                    vertex_color_policy == "ignore"
+                    or (mesh_id, primitive_id) in auto_ignored_colours
                 )
+                rgba_linear, vertex_colour, texture_colour = _material_colour(
+                    reader,
+                    primitive,
+                    attributes,
+                    len(positions),
+                    apply_vertex_colour=not suppress_vertex_colour,
+                )
+                if suppress_vertex_colour:
+                    suppressed_vertex_colours += 1
                 used_vertex_colours = used_vertex_colours or vertex_colour
                 used_textures = used_textures or texture_colour
                 discarded_alpha = discarded_alpha or bool(
@@ -1356,6 +1697,22 @@ def load_gltf_asset(
             "印刷色にはbaseColorだけを使用し、PBR表示用マップは意図的に除外しました: "
             + ", ".join(sorted(reader.ignored_appearance_maps))
         )
+    if suppressed_vertex_colours:
+        if vertex_color_policy == "auto":
+            warnings.append(
+                "COLOR_0自動判定: 共通baseColorTexture "
+                f"(index {auto_shared_texture}) を使う {suppressed_vertex_colours} 個の"
+                "primitiveで、パーツ分割表示用とみられるほぼ一様なカテゴリ頂点色を"
+                "検出しました。COLOR_0は乗算せず、baseColorTexture/baseColorFactorだけを"
+                "使用しました。glTF規格どおりに合成する場合は"
+                "vertex_color_policy='multiply'を指定してください"
+            )
+        else:
+            warnings.append(
+                "vertex_color_policy='ignore'の指定により、"
+                f"{suppressed_vertex_colours} 個のprimitiveのCOLOR_0を乗算せず、"
+                "COLOR_0以外のbaseColor情報だけを使用しました"
+            )
     if used_vertex_colours and used_textures:
         warnings.append("COLOR_0とbaseColorTextureをglTF規格どおり線形色で合成しました")
     if discarded_alpha:
@@ -1386,7 +1743,18 @@ def load_gltf_asset(
         part_vertex_counts=tuple(part_vertex_counts),
         part_marker_kind="gltf_node",
         has_explicit_parts=len(part_names) > 1,
+        import_metadata={
+            "schema": _GLTF_IMPORT_METADATA_SCHEMA,
+            "compatible_exploded_multipart": bool(
+                compatible_exploded_multipart
+            ),
+            "categorical_part_ids_detected": bool(auto_ignored_colours),
+            "segmentation_vertex_colors_suppressed": bool(
+                vertex_color_policy == "auto" and auto_ignored_colours
+            ),
+            "vertex_color_policy": vertex_color_policy,
+        },
     )
 
 
-__all__ = ["GltfImportError", "load_gltf_asset"]
+__all__ = ["GltfImportError", "VertexColorPolicy", "load_gltf_asset"]

@@ -28,11 +28,51 @@ CATALOG: dict[str, dict[str, str]] = {
     "toolbar.load_project": {"ja": "プロジェクト読込", "en": "Load Project"},
     "toolbar.open_paint": {"ja": "マニュアル修正", "en": "Manual Editing"},
     "toolbar.help": {"ja": "使い方", "en": "Help"},
+    "toolbar.licenses": {"ja": "ライセンス", "en": "Licenses"},
     # Show the other language beside the selector so the switch is obvious to
     # someone who cannot yet read the current interface language.
     "toolbar.language_opposite": {"ja": "Language", "en": "言語"},
     "toolbar.launch_orca": {"ja": "Snapmaker Orca起動", "en": "Launch Snapmaker Orca"},
     "toolbar.export_3mf": {"ja": "3MFを書き出す", "en": "Export 3MF"},
+    # This compact notice is always reachable from the public toolbar.  Exact
+    # release URLs and local document locations are supplied by legal_notice.py.
+    "legal_notice.title": {
+        "ja": "ライセンスとソース",
+        "en": "Licenses & Source",
+    },
+    "legal_notice.application": {
+        "ja": "ChromaMatter本体は{license}で提供される自由ソフトウェアです。",
+        "en": "The ChromaMatter application is free software provided under {license}.",
+    },
+    "legal_notice.no_warranty": {
+        "ja": "本ソフトウェアは無保証です。商品性・特定目的への適合性を含む、いかなる保証もありません。",
+        "en": "This software comes with NO WARRANTY, including no implied warranty of merchantability or fitness for a particular purpose.",
+    },
+    "legal_notice.rights": {
+        "ja": "適用されるライセンス条件に従い、対象となるソフトウェアを再配布・改変できます。",
+        "en": "You may redistribute and modify covered software under the terms of its applicable licence.",
+    },
+    "legal_notice.third_party": {
+        "ja": "Windows配布物にはTetGen（{tetgen_license}）などの第三者ソフトウェアが含まれます。各構成要素にはそれぞれのライセンスが適用されます。",
+        "en": "The Windows distribution includes third-party software such as TetGen ({tetgen_license}). Each component remains governed by its own licence.",
+    },
+    "legal_notice.source_heading": {
+        "ja": "ライセンス原文・対応ソース・ビルド情報",
+        "en": "Licence texts, corresponding source, and build information",
+    },
+    "legal_notice.source_url": {
+        "ja": "公開ソース／リリース資料: {source_url}",
+        "en": "Public source and release materials: {source_url}",
+    },
+    "legal_notice.local_documents": {
+        "ja": "この配布物内のライセンス／ソース案内: {locations}",
+        "en": "Licence and source notices in this distribution: {locations}",
+    },
+    "legal_notice.governing_terms": {
+        "ja": "この概要ではなく、配布物に同梱された各ライセンス原文とソース案内が適用条件を定めます。",
+        "en": "The full licence texts and source notices supplied with the distribution, rather than this summary, govern their respective components.",
+    },
+    "legal_notice.close": {"ja": "閉じる", "en": "Close"},
     # Compact, task-oriented help.  Each topic deliberately stays at four
     # short steps so the Help Center remains useful beside the working UI.
     "help_center.title": {"ja": "使い方・ヘルプ", "en": "Help Center"},
@@ -398,8 +438,28 @@ CATALOG: dict[str, dict[str, str]] = {
         "en": "Sampled: ({x}, {y}) = {color}",
     },
     "palette.base_applied": {
-        "ja": "{color}を{slot}へ反映しました",
-        "en": "Applied {color} to {slot}",
+        "ja": "{color}を{slot}へ設定しました。［現在の4色をプレビュー・3MFへ反映］で確認してください",
+        "en": "Set {slot} to {color}. Choose Apply Current F1-F4 to Preview / 3MF to review it",
+    },
+    "palette.apply_physical": {
+        "ja": "現在の4色をプレビュー・3MFへ反映",
+        "en": "Apply Current F1-F4 to Preview / 3MF",
+    },
+    "palette.apply_physical_pending": {
+        "ja": "基本4色を変更しました。［現在の4色をプレビュー・3MFへ反映］で、現在の色番号を保ったまま確認できます。",
+        "en": "The four base colors changed. Choose Apply Current F1-F4 to Preview / 3MF to review them without changing the current color IDs.",
+    },
+    "palette.apply_physical_done": {
+        "ja": "{target}の色番号を保ったまま、現在のF1〜F4を変換プレビューと3MFへ反映しました",
+        "en": "Applied the current F1-F4 to the {target} preview and 3MF palette without changing its color IDs",
+    },
+    "palette.apply_physical_required_title": {
+        "ja": "基本4色がまだ反映されていません",
+        "en": "Base Colors Not Yet Applied",
+    },
+    "palette.apply_physical_required": {
+        "ja": "次の設定では、基本4色の変更が変換プレビューへまだ反映されていません。\n\n{targets}\n\n各対象を選び、［現在の4色をプレビュー・3MFへ反映］を実行してから3MFを書き出してください。",
+        "en": "Base-color changes have not yet been applied to the converted preview for:\n\n{targets}\n\nSelect each target and choose Apply Current F1-F4 to Preview / 3MF before exporting.",
     },
     "palette.reset_base": {"ja": "基本4色を初期値へ戻す", "en": "Reset Four Base Colors"},
     "palette.mix_group": {"ja": "混色パレット（F1〜F4）", "en": "Mixed Palette (F1-F4)"},
@@ -1195,6 +1255,54 @@ CATALOG: dict[str, dict[str, str]] = {
     "assembly.solidify_failed_detail": {"ja": "閉立体化を完了できませんでしたが、読み込んだ元パーツ・色・手修正は失われていません。\n\n{error}\n\n開口境界を3Dで確認しますか？", "en": "Solidification could not finish, but the imported original parts, colors, and manual edits were preserved.\n\n{error}\n\nInspect the open boundaries in 3D?"},
     "assembly.export_blocked_title": {"ja": "未閉立体のため3MF出力を停止", "en": "3MF Export Blocked: Parts Are Open"},
     "assembly.export_blocked_open": {"ja": "境界エッジが {boundaries}本残っています（要確認 {unmatched}箇所）。Snapmaker Orca側の自動修復で色や形状を失わないよう、3MFはまだ出力しません。\n\n［パーツ処理］で閉立体化または修復してください。開口を3Dで確認しますか？", "en": "{boundaries} boundary edges remain ({unmatched} need review). To prevent Snapmaker Orca repair from losing colors or altering the shape, 3MF export has not started.\n\nSolidify or repair the model under Part Processing. Inspect the openings in 3D now?"},
+    "assembly.export_auto_solidify_title": {
+        "ja": "未閉立体を自動閉立体化して3MF出力",
+        "en": "Automatically Solidify Before 3MF Export",
+    },
+    "assembly.export_auto_solidify_confirm": {
+        "ja": "境界エッジが {boundaries}本残っています。\n\nChromaMatterが、対応を安全確認できたパーツ境界またはGLBの同一座標継ぎ目だけを自動で閉立体化し、成功後に3MF出力を再開します。実際の穴と判断した開口へ自動で蓋は作りません。\n\n閉立体化して出力を続けますか？",
+        "en": "{boundaries} boundary edges remain.\n\nChromaMatter will automatically solidify only safely matched part boundaries or coincident GLB seams, then resume 3MF export after it succeeds. It will not automatically cap openings identified as real holes.\n\nSolidify and continue export?",
+    },
+    "assembly.export_auto_solidify_running": {
+        "ja": "3MF出力前に安全な閉立体化を実行しています",
+        "en": "Safely solidifying the model before 3MF export",
+    },
+    "assembly.export_auto_solidify_cancelled": {
+        "ja": "自動閉立体化をキャンセルしました。元の形状・色・手修正は保持されています",
+        "en": "Automatic solidification was cancelled. The original geometry, colors, and manual edits are preserved",
+    },
+    "assembly.export_auto_solidify_unsafe_title": {
+        "ja": "実際の開口を検出したため3MF出力を安全停止",
+        "en": "3MF Export Stopped Safely: Real Openings Detected",
+    },
+    "assembly.export_auto_solidify_unsafe": {
+        "ja": "対応相手のない開口が {unmatched}箇所あります（境界エッジ {boundaries}本）。誤った蓋で形状を変えないよう、3MF出力時の自動閉立体化では塞ぎません。元の形状・色・手修正は保持されています。\n\n赤い問題境界を確認し、実際の欠損を元モデルで修正してください。微小な穴だと確認できる場合だけ、［出力設定］の［閉立体化］から明示的に修復できます。",
+        "en": "There are {unmatched} openings without matching partners ({boundaries} boundary edges). Export-time automatic solidification will not cap them, avoiding an incorrect shape change. The original geometry, colors, and manual edits are preserved.\n\nInspect the red problem boundaries and repair real missing surfaces in the source model. Only when you have confirmed they are tiny holes, use [Solidify] under Output Settings to explicitly request repair.",
+    },
+    "assembly.export_auto_solidify_unsupported_title": {
+        "ja": "このモデルは自動閉立体化できません",
+        "en": "This Model Cannot Be Automatically Solidified",
+    },
+    "assembly.export_auto_solidify_unsupported": {
+        "ja": "境界エッジが {boundaries}本残っています。このOBJには安全に対応付けられる複数パーツ境界がないため、ChromaMatterは推測で穴を塞ぎません。元の形状・色・手修正は保持されています。\n\n元モデル側で開口を閉じてから、形状を再処理してください。",
+        "en": "{boundaries} boundary edges remain. This OBJ has no multipart boundaries that can be matched safely, so ChromaMatter will not guess how to cap the holes. The original geometry, colors, and manual edits are preserved.\n\nClose the openings in the source model, then reprocess the geometry.",
+    },
+    "assembly.export_auto_solidify_incomplete_title": {
+        "ja": "閉立体化を完了できないため3MF出力を安全停止",
+        "en": "3MF Export Stopped Safely: Solidification Incomplete",
+    },
+    "assembly.export_auto_solidify_incomplete": {
+        "ja": "閉立体化後も境界エッジが {boundaries}本残っています（要確認 {unmatched}箇所）。未閉立体の3MFは出力しません。元の形状・色・手修正は保持されています。",
+        "en": "{boundaries} boundary edges remain after solidification ({unmatched} need review). An open 3MF will not be exported. The original geometry, colors, and manual edits are preserved.",
+    },
+    "assembly.export_auto_solidify_inspect": {
+        "ja": "\n\n開口境界を3Dで確認しますか？",
+        "en": "\n\nInspect the open boundaries in 3D?",
+    },
+    "assembly.export_auto_solidify_stopped": {
+        "ja": "未閉立体のため3MF出力を安全停止しました。元の状態は保持されています",
+        "en": "3MF export stopped safely because the model is open. The original state is preserved",
+    },
     "assembly.auto_joints": {"ja": "安全な継ぎ目だけ組立ジョイントを自動生成", "en": "Generate Assembly Joints Only on Safe Seams"},
     "assembly.clear_manual_joint": {"ja": "手動ジョイントを解除して再処理", "en": "Remove Manual Joint and Reprocess"},
     "assembly.no_manual_joint": {"ja": "解除する手動ジョイントはありません", "en": "There is no manual joint to remove"},
@@ -1205,8 +1313,8 @@ CATALOG: dict[str, dict[str, str]] = {
     "assembly.joints_help": {"ja": "余白が小さい、または強く曲がった継ぎ目は自動で省略します。", "en": "Seams with little clearance or strong curvature are skipped automatically."},
     "assembly.individual_3mf": {"ja": "各印刷パーツを個別3MFでも保存", "en": "Also Save Each Print Part as an Individual 3MF"},
     "assembly.layer_height": {
-        "ja": "Snapmaker Orcaへ渡す積層ピッチ: 0.08 mm（固定）\nサポート設定は固定せず、Orca側で選択できます。",
-        "en": "Layer height sent to Snapmaker Orca: 0.08 mm (fixed)\nSupport settings remain selectable in Orca.",
+        "ja": "Snapmaker Orcaへ渡す積層ピッチ: 0.08 mm（固定）\n通常の固定レイヤー混色＋公式リブ型プライムタワーを記録。サポートはOrca側で選択できます。",
+        "en": "Layer height sent to Snapmaker Orca: 0.08 mm (fixed)\nRecords stable fixed-layer mixing plus the official rib prime tower. Supports remain selectable in Orca.",
     },
     "assembly.processing_help": {
         "ja": "強く曲がった境界の閉立体化は、モデル規模により数分かかります。計算中も処理はPC内だけで行われます。",

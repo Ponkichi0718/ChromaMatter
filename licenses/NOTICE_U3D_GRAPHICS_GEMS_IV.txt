@@ -1,0 +1,11 @@
+Verbatim source notice from
+RTL/Component/Generators/Glyph2D/CIFXQuadEdge.cpp in U3D 1.5.2:
+
+This code in this module is a modification of the code from the
+article "Incremental Delaunay Triangulation" by Dani Lischinski
+(danix@graphics.cornell.edu) in "Graphics Gems IV", Academic
+Press, 1994, p. 47-59, code: p. 51-58.  The actual source is
+available from www.acm.org/pubs/tog/GraphicsGems/gemsiv.zip
+in the "delaunay" folder.  The associated website's root address
+is www.graphicsgems.org.  It states that the Graphics Gems code
+can be used without restrictions.

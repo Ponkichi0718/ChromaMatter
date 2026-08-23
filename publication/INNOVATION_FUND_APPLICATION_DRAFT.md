@@ -1,8 +1,8 @@
 # ChromaMatter — Innovation Fund応募原稿案
 
-更新日: 2026-08-20  
-状態: **`ChromaMatter_0.8beta-r31-source-public-20260820`のsource-only repositoryは[GitHub](https://github.com/Ponkichi0718/ChromaMatter)で公開済み。Innovation Fund submission readyはfalseで、応募文は未投稿・未提出。残る角括弧のplaceholderと応募sample実証値を置換するまで提出しない。EXE／software ZIPは第三者binary再配布監査まで公開しない。**  
-対象: `ChromaMatter — AI Model Print Studio 0.8beta` r31候補
+更新日: 2026-08-23
+状態: **`ChromaMatter_0.8beta-r31-source-public-20260820`のsource-only repositoryは[GitHub](https://github.com/Ponkichi0718/ChromaMatter)で公開済み。r32 exact source regressionはPASSし、全身一体sampleのU1完走観測もnoteで公開済み。r32 final build／stage／checksum／GitHub update、sample／3MF hash、4本のfilament、Orca／U1 profileを一組にしたrelease-bound再現性証拠、Innovation Fund submission readyはpendingで、応募文は未投稿・未提出。残る角括弧のplaceholderと応募sample実証値を置換するまで提出しない。EXE／software ZIPは最終binary gate完了まで公開しない。**
+対象: `ChromaMatter — AI Model Print Studio 0.8beta` r32候補
 
 ## 1. 応募の基本情報
 
@@ -73,6 +73,14 @@ basic exact-match web checkでは`ZENITH DYNAMICS CORP.`と`ChromaMatter`の完�
 6. part構成、canonical state ID、手修正、prepared geometryをportable projectで復元する。
 7. Snapmaker Orcaで再open可能なcombined／per-part 3MFへ渡す。
 
+### 公開済み実機観測の扱い
+
+[ChromaMatter サンプルキャラ出力編](https://note.com/ponkichi0718/n/nf6c77165127c)では、全身一体sampleがU1で48時間、prime tower込み約220 gで完走したことを公開している。通常の鑑賞距離ではグラフィック調の陰影が形と奥行きとして読めた一方、背面support跡、台座の緩さ、近接時の色境界が残ることも記録した。
+
+同記事には、Hi3D系分割GLBの識別色が本来のbaseColorへ影響する問題と、part構成・色を保ったpart別3MF経路も含まれる。ただしChromaMatterはHi3D AIの公式・提携製品ではなく、識別用`COLOR_0`はexporter／node／material／共通texture／既知paletteの証拠がすべて一致した場合だけ除外する限定的なβ対応である。
+
+この結果はpractical observationとして使用できるが、現時点ではexact r32 release revision、sample／3MF hash、4本のfilament製品・lot、Snapmaker Orca版、U1 profileへ一括追跡できない。応募のrelease-bound再現性証拠としては未完了のまま扱う。
+
 言い切るべき価値は、**「4色へ減らす」ではなく「4本から生まれるFull Spectrum stateを、AI生成modelの制作単位として編集・保存する」**こと。
 
 ### 忖度なしのtier見込み
@@ -107,7 +115,7 @@ basic exact-match web checkでは`ZENITH DYNAMICS CORP.`と`ChromaMatter`の完�
 ### 使用する実物asset
 
 - OBJ screenshot: `[PATH / SHA-256 / CAMERA ANGLE]`
-- app screenshot: `[PATH / r31 COMMIT / CAMERA ANGLE]`
+- app screenshot: `[PATH / r32 COMMIT / CAMERA ANGLE]`
 - final print photo: `[PATH / PHOTO DATE / CAMERA / WHITE BALANCE]`
 - sample rights record: `[URL OR LEDGER ID]`
 
@@ -120,6 +128,12 @@ basic exact-match web checkでは`ZENITH DYNAMICS CORP.`と`ChromaMatter`の完�
 - 実物より彩度を上げる画像補正
 
 ## 4. 90秒hero video — shot list / script
+
+### 公開用「シンプルな使い方」動画
+
+[Release asset `ChromaMatter-simple-workflow-demo.mp4`](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32/ChromaMatter-simple-workflow-demo.mp4)は、対応OBJ／GLBの読込、サイズ・形状準備、Full Spectrum 3MF export／validation、Snapmaker Orcaでprojectとしてopen／slice、U1 printまでを約2分で示す。privacy確認済みの公開用copyは125.33秒、1920×1080、H.264、音声なし、37,708,741 bytes。repositoryへcommitせず、最終Releaseの独立assetとしてsource／software assetと同時にuploadする。
+
+これは初見利用者向けの操作導線とし、下記の90秒hero動画とは役割を分ける。Release URL、checksum、sign-in不要の再生／downloadは公開時に確認する。
 
 完成品を最初に出す。操作説明動画ではなく、問題・解決・実証の順にする。字幕は英語を主、同じ意味の日本語を2行目に置く。音声なしでも理解できる構成とする。
 
@@ -141,7 +155,7 @@ basic exact-match web checkでは`ZENITH DYNAMICS CORP.`と`ChromaMatter`の完�
 
 - `[FINAL SAMPLE OBJ SHA-256]`
 - `[FINAL SAMPLE 3MF SHA-256]`
-- `[R31 SOURCE COMMIT / TAG]`
+- `[R32 SOURCE COMMIT / TAG]`
 - `[SNAPMAKER ORCA VERSION]`
 - `[U1 FIRMWARE VERSION]`
 - `[F1–F4 PRODUCT / COLOUR / LOT]`
@@ -154,7 +168,7 @@ basic exact-match web checkでは`ZENITH DYNAMICS CORP.`と`ChromaMatter`の完�
 ### 0:00–0:20 — 結果と入力契約
 
 - 完成品、元GLB／OBJ、Orca previewを同じ角度で提示。
-- `v x y z r g b`頂点カラーまたはGLB UV baseColor、権利処理済みpublic sample、r31 commit hashを画面に出す。
+- `v x y z r g b`頂点カラーまたはGLB UV baseColor、権利処理済みpublic sample、r32 commit hashを画面に出す。
 - 「任意meshの完全修復や画面色との完全一致は保証しない」と冒頭で境界を示す。
 
 ### 0:20–0:55 — multipart modelとpart palette
@@ -228,9 +242,9 @@ Vertex-coloured or textured AI models can look richly shaded on screen, but a U1
 - generate a calibration chart and compensate for physically dominant black mixtures;
 - save a portable local project and export combined or per-part Snapmaker Orca 3MF.
 
-## 90-second overview
+## Simple workflow demo
 
-[![Watch the ChromaMatter overview](docs/images/video-cover-640x360.png)]([VIDEO_URL])
+[Watch the approximately two-minute ChromaMatter workflow demo](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32/ChromaMatter-simple-workflow-demo.mp4). It covers compatible OBJ/GLB input, size and geometry preparation, Full Spectrum 3MF export and validation, opening and slicing the project in Snapmaker Orca, and the U1 print. A separate 90-second Innovation Fund hero cut remains planned.
 
 ## Reproduce the public demo
 
@@ -262,10 +276,11 @@ READMEではditherforgeを攻撃的に比較しない。必要なら`Related pro
 >
 > The project also generates a calibration chart and can reduce physically dominant black mixtures in the output recipe. A portable project folder keeps the source OBJ or GLB, prepared geometry, palettes, and manual edits together so the work can be reopened on another path.
 >
-> This is not a claim of perfect screen-to-print colour. Filament opacity, lot, lighting, geometry, and slicer settings all matter. My goal is to make the failures visible and the correction path reproducible. The linked demo records the exact source revision, OBJ/3MF hashes, four filaments, Snapmaker Orca version, U1 settings, and the failed and improved prints.
+> This is not a claim of perfect screen-to-print colour. Filament opacity, lot, lighting, geometry, and slicer settings all matter. My goal is to make the failures visible and the correction path reproducible. The linked two-minute demo shows the simple workflow only; it does not record the exact source revision, OBJ/3MF hashes, four filaments, Snapmaker Orca version, U1 settings, or failed and improved prints. A separate release-bound reproducibility package containing those records is still pending.
 >
 > **Project:** https://github.com/Ponkichi0718/ChromaMatter  
-> **90-second demo:** [VIDEO_URL]  
+> **Simple workflow demo (about two minutes; the link resolves with the complete `v0.8beta-r32` Release):** https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32/ChromaMatter-simple-workflow-demo.mp4<br>
+> **90-second Innovation Fund hero:** [VIDEO_URL]<br>
 > **Development and physical-print log:** [NOTE_INDEX_URL]  
 > **Public sample and reproduction steps:** [SAMPLE_URL]
 >
@@ -293,7 +308,8 @@ READMEではditherforgeを攻撃的に比較しない。必要なら`Related pro
 > これは画面色と実物色の完全一致を保証するものではありません。filamentの隠蔽力、lot、照明、geometry、slicer設定で結果は変わります。目標は、失敗を見えるようにし、補正工程を再現可能にすることです。公開demoには、exact revision、OBJ／3MF hash、4本のfilament、Snapmaker Orca版、U1条件、失敗版と改善版を記録します。
 >
 > **GitHub:** https://github.com/Ponkichi0718/ChromaMatter  
-> **90秒demo:** [VIDEO_URL]  
+> **シンプルな使い方（約2分）:** https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32/ChromaMatter-simple-workflow-demo.mp4<br>
+> **Innovation Fund用90秒hero:** [VIDEO_URL]<br>
 > **開発・実機造形記録:** [NOTE_INDEX_URL]  
 > **公開sampleと再現手順:** [SAMPLE_URL]
 >
@@ -313,15 +329,19 @@ READMEではditherforgeを攻撃的に比較しない。必要なら`Related pro
 - [ ] combined 3MF name／SHA-256: `[FILE / HASH]`
 - [ ] per-part 3MF names／SHA-256: `[FILES / HASHES]`
 - [ ] calibration bundle name／SHA-256: `[FILE / HASH]`
+- [x] privacy-reviewed, no-audio simple workflow demo Release asset／SHA-256: `ChromaMatter-simple-workflow-demo.mp4 / F55F9505EC7385D27A933799F9EEFD1C2499A77B86B0BB1162832320E88FEE61`
 - [ ] screenshotに写るeditionとrelease tagが一致
 
 ### B. source quality
 
 - [x] 2026-08-20 owner publication GOとicon creator declaration／非提携方針を記録
-- [x] r31 exact source full regression: Python 3.13.14、1023 PASS／任意1 SKIP、100.656秒
-- [x] clean build、built self-test、日英UI smoke
-- [x] preflight fresh extract self-test、日英UI smoke、manifest／archive／path safety／privacy audit
-- [x] final source-only restage、Downloads配置、detached `SHA256SUMS-r31.txt`、archive／CRC／privacy／identity照合
+- [x] r31 exact source full regression: Python 3.13.14、1023 PASS／任意1 SKIP、100.656秒（previous evidence）
+- [x] r31 clean build、built self-test、日英UI smoke（previous evidence）
+- [x] r31 preflight fresh extract self-test、日英UI smoke、manifest／archive／path safety／privacy audit（previous evidence）
+- [x] r31 final source-only restage、Downloads配置、detached `SHA256SUMS-r31.txt`、archive／CRC／privacy／identity照合（previous evidence）
+- [ ] r32 exact full regression、clean build、built self-test、1920×1080日英UI smoke
+- [ ] r32 final source／software stage、fresh extract、manifest／archive／path safety／privacy／identity照合
+- [ ] r32 Downloads配置、外部detached `SHA256SUMS-r32.txt`、GitHub update／公開tree一致
 - [ ] clean cloneでsetup／test／public sampleを第三者手順だけで再現
 - [ ] GPL、第三者license notice、TetGen／Qt等binary distribution条件を確認
 - [ ] known limitations、issue template、security／privacy窓口
@@ -347,6 +367,7 @@ READMEではditherforgeを攻撃的に比較しない。必要なら`Related pro
 
 ### E. physical print claim
 
+- [x] 公開noteに全身一体48時間、prime tower込み約220 g、鑑賞距離で読める陰影、背面support跡／台座／近接色境界の観測を記録
 - [ ] final print photo front／back／left／right／45°: `[PATHS]`
 - [ ] same-lighting failed／improved／final comparison: `[PATHS]`
 - [ ] U1 firmware／Snapmaker Orca version／profile
@@ -361,6 +382,7 @@ READMEではditherforgeを攻撃的に比較しない。必要なら`Related pro
 
 - [ ] [Innovation Fund公式ページ](https://www.snapmaker.com/en-US/innovation-fund)の送信日条件を再確認し、画面を保存
 - [ ] 640×360 cover、90秒video、technical demoがpublic URLでsign-in不要
+- [ ] `ChromaMatter-simple-workflow-demo.mp4`を最終Releaseへ同時uploadし、public URL、file size、SHA-256を確認
 - [ ] Snapmaker Forum等へcommunity post
 - [ ] form short descriptionとGitHub READMEの主張が一致
 - [ ] 応募category `3D Model Editor`
@@ -370,14 +392,15 @@ READMEではditherforgeを攻撃的に比較しない。必要なら`Related pro
 
 ## 9. 最終submit前の順番
 
-1. r31 exact source-only release gateは完了。EXE／software ZIPは第三者binary再配布監査まで保留する。
-2. 権利処理済みsampleを同じr31でGLB／OBJ→project→3MF→Orca→U1まで完走する。
+1. r32 exact source-only release gateを完了する。EXE／software ZIPは第三者binary再配布監査まで保留する。
+2. 権利処理済みsampleを同じr32でGLB／OBJ→project→3MF→Orca→U1まで完走する。
 3. hash、profile、filament、失敗／改善写真を記録する。
 4. 公開済みGitHubへREADME hero、sample、known limitations、validationを追記する。
-5. 90秒hero videoとtechnical demoを公開する。
-6. Snapmaker Forumへ投稿し、URLを保存する。
-7. 公式formへproject URL、category、short description、coverを入力する。
-8. 送信前画面、送信完了画面、当日の規約／FAQを保存する。
+5. `ChromaMatter-simple-workflow-demo.mp4`を最終Releaseへ同時uploadし、public URLとchecksumを確認する。
+6. 90秒hero videoとtechnical demoを公開する。
+7. Snapmaker Forumへ投稿し、URLを保存する。
+8. 公式formへproject URL、category、short description、coverを入力する。
+9. 送信前画面、送信完了画面、当日の規約／FAQを保存する。
 
 ## 10. 最終判断
 

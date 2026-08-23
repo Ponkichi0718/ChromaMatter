@@ -1,7 +1,7 @@
 # ChromaMatter 公開前のライセンス・権利整理
 
-更新日: 2026-08-20  
-対象: ChromaMatter — AI Model Print Studio 0.8beta r31 のsource-only公開と、将来の実行ファイル配布
+更新日: 2026-08-21
+対象: ChromaMatter — AI Model Print Studio 0.8beta r32 のsource-only更新と、将来の実行ファイル配布
 
 ## 先に結論
 
@@ -17,7 +17,7 @@ TetGen が AGPL のオープンソースであることだけを理由に、「�
 
 これは法的助言ではありません。正式な公開、とくに企業への提案や広い範囲へのバイナリ配布の前には、ライセンスに詳しい専門家による最終確認が望まれます。
 
-2026-08-20、project ownerは現在記録されている技術監査、ライセンス表示、既知の制約を確認したうえで、ChromaMatter r31の公開GOを出しました。このGOはproject ownerによる公開判断であり、独立した法律事務所のreview、商標登録可能性の判定、第三者意匠clearanceを完了したという意味ではありません。
+2026-08-20、project ownerは当時記録された技術監査、ライセンス表示、既知の制約を確認したうえで、ChromaMatter r31のsource-only公開GOを出しました。r32は変更していないアイコンのcreator declarationだけを継承し、exact regression／build／stage／checksumとGitHub更新の公開判断はpendingです。このGOはproject ownerによる公開判断であり、独立した法律事務所のreview、商標登録可能性の判定、第三者意匠clearanceを完了したという意味ではありません。
 
 ## 1. TetGen の扱い
 
@@ -114,6 +114,8 @@ release review時のbasic exact-match web checkでは`ZENITH DYNAMICS CORP.`と`
 
 以上により、r31 icon publication rightsは**passed-by-creator-declaration**、このasset scopeのlegal gateは**project owner accepted**と記録します。これは独立した商標調査、第三者の意匠・likeness clearance、法的意見、全法域での無侵害保証ではありません。creatorは残余riskを認識したうえで公開GOを選択しています。
 
+r32は同一のアイコンassetを変更せず使用するため、このcreator declarationを過去証跡として保持します。新しい独立clearanceやr32 release全体の公開GOを得たとは記録しません。
+
 ### 公開時の扱い
 
 次は公開リポジトリ、Git 履歴、リリース ZIP、EXE から除外します。
@@ -145,11 +147,20 @@ OpenAI の利用規約上、OpenAI と利用者の関係では、法令上許さ
 
 「ファイルをダウンロード配布しない」ことはリスクを下げますが、動画公開の権利確認を不要にはしません。詳細は [PRIVATE_SAMPLE_POLICY_JA.md](PRIVATE_SAMPLE_POLICY_JA.md) に定めます。
 
+2026-08-24、project ownerは自ら提供した約2分の操作動画を、ChromaMatterのGitHubおよび
+Innovation Fund向け資料へ「シンプルな使い方」として掲載することを明示的に承認しました。
+公開時は個人情報を除去し、音声を外したprivacy確認済みcopyだけを
+`ChromaMatter-simple-workflow-demo.mp4`として使います。Git履歴やsoftware／対応ソースZIPへは
+入れず、GitHub Releaseの独立assetとしてchecksum対象にします。この承認は動画ファイルの
+掲載範囲を記録するものであり、映像内に現れる第三者製品・serviceとの提携や、元モデルを
+ダウンロード再配布する権利を意味しません。元モデル自体は配布しません。
+
 ## 6. 現時点の公開判定
 
 | 項目 | 現在の判断 | 公開前に必要なこと |
 |---|---|---|
-| 整理済みソースのみ | **source-publication-approved** | `ChromaMatter_0.8beta-r31-source-public-20260820`のprivacy、license notice、clean build／test、final stage、archive parity、CRC、identity／icon／tooling、Downloads配置、detached checksum照合が完了 |
+| r31整理済みソースのみ（previous evidence） | **source-published** | `ChromaMatter_0.8beta-r31-source-public-20260820`のprivacy、license notice、clean build／test、final stage、archive parity、CRC、identity／icon／tooling、Downloads配置、detached checksum照合が完了 |
+| r32 source-only更新 | **pending** | exact regression、clean build、packaged smoke、final stage、archive、privacy、identity、外部detached `SHA256SUMS-r32.txt`、GitHub tree一致を実測してから公開判断する |
 | EXE・software配布 ZIP | 保留 | ownerの公開GOでも第三者license義務は免除されない。PyTetWild/fTetWild、TetGen、PyMeshLab、Qt、GEOS等を含むexact binary再配布監査を完了する |
 | 旧 EXE、recovered_pyc、旧アイコン | 除外 | 権利と由来が文書で確認できるまで公開しない |
 | 合成テストデータ | 公開候補 | 自作生成手順とライセンスを明示 |
@@ -157,7 +168,7 @@ OpenAI の利用規約上、OpenAI と利用者の関係では、法令上許さ
 | Snapmaker Orca 一貫操作 | 未完了 | 動画チェックリストに沿った実機能確認 |
 | Snapmaker U1 物理造形 | 未完了 | 実フィラメントでの造形、色、寸法、ジョイント評価 |
 
-`publication_eligible=true`の範囲は`source-only`に限定します。checksum値は外部detached recordだけを正本とし、canonical source文書には埋め込みません。物理XP-PEN検証とU1造形matrixは未完了evidenceとして残しますが、2026-08-20のowner decisionではソース公開を止めるhard gateではなく、既知の制約として明示する扱いです。EXE／software ZIPには第三者binary再配布監査が別のhard gateとして残ります。
+r31で`publication_eligible=true`とした範囲は`source-only`に限定されます。r32のpublication decisionはpendingです。checksum値は外部detached recordだけを正本とし、canonical source文書には埋め込みません。物理XP-PEN検証とU1造形matrixは未完了evidenceとして残し、EXE／software ZIPには第三者binary再配布監査が別のhard gateとして残ります。
 
 ## 7. 一次情報
 

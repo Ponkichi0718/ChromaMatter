@@ -153,6 +153,59 @@ class SurfaceResolutionHotfixTests(unittest.TestCase):
             "installed_after_surface_refinement",
         )
 
+    def test_scoped_quality_omits_none_limit_for_legacy_callable(self) -> None:
+        calls: list[bool] = []
+
+        def legacy_quality(
+            vertices,
+            faces,
+            *,
+            check_self_intersections=False,
+        ):
+            del vertices, faces
+            calls.append(bool(check_self_intersections))
+            return {"self_intersecting_faces": 0}
+
+        wrapped = hotfix._make_scoped_mesh_quality(legacy_quality)
+        result = wrapped(
+            self.upper_vertices,
+            self.upper_faces,
+            check_self_intersections=True,
+        )
+
+        self.assertEqual(result, {"self_intersecting_faces": 0})
+        self.assertEqual(calls, [True])
+
+    def test_scoped_quality_forwards_explicit_face_id_limit(self) -> None:
+        calls: list[tuple[bool, int | None]] = []
+
+        def current_quality(
+            vertices,
+            faces,
+            *,
+            check_self_intersections=False,
+            self_intersection_face_id_limit=None,
+        ):
+            del vertices, faces
+            calls.append(
+                (
+                    bool(check_self_intersections),
+                    self_intersection_face_id_limit,
+                )
+            )
+            return {"self_intersecting_faces": 0}
+
+        wrapped = hotfix._make_scoped_mesh_quality(current_quality)
+        result = wrapped(
+            self.upper_vertices,
+            self.upper_faces,
+            check_self_intersections=True,
+            self_intersection_face_id_limit=399,
+        )
+
+        self.assertEqual(result, {"self_intersecting_faces": 0})
+        self.assertEqual(calls, [(True, 399)])
+
     def test_install_is_idempotent_for_every_wrapper(self) -> None:
         prepared = SimpleNamespace(final=None, assembly={})
 

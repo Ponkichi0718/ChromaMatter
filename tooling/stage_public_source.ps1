@@ -12,7 +12,7 @@ $repoRoot = (Get-Item -LiteralPath (Split-Path -Parent $PSScriptRoot)).FullName
 if (-not $Destination) {
     $Destination = Join-Path `
         $repoRoot `
-        "artifacts\ChromaMatter_0.8beta-r31-ai-model-print-studio_HANDOFF"
+        "artifacts\ChromaMatter-0.8beta-r32-source-public-20260823"
 }
 elseif (-not [System.IO.Path]::IsPathRooted($Destination)) {
     $Destination = Join-Path $repoRoot $Destination
@@ -28,15 +28,24 @@ $requiredRootFiles = @(
     ".gitattributes",
     "BUILD_AND_TEST.ps1",
     "BOOTSTRAP_WINDOWS.ps1",
+    "AGENTS.md",
+    "HANDOFF.md",
     "RUN_TESTS.cmd",
     "CURRENT_STATE.json",
     "PROVENANCE.md",
+    "FEATURES_EN.md",
     "FEATURES_JA.md"
 )
 $optionalRootFiles = @(
     "README_PUBLIC_JA.md",
     "README_PUBLIC_EN.md",
     "PRIVACY.md"
+)
+$requiredGithubFiles = @(
+    ".github/ISSUE_TEMPLATE/bug_report.yml",
+    ".github/ISSUE_TEMPLATE/compatibility_report.yml",
+    ".github/ISSUE_TEMPLATE/config.yml",
+    ".github/ISSUE_TEMPLATE/feature_request.yml"
 )
 $requiredPublicationFiles = @(
     "publication/LEGAL_AND_RIGHTS_JA.md",
@@ -46,11 +55,13 @@ $requiredPublicationFiles = @(
     "publication/PUBLICATION_CHECKLIST_JA.md",
     "publication/GITHUB_PUBLICATION_GUIDE_JA.md",
     "publication/INNOVATION_FUND_APPLICATION_DRAFT.md",
-    "publication/INNOVATION_FUND_STATUS_JA.md"
+    "publication/INNOVATION_FUND_STATUS_JA.md",
+    "publication/BINARY_RELEASE_HANDOFF_JA.md"
 )
 $requiredFixedAppFiles = @(
     "source/fixed_app/TripoSpectrumMapper_fixed.py",
     "source/fixed_app/TripoSpectrumMapper_fixed.spec",
+    "source/fixed_app/requirements-build.lock",
     "source/fixed_app/requirements-build.txt",
     "source/fixed_app/START_FIXED.cmd",
     "source/fixed_app/version_info.txt",
@@ -79,11 +90,33 @@ $requiredFixedAppFiles = @(
 $optionalFixedAppFiles = @(
     "source/fixed_app/assets/mixer_model_PROVENANCE.md"
 )
+$requiredPublicBinaryFiles = @(
+    "source/fixed_app/public_binary/README_JA.md",
+    "source/fixed_app/public_binary/README_EN.md",
+    "source/fixed_app/public_binary/PRIVACY.md",
+    "source/fixed_app/public_binary/START_CHROMAMATTER.cmd"
+)
 $requiredToolingFiles = @(
     "tooling/generate_public_icon.py",
     "tooling/audit_public_tree.ps1",
+    "tooling/generate_binary_compliance_inventory.py",
+    "tooling/generate_pytetwild_rebuild_lock.py",
+    "tooling/pytetwild_static_closure_contract.py",
+    "tooling/pymeshlab_audited_native_identities.json",
+    "tooling/qt_static_components.json",
+    "tooling/pytetwild_static_closure.json",
+    "tooling/update_budget_filament_library.py",
+    "tooling/corresponding_source_components.json",
+    "tooling/BUILD_PYTETWILD_WINDOWS.ps1",
+    "tooling/requirements-pytetwild-build.lock",
+    "tooling/patches/pytetwild-0.3.0-optional-pyvista.patch",
+    "tooling/meshlab_windows_external_archives.lock.json",
+    "tooling/pytetwild_rebuild_lock.template.json",
+    "tooling/stage_corresponding_source.py",
+    "tooling/stage_corresponding_source.ps1",
     "tooling/stage_public_source.ps1",
-    "tooling/stage_software_package.ps1"
+    "tooling/stage_software_package.ps1",
+    "tooling/SoftwareZipContract.psm1"
 )
 $optionalToolingFiles = @(
     "tooling/build_mixer_model.py"
@@ -91,14 +124,17 @@ $optionalToolingFiles = @(
 $requiredDirectories = @(
     "licenses",
     "samples",
+    "source/fixed_app/licenses",
     "source/fixed_app/spectrum_mapper",
     "source/fixed_app/resources/filament_db"
 )
 
 foreach ($relative in (
     $requiredRootFiles +
+    $requiredGithubFiles +
     $requiredPublicationFiles +
     $requiredFixedAppFiles +
+    $requiredPublicBinaryFiles +
     $requiredToolingFiles
 )) {
     $source = Join-Path $repoRoot $relative
@@ -113,12 +149,40 @@ foreach ($relative in $requiredDirectories) {
     }
 }
 
+$publicBinaryDirectory = Join-Path $repoRoot "source/fixed_app/public_binary"
+if (-not (Test-Path -LiteralPath $publicBinaryDirectory -PathType Container)) {
+    throw "Required public-binary directory is missing: $publicBinaryDirectory"
+}
+$allowedPublicBinaryNames = @(
+    $requiredPublicBinaryFiles |
+        ForEach-Object { Split-Path -Leaf $_ }
+)
+foreach ($entry in @(Get-ChildItem -LiteralPath $publicBinaryDirectory -Force)) {
+    if (
+        $entry.PSIsContainer -or
+        ($entry.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0 -or
+        $entry.Name -notin $allowedPublicBinaryNames
+    ) {
+        throw "Unexpected public-binary entry is not allowlisted: $($entry.Name)"
+    }
+}
+if (@(Get-ChildItem -LiteralPath $publicBinaryDirectory -Force -File).Count -ne 4) {
+    throw "Public-binary directory must contain exactly four allowlisted files."
+}
+
 $destinationParent = Split-Path -Parent $destinationPath
 $destinationLeaf = Split-Path -Leaf $destinationPath
 if (-not $destinationParent -or -not $destinationLeaf) {
     throw "Public-source destination must have a parent and leaf: $destinationPath"
 }
-New-Item -ItemType Directory -Path $destinationParent -Force | Out-Null
+if (Test-Path -LiteralPath $destinationParent) {
+    if (-not (Test-Path -LiteralPath $destinationParent -PathType Container)) {
+        throw "Public-source destination parent is not a directory: $destinationParent"
+    }
+}
+else {
+    New-Item -ItemType Directory -Path $destinationParent -Force | Out-Null
+}
 
 $temporaryLeafPrefix = ".$destinationLeaf.staging-$PID-"
 $temporaryLeaf = $temporaryLeafPrefix + [Guid]::NewGuid().ToString("N")
@@ -248,16 +312,22 @@ foreach ($relative in $optionalRootFiles) {
 # GitHub-recognized entry files are generated inside the reviewed stage so
 # users never need to mutate a validated tree and invalidate its manifest.
 Copy-PublicAlias `
-    -SourceRelativePath "README_PUBLIC_JA.md" `
+    -SourceRelativePath "README_PUBLIC_EN.md" `
     -DestinationRelativePath "README.md"
 Copy-PublicAlias `
     -SourceRelativePath "README_PUBLIC_EN.md" `
     -DestinationRelativePath "README_EN.md"
 Copy-PublicAlias `
+    -SourceRelativePath "README_PUBLIC_JA.md" `
+    -DestinationRelativePath "README_JA.md"
+Copy-PublicAlias `
     -SourceRelativePath "licenses/GPL-3.0.txt" `
     -DestinationRelativePath "LICENSE"
 
 foreach ($relative in $requiredPublicationFiles) {
+    Copy-PublicFile -RelativePath $relative
+}
+foreach ($relative in $requiredGithubFiles) {
     Copy-PublicFile -RelativePath $relative
 }
 
@@ -273,6 +343,10 @@ foreach ($relative in $optionalFixedAppFiles) {
     }
 }
 Copy-PublicDirectory -RelativePath "source/fixed_app/resources/filament_db"
+Copy-PublicDirectory -RelativePath "source/fixed_app/licenses"
+foreach ($relative in $requiredPublicBinaryFiles) {
+    Copy-PublicFile -RelativePath $relative
+}
 foreach ($file in @(
     Get-ChildItem -LiteralPath (Join-Path $repoRoot "source/fixed_app/spectrum_mapper") `
         -File -Filter "*.py" |

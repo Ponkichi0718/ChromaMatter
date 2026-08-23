@@ -15,6 +15,103 @@ def _progress(phase: str, fraction: float, message: str) -> None:
     print(f"[{fraction * 100:5.1f}%] {phase}: {message}", flush=True)
 
 
+def _is_frozen_public_build() -> bool:
+    """Return whether this process is the public PyInstaller application."""
+
+    return bool(
+        getattr(sys, "frozen", False)
+        and getattr(sys, "_MEIPASS", None)
+    )
+
+
+def _decal_runtime_smoke() -> dict[str, object]:
+    """Check the public PNG path and the source-only SVG renderer contract."""
+
+    import io
+    import importlib.metadata
+
+    import numpy as np
+    import PIL.Image
+
+    from .decal_image import load_decal_bytes
+
+    frozen_public_build = _is_frozen_public_build()
+    png_ok = False
+    png_status = "not-run"
+    try:
+        png_stream = io.BytesIO()
+        PIL.Image.new("RGBA", (3, 2), (240, 32, 48, 128)).save(
+            png_stream,
+            format="PNG",
+        )
+        png_decal = load_decal_bytes(
+            png_stream.getvalue(),
+            filename="packaged-self-test.png",
+        )
+        png_ok = bool(
+            png_decal.source_format == "PNG"
+            and png_decal.rgba.shape == (2, 3, 4)
+            and int(png_decal.rgba[0, 0, 3]) == 128
+        )
+        png_status = "ok" if png_ok else "invalid output"
+    except Exception as exc:
+        png_status = f"error: {type(exc).__name__}: {exc}"
+
+    if frozen_public_build:
+        # Decal beta is intentionally inaccessible in public r32.  Its SVG
+        # renderer and compiled Rust dependency graph therefore are not part
+        # of the public executable.  Keep this an explicit non-applicable
+        # result rather than presenting it as a failed feature check.
+        svg_ok: bool | None = None
+        svg_status = "not-packaged"
+        svg_required = False
+        resvg_status = "not-packaged"
+    else:
+        # Source/developer runs retain the complete Decal implementation and
+        # must continue to prove the pinned resvg-backed SVG path.
+        svg_ok = False
+        svg_status = "not-run"
+        svg_required = True
+        resvg_status = "unavailable"
+        try:
+            resvg_status = importlib.metadata.version("resvg")
+            svg_decal = load_decal_bytes(
+                (
+                    b'<svg xmlns="http://www.w3.org/2000/svg" width="4" '
+                    b'height="3" viewBox="0 0 4 3"><path d="M0 0H4V3H0Z" '
+                    b'fill="#2468ac" fill-opacity="0.5"/></svg>'
+                ),
+                filename="packaged-self-test.svg",
+            )
+            svg_ok = bool(
+                svg_decal.source_format == "SVG"
+                and svg_decal.rgba.shape == (3, 4, 4)
+                and bool(np.any(svg_decal.rgba[:, :, 3] > 0))
+                and bool(np.any(svg_decal.rgba[:, :, 3] < 255))
+            )
+            svg_status = "ok" if svg_ok else "invalid output"
+        except Exception as exc:
+            svg_status = f"error: {type(exc).__name__}: {exc}"
+
+    loader_ok = bool(png_ok and (not svg_required or svg_ok))
+    if loader_ok and frozen_public_build:
+        loader_status = "ok; SVG/resvg not-packaged"
+    elif loader_ok:
+        loader_status = "ok"
+    else:
+        loader_status = f"PNG: {png_status}; SVG: {svg_status}"
+    return {
+        "resvg": resvg_status,
+        "decal_png_smoke": png_ok,
+        "decal_png_status": png_status,
+        "decal_svg_smoke": svg_ok,
+        "decal_svg_status": svg_status,
+        "decal_svg_required": svg_required,
+        "decal_loader_status": loader_status,
+        "ok": loader_ok,
+    }
+
+
 def _glb_import_smoke() -> tuple[bool, str]:
     """Exercise the frozen GLB parser and embedded PNG colour-baking path."""
 
@@ -361,7 +458,6 @@ def _color_depth_export_smoke() -> tuple[bool, str]:
 
 
 def self_test() -> int:
-    import io
     import importlib.metadata
 
     import manifold3d
@@ -388,7 +484,6 @@ def self_test() -> int:
         generate_palette_calibration_bundle,
         palette_calibration_rows,
     )
-    from .decal_image import load_decal_bytes
     from .mixer import (
         PALETTE_STATE_COUNT,
         black_output_ratio_preset,
@@ -539,48 +634,14 @@ def self_test() -> int:
         _color_depth_export_smoke()
     )
     glb_import_ok, glb_import_status = _glb_import_smoke()
-    decal_png_ok = False
-    decal_svg_ok = False
-    decal_loader_status = "not-run"
-    try:
-        png_stream = io.BytesIO()
-        PIL.Image.new("RGBA", (3, 2), (240, 32, 48, 128)).save(
-            png_stream,
-            format="PNG",
-        )
-        png_decal = load_decal_bytes(
-            png_stream.getvalue(),
-            filename="packaged-self-test.png",
-        )
-        svg_decal = load_decal_bytes(
-            (
-                b'<svg xmlns="http://www.w3.org/2000/svg" width="4" height="3" '
-                b'viewBox="0 0 4 3"><path d="M0 0H4V3H0Z" '
-                b'fill="#2468ac" fill-opacity="0.5"/></svg>'
-            ),
-            filename="packaged-self-test.svg",
-        )
-        decal_png_ok = bool(
-            png_decal.source_format == "PNG"
-            and png_decal.rgba.shape == (2, 3, 4)
-            and int(png_decal.rgba[0, 0, 3]) == 128
-        )
-        decal_svg_ok = bool(
-            svg_decal.source_format == "SVG"
-            and svg_decal.rgba.shape == (3, 4, 4)
-            and bool(np.any(svg_decal.rgba[:, :, 3] > 0))
-            and bool(np.any(svg_decal.rgba[:, :, 3] < 255))
-        )
-        decal_loader_status = "ok" if decal_png_ok and decal_svg_ok else "invalid output"
-    except Exception as exc:
-        decal_loader_status = f"error: {type(exc).__name__}: {exc}"
+    decal_smoke = _decal_runtime_smoke()
     data = {
         "application": f"{APP_DISPLAY_NAME} {__version__}",
         "python": platform.python_version(),
         "numpy": np.__version__,
         "scipy": scipy.__version__,
         "pillow": PIL.__version__,
-        "resvg": importlib.metadata.version("resvg"),
+        "resvg": decal_smoke["resvg"],
         "pymeshlab": getattr(pymeshlab, "__version__", "available"),
         "trimesh": trimesh.__version__,
         "manifold3d": importlib.metadata.version("manifold3d"),
@@ -603,9 +664,12 @@ def self_test() -> int:
         "color_depth_export_status": color_depth_export_status,
         "glb_import_smoke": glb_import_ok,
         "glb_import_status": glb_import_status,
-        "decal_png_smoke": decal_png_ok,
-        "decal_svg_smoke": decal_svg_ok,
-        "decal_loader_status": decal_loader_status,
+        "decal_png_smoke": decal_smoke["decal_png_smoke"],
+        "decal_png_status": decal_smoke["decal_png_status"],
+        "decal_svg_smoke": decal_smoke["decal_svg_smoke"],
+        "decal_svg_status": decal_smoke["decal_svg_status"],
+        "decal_svg_required": decal_smoke["decal_svg_required"],
+        "decal_loader_status": decal_smoke["decal_loader_status"],
         "ok": (
             len(palette_hex) == PALETTE_STATE_COUNT
             and len(recipes) >= 1
@@ -615,8 +679,7 @@ def self_test() -> int:
             and radial_export_ok
             and color_depth_export_ok
             and glb_import_ok
-            and decal_png_ok
-            and decal_svg_ok
+            and bool(decal_smoke["ok"])
             and bool(tetwild_wrapper)
             and bool(tetgen)
         ),

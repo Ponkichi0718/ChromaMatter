@@ -107,7 +107,9 @@
 公開候補のルートで、次のような検索を行います。山括弧の部分は検証時の値に置き換えます。
 
 ~~~powershell
-rg -n -S "C:\\Users\\|/Users/|/home/|Downloads|Desktop" .
+$windowsUsersRoot = Join-Path $env:SystemDrive 'Users'
+$unixUsersRoot = '/' + 'Users'
+rg -n -F -e $windowsUsersRoot -e $unixUsersRoot -e '/home' -e 'Downloads' -e 'Desktop' .
 rg -n -S "<Windowsユーザー名>|<実名>|<メールアドレス>" .
 rg -n -S "api[_-]?key|secret|token|password" .
 rg --files -g "*.pyc" -g "*.pyo" -g "*.dmp" -g "*.log" -g "*.tmp"

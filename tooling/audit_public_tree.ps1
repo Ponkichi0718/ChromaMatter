@@ -19,9 +19,11 @@ $rootPath = $rootItem.FullName.TrimEnd([char[]]"\/")
 $rootPrefix = $rootPath + [System.IO.Path]::DirectorySeparatorChar
 $violations = [System.Collections.Generic.List[string]]::new()
 
-# Assemble sensitive tokens from fragments.  This keeps the auditor from
-# reporting its own source file while still checking every other staged text
-# file without exemptions.
+# Generic workstation-path fragments are always rejected.  Operator-specific
+# identifiers must be supplied outside Git through the optional, semicolon-
+# delimited CHROMAMATTER_PRIVATE_AUDIT_TOKENS process environment variable.
+# Keeping those values out of this source prevents the denylist itself from
+# publishing the private identifiers it is intended to catch.
 $userDirectoryBackslash = "C:" + [char]92 + ("Us" + "ers")
 $userDirectorySlash = "C:/" + ("Us" + "ers")
 $documentsWorkspaceBackslash = (
@@ -31,17 +33,48 @@ $documentsWorkspaceSlash = (
     ("Docu" + "ments") + "/" + ("Co" + "dex")
 )
 
+function Get-ConfiguredPrivateAuditTokens {
+    $variableName = "CHROMAMATTER_PRIVATE_AUDIT_TOKENS"
+    $rawValue = [Environment]::GetEnvironmentVariable($variableName, "Process")
+    if ([string]::IsNullOrWhiteSpace($rawValue)) {
+        return [string[]]@()
+    }
+
+    $tokens = [System.Collections.Generic.List[string]]::new()
+    $seen = [System.Collections.Generic.HashSet[string]]::new(
+        [System.StringComparer]::OrdinalIgnoreCase
+    )
+    $segments = $rawValue.Split([char]";")
+    for ($index = 0; $index -lt $segments.Length; $index++) {
+        $token = $segments[$index].Trim()
+        if ($token.Length -eq 0) {
+            throw (
+                "$variableName contains an empty token at position " +
+                "$($index + 1). Remove duplicate or trailing separators."
+            )
+        }
+        if ($token.Length -lt 3 -or $token.Length -gt 512) {
+            throw "$variableName tokens must contain between 3 and 512 characters."
+        }
+        foreach ($character in $token.ToCharArray()) {
+            if ([char]::IsControl($character)) {
+                throw "$variableName tokens must not contain control characters."
+            }
+        }
+        if ($seen.Add($token)) {
+            $tokens.Add($token)
+        }
+    }
+    return [string[]]$tokens.ToArray()
+}
+
+$configuredPrivateAuditTokens = @(Get-ConfiguredPrivateAuditTokens)
+
 $contentAndPathTokens = @(
     $userDirectoryBackslash,
     $userDirectorySlash,
-    ("pd" + "cko"),
-    ("PDF" + "um"),
     $documentsWorkspaceBackslash,
-    $documentsWorkspaceSlash,
-    ("e7955e4d-" + "0b3f-4426-b8ca-55541d68fa35"),
-    ("a51af255-" + "cc63-41e6-9af6-fba819754b9f"),
-    ("7de55bf4-" + "44e1-4f2d-b6ce-b220f5dfd03d"),
-    ("6de9aab9-" + "6b48-4e32-826a-d0619308cf95")
+    $documentsWorkspaceSlash
 )
 
 # These are forbidden as staged file or directory names.  They may still be
@@ -98,8 +131,8 @@ function Get-AuditRelativePath {
 
 function Find-InsensitiveToken {
     param(
-        [Parameter(Mandatory = $true)][string]$Value,
-        [Parameter(Mandatory = $true)][string[]]$Tokens
+        [Parameter(Mandatory = $true)][AllowEmptyString()][string]$Value,
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()][string[]]$Tokens
     )
 
     foreach ($token in $Tokens) {
@@ -113,12 +146,28 @@ function Find-InsensitiveToken {
     return $null
 }
 
+function Get-AuditDisplayPath {
+    param([Parameter(Mandatory = $true)][AllowEmptyString()][string]$Value)
+
+    $configuredToken = Find-InsensitiveToken `
+        -Value $Value `
+        -Tokens ([string[]]$configuredPrivateAuditTokens)
+    if ($null -ne $configuredToken) {
+        return "<redacted-path>"
+    }
+    return $Value
+}
+
 $items = @(Get-ChildItem -LiteralPath $rootPath -Recurse -Force)
 foreach ($item in $items) {
     $relative = Get-AuditRelativePath -FullName $item.FullName
+    $configuredPathToken = Find-InsensitiveToken `
+        -Value $relative `
+        -Tokens ([string[]]$configuredPrivateAuditTokens)
+    $displayRelative = Get-AuditDisplayPath -Value $relative
 
     if (($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
-        $violations.Add("reparse point is not allowed: $relative")
+        $violations.Add("reparse point is not allowed: $displayRelative")
         continue
     }
 
@@ -126,7 +175,12 @@ foreach ($item in $items) {
         -Value $relative `
         -Tokens ([string[]]($contentAndPathTokens + $pathOnlyTokens))
     if ($null -ne $pathToken) {
-        $violations.Add("forbidden path token '$pathToken': $relative")
+        $violations.Add("forbidden path token '$pathToken': $displayRelative")
+    }
+    if ($null -ne $configuredPathToken) {
+        $violations.Add(
+            "forbidden configured private token in path: $displayRelative"
+        )
     }
 
     if ($item.PSIsContainer) {
@@ -135,7 +189,7 @@ foreach ($item in $items) {
 
     $extension = [System.IO.Path]::GetExtension($item.Name)
     if ($forbiddenExtensions.Contains($extension)) {
-        $violations.Add("forbidden file extension '$extension': $relative")
+        $violations.Add("forbidden file extension '$extension': $displayRelative")
     }
 
     if ($extension.Equals(".obj", [System.StringComparison]::OrdinalIgnoreCase)) {
@@ -148,7 +202,9 @@ foreach ($item in $items) {
             [System.StringComparison]::OrdinalIgnoreCase
         )
         if (-not $sampleObject -and -not $syntheticTestObject) {
-            $violations.Add("OBJ is outside the approved sample/test paths: $relative")
+            $violations.Add(
+                "OBJ is outside the approved sample/test paths: $displayRelative"
+            )
         }
     }
 
@@ -163,7 +219,13 @@ foreach ($item in $items) {
         $content = [System.IO.File]::ReadAllText($item.FullName)
     }
     catch {
-        $violations.Add("text file could not be read: $relative ($($_.Exception.Message))")
+        $readFailure = if ($displayRelative -eq "<redacted-path>") {
+            "text file could not be read: $displayRelative"
+        }
+        else {
+            "text file could not be read: $displayRelative ($($_.Exception.Message))"
+        }
+        $violations.Add($readFailure)
         continue
     }
 
@@ -171,7 +233,15 @@ foreach ($item in $items) {
         -Value $content `
         -Tokens ([string[]]$contentAndPathTokens)
     if ($null -ne $contentToken) {
-        $violations.Add("forbidden text token '$contentToken': $relative")
+        $violations.Add("forbidden text token '$contentToken': $displayRelative")
+    }
+    $configuredContentToken = Find-InsensitiveToken `
+        -Value $content `
+        -Tokens ([string[]]$configuredPrivateAuditTokens)
+    if ($null -ne $configuredContentToken) {
+        $violations.Add(
+            "forbidden configured private text token: $displayRelative"
+        )
     }
 }
 
@@ -213,6 +283,7 @@ if (Test-Path -LiteralPath $manifestPath -PathType Leaf) {
 
         $expectedHash = $match.Groups["hash"].Value.ToUpperInvariant()
         $relative = $match.Groups["path"].Value
+        $displayRelative = Get-AuditDisplayPath -Value $relative
         $segments = @($relative -split "/")
         $invalidSegment = @(
             $segments | Where-Object { $_ -eq "" -or $_ -eq "." -or $_ -eq ".." }
@@ -223,7 +294,7 @@ if (Test-Path -LiteralPath $manifestPath -PathType Leaf) {
             $invalidSegment
         ) {
             $violations.Add(
-                "manifest path is not a normalized forward-slash relative path at line ${lineNumber}: $relative"
+                "manifest path is not a normalized forward-slash relative path at line ${lineNumber}: $displayRelative"
             )
             continue
         }
@@ -242,7 +313,7 @@ if (Test-Path -LiteralPath $manifestPath -PathType Leaf) {
         }
         catch {
             $violations.Add(
-                "manifest path could not be resolved at line ${lineNumber}: $relative"
+                "manifest path could not be resolved at line ${lineNumber}: $displayRelative"
             )
             continue
         }
@@ -250,11 +321,15 @@ if (Test-Path -LiteralPath $manifestPath -PathType Leaf) {
             $rootPrefix,
             [System.StringComparison]::OrdinalIgnoreCase
         )) {
-            $violations.Add("manifest path escapes the audited root: $relative")
+            $violations.Add(
+                "manifest path escapes the audited root: $displayRelative"
+            )
             continue
         }
         if ($manifestEntries.ContainsKey($relative)) {
-            $violations.Add("duplicate manifest path at line ${lineNumber}: $relative")
+            $violations.Add(
+                "duplicate manifest path at line ${lineNumber}: $displayRelative"
+            )
             continue
         }
         $manifestEntries[$relative] = $expectedHash
@@ -262,12 +337,14 @@ if (Test-Path -LiteralPath $manifestPath -PathType Leaf) {
 
     foreach ($relative in @($actualFiles.Keys | Sort-Object)) {
         if (-not $manifestEntries.ContainsKey($relative)) {
-            $violations.Add("file is missing from manifest: $relative")
+            $displayRelative = Get-AuditDisplayPath -Value $relative
+            $violations.Add("file is missing from manifest: $displayRelative")
         }
     }
     foreach ($relative in @($manifestEntries.Keys | Sort-Object)) {
+        $displayRelative = Get-AuditDisplayPath -Value $relative
         if (-not $actualFiles.ContainsKey($relative)) {
-            $violations.Add("manifest lists a missing file: $relative")
+            $violations.Add("manifest lists a missing file: $displayRelative")
             continue
         }
         try {
@@ -278,13 +355,17 @@ if (Test-Path -LiteralPath $manifestPath -PathType Leaf) {
             ).Hash.ToUpperInvariant()
         }
         catch {
-            $violations.Add(
-                "manifest file could not be hashed: $relative ($($_.Exception.Message))"
-            )
+            $hashFailure = if ($displayRelative -eq "<redacted-path>") {
+                "manifest file could not be hashed: $displayRelative"
+            }
+            else {
+                "manifest file could not be hashed: $displayRelative ($($_.Exception.Message))"
+            }
+            $violations.Add($hashFailure)
             continue
         }
         if ($actualHash -ne $manifestEntries[$relative]) {
-            $violations.Add("manifest hash mismatch: $relative")
+            $violations.Add("manifest hash mismatch: $displayRelative")
         }
     }
 }

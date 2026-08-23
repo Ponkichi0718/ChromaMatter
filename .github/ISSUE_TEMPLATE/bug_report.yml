@@ -1,0 +1,88 @@
+name: Bug report
+description: Report a reproducible problem in ChromaMatter.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for helping improve ChromaMatter. Please remove personal paths, private model names, and other sensitive information before submitting logs or screenshots.
+
+  - type: input
+    id: version
+    attributes:
+      label: ChromaMatter version or commit
+      description: For example, 0.8beta r32 or a Git commit SHA.
+      placeholder: 0.8beta r32
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Windows version, Python version if running from source, and Snapmaker Orca version if relevant.
+      placeholder: Windows 11 24H2; source build; Snapmaker Orca 2.x
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where did the problem occur?
+      options:
+        - OBJ or GLB import
+        - Automatic filament proposal
+        - Mixed-colour preview
+        - Manual editing
+        - Geometry preparation or solidification
+        - 3MF export
+        - Snapmaker Orca import or slicing
+        - Project save or load
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: List the smallest reliable sequence that produces the problem.
+      placeholder: |
+        1. Open ...
+        2. Select ...
+        3. Click ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      description: Include the exact error message when possible.
+    validations:
+      required: true
+
+  - type: textarea
+    id: diagnostic
+    attributes:
+      label: Additional evidence
+      description: Add sanitised screenshots, topology counts, or logs. Do not upload a model unless you own it or have permission to share it publicly.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I removed personal paths, account information, and other sensitive data.
+          required: true
+        - label: I have permission to share every attached model or image publicly.
+          required: true

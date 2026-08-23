@@ -1084,6 +1084,8 @@ class HotfixTests(unittest.TestCase):
             self.assertTrue(validation["snapmaker_u1_metadata"])
             self.assertTrue(validation["snapmaker_u1_print_settings"])
             self.assertTrue(validation["snapmaker_u1_layer_height_008"])
+            self.assertTrue(validation["snapmaker_u1_transition_settings"])
+            self.assertTrue(validation["full_spectrum_stable_cadence_settings"])
             self.assertTrue(validation["generic_pla_filament_settings"])
             self.assertTrue(validation["project_support_disabled"])
             self.assertTrue(validation["support_override_disabled"])
@@ -1112,12 +1114,65 @@ class HotfixTests(unittest.TestCase):
                 project_settings["filament_settings_id"],
                 ["Generic PLA"] * 4,
             )
+            for key, expected in (
+                engine.FULL_SPECTRUM_STABLE_CADENCE_SETTINGS.items()
+            ):
+                self.assertEqual(project_settings[key], expected)
+            for key, expected in (
+                engine.SNAPMAKER_U1_008_TRANSITION_SETTINGS.items()
+            ):
+                self.assertEqual(project_settings[key], expected)
 
             guide = Path(folder) / "tiny_使い方.txt"
             hotfix._write_guide_fixed(guide, destination, 100.0, PaletteSettings())
             instructions = guide.read_text(encoding="utf-8")
             self.assertIn("必ず『プロジェクトとして開く』", instructions)
             self.assertIn("2.3.5で確認済み", instructions)
+            self.assertIn("リブ型プライムタワー", instructions)
+            self.assertIn("Local Z", instructions)
+
+    def test_3mf_validator_rejects_drifted_full_spectrum_or_transition_setting(self):
+        prepared = tiny_closed_prepared()
+        palette = PaletteSettings()
+        for key, unsafe_value, expected_label in (
+            ("dithering_local_z_mode", "1", "Full Spectrum固定レイヤー設定"),
+            ("enable_prime_tower", "0", "U1 0.08 mmフィラメント切替設定"),
+        ):
+            with self.subTest(key=key), tempfile.TemporaryDirectory() as folder:
+                destination = Path(folder) / f"drift-{key}.3mf"
+                hotfix._write_3mf_atomic_fixed(
+                    destination,
+                    prepared,
+                    tiny_closed_color_result(),
+                    100.0,
+                    palette,
+                )
+                with ZipFile(destination, "r") as archive:
+                    members = {
+                        info.filename: archive.read(info.filename)
+                        for info in archive.infolist()
+                    }
+                project = json.loads(
+                    members["Metadata/project_settings.config"].decode("utf-8")
+                )
+                definitions = project["mixed_filament_definitions"]
+                project[key] = unsafe_value
+                members["Metadata/project_settings.config"] = json.dumps(
+                    project, ensure_ascii=False, indent=2
+                ).encode("utf-8")
+                with ZipFile(destination, "w") as archive:
+                    for name, payload in members.items():
+                        archive.writestr(name, payload)
+
+                with self.assertRaisesRegex(engine.EngineError, expected_label):
+                    hotfix._original_validate_3mf(
+                        destination,
+                        4,
+                        4,
+                        ["#111111", "#FFFFFF", "#E32636", "#7A4A32"],
+                        definitions,
+                        1,
+                    )
 
     def test_3mf_portable_material_count_follows_24_or_32_selection(self):
         prepared = tiny_closed_prepared()

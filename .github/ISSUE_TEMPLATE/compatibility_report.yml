@@ -1,0 +1,94 @@
+name: Test model / compatibility report
+description: Share a successful or unsuccessful OBJ, GLB, Orca, or U1 compatibility result.
+title: "[Compatibility]: "
+labels:
+  - compatibility
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Both successful and unsuccessful results are valuable. You do not need to upload the model itself. Never upload private, purchased, or third-party character data without permission.
+
+  - type: dropdown
+    id: result
+    attributes:
+      label: Result
+      options:
+        - Successful
+        - Partially successful
+        - Failed
+    validations:
+      required: true
+
+  - type: input
+    id: source
+    attributes:
+      label: Model source or generator
+      description: For example, Hi3D AI, TripoAI, Blender, or another tool. This project is not affiliated with those services.
+      placeholder: Hi3D AI
+    validations:
+      required: true
+
+  - type: dropdown
+    id: format
+    attributes:
+      label: Input format and colour source
+      options:
+        - OBJ with vertex colours
+        - GLB with embedded base-colour texture
+        - GLB with COLOR_0 vertex colours
+        - Other or unknown
+    validations:
+      required: true
+
+  - type: input
+    id: model_size
+    attributes:
+      label: Approximate model size
+      description: Vertex count, triangle count, part count, and texture dimensions if known.
+      placeholder: About 1M vertices, 2M triangles, one part, 8K base-colour texture
+
+  - type: input
+    id: versions
+    attributes:
+      label: Software and hardware versions
+      description: ChromaMatter revision, Snapmaker Orca version, printer, nozzle, and material.
+      placeholder: r32; Snapmaker Orca 2.x; U1 / 0.4 mm; PLA
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: stages
+    attributes:
+      label: Stages completed
+      options:
+        - label: Model imported and colours appeared correctly
+        - label: Filament proposal and preview completed
+        - label: Geometry preparation or solidification completed
+        - label: 3MF opened as a project in Snapmaker Orca
+        - label: Slicing completed
+        - label: Physical printing completed
+
+  - type: textarea
+    id: observations
+    attributes:
+      label: Observations
+      description: Describe colour fidelity, missing texture detail, topology warnings, slicing behaviour, or print results.
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Public evidence (optional)
+      description: Add sanitised logs, screenshots, or a link to a model you are authorised to share.
+
+  - type: checkboxes
+    id: rights
+    attributes:
+      label: Sharing and privacy
+      options:
+        - label: I removed personal paths, account information, and other sensitive data.
+          required: true
+        - label: I have permission to share every attachment or public link included in this report.
+          required: true

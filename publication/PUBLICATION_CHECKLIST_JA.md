@@ -1,7 +1,7 @@
 # ChromaMatter 0.8beta 公開準備チェックリスト
 
-更新日: 2026-08-20  
-現在の方針: **`ChromaMatter_0.8beta-r31-source-public-20260820`のsource-only repositoryは[GitHub](https://github.com/Ponkichi0718/ChromaMatter)で公開済み。EXE／software ZIPは第三者binary再配布監査が終わるまで保留。**
+更新日: 2026-08-21
+現在の方針: **`ChromaMatter_0.8beta-r31-source-public-20260820`のsource-only repositoryは[GitHub](https://github.com/Ponkichi0718/ChromaMatter)で公開済み。r32 source-only updateはexact regression／build／stage／checksumが揃うまでpending。EXE／software ZIPは第三者binary再配布監査が終わるまで保留。**
 
 このチェックリストは、法的助言ではなく、公開事故を減らすための実務管理表です。
 
@@ -10,9 +10,10 @@
 | 項目 | 状態 | 判断 |
 |---|---|---|
 | 表示バージョン | 完了 | 利用者の指定があるまで`0.8beta`に固定 |
-| r31 preflight技術監査 | **GO** | source 227／226、software 1,404／1,403、fresh archive／extract、privacy、self-test、日英UI smokeを確認 |
-| r31 final source-only restage | **GO** | source 227／226、folder／archive parity、CRC、privacy、identity／icon／tooling 32 tests、Downloads配置、detached `SHA256SUMS-r31.txt`照合を完了 |
-| public repository | **公開済み** | `https://github.com/Ponkichi0718/ChromaMatter`、owner handle `Ponkichi0718`、default branch `main` |
+| r32 exact release gate | **pending** | functional freeze後のfull regression、clean build、packaged smoke、日英UI smoke、source/software stage、archive、privacy、identity、checksumを実測する。r31結果を流用しない |
+| r31 preflight技術監査（previous evidence） | **GO** | source 227／226、software 1,404／1,403、fresh archive／extract、privacy、self-test、日英UI smokeを確認 |
+| r31 final source-only restage（previous evidence） | **GO** | source 227／226、folder／archive parity、CRC、privacy、identity／icon／tooling 32 tests、Downloads配置、detached `SHA256SUMS-r31.txt`照合を完了 |
+| public repository | **r31公開済み／r32更新pending** | `https://github.com/Ponkichi0718/ChromaMatter`、owner handle `Ponkichi0718`、default branch `main` |
 | 旧EXEへのビルド依存 | 完了 | 依存を除去。公開候補へ含めない |
 | 復元PYCへの実行依存 | 完了 | 293テストをPYCなしで通過。公開候補へ含めない |
 | ChromaMatterアイコン | **creator declarationでGO** | creatorがオリジナルの架空機体と創作文言であると申告し、公開・再配布を承認。独立した商標／意匠clearanceではない |
@@ -22,7 +23,7 @@
 | 公開テストOBJ | 完了 | CC0の抽象的な合成3パーツOBJを用意 |
 | 一般プロンプト例 | 完了 | CC0。第三者名・作品名・個人情報なし |
 | 混色モデルの来歴 | 完了 | MIT上流コミット、SHA-256、全配列一致、再生成手順を記録 |
-| クリーンクローン検証 | 完了 | 公開候補だけの空フォルダーとfresh `.venv`から、テスト・build・起動smoke・合成OBJ読込まで成功 |
+| クリーンクローン検証 | r31 previous evidence／r32 pending | r32 final source-only stage作成後、空フォルダーとfresh `.venv`から再測定する |
 | アプリ基礎コードの公開判断 | **owner GO** | project ownerが現在のsourceを自分のprojectとして公開することを2026-08-20に承認。独立したcode provenance法務監査ではない |
 | 公開用ハンドル | **完了** | repository owner handle `Ponkichi0718`をGitHub metadataへ記録 |
 | EXEの第三者ライセンス監査 | **未完了・binary公開blocker** | ownerの公開GOでもPyTetWild/fTetWild、TetGen、PyMeshLab、Qt、GEOS等の再配布条件は免除されない |
@@ -79,7 +80,9 @@ OpenAIとの関係では利用者が出力を所有しますが、入力した�
    EXEと実行に必要なファイル、README、ライセンス、対応ソースへの案内、SHA-256だけ。私有検証物と応募資料は含めない。バイナリ監査が終わるまで作成・公開しない。
 
 3. **非公開検証保管**  
-   実OBJ、元画像、派生3MF、診断画像、動画素材、スクリーンショット、実モデル検証JSON。Git・公開ZIP・issue添付の対象外。
+   実OBJ、元画像、派生3MF、診断画像、元動画素材、スクリーンショット、実モデル検証JSON。Git・公開ZIP・issue添付の対象外。
+
+例外候補は、ownerが掲載を明示承認し、個人情報gateを通過した公開専用copyだけです。r32では無音・privacy確認済みの`ChromaMatter-simple-workflow-demo.mp4`をGitHub Releaseの独立asset候補として扱い、Git tree、software ZIP、対応ソースZIPへは入れません。元動画と元モデルは非公開検証保管のままです。Releaseへuploadするのは、モデル由来、第三者画面、必要な帰属表示を含む権利gateをownerが最終確認した後だけです。
 
 公開専用デモの画像、OBJ、3MFは、既存の私有検証物から選ばず、汎用プロンプトから新規生成します。`samples/DEMO_MODEL_RIGHTS_RECORD_TEMPLATE_JA.md`の権利ゲートを通過したものだけ、適用ライセンスと帰属表示を添えて公開ソースまたは別のデモ配布物へ追加します。
 
@@ -155,10 +158,12 @@ TetGenはオープンソースなので利用できますが、「GitHubに何�
 - [x] ChromaMatterアイコンのcreator declarationと非提携方針をprovenanceへ記録した。
 - [x] project ownerによる現在sourceの公開承認を記録した。
 - [x] 公開用handle `Ponkichi0718`とrepository URLを記録した。
-- [x] r31 preflight公開stageの監査、full regression、クリーンビルド、fresh extractが成功した。
-- [x] final restageしたsource-only artifactをDownloadsへ配置し、detached `SHA256SUMS-r31.txt`を作成・照合した。
-- [x] final source-only stageのREADME、LICENSE、PROVENANCE、第三者通知、identity／icon／tooling testが一致した。
-- [x] final source-only stageで私有実モデルと個人データが0件であることをprivacy監査した。
+- [x] r31 preflight公開stageの監査、full regression、クリーンビルド、fresh extractが成功した（previous evidence）。
+- [x] r31 final source-only artifactをDownloadsへ配置し、detached `SHA256SUMS-r31.txt`を作成・照合した（previous evidence）。
+- [ ] r32 exact full regression、clean build、packaged self-test、1920×1080の日英UI smokeを完了した。
+- [ ] r32 final source-only stageのREADME、LICENSE、PROVENANCE、第三者通知、identity／icon／tooling testが一致した。
+- [ ] r32 final stage／archiveで私有実モデルと個人データが0件であることをprivacy監査した。
+- [ ] r32 source-only artifactをDownloadsへ配置し、外部detached `SHA256SUMS-r32.txt`を作成・照合した。
 - [ ] 公開専用デモを含める場合、権利記録、再配布条件、適用ライセンス、帰属表示、SHA-256を実ファイルと照合した。
 - [x] 公開scopeを`source-only`と明示し、EXE／software ZIPを対象外とした。
 - [ ] EXEを含む場合はバイナリ配布監査が完了した。

@@ -74,7 +74,336 @@ def _base_document() -> dict[str, object]:
     }
 
 
+def _multipart_colour_document(
+    *,
+    categorical: bool,
+    shared_texture: bool = True,
+    dominant_count: int = 11,
+    exploded_provenance: bool = True,
+    known_segmentation_palette: bool = True,
+) -> tuple[dict[str, object], bytes, np.ndarray]:
+    binary = bytearray()
+    positions = np.asarray(
+        [
+            [0, 0, 0],
+            [1, 0, 0],
+            [0, 1, 0],
+            [2, 0, 0],
+            [3, 0, 0],
+            [2, 1, 0],
+            [4, 0, 0],
+            [5, 0, 0],
+            [4, 1, 0],
+            [6, 0, 0],
+            [7, 0, 0],
+            [6, 1, 0],
+        ],
+        dtype="<f4",
+    )
+    uv = np.zeros((len(positions), 2), dtype="<f4")
+    if categorical:
+        first_id, second_id = (
+            ((31, 119, 180), (174, 199, 232))
+            if known_segmentation_palette
+            else ((220, 60, 80), (60, 180, 220))
+        )
+        first_colours = np.tile(
+            np.asarray([*first_id, 255], dtype=np.uint8), (len(positions), 1)
+        )
+        second_colours = np.tile(
+            np.asarray([*second_id, 255], dtype=np.uint8), (len(positions), 1)
+        )
+        first_colours[dominant_count:, :3] = 255
+        second_colours[dominant_count:, :3] = 255
+    else:
+        first_colours = np.tile(
+            np.asarray(
+                [
+                    [255, 0, 0, 255],
+                    [0, 255, 0, 255],
+                    [0, 0, 255, 255],
+                ],
+                dtype=np.uint8,
+            ),
+            (4, 1),
+        )
+        second_colours = np.tile(
+            np.asarray(
+                [
+                    [255, 255, 0, 255],
+                    [0, 255, 255, 255],
+                    [255, 0, 255, 255],
+                ],
+                dtype=np.uint8,
+            ),
+            (4, 1),
+        )
+    texture_rgb = np.asarray([160, 80, 40], dtype=np.uint8)
+    texture = _png_bytes(texture_rgb.reshape((1, 1, 3)))
+    offsets = [
+        _append(binary, positions.tobytes()),
+        _append(binary, uv.tobytes()),
+        _append(binary, first_colours.tobytes()),
+        _append(binary, second_colours.tobytes()),
+        _append(binary, texture),
+    ]
+    document = _base_document()
+    document["asset"] = {
+        "version": "2.0",
+        "generator": "THREE.GLTFExporter r178",
+    }
+    document["scenes"] = [{"nodes": [0]}]
+    document["nodes"] = [
+        {
+            "name": "world",
+            "extras": {"name": "world"},
+            "children": [1, 2],
+        },
+        {"name": "first", "mesh": 0},
+        {"name": "second", "mesh": 1},
+    ]
+    if exploded_provenance:
+        for node, direction in zip(
+            document["nodes"][1:],
+            ((1.0, 0.0, 0.0), (-1.0, 0.0, 0.0)),
+            strict=True,
+        ):
+            node["extras"] = {
+                "name": node["name"],
+                "_explodeOrigLocalPos": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0,
+                },
+                "_explodeWorldDir": dict(
+                    zip(("x", "y", "z"), direction, strict=True)
+                ),
+            }
+    document["bufferViews"] = [
+        {"buffer": 0, "byteOffset": offset, "byteLength": length}
+        for offset, length in offsets
+    ]
+    document["accessors"] = [
+        {
+            "bufferView": 0,
+            "componentType": 5126,
+            "count": len(positions),
+            "type": "VEC3",
+        },
+        {
+            "bufferView": 1,
+            "componentType": 5126,
+            "count": len(positions),
+            "type": "VEC2",
+        },
+        {
+            "bufferView": 2,
+            "componentType": 5121,
+            "normalized": True,
+            "count": len(positions),
+            "type": "VEC4",
+        },
+        {
+            "bufferView": 3,
+            "componentType": 5121,
+            "normalized": True,
+            "count": len(positions),
+            "type": "VEC4",
+        },
+    ]
+    document["images"] = [{"bufferView": 4, "mimeType": "image/png"}]
+    document["textures"] = (
+        [{"source": 0}]
+        if shared_texture
+        else [{"source": 0}, {"source": 0}]
+    )
+    document["materials"] = [
+        {"pbrMetallicRoughness": {"baseColorTexture": {"index": 0}}},
+        {
+            "pbrMetallicRoughness": {
+                "baseColorTexture": {"index": 0 if shared_texture else 1}
+            }
+        },
+    ]
+    document["meshes"] = [
+        {
+            "primitives": [
+                {
+                    "attributes": {
+                        "POSITION": 0,
+                        "TEXCOORD_0": 1,
+                        "COLOR_0": colour_accessor,
+                    },
+                    "material": material_id,
+                }
+            ]
+        }
+        for colour_accessor, material_id in ((2, 0), (3, 1))
+    ]
+    return document, bytes(binary), texture_rgb
+
+
 class GltfImportTests(unittest.TestCase):
+    def test_auto_omits_segmentation_ids_and_policy_overrides_are_explicit(self) -> None:
+        document, binary, texture_rgb = _multipart_colour_document(
+            categorical=True
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            path = _write_glb(Path(temporary), document, binary)
+            automatic = load_gltf_asset(path)
+            multiplied = load_gltf_asset(path, vertex_color_policy="multiply")
+            ignored = load_gltf_asset(path, vertex_color_policy="ignore")
+
+        expected_texture = np.broadcast_to(
+            texture_rgb.astype(np.float64) / 255.0, automatic.colors.shape
+        )
+        np.testing.assert_allclose(automatic.colors, expected_texture, atol=2e-5)
+        np.testing.assert_allclose(ignored.colors, automatic.colors, atol=2e-5)
+        self.assertGreater(
+            float(np.max(np.abs(multiplied.colors - automatic.colors))), 0.1
+        )
+        automatic_decision = next(
+            warning
+            for warning in automatic.warnings
+            if "COLOR_0自動判定" in warning
+        )
+        self.assertIn("(index 0)", automatic_decision)
+        self.assertIn("2 個", automatic_decision)
+        self.assertIn("vertex_color_policy='multiply'", automatic_decision)
+        self.assertFalse(
+            any("glTF規格どおり線形色で合成" in warning for warning in automatic.warnings)
+        )
+        self.assertTrue(
+            any("glTF規格どおり線形色で合成" in warning for warning in multiplied.warnings)
+        )
+        self.assertTrue(
+            any("vertex_color_policy='ignore'" in warning for warning in ignored.warnings)
+        )
+        self.assertEqual(
+            automatic.import_metadata["schema"],
+            "obj-adjuster.gltf-import.v1",
+        )
+        self.assertIs(
+            automatic.import_metadata["compatible_exploded_multipart"], True
+        )
+        self.assertIs(
+            automatic.import_metadata["categorical_part_ids_detected"], True
+        )
+        self.assertIs(
+            automatic.import_metadata["segmentation_vertex_colors_suppressed"],
+            True,
+        )
+
+    def test_auto_preserves_standard_colours_outside_narrow_signature(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for name, categorical, shared_texture, dominant_count in (
+                ("varied", False, True, 11),
+                ("separate-textures", True, False, 11),
+                ("below-threshold", True, True, 10),
+                ("uniform-tint", True, True, 12),
+            ):
+                with self.subTest(name=name):
+                    document, binary, texture_rgb = _multipart_colour_document(
+                        categorical=categorical,
+                        shared_texture=shared_texture,
+                        dominant_count=dominant_count,
+                    )
+                    path = root / f"{name}.glb"
+                    path.write_bytes(_glb_bytes(document, binary))
+                    automatic = load_gltf_asset(path)
+                    multiplied = load_gltf_asset(
+                        path, vertex_color_policy="multiply"
+                    )
+                    np.testing.assert_allclose(
+                        automatic.colors, multiplied.colors, atol=2e-5
+                    )
+                    self.assertFalse(
+                        any(
+                            "COLOR_0自動判定" in warning
+                            for warning in automatic.warnings
+                        )
+                    )
+                    texture_only = np.broadcast_to(
+                        texture_rgb.astype(np.float64) / 255.0,
+                        automatic.colors.shape,
+                    )
+                    self.assertGreater(
+                        float(np.max(np.abs(automatic.colors - texture_only))), 0.1
+                    )
+
+    def test_auto_preserves_authored_part_tints_without_exporter_provenance(self) -> None:
+        document, binary, _texture_rgb = _multipart_colour_document(
+            categorical=True,
+            exploded_provenance=False,
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            path = _write_glb(Path(temporary), document, binary)
+            automatic = load_gltf_asset(path)
+            multiplied = load_gltf_asset(path, vertex_color_policy="multiply")
+            ignored = load_gltf_asset(path, vertex_color_policy="ignore")
+
+        np.testing.assert_allclose(automatic.colors, multiplied.colors, atol=2e-5)
+        self.assertGreater(
+            float(np.max(np.abs(automatic.colors - ignored.colors))), 0.1
+        )
+        self.assertFalse(
+            any("COLOR_0自動判定" in warning for warning in automatic.warnings)
+        )
+        self.assertIs(
+            automatic.import_metadata["compatible_exploded_multipart"], False
+        )
+        self.assertIs(
+            automatic.import_metadata["categorical_part_ids_detected"], False
+        )
+
+    def test_auto_preserves_authored_tints_with_same_exporter_provenance(self) -> None:
+        document, binary, _texture_rgb = _multipart_colour_document(
+            categorical=True,
+            known_segmentation_palette=False,
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            path = _write_glb(Path(temporary), document, binary)
+            automatic = load_gltf_asset(path)
+            multiplied = load_gltf_asset(path, vertex_color_policy="multiply")
+            ignored = load_gltf_asset(path, vertex_color_policy="ignore")
+
+        np.testing.assert_allclose(automatic.colors, multiplied.colors, atol=2e-5)
+        self.assertGreater(
+            float(np.max(np.abs(automatic.colors - ignored.colors))), 0.1
+        )
+        self.assertFalse(
+            any("COLOR_0自動判定" in warning for warning in automatic.warnings)
+        )
+        self.assertIs(
+            automatic.import_metadata["compatible_exploded_multipart"], True
+        )
+        self.assertIs(
+            automatic.import_metadata["categorical_part_ids_detected"], False
+        )
+
+    def test_auto_requires_segmentation_ids_on_every_selected_primitive(self) -> None:
+        document, binary, _texture_rgb = _multipart_colour_document(
+            categorical=True
+        )
+        second = document["meshes"][1]["primitives"][0]["attributes"]
+        del second["COLOR_0"]
+        with tempfile.TemporaryDirectory() as temporary:
+            path = _write_glb(Path(temporary), document, binary)
+            automatic = load_gltf_asset(path)
+            multiplied = load_gltf_asset(path, vertex_color_policy="multiply")
+
+        np.testing.assert_allclose(automatic.colors, multiplied.colors, atol=2e-5)
+        self.assertFalse(
+            any("COLOR_0自動判定" in warning for warning in automatic.warnings)
+        )
+
+    def test_invalid_vertex_colour_policy_is_rejected(self) -> None:
+        with self.assertRaisesRegex(ValueError, "vertex_color_policy"):
+            load_gltf_asset(
+                Path("unused.glb"), vertex_color_policy="guess"  # type: ignore[arg-type]
+            )
+
     def test_sparse_normalized_colour_stride_transforms_and_stable_parts(self) -> None:
         binary = bytearray()
         positions = b"".join(

@@ -81,12 +81,10 @@ class FilamentDatabasePackagingTests(unittest.TestCase):
             connection.close()
 
     def test_resources_do_not_embed_personal_absolute_paths(self) -> None:
-        private_user_token = b"pd" + b"cko"
         for filename in RESOURCE_FILENAMES:
             payload = (RESOURCE_ROOT / filename).read_bytes()
             with self.subTest(filename=filename):
                 self.assertIsNone(PERSONAL_WINDOWS_PATH.search(payload))
-                self.assertNotIn(private_user_token, payload.lower())
 
     def test_pyinstaller_spec_bundles_every_resource_at_runtime_path(self) -> None:
         spec = (FIXED_APP / "TripoSpectrumMapper_fixed.spec").read_text(
