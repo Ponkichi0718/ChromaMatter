@@ -11,7 +11,9 @@ param(
     [string]$CorrespondingSourceArchiveSha256 = "",
     [string]$CorrespondingSourceProjectCommit = "",
     [string]$BinaryComponentMapPath = "",
-    [string]$SbomPath = ""
+    [string]$SbomPath = "",
+    [string]$DemoDataRoot = "",
+    [string]$DemoDataManifestPath = ""
 )
 
 Set-StrictMode -Version Latest
@@ -31,7 +33,7 @@ if (-not (Test-Path -LiteralPath $builtRoot -PathType Container)) {
 if (-not $Destination) {
     $Destination = Join-Path `
         $repoRoot `
-        "artifacts\ChromaMatter-0.8beta-r32-win64"
+        "artifacts\ChromaMatter-0.8beta-r32.1-win64"
 }
 elseif (-not [System.IO.Path]::IsPathRooted($Destination)) {
     $Destination = Join-Path $repoRoot $Destination
@@ -170,6 +172,259 @@ function Assert-ExactStringSet {
         @(Compare-Object $expectedSorted $actualSorted -CaseSensitive).Count -ne 0
     ) {
         throw "$Context does not match the exact canonical set."
+    }
+}
+
+$demoDataEnabled = -not [string]::IsNullOrWhiteSpace($DemoDataRoot)
+if (-not $demoDataEnabled -and -not [string]::IsNullOrWhiteSpace(
+    $DemoDataManifestPath
+)) {
+    throw "DemoDataManifestPath cannot be used without DemoDataRoot."
+}
+
+$demoDataDocumentFiles = @()
+$demoDataPayloadFiles = @()
+if ($demoDataEnabled) {
+    $demoDataRootFullPath = if ([System.IO.Path]::IsPathRooted($DemoDataRoot)) {
+        [System.IO.Path]::GetFullPath($DemoDataRoot)
+    }
+    else {
+        [System.IO.Path]::GetFullPath((Join-Path $repoRoot $DemoDataRoot))
+    }
+    $demoDataRootItem = Get-Item -LiteralPath $demoDataRootFullPath -ErrorAction Stop
+    if (-not $demoDataRootItem.PSIsContainer) {
+        throw "DemoDataRoot is not a directory: $demoDataRootFullPath"
+    }
+    if (
+        ($demoDataRootItem.Attributes -band
+            [System.IO.FileAttributes]::ReparsePoint) -ne 0
+    ) {
+        throw "DemoDataRoot must not be a reparse point."
+    }
+
+    $canonicalDemoDataDirectory = Join-Path `
+        $repoRoot `
+        "source\fixed_app\public_binary\DemoData"
+    $canonicalDemoDataItem = Get-Item `
+        -LiteralPath $canonicalDemoDataDirectory `
+        -ErrorAction Stop
+    if (-not $canonicalDemoDataItem.PSIsContainer) {
+        throw "Canonical DemoData document root is not a directory."
+    }
+    if (
+        ($canonicalDemoDataItem.Attributes -band
+            [System.IO.FileAttributes]::ReparsePoint) -ne 0
+    ) {
+        throw "Canonical DemoData document root must not be a reparse point."
+    }
+
+    $demoDataManifestFullPath = if ([string]::IsNullOrWhiteSpace(
+        $DemoDataManifestPath
+    )) {
+        Join-Path $canonicalDemoDataDirectory "DEMO_DATA_MANIFEST.json"
+    }
+    elseif ([System.IO.Path]::IsPathRooted($DemoDataManifestPath)) {
+        [System.IO.Path]::GetFullPath($DemoDataManifestPath)
+    }
+    else {
+        [System.IO.Path]::GetFullPath(
+            (Join-Path $repoRoot $DemoDataManifestPath)
+        )
+    }
+    $demoDataManifestItem = Get-Item `
+        -LiteralPath $demoDataManifestFullPath `
+        -ErrorAction Stop
+    if ($demoDataManifestItem.PSIsContainer) {
+        throw "DemoData manifest is not a regular file."
+    }
+    if (
+        ($demoDataManifestItem.Attributes -band
+            [System.IO.FileAttributes]::ReparsePoint) -ne 0
+    ) {
+        throw "DemoData manifest must not be a reparse point."
+    }
+
+    $demoDataManifest = Read-CanonicalJsonObject `
+        -Path $demoDataManifestFullPath `
+        -Label "DemoData manifest"
+    Assert-ExactJsonProperties `
+        -Value $demoDataManifest `
+        -Expected @(
+            "schema_version", "document_id", "release_status",
+            "expected_documents", "payloads", "publication_gate"
+        ) `
+        -Context "DemoData manifest"
+    if (
+        [int]$demoDataManifest.schema_version -ne 1 -or
+        [string]$demoDataManifest.document_id -cne
+            "chromamatter.demo-data.r32.1"
+    ) {
+        throw "DemoData manifest has an unsupported identity or schema version."
+    }
+
+    $expectedDemoDataDocuments = @(
+        "README_EN.md",
+        "README_JA.md",
+        "NOTICE_EN.md",
+        "NOTICE_JA.md"
+    )
+    Assert-ExactStringSet `
+        -Actual @($demoDataManifest.expected_documents) `
+        -Expected $expectedDemoDataDocuments `
+        -Context "DemoData manifest expected_documents"
+
+    $publicationGate = $demoDataManifest.publication_gate
+    Assert-ExactJsonProperties `
+        -Value $publicationGate `
+        -Expected @(
+            "status", "raw_glb_redistribution_confirmed",
+            "reference_image_redistribution_confirmed",
+            "hi3d_plan_terms_confirmed"
+        ) `
+        -Context "DemoData publication gate"
+    if (
+        [string]$demoDataManifest.release_status -cne
+            "approved-for-publication" -or
+        [string]$publicationGate.status -cne "approved-for-publication" -or
+        $publicationGate.raw_glb_redistribution_confirmed -isnot [bool] -or
+        $publicationGate.raw_glb_redistribution_confirmed -ne $true -or
+        $publicationGate.reference_image_redistribution_confirmed -isnot [bool] -or
+        $publicationGate.reference_image_redistribution_confirmed -ne $true -or
+        $publicationGate.hi3d_plan_terms_confirmed -isnot [bool] -or
+        $publicationGate.hi3d_plan_terms_confirmed -ne $true
+    ) {
+        throw (
+            "DemoData publication is not approved by the canonical rights " +
+            "and plan-terms gate."
+        )
+    }
+
+    $demoDataPayloadSpecs = @(
+        [pscustomobject]@{
+            Path = "Original AI model Color.glb"
+            MediaType = "model/gltf-binary"
+            Role = "multipart-glb-demo"
+        },
+        [pscustomobject]@{
+            Path = "Reference.jpg"
+            MediaType = "image/jpeg"
+            Role = "reference-image"
+        }
+    )
+    $manifestPayloads = @($demoDataManifest.payloads)
+    if ($manifestPayloads.Count -ne $demoDataPayloadSpecs.Count) {
+        throw "DemoData manifest must declare exactly two payloads."
+    }
+
+    $rootEntries = @(
+        Get-ChildItem -LiteralPath $demoDataRootFullPath -Force |
+            Sort-Object Name -CaseSensitive
+    )
+    foreach ($entry in $rootEntries) {
+        if (
+            ($entry.Attributes -band
+                [System.IO.FileAttributes]::ReparsePoint) -ne 0
+        ) {
+            throw "DemoDataRoot contains a reparse point: $($entry.Name)"
+        }
+        if ($entry.PSIsContainer) {
+            throw "DemoDataRoot contains a non-file entry: $($entry.Name)"
+        }
+    }
+    if ($rootEntries.Count -ne $demoDataPayloadSpecs.Count) {
+        throw "DemoDataRoot must contain exactly two regular payload files."
+    }
+    $rootEntriesByName = [System.Collections.Generic.Dictionary[string, object]]::new(
+        [System.StringComparer]::Ordinal
+    )
+    foreach ($entry in $rootEntries) {
+        if ($rootEntriesByName.ContainsKey([string]$entry.Name)) {
+            throw "DemoDataRoot contains a duplicate payload name."
+        }
+        $rootEntriesByName.Add([string]$entry.Name, $entry)
+    }
+
+    for ($index = 0; $index -lt $demoDataPayloadSpecs.Count; $index += 1) {
+        $spec = $demoDataPayloadSpecs[$index]
+        $record = $manifestPayloads[$index]
+        Assert-ExactJsonProperties `
+            -Value $record `
+            -Expected @("path", "bytes", "sha256", "media_type", "role") `
+            -Context "DemoData payload record $($index + 1)"
+        if (
+            [string]$record.path -cne [string]$spec.Path -or
+            [string]$record.media_type -cne [string]$spec.MediaType -or
+            [string]$record.role -cne [string]$spec.Role
+        ) {
+            throw "DemoData payload record $($index + 1) has the wrong identity."
+        }
+        if (
+            $null -eq $record.bytes -or
+            $record.bytes.GetType().FullName -notin @(
+                "System.Int32", "System.Int64"
+            ) -or
+            [long]$record.bytes -le 0
+        ) {
+            throw "DemoData payload byte size must be a positive JSON integer."
+        }
+        if ([string]$record.sha256 -cnotmatch "^[0-9a-f]{64}$") {
+            throw "DemoData payload SHA-256 must be lowercase hexadecimal."
+        }
+        if (-not $rootEntriesByName.ContainsKey([string]$spec.Path)) {
+            throw "DemoDataRoot is missing the exact payload: $($spec.Path)"
+        }
+        $payloadItem = $rootEntriesByName[[string]$spec.Path]
+        if ([long]$payloadItem.Length -ne [long]$record.bytes) {
+            throw "DemoData payload size mismatch: $($spec.Path)"
+        }
+        $actualPayloadHash = (
+            Get-FileHash -LiteralPath $payloadItem.FullName -Algorithm SHA256
+        ).Hash.ToLowerInvariant()
+        if ($actualPayloadHash -cne [string]$record.sha256) {
+            throw "DemoData payload SHA-256 mismatch: $($spec.Path)"
+        }
+        $demoDataPayloadFiles += [pscustomobject]@{
+            Source = $payloadItem.FullName
+            Destination = "DemoData/$($spec.Path)"
+        }
+    }
+
+    $canonicalDocumentNames = @(
+        $expectedDemoDataDocuments + "DEMO_DATA_MANIFEST.json"
+    )
+    $canonicalDocumentEntries = @(
+        Get-ChildItem -LiteralPath $canonicalDemoDataDirectory -Force |
+            Sort-Object Name -CaseSensitive
+    )
+    if ($canonicalDocumentEntries.Count -ne $canonicalDocumentNames.Count) {
+        throw "Canonical DemoData document root has unexpected entries."
+    }
+    $canonicalDocumentSet = [System.Collections.Generic.HashSet[string]]::new(
+        [System.StringComparer]::Ordinal
+    )
+    foreach ($entry in $canonicalDocumentEntries) {
+        if (
+            $entry.PSIsContainer -or
+            ($entry.Attributes -band
+                [System.IO.FileAttributes]::ReparsePoint) -ne 0 -or
+            -not $canonicalDocumentSet.Add([string]$entry.Name)
+        ) {
+            throw "Canonical DemoData documents must be unique regular files."
+        }
+    }
+    Assert-ExactStringSet `
+        -Actual @($canonicalDocumentSet) `
+        -Expected $canonicalDocumentNames `
+        -Context "Canonical DemoData document root"
+    foreach ($documentName in $expectedDemoDataDocuments) {
+        $demoDataDocumentFiles += [pscustomobject]@{
+            Source = Join-Path $canonicalDemoDataDirectory $documentName
+            Destination = "DemoData/$documentName"
+        }
+    }
+    $demoDataDocumentFiles += [pscustomobject]@{
+        Source = $demoDataManifestFullPath
+        Destination = "DemoData/DEMO_DATA_MANIFEST.json"
     }
 }
 
@@ -1452,7 +1707,7 @@ if (-not (Test-Path -LiteralPath $correspondingSourceArchiveFullPath -PathType L
 }
 $correspondingSourceArchiveLeaf = Split-Path -Leaf $correspondingSourceArchiveFullPath
 if (-not $correspondingSourceArchiveLeaf.Equals(
-    "ChromaMatter-0.8beta-r32-complete-corresponding-source.zip",
+    "ChromaMatter-0.8beta-r32.1-complete-corresponding-source.zip",
     [System.StringComparison]::Ordinal
 )) {
     throw (
@@ -1640,7 +1895,7 @@ if (-not $generatedInventory) {
     }
     if (
         [string]$componentMap.package.name -ne "ChromaMatter" -or
-        [string]$componentMap.package.version -ne "0.8beta-r32"
+        [string]$componentMap.package.version -ne "0.8beta-r32.1"
     ) {
         throw "Generated binary component inventory has the wrong package identity."
     }
@@ -2219,7 +2474,7 @@ if (
     $null -eq $metadataComponent -or
     [string]$metadataComponent.'bom-ref' -ne "component:chromamatter" -or
     [string]$metadataComponent.name -ne "ChromaMatter" -or
-    [string]$metadataComponent.version -ne "0.8beta-r32"
+    [string]$metadataComponent.version -ne "0.8beta-r32.1"
 ) {
     throw "CycloneDX SBOM metadata has the wrong application identity."
 }
@@ -2406,6 +2661,17 @@ foreach ($extension in @(
 )) {
     [void]$forbiddenPayloadExtensions.Add($extension)
 }
+$allowedDemoPayloadPaths = [System.Collections.Generic.HashSet[string]]::new(
+    [System.StringComparer]::Ordinal
+)
+if ($demoDataEnabled) {
+    foreach ($relative in @(
+        "DemoData/Original AI model Color.glb",
+        "DemoData/Reference.jpg"
+    )) {
+        [void]$allowedDemoPayloadPaths.Add($relative)
+    }
+}
 
 $payloadTextExtensions = [System.Collections.Generic.HashSet[string]]::new(
     [System.StringComparer]::OrdinalIgnoreCase
@@ -2504,6 +2770,62 @@ function Find-SoftwarePayloadToken {
     return $null
 }
 
+function Find-SoftwarePayloadFileToken {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()][string[]]$Tokens
+    )
+
+    if ($Tokens.Count -eq 0) {
+        return $null
+    }
+    $maximumTokenLength = (
+        $Tokens | ForEach-Object { $_.Length } | Measure-Object -Maximum
+    ).Maximum
+    if ([int]$maximumTokenLength -le 0) {
+        return $null
+    }
+
+    # Binary runtime files and the optional GLB can be hundreds of megabytes.
+    # Decode a bounded window instead of materializing the complete file as a
+    # .NET string.  The overlap preserves tokens that cross chunk boundaries
+    # while retaining the previous UTF-8 text-fragment privacy check.
+    $reader = $null
+    try {
+        $reader = [System.IO.StreamReader]::new(
+            $Path,
+            [System.Text.UTF8Encoding]::new($false, $false),
+            $true,
+            65536
+        )
+        $buffer = [char[]]::new(65536)
+        $tail = ""
+        while (($readCount = $reader.Read($buffer, 0, $buffer.Length)) -gt 0) {
+            $window = $tail + [string]::new($buffer, 0, $readCount)
+            $found = Find-SoftwarePayloadToken -Value $window -Tokens $Tokens
+            if ($null -ne $found) {
+                return $found
+            }
+            $tailLength = [Math]::Min(
+                [Math]::Max(0, [int]$maximumTokenLength - 1),
+                $window.Length
+            )
+            $tail = if ($tailLength -gt 0) {
+                $window.Substring($window.Length - $tailLength)
+            }
+            else {
+                ""
+            }
+        }
+    }
+    finally {
+        if ($null -ne $reader) {
+            $reader.Dispose()
+        }
+    }
+    return $null
+}
+
 function Assert-SoftwarePayloadSafe {
     param([Parameter(Mandatory = $true)][string]$Root)
 
@@ -2559,54 +2881,65 @@ function Assert-SoftwarePayloadSafe {
         }
 
         $extension = [System.IO.Path]::GetExtension($item.Name)
-        if ($forbiddenPayloadExtensions.Contains($extension)) {
+        if (
+            $forbiddenPayloadExtensions.Contains($extension) -and
+            -not $allowedDemoPayloadPaths.Contains($relative)
+        ) {
             $violations.Add(
                 "forbidden software payload extension '$extension': $displayRelative"
             )
             continue
         }
-        try {
-            $content = [System.IO.File]::ReadAllText($item.FullName)
-        }
-        catch {
-            if ($payloadTextExtensions.Contains($extension)) {
-                $readFailure = if ($displayRelative -eq "<redacted-path>") {
-                    "software payload text could not be read: $displayRelative"
-                }
-                else {
-                    "software payload text could not be read: $displayRelative ($($_.Exception.Message))"
-                }
-                $violations.Add($readFailure)
-            }
-            continue
-        }
         $isTextPayload = $payloadTextExtensions.Contains($extension)
         $tokensToCheck = if ($isTextPayload) {
-            [string[]]$payloadContentAndPathTokens
+            [string[]](
+                $payloadContentAndPathTokens + $configuredPrivateAuditTokens
+            )
         }
         else {
             # Generic dependency binaries legitimately contain their original
             # builders' user-profile paths.  For binary payloads, reject only this
             # project's known private identifiers/workspace fragments.
-            [string[]]$payloadBinaryContentTokens
+            [string[]](
+                $payloadBinaryContentTokens + $configuredPrivateAuditTokens
+            )
         }
-        $contentToken = Find-SoftwarePayloadToken `
-            -Value $content `
-            -Tokens $tokensToCheck
+        try {
+            $contentToken = if ($isTextPayload) {
+                $content = [System.IO.File]::ReadAllText($item.FullName)
+                Find-SoftwarePayloadToken -Value $content -Tokens $tokensToCheck
+            }
+            else {
+                Find-SoftwarePayloadFileToken `
+                    -Path $item.FullName `
+                    -Tokens $tokensToCheck
+            }
+        }
+        catch {
+            $readFailure = if ($displayRelative -eq "<redacted-path>") {
+                "software payload could not be audited: $displayRelative"
+            }
+            else {
+                "software payload could not be audited: $displayRelative ($($_.Exception.Message))"
+            }
+            $violations.Add($readFailure)
+            continue
+        }
         if ($null -ne $contentToken) {
             $contentKind = if ($isTextPayload) { "text" } else { "binary" }
-            $violations.Add(
-                "forbidden $contentKind token '$contentToken': $displayRelative"
-            )
-        }
-        $configuredContentToken = Find-SoftwarePayloadToken `
-            -Value $content `
-            -Tokens ([string[]]$configuredPrivateAuditTokens)
-        if ($null -ne $configuredContentToken) {
-            $contentKind = if ($isTextPayload) { "text" } else { "binary" }
-            $violations.Add(
-                "forbidden configured private $contentKind token: $displayRelative"
-            )
+            $configuredContentToken = Find-SoftwarePayloadToken `
+                -Value $contentToken `
+                -Tokens ([string[]]$configuredPrivateAuditTokens)
+            if ($null -ne $configuredContentToken) {
+                $violations.Add(
+                    "forbidden configured private $contentKind token: $displayRelative"
+                )
+            }
+            else {
+                $violations.Add(
+                    "forbidden $contentKind token '$contentToken': $displayRelative"
+                )
+            }
         }
     }
 
@@ -2934,6 +3267,15 @@ try {
         Copy-SoftwareFile `
             -Source (Join-Path $repoRoot $record.Source.Replace("/", "\")) `
             -Destination (Join-Path $stagingRoot $record.Destination.Replace("/", "\"))
+    }
+    if ($demoDataEnabled) {
+        foreach ($record in @($demoDataDocumentFiles + $demoDataPayloadFiles)) {
+            Copy-SoftwareFile `
+                -Source $record.Source `
+                -Destination (
+                    Join-Path $stagingRoot $record.Destination.Replace("/", "\")
+                )
+        }
     }
     Copy-SoftwareFile -Source $componentMapFullPath -Destination (
         Join-Path $stagingRoot "licenses\BINARY_COMPONENT_MAP.json"

@@ -1,7 +1,7 @@
 # 紹介動画・Snapmaker Orca・U1 検証チェックリスト
 
 更新日: 2026-08-24
-対象: ChromaMatter — AI Model Print Studio 0.8beta r32候補
+対象: ChromaMatter — AI Model Print Studio 0.8beta r32.1候補（公開済みr32動画を同一bytesで再利用）
 
 ## 現在の状態
 

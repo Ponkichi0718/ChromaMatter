@@ -81,7 +81,7 @@ class ReleaseIdentityTests(unittest.TestCase):
         self.assertIn("OriginalFilename', u'ChromaMatter.exe'", version_info)
         self.assertIn("Public displayed version: `0.8beta`", version_policy)
 
-    def test_r32_edition_and_default_artifact_names_are_pinned(self):
+    def test_r32_1_edition_and_default_artifact_names_are_pinned(self):
         package_init = read_text(FIXED_APP / "spectrum_mapper" / "__init__.py")
         public_stage = read_text(
             REPO_ROOT / "tooling" / "stage_public_source.ps1"
@@ -92,13 +92,13 @@ class ReleaseIdentityTests(unittest.TestCase):
 
         self.assertIn('APP_NAME = "ChromaMatter"', package_init)
         self.assertIn('APP_TAGLINE = "AI Model Print Studio"', package_init)
-        self.assertIn('RELEASE_REVISION = "r32"', package_init)
+        self.assertIn('RELEASE_REVISION = "r32.1"', package_init)
         self.assertIn(
-            "ChromaMatter-0.8beta-r32-source-public-20260823",
+            "ChromaMatter-0.8beta-r32.1-source-public-20260824",
             public_stage,
         )
         self.assertIn(
-            "ChromaMatter-0.8beta-r32-win64",
+            "ChromaMatter-0.8beta-r32.1-win64",
             software_stage,
         )
         self.assertNotIn("r29-creator-studio_HANDOFF", public_stage)
@@ -115,6 +115,22 @@ class ReleaseIdentityTests(unittest.TestCase):
                 self.assertIn(relative, public_stage)
                 self.assertNotIn(relative, software_stage)
 
+    def test_r32_1_handoff_requires_manifest_locked_demo_data(self):
+        handoff = read_text(
+            REPO_ROOT / "publication" / "BINARY_RELEASE_HANDOFF_JA.md"
+        )
+        for required in (
+            "$demoDataPayloadRoot",
+            "$demoDataManifest",
+            "-DemoDataRoot $demoDataPayloadRoot",
+            "-DemoDataManifestPath $demoDataManifest",
+            "source\\fixed_app\\public_binary\\DemoData\\DEMO_DATA_MANIFEST.json",
+            "Original AI model Color.glb",
+            "Reference.jpg",
+        ):
+            with self.subTest(required=required):
+                self.assertIn(required, handoff)
+
     def test_handoff_state_records_current_source_and_blocked_binary_scope(self):
         state = json.loads(read_text(REPO_ROOT / "CURRENT_STATE.json"))
         self.assertEqual(
@@ -123,10 +139,10 @@ class ReleaseIdentityTests(unittest.TestCase):
         )
         self.assertEqual("0.8beta", state["display_version"])
         self.assertEqual("0.8beta", state["package_version"])
-        self.assertEqual("AI Model Print Studio r32", state["edition"])
-        self.assertEqual("r32-ai-model-print-studio", state["artifact_slug"])
+        self.assertEqual("AI Model Print Studio r32.1", state["edition"])
+        self.assertEqual("r32.1-ai-model-print-studio", state["artifact_slug"])
         self.assertEqual(
-            "r32-public-release-preflight-final-build-pending",
+            "r32.1-release-update-final-build-pending",
             state["status"],
         )
         self.assertTrue(state["version_policy"]["pinned_until_explicit_user_request"])
@@ -141,20 +157,20 @@ class ReleaseIdentityTests(unittest.TestCase):
         )
 
         validation = state["validation"]
-        for passed_gate in (
+        for pending_gate in (
             "implementation_focused_source",
             "release_focused_identity_regression_tooling_gui_layout",
             "current_public_ui_focused_regression",
         ):
-            with self.subTest(passed_gate=passed_gate):
-                self.assertTrue(validation[passed_gate].startswith("passed"))
+            with self.subTest(pending_gate=pending_gate):
+                self.assertTrue(validation[pending_gate].startswith("pending"))
+                self.assertIn("r32.1", validation[pending_gate])
         self.assertIn(
             "6ada59418796ab0bbe158fa5a9bcff32e8e188bc",
             validation["current_full_regression"],
         )
-        self.assertIn("1246 tests", validation["current_full_regression"])
-        self.assertIn("2 optional skips", validation["current_full_regression"])
-        self.assertIn("0 failures", validation["current_full_regression"])
+        self.assertIn("r32.1", validation["current_full_regression"])
+        self.assertIn("previous evidence", validation["current_full_regression"])
         self.assertIn(
             "requires a new exact full regression",
             validation["current_full_regression"],
@@ -220,12 +236,12 @@ class ReleaseIdentityTests(unittest.TestCase):
         )
         self.assertTrue(
             validation["current_clean_build_and_packaged_smoke"].startswith(
-                "intermediate commit 6ada59418796ab0bbe158fa5a9bcff32e8e188bc"
+                "pending for r32.1"
             )
         )
         self.assertTrue(
             validation["current_stage_archive_privacy_and_checksum_audit"].startswith(
-                "tracked private denylist values were removed"
+                "pending for r32.1"
             )
         )
         self.assertTrue(
@@ -287,35 +303,35 @@ class ReleaseIdentityTests(unittest.TestCase):
 
         release = state["release"]
         self.assertEqual(
-            "public-release-preflight-final-build-pending",
+            "r32.1-release-update-final-build-pending",
             release["state"],
         )
-        self.assertEqual("r32-ai-model-print-studio", release["target_revision"])
+        self.assertEqual("r32.1-ai-model-print-studio", release["target_revision"])
         self.assertEqual(
-            "ChromaMatter-0.8beta-r32-source-public-20260823",
+            "ChromaMatter-0.8beta-r32.1-source-public-20260824",
             release["public_source_default"],
         )
         self.assertEqual(
-            "ChromaMatter-0.8beta-r32-win64",
+            "ChromaMatter-0.8beta-r32.1-win64",
             release["software_package_default"],
         )
         latest = release["latest_source_branch_validation"]
         self.assertEqual(
-            "public-release-final-build-pending",
+            "r32.1-final-build-pending",
             latest["status"],
         )
-        self.assertIn("87 tests", latest["source_full_regression"])
-        self.assertIn("1246 tests", latest["source_full_regression"])
-        self.assertIn(
-            "GitHub-noreply public commit requires a new exact full regression",
-            latest["source_full_regression"],
-        )
+        self.assertIn("pending for the exact r32.1 source", latest["source_full_regression"])
+        self.assertIn("previous evidence only", latest["source_full_regression"])
         self.assertFalse(latest["source_publication_eligible"])
         self.assertEqual(
-            395,
+            None,
             latest["public_source_stage"]["total_files_including_manifest"],
         )
-        self.assertEqual(394, latest["public_source_stage"]["manifest_records"])
+        self.assertIsNone(latest["public_source_stage"]["manifest_records"])
+        self.assertEqual(
+            "ChromaMatter-0.8beta-r32.1-source-public-20260824",
+            latest["public_source_stage"]["expected_root"],
+        )
         self.assertFalse(latest["binary_publication_eligible"])
         self.assertEqual(
             latest["binary_publication_blockers"],
@@ -326,6 +342,21 @@ class ReleaseIdentityTests(unittest.TestCase):
                 "immutable-https-release-url-and-simultaneous-assets-pending",
             ],
         )
+        published_r32 = release["previous_r32_public_release"]
+        self.assertEqual("previous evidence only: published", published_r32["status"])
+        self.assertEqual("v0.8beta-r32", published_r32["tag"])
+        self.assertEqual(
+            "86e34b2a9468f81768ee134a680a792b1a83df05",
+            published_r32["commit"],
+        )
+        self.assertIn("Ran 1270 tests", published_r32["exact_final_full_regression"])
+        self.assertIn("1267 passed", published_r32["exact_final_full_regression"])
+        self.assertIn("3 optional skips", published_r32["exact_final_full_regression"])
+        self.assertIn(
+            "previous evidence only",
+            published_r32["clean_build_packaged_self_test_and_ui_smoke"],
+        )
+        self.assertIn("does not validate r32.1", published_r32["scope"])
         current = release["previous_r32_pre_compliance_candidate_validation"]
         self.assertEqual(
             "previous evidence only: pre-compliance artifacts audited",
@@ -467,6 +498,7 @@ class ReleaseIdentityTests(unittest.TestCase):
         self.assertEqual("previous evidence only", previous_r30["status"])
         self.assertIn("Ran 1019 tests in 86.932s", previous_r30["source_full_regression"])
         self.assertFalse(previous_r30["applies_to_r32"])
+        self.assertFalse(previous_r30["applies_to_r32_1"])
 
     def test_public_state_has_no_private_asset_or_recording_details(self):
         public_documents = (
@@ -495,7 +527,7 @@ class ReleaseIdentityTests(unittest.TestCase):
                 self.assertNotIn(forbidden, combined.casefold())
         self.assertNotIn("c:\\users", combined.casefold())
 
-    def test_all_seven_readmes_describe_r32_build_and_audited_preflight(self):
+    def test_all_seven_readmes_describe_r32_1_current_identity_and_r32_history(self):
         readmes = (
             REPO_ROOT / "README.md",
             REPO_ROOT / "README_EN.md",
@@ -511,8 +543,8 @@ class ReleaseIdentityTests(unittest.TestCase):
                 folded = text.casefold()
                 for required in (
                     "ChromaMatter",
-                    "AI Model Print Studio r32",
-                    "r32-ai-model-print-studio",
+                    "AI Model Print Studio r32.1",
+                    "r32.1-ai-model-print-studio",
                     "0.8beta",
                     "source.obj",
                     "source.glb",
@@ -525,12 +557,9 @@ class ReleaseIdentityTests(unittest.TestCase):
                     "Orca",
                     "manual",
                     "adaptive",
-                    "1244",
-                    "1242",
-                    "178",
-                    "108",
-                    "395",
-                    "394",
+                    "1270",
+                    "1267",
+                    "236.319",
                     "r31",
                     "1024",
                     "1023",
@@ -555,8 +584,8 @@ class ReleaseIdentityTests(unittest.TestCase):
                     "26a091b53279407014899c046691958c9df07e22703576da6a45d68a9be22430",
                     "3989fd1debe8b6c984938c4a64ee5fb3bcce1b612cf83524ea309b1fae3cde9f",
                     "immutable HTTPS",
-                    "ChromaMatter-0.8beta-r32-source-public-20260823",
-                    "ChromaMatter-0.8beta-r32-win64",
+                    "ChromaMatter-0.8beta-r32.1-source-public-20260824",
+                    "ChromaMatter-0.8beta-r32.1-win64",
                     "Innovation Fund",
                     "https://github.com/Ponkichi0718/ChromaMatter",
                     "Ponkichi0718",
@@ -633,12 +662,15 @@ class ReleaseIdentityTests(unittest.TestCase):
             readme,
         )
         for required in (
+            "## Download for Windows",
+            "ChromaMatter-0.8beta-r32.1-win64.zip",
             "## Current status",
-            "**Release target:** `v0.8beta-r32`",
-            "**Source and Windows package:** r32 is released only as one "
+            "**Release target:** `v0.8beta-r32.1`",
+            "**Source and Windows package:** r32.1 is released only as one "
             "simultaneous asset set",
             "**Complete corresponding source:** Required beside the Windows ZIP",
-            "**Public test model:** In preparation",
+            "**Public test model:** Rights-cleared Hi3D multipart GLB and "
+            "reference image are included under `DemoData/` in the Windows package",
             "**Physical U1 validation:** Public print observed; "
             "release-bound reproducibility validation in progress",
             "## Four things ChromaMatter does",
@@ -652,6 +684,7 @@ class ReleaseIdentityTests(unittest.TestCase):
         positions = [
             readme.index(marker)
             for marker in (
+                "## Download for Windows",
                 "Turn AI-generated color OBJ and GLB models",
                 "AI concept",
                 "## Current status",
@@ -661,6 +694,9 @@ class ReleaseIdentityTests(unittest.TestCase):
             )
         ]
         self.assertEqual(positions, sorted(positions))
+        japanese = read_text(REPO_ROOT / "README_JA.md")
+        self.assertIn("## Windows版をダウンロード", japanese)
+        self.assertIn("ChromaMatter-0.8beta-r32.1-win64.zip", japanese)
         allowed_image_sources = {
             "source/fixed_app/assets/obj_adjuster_icon.png",
             "https://assets.st-note.com/img/1787038136-QYcX12yPUL4fzm5RWZNbiEqM.jpg?width=1200",

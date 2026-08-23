@@ -66,6 +66,7 @@ publication/*
 !publication/INNOVATION_FUND_APPLICATION_DRAFT.md
 !publication/INNOVATION_FUND_STATUS_JA.md
 !publication/BINARY_RELEASE_HANDOFF_JA.md
+!publication/RELEASE_NOTES_r32.1.md
 
 # Historical local probes and recovery utilities stay in the private workspace.
 tooling/*

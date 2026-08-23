@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "document_id": "chromamatter.demo-data.r32.1",
+  "release_status": "approved-for-publication",
+  "expected_documents": [
+    "README_EN.md",
+    "README_JA.md",
+    "NOTICE_EN.md",
+    "NOTICE_JA.md"
+  ],
+  "payloads": [
+    {
+      "path": "Original AI model Color.glb",
+      "bytes": 141530440,
+      "sha256": "1bff30d3210cd13e233d4f4a5b9ed895858f0ab524fd8fc06124a4cbd27298aa",
+      "media_type": "model/gltf-binary",
+      "role": "multipart-glb-demo"
+    },
+    {
+      "path": "Reference.jpg",
+      "bytes": 2081096,
+      "sha256": "71d6bf8534abcec9922d14a3768554636999837540af068d4d42c0cdbd12732b",
+      "media_type": "image/jpeg",
+      "role": "reference-image"
+    }
+  ],
+  "publication_gate": {
+    "status": "approved-for-publication",
+    "raw_glb_redistribution_confirmed": true,
+    "reference_image_redistribution_confirmed": true,
+    "hi3d_plan_terms_confirmed": true
+  }
+}

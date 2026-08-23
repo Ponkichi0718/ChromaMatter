@@ -12,7 +12,7 @@ $repoRoot = (Get-Item -LiteralPath (Split-Path -Parent $PSScriptRoot)).FullName
 if (-not $Destination) {
     $Destination = Join-Path `
         $repoRoot `
-        "artifacts\ChromaMatter-0.8beta-r32-source-public-20260823"
+        "artifacts\ChromaMatter-0.8beta-r32.1-source-public-20260824"
 }
 elseif (-not [System.IO.Path]::IsPathRooted($Destination)) {
     $Destination = Join-Path $repoRoot $Destination
@@ -56,7 +56,8 @@ $requiredPublicationFiles = @(
     "publication/GITHUB_PUBLICATION_GUIDE_JA.md",
     "publication/INNOVATION_FUND_APPLICATION_DRAFT.md",
     "publication/INNOVATION_FUND_STATUS_JA.md",
-    "publication/BINARY_RELEASE_HANDOFF_JA.md"
+    "publication/BINARY_RELEASE_HANDOFF_JA.md",
+    "publication/RELEASE_NOTES_r32.1.md"
 )
 $requiredFixedAppFiles = @(
     "source/fixed_app/TripoSpectrumMapper_fixed.py",

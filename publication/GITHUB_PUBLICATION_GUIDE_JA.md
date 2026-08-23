@@ -1,10 +1,10 @@
 # ChromaMatter GitHub公開手順
 
-更新日: 2026-08-21
-対象: ChromaMatter — AI Model Print Studio `0.8beta`の初回ソース公開記録とr32更新手順
-方針: **r31 source-only repositoryは公開済み。r32 updateはexact regression／build／stage／checksum完了までpendingで、EXEとReleaseは保留する。**
+更新日: 2026-08-24
+対象: ChromaMatter — AI Model Print Studio `0.8beta`の公開記録とr32.1更新手順
+方針: **`v0.8beta-r32`は公開済みで変更しない。r32.1 updateはexact regression／build／stage／checksum完了までpendingとし、新しいtagとasset名で公開する。**
 
-r31 final source-only stageは227 files／226 manifest recordsでfresh archive exact、privacy、identity／icon／tooling 32 tests、Downloads配置、detached `SHA256SUMS-r31.txt`照合まで完了した**previous evidence**です。owner handle `Ponkichi0718`の[public repository](https://github.com/Ponkichi0718/ChromaMatter)へ公開済みで、個人メールを含まない初回公開commitは`a01ba4baa791809a5a6621fac35956dc65479216`です。software 1,404 files／1,403 manifest recordsのpreflight self-test／日英UI smokeもr31だけの技術evidenceです。r32のfile数、manifest数、commit、hash、GitHub反映は未測定・未実施であり、完了として記録しません。
+r31 final source-only stageは227 files／226 manifest recordsでfresh archive exact、privacy、identity／icon／tooling 32 tests、Downloads配置、detached `SHA256SUMS-r31.txt`照合まで完了した**previous evidence**です。owner handle `Ponkichi0718`の[public repository](https://github.com/Ponkichi0718/ChromaMatter)へ公開済みで、個人メールを含まない初回公開commitは`a01ba4baa791809a5a6621fac35956dc65479216`です。公開済みr32はtag `v0.8beta-r32`、commit `86e34b2a9468f81768ee134a680a792b1a83df05`に固定された**previous evidence**です。r32.1のfile数、manifest数、commit、hash、GitHub反映はfinal stage完了後に記録します。
 
 ## 最初に守ること
 
@@ -72,7 +72,7 @@ Copyright (c) 2026 Ponkichi0718 and ChromaMatter contributors
 
 ```powershell
 .\tooling\stage_public_source.ps1 `
-  -Destination ".\artifacts\ChromaMatter-0.8beta-r32-source-public-20260823-candidate-1"
+  -Destination ".\artifacts\ChromaMatter-0.8beta-r32.1-source-public-20260824-candidate-1"
 ```
 
 スクリプトは既存フォルダーを上書きしません。内容を変更した場合は`r2`、`r3`のように新しい名前で作り直します。
@@ -239,8 +239,8 @@ $pyTetWildWheel = 'C:\release-inputs\wheel\pytetwild-0.3.0-cp312-abi3-win_amd64.
 - [x] デモ以外の実モデル、画像、3MF、動画を含めていない
 - [x] EXEを含めていない
 - [x] APIキー、トークン、個人メール、個人絶対パスがない
-- [ ] r32 exact sourceをfinal restageし、fresh archive／privacy／identity／manifest／外部detached `SHA256SUMS-r32.txt`を照合した
-- [ ] r32 source-only差分をGitHubへ反映し、公開treeとfinal stageの一致を確認した
+- [ ] r32.1 exact sourceをfinal restageし、fresh archive／privacy／identity／manifest／外部detached `SHA256SUMS-r32.1.txt`を照合した
+- [ ] r32.1 source差分をGitHubへ反映し、公開treeとfinal stageの一致を確認した
 
 ## 9. PrivateからPublicへ変更する
 
@@ -332,7 +332,7 @@ git remote add origin https://github.com/YOUR_GITHUB_HANDLE/ChromaMatter.git
 git push -u origin main
 ```
 
-上のCLIは今後の再公開時に使うtemplateです。初回r31は`https://github.com/Ponkichi0718/ChromaMatter`の`main`へsource-onlyで公開済みで、個人メールを除いた初回公開commitは`a01ba4baa791809a5a6621fac35956dc65479216`です。r32 commitはexact final stageが完了するまでpendingで、値を先に記録しません。
+上のCLIは今後の再公開時に使うtemplateです。初回r31は`https://github.com/Ponkichi0718/ChromaMatter`の`main`へsource-onlyで公開済みで、個人メールを除いた初回公開commitは`a01ba4baa791809a5a6621fac35956dc65479216`です。r32はcommit `86e34b2a9468f81768ee134a680a792b1a83df05`で公開済みです。r32.1 commitはexact final stageが完了するまでpendingで、値を先に記録しません。
 
 ## GitHub公式資料
 

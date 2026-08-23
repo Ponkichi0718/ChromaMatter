@@ -1,4 +1,4 @@
-# ChromaMatter 0.8beta (r32)
+# ChromaMatter 0.8beta (r32.1)
 
 [English](README_EN.md)
 
@@ -10,6 +10,8 @@ ChromaMatterは、頂点カラー付きOBJまたは対応GLBの色を4本のフ�
 2. `START_CHROMAMATTER.cmd`または`ChromaMatter.exe`を起動します。
 3. OBJ／GLBを開き、F1～F4、混色数、サイズ、形状を確認して3MFを書き出します。
 4. 3MFをSnapmaker Orcaで**プロジェクトとして開き**、ツール順、材料、スライスプレビューを確認してから印刷します。
+
+同梱のHi3D分割GLBで最短手順を試す場合は、[DemoData/README_JA.md](DemoData/README_JA.md)を参照してください。
 
 Windowsが保護画面を表示した場合は、公式ReleaseのSHA-256と、署名が提供されている場合はその署名情報を先に確認してください。確認できないファイルの警告を無条件に回避しないでください。
 
@@ -34,4 +36,4 @@ Windowsが保護画面を表示した場合は、公式ReleaseのSHA-256と、�
 
 ChromaMatter本体は`GPL-3.0-or-later`です。本文は[LICENSE.txt](LICENSE.txt)、第三者の条件と通知は[licenses](licenses/)にあります。このバイナリに対応する完全なソースの取得先は[licenses/SOURCE_OFFER_JA.txt](licenses/SOURCE_OFFER_JA.txt)を確認してください。
 
-パッケージ内ファイルのSHA-256は`SOFTWARE_PACKAGE_SHA256.txt`、Release全体のSHA-256は同じReleaseに置かれる`SHA256SUMS-r32.txt`を正本とします。
+パッケージ内ファイルのSHA-256は`SOFTWARE_PACKAGE_SHA256.txt`、Release全体のSHA-256は同じReleaseに置かれる`SHA256SUMS-r32.1.txt`を正本とします。

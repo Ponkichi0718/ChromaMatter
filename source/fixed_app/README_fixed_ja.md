@@ -1,4 +1,4 @@
-# ChromaMatter — AI Model Print Studio 0.8beta (r32 source app)
+# ChromaMatter — AI Model Print Studio 0.8beta (r32.1 source app)
 
 <p align="center">
   <img src="assets/obj_adjuster_icon.png" width="160" alt="ChromaMatter icon">
@@ -6,9 +6,13 @@
 
 [English](README_fixed_en.md)
 
-このdirectoryはChromaMatter — AI Model Print Studioの固定source applicationです。表示versionは`0.8beta`、editionは`AI Model Print Studio r32`、artifact revisionは`r32-ai-model-print-studio`です。Windows数値versionは`0.8.0.0`のままです。
+このdirectoryはChromaMatter — AI Model Print Studioの固定source applicationです。表示versionは`0.8beta`、editionは`AI Model Print Studio r32.1`、artifact revisionは`r32.1-ai-model-print-studio`です。Windows数値versionは`0.8.0.0`のままです。
 
 [画像で見る主な機能と制作フロー](../../FEATURES_JA.md)と、[試作・失敗・実機調整を含む開発記録](https://note.com/ponkichi0718)も参照してください。
+
+## r32.1 release update
+
+r32.1はr32のmodel処理／3MF契約を維持し、公開preview表記を「AIモデル色」へ変更し、権利確認済みのHi3D分割GLBと元画像を`DemoData/`へ同梱します。このdemoではimportしたpart名を信用せずpreviewで対象を確認し、3MF出力前に「黒弱め 5〜25%」presetを必ず適用してください。公開済みr32はimmutableなprevious evidenceとして保持します。
 
 ## r32出力workflow
 
@@ -82,16 +86,16 @@ python .\TripoSpectrumMapper_fixed.py
 python .\TripoSpectrumMapper_fixed.py --self-test
 ```
 
-repository rootの`BOOTSTRAP_WINDOWS.ps1`が標準の準備・test入口です。r32ではapplication lockが過去のPyPI wheelではなくcontrolled修復wheelを固定するため、`-PyTetWildWheel C:\path\to\pytetwild-0.3.0-cp312-abi3-win_amd64.whl`（または`-PyTetWildWheelhouse`）が必要です。同じ公式releaseの完全対応ソースassetでは`build-evidence/pytetwild/repaired-wheel/`に収録します。`-SkipInstall`は検証済み環境の再テスト専用です。
+repository rootの`BOOTSTRAP_WINDOWS.ps1`が標準の準備・test入口です。r32.1ではapplication lockが過去のPyPI wheelではなくcontrolled修復wheelを固定するため、`-PyTetWildWheel C:\path\to\pytetwild-0.3.0-cp312-abi3-win_amd64.whl`（または`-PyTetWildWheelhouse`）が必要です。同じ公式releaseの完全対応ソースassetでは`build-evidence/pytetwild/repaired-wheel/`に収録します。`-SkipInstall`は検証済み環境の再テスト専用です。
 
-## r32 validation state
+## r32.1 validation state
 
-- 採用後の現在の作業tree: Python `3.13.14`、`Ran 1244 tests: OK (skipped=2)`、1242 PASS／2 optional SKIP／0 FAIL。以前のrelease／compliance集中テスト178件は1 optional SKIP以外PASSし、採用後の集中テスト108件も全件PASS。採用前のpublic-source stageは395 files／394 manifest recordsでprivacyと独立SHA-256 parity PASS。ただし採用後の最終stageは再生成が必要
+- 公開済みr32のexact final build log: Python `3.13.14`、`Ran 1270 tests in 236.319s: OK (skipped=3)`、1267 PASS／3 optional SKIP／0 FAIL。その後のclean build、packaged self-test、日英UI smokeもPASS。immutableなr32 previous evidenceだけであり、r32.1のexact regression／build／stage／checksum gateはすべてpending
 - binary compliance／対応ソース／release toolingの集中テスト80件とrelease identity 10件: PASS
 - component固有license原文と静的link componentのcoverageは実装済みで、fail-closedなinventory testもPASS
 - controlled run `20260823-174626-089357844d4b`は成功。application lockは修復wheel SHA-256 `e3b11ac058266d277b0f83448c6023d5da98e731d0d016e461dbce4ebdfd613d`を固定し、`release-approved` PyTetWild closureはそのwheelと拡張PYD SHA-256 `26a091b53279407014899c046691958c9df07e22703576da6a45d68a9be22430`を固定。attestation SHA-256 `3989fd1debe8b6c984938c4a64ee5fb3bcce1b612cf83524ea309b1fae3cde9f`は最終のcommit固有rebuild lockまで記録済みbuild証拠として保持
-- 旧r32 EXE／ZIPは今回のsourceと一致しないため非公開。closure承認はWindows application archive全体の承認ではないため、`release-approved`完全対応ソースbundle、現行sourceからのclean binary buildと再生成inventory、packaged self-test／日英UI smoke、fresh-extractのmanifest／privacy／archive／checksum parity、immutable HTTPS URLで全assetを同時掲載するReleaseが揃うまでbinary publicationはNO-GO
-- 以下のr31結果は**previous evidence**であり、r32を検証しない
+- 公開済みr32 assetはimmutableなprevious evidenceで、今回のr32.1 sourceとは一致しません。closure承認はWindows application archive全体の承認ではないため、`release-approved`完全対応ソースbundle、現行sourceからのclean binary buildと再生成inventory、packaged self-test／日英UI smoke、fresh-extractのmanifest／privacy／archive／checksum parity、immutable HTTPS URLで全assetを同時掲載するReleaseが揃うまでbinary publicationはNO-GO
+- 以下のr32／r31結果は**previous evidence**であり、r32.1を検証しない
 
 - 公開UI非公開化直前のpost-GLB r28候補のprevious evidence: Python `3.13.14`、PyInstaller `6.20.0`、`Ran 992 tests in 87.406s: OK (skipped=1)`、991 PASS／1 optional SKIP
 - 同候補の新しいshort pathでのclean one-folder build: PASS
@@ -114,22 +118,22 @@ repository rootの`BOOTSTRAP_WINDOWS.ps1`が標準の準備・test入口です�
 - final ZIP SHA-256: `null`
 - icon publication rights: `passed-by-creator-declaration`（2026-08-20）。当該asset scopeはproject ownerが公開を承認。独立した法的clearanceではない
 - r31 previous evidenceのpublication eligibility: 検証済み`publication_scope=source-only`に限りtrue
-- 現行r32のsource publication eligibility: 採用後sourceを再stageするまでfalse。binary publicationもfalseのまま
+- 現行r32.1のsource publication eligibility: final sourceを再stageするまでfalse。binary publicationもfalseのまま
 - binary publication eligibility: 上記の最終release engineering gateがすべて通るまでfalse
 - public repository: [https://github.com/Ponkichi0718/ChromaMatter](https://github.com/Ponkichi0718/ChromaMatter)（owner handle `Ponkichi0718`）
 - Innovation Fund submission ready: 権利処理済みsample、Orca／U1 evidence、cover／video／community postまでfalse
 - physical XP-PEN validation、physical print: pendingの既知制約（source公開blockerではない）
 
-上記r31、r30、r29、r28、r27の結果は各revisionだけの**previous evidence**です。r32の採用後exact source regressionとfocused compliance testが現行証拠で、記録済みpublic-source stageは採用前のため再生成が必要です。以前のr32 build／packaged smoke／preflight artifact結果は現在のcompliance／spec変更より前のhistorical evidenceに限られ、現行sourceからのclean binary buildと残りのbinary gateはpendingです。2026-08-20のcreator declarationとproject ownerによる公開GOは、ロボットと創作文言`ZENITH DYNAMICS CORP.`を含む変更していないアイコンassetについて保持します。これは独立した商標／意匠clearanceや法的意見ではありません。binaryは上記の最終release engineering gateがすべて通るまでpublication eligible=falseです。
+公開済みr32 Releaseと上記r31、r30、r29、r28、r27の結果は各revisionだけの**previous evidence**で、r32.1を検証しません。r32.1ではexact regression、clean binary build、完全対応ソース／software stage、package smoke、日英UI smoke、fresh extract、archive／privacy parity、SBOM、component map、detached checksumを新しく測定します。2026-08-20のcreator declarationとproject ownerによる公開GOは、ロボットと創作文言`ZENITH DYNAMICS CORP.`を含む変更していないアイコンassetについて保持します。これは独立した商標／意匠clearanceや法的意見ではありません。binaryは上記の最終release engineering gateがすべて通るまでpublication eligible=falseです。
 
 Creator Studio r26の結果も同様にprevious evidenceで、ChromaMatter r31へ流用しません。
 
 ## Package identity
 
-- source candidate: `ChromaMatter-0.8beta-r32-source-public-20260823`
-- gated Windows package: `ChromaMatter-0.8beta-r32-win64`
+- source candidate: `ChromaMatter-0.8beta-r32.1-source-public-20260824`
+- gated Windows package: `ChromaMatter-0.8beta-r32.1-win64`
 
-r32のdetached external `SHA256SUMS-r32.txt`はfinal artifact作成後までpendingです。完成済み`SHA256SUMS-r31.txt`はr31 previous evidenceだけに適用します。canonical文書への自己参照ZIP hashは埋め込みません。
+r32.1のdetached external `SHA256SUMS-r32.1.txt`はfinal artifact作成後までpendingです。完成済み`SHA256SUMS-r32.txt`と`SHA256SUMS-r31.txt`はprevious evidenceだけに適用します。canonical文書への自己参照ZIP hashは埋め込みません。
 
 ## 注意
 

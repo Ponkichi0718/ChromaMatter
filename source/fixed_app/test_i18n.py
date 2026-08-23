@@ -49,6 +49,20 @@ class TranslationCatalogTests(unittest.TestCase):
         self.assertEqual(translator.text("toolbar.open_paint"), "Manual Editing")
         self.assertEqual(translator.text("paint.title"), "Manual Editing")
 
+    def test_preview_uses_ai_model_color_name_in_both_languages(self) -> None:
+        translator = Translator("ja")
+        self.assertEqual(translator.text("preview.source"), "AIモデル色")
+        self.assertEqual(
+            translator.text("preview.columns"),
+            "元画像  ｜  AIモデル色  ｜  Full Spectrum変換色",
+        )
+        translator.set_language("en")
+        self.assertEqual(translator.text("preview.source"), "AI Model Color")
+        self.assertEqual(
+            translator.text("preview.columns"),
+            "Reference  |  AI Model Color  |  Full Spectrum Color",
+        )
+
     def test_freehand_feature_keys_are_ready_for_geometry_ui(self) -> None:
         translator = Translator("en")
         self.assertEqual(

@@ -1,10 +1,16 @@
-# ChromaMatter — AI Model Print Studio 0.8beta (r32)
+# ChromaMatter — AI Model Print Studio 0.8beta (r32.1)
 
 <p align="center">
   <img src="source/fixed_app/assets/obj_adjuster_icon.png" width="180" alt="ChromaMatter icon">
 </p>
 
 [English README](README.md)
+
+## Windows版をダウンロード
+
+**[ChromaMatter 0.8beta r32.1 Windows版（ZIP）をダウンロード](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.1/ChromaMatter-0.8beta-r32.1-win64.zip)**
+
+ダウンロード後は、ZIPをすべて展開してから起動してください。直リンクで始まらない場合は、[v0.8beta-r32.1のReleaseページ](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.1)を開き、**Assets**内の`win64.zip`を選んでください。
 
 ChromaMatter — AI Model Print Studioは、AI生成された頂点カラー付きOBJまたはUV baseColor付きGLBを、Snapmaker OrcaのFull Spectrum／Color Mixingワークフロー向け3MFへ変換・調整するWindowsデスクトップツールです。独立プロジェクトであり、TripoAI、Hi3D AI、Snapmaker、OpenAIその他第三者の公式・提携製品ではありません。
 
@@ -17,13 +23,17 @@ ChromaMatter — AI Model Print Studioは、AI生成された頂点カラー付�
 
 全身一体の公開sampleは、Snapmaker U1で**48時間**、prime tower込み**約220 g**で完走しました。意図したグラフィック調の陰影は、通常の鑑賞距離では形と奥行きとして読み取れます。一方で、背面のsupport跡、台座の緩さ、近くで見たときに色境界が整って見えにくい箇所が残りました。結果と動画は[ChromaMatter サンプルキャラ出力編](https://note.com/ponkichi0718/n/nf6c77165127c)で公開しています。
 
-privacy確認済み・字幕付きの[`v0.8beta-r32`「シンプルな使い方」（約2分）](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32/ChromaMatter-simple-workflow-demo.mp4)は、Releaseの独立動画assetです。対応OBJ／GLBの読込、サイズ・形状準備、Full Spectrum 3MFの出力・検証、Snapmaker Orcaでprojectとして開いてsliceする手順、U1での造形までを一続きで確認できます。公開用copyは125.33秒、1920×1080、H.264、音声なしです。リンクは対応する全assetが同時公開された後にだけ有効になります。
+privacy確認済み・字幕付きの[`v0.8beta-r32.1`「シンプルな使い方」（約2分）](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.1/ChromaMatter-simple-workflow-demo.mp4)は、Releaseの独立動画assetです。対応OBJ／GLBの読込、サイズ・形状準備、Full Spectrum 3MFの出力・検証、Snapmaker Orcaでprojectとして開いてsliceする手順、U1での造形までを一続きで確認できます。公開用copyは125.33秒、1920×1080、H.264、音声なしです。リンクは対応する全assetが同時公開された後にだけ有効になります。
 
-これは実機で確認した観測結果ですが、正式releaseに紐づく再現性証拠はまだ整理中です。exact r32 release revision、sample／3MF hash、4本のfilament記録、Snapmaker Orca版、U1 profileを一組として引き続き検証します。
+これは実機で確認した観測結果ですが、正式releaseに紐づく再現性証拠はまだ整理中です。exact r32.1 release revision、sample／3MF hash、4本のfilament記録、Snapmaker Orca版、U1 profileを一組として引き続き検証します。
 
-公開表示versionは利用者指定どおり`0.8beta`に固定し、editionを`AI Model Print Studio r32`、artifact slugを`r32-ai-model-print-studio`とします。Windowsの数値versionも`0.8.0.0`のままです。
+公開表示versionは利用者指定どおり`0.8beta`に固定し、editionを`AI Model Print Studio r32.1`、artifact slugを`r32.1-ai-model-print-studio`とします。Windowsの数値versionも`0.8.0.0`のままです。
 
-`v0.8beta-r32`は、Windows ZIP、完全対応ソース、SBOM、component map、動画、detached checksumを一組として同時公開します。固定Releaseリンクがまだ有効でなければ公開は未完了で、その時点の最新公開ソースはr31です。
+`v0.8beta-r32.1`は、Windows ZIP、完全対応ソース、SBOM、component map、動画、detached checksumを一組として同時公開します。固定Releaseが揃うまでは、既存`v0.8beta-r32`を変更せず最新の公開Releaseとして維持します。
+
+## AI Model Print Studio r32.1
+
+r32.1はr32のmodel処理／3MF契約を維持した更新版です。preview表記を「AIモデル色」へ改め、権利確認済みのHi3D分割GLBと元画像をWindows packageの`DemoData/`へ同梱します。このdemoでは、読み込んだpart名をそのまま信用せずpreviewで対象を確認し、実際の最暗filamentを選んで3MF出力前に必ず「黒弱め 5〜25%」presetを適用してください。公開済み`v0.8beta-r32`はimmutableなprevious evidenceとして保持し、r32.1の再build済みEXE／archiveの検証には流用しません。
 
 ## AI Model Print Studio r32
 
@@ -119,17 +129,17 @@ project-folder/
 
 ## 検証とrelease gate
 
-採用後の現在の作業treeは、Qt／PyMeshLab identity manifest、PyTetWild static-closure contract、修正済みcontrolled-toolchain identity、Windows PowerShell 5.1で安全なnative Python probe transport、release URLのplaceholder防止を含め、Python `3.13.14`のfull regressionで`Ran 1244 tests: OK (skipped=2)`、1242 PASS／2 optional SKIP／0 FAILです。以前のrelease／compliance集中テスト178件は1 optional SKIP以外PASSし、採用後の集中テスト108件も全件PASSしました。採用前のpublic-source stageは395 files／394 manifest recordsでprivacy auditと独立SHA-256 parityがPASSしましたが、採用後にsource bytesが変わったため最終stageは再生成が必要です。
+公開済みr32のexact final build logは、Python `3.13.14`で`Ran 1270 tests in 236.319s: OK (skipped=3)`、1267 PASS／3 optional SKIP／0 FAILを記録し、clean build、packaged self-test、日英UI smokeもPASSしています。これはimmutableなr32 previous evidenceだけです。r32.1のexact regression、clean build、source／software stage、fresh-extract監査、detached checksumは、r32.1 sourceをfreezeしてから新しく実測します。
 
-outboundを隔離したcontrolled run `20260823-174626-089357844d4b`は成功しました。application lockは修復wheel SHA-256 `e3b11ac058266d277b0f83448c6023d5da98e731d0d016e461dbce4ebdfd613d`を固定し、`release-approved` PyTetWild static closureはそのwheelと拡張PYD SHA-256 `26a091b53279407014899c046691958c9df07e22703576da6a45d68a9be22430`を固定しています。attestation SHA-256 `3989fd1debe8b6c984938c4a64ee5fb3bcce1b612cf83524ea309b1fae3cde9f`はcontrolled-build証拠として記録されています。最終release gateでは、この証拠をstage対象のexact commit固有rebuild lockへ結び付けることが必須です。この承認対象はcontrolled PyTetWild closureだけで、単独のWindows application archive全体ではありません。旧r32 EXE／ZIPは今回のsourceと一致しないため公開しません。r32の`binary publication eligibility`は、対応するWindows ZIP、`release-approved`完全対応ソース、SBOM、component map、privacy確認済み動画、detached checksumを同時公開する一組だけに適用します。clean build、packaged smoke、fresh extract、manifest、privacy、archive、checksum、immutable HTTPS URLのどれかが欠けるか失敗した場合、そのReleaseは未完了で配布できません。
+outboundを隔離したcontrolled run `20260823-174626-089357844d4b`は成功しました。application lockは修復wheel SHA-256 `e3b11ac058266d277b0f83448c6023d5da98e731d0d016e461dbce4ebdfd613d`を固定し、`release-approved` PyTetWild static closureはそのwheelと拡張PYD SHA-256 `26a091b53279407014899c046691958c9df07e22703576da6a45d68a9be22430`を固定しています。attestation SHA-256 `3989fd1debe8b6c984938c4a64ee5fb3bcce1b612cf83524ea309b1fae3cde9f`はcontrolled-build証拠として記録されています。最終release gateでは、この証拠をstage対象のexact commit固有rebuild lockへ結び付けることが必須です。この承認対象はcontrolled PyTetWild closureだけで、単独のWindows application archive全体ではありません。公開済みr32 assetはimmutableなprevious evidenceであり、r32.1 sourceとは一致しません。r32.1の`binary publication eligibility`は、対応するWindows ZIP、`release-approved`完全対応ソース、SBOM、component map、privacy確認済み動画、detached checksumを同時公開する一組だけに適用します。clean build、packaged smoke、fresh extract、manifest、privacy、archive、checksum、immutable HTTPS URLのどれかが欠けるか失敗した場合、そのReleaseは未完了で配布できません。
 
-以下のr31およびCreator Studio r30の結果は各revisionだけに適用する**previous evidence**で、r32へ流用しません。
+公開済みr32 Releaseと以下のr31およびCreator Studio r30の結果は各revisionだけに適用する**previous evidence**で、r32.1へ流用しません。
 
 - r30 full regression: Python `3.13.14`、`Ran 1019 tests in 86.932s: OK (skipped=1)`、1018 PASS／1 optional SKIP
 - `C:\OBJAdjR30FIX1`でのPyInstaller `6.20.0` clean build、packaged self-test、隔離profileの日英UI smoke: PASS
 - r30 public source 225 files／224 manifest records、software 1,404 files／1,403 manifest records、fresh extract、archive／privacy、detached `SHA256SUMS-r30.txt`契約: PASS
 
-ChromaMatter r31 exact sourceの**previous evidence**は、Python `3.13.14`で`Ran 1024 tests in 100.656s: OK (skipped=1)`、1023 PASS／1 optional SKIPです。`BUILD_AND_TEST.ps1 -RuntimeRoot .\.venv -Build -BuildOutputRoot C:\OBJAdjR31CM1`、PyInstaller `6.20.0` clean build、packaged smoke、13,986,866-byteの`ChromaMatter.exe`、SHA-256 `208167A225A37BAAAA473B574B2F746E46427FD0CA63FC5B7201BF3394243743`、r31 source stage 227／226、software 1,404／1,403、外部`SHA256SUMS-r31.txt`まで完了しました。これはr32を検証しません。アイコンの`passed-by-creator-declaration`、`ZENITH DYNAMICS CORP.`の創作文言、非提携説明は、変更していない同一assetについて保持します。
+ChromaMatter r31 exact sourceの**previous evidence**は、Python `3.13.14`で`Ran 1024 tests in 100.656s: OK (skipped=1)`、1023 PASS／1 optional SKIPです。`BUILD_AND_TEST.ps1 -RuntimeRoot .\.venv -Build -BuildOutputRoot C:\OBJAdjR31CM1`、PyInstaller `6.20.0` clean build、packaged smoke、13,986,866-byteの`ChromaMatter.exe`、SHA-256 `208167A225A37BAAAA473B574B2F746E46427FD0CA63FC5B7201BF3394243743`、r31 source stage 227／226、software 1,404／1,403、外部`SHA256SUMS-r31.txt`まで完了しました。これはr32.1を検証しません。アイコンの`passed-by-creator-declaration`、`ZENITH DYNAMICS CORP.`の創作文言、非提携説明は、変更していない同一assetについて保持します。
 
 Icon publication-rights status: `passed-by-creator-declaration`（2026-08-20）。
 
@@ -139,7 +149,7 @@ Icon publication-rights status: `passed-by-creator-declaration`（2026-08-20）�
 - software stage: 1,340 files／1,339 manifest records
 - source／software ZIP、manifest equality、path safety、CRC、privacy: PASS
 
-上記r31、r30、r27の証拠は各artifactだけに適用し、ChromaMatter r32の合格証拠には流用しません。r29、r28、r26の結果も同様に**previous evidence**です。icon publication rightsと当該asset scopeのowner legal acceptanceはcreator declarationにより記録済みです。physical XP-PEN validationはpendingの既知制約で、公開U1造形と確認済みの制約は上記リンクに記録しています。`binary publication eligibility`と`Innovation Fund submission ready`は単独fileではなく、完全な同時Release、detached checksum一致、権利処理済みevidence、記載したOrca／U1確認を条件に判断します。
+公開済みr32 Releaseと上記r31、r30、r27の証拠は各artifactだけに適用し、ChromaMatter r32.1の合格証拠には流用しません。r29、r28、r26の結果も同様に**previous evidence**です。icon publication rightsと当該asset scopeのowner legal acceptanceはcreator declarationにより記録済みです。physical XP-PEN validationはpendingの既知制約で、公開U1造形と確認済みの制約は上記リンクに記録しています。`binary publication eligibility`と`Innovation Fund submission ready`は単独fileではなく、完全な同時Release、detached checksum一致、権利処理済みevidence、記載したOrca／U1確認を条件に判断します。
 
 正本は[CURRENT_STATE.json](CURRENT_STATE.json)と[PROVENANCE.md](PROVENANCE.md)です。
 
@@ -152,12 +162,12 @@ $pyTetWildWheel = "C:\path\to\pytetwild-0.3.0-cp312-abi3-win_amd64.whl"
 .\BOOTSTRAP_WINDOWS.ps1 -PyTetWildWheel $pyTetWildWheel
 ```
 
-r32はcontrolled PyTetWild wheelをSHA-256で固定しているため、引数なしのbootstrapは異なる過去のPyPI wheelへ戻らず、明示的に停止します。`v0.8beta-r32`公開後は、その公式Releaseで同時公開する完全対応ソースasset内の`build-evidence/pytetwild/repaired-wheel/`にある修復wheel、またはcontrolled recipeで再現したwheelのローカルpathを渡してください。公式r32 assetはRelease公開前には利用できません。`-PyTetWildWheelhouse`も使用できます。`-SkipInstall`は検証済み環境の再テスト専用です。
+r32.1はcontrolled PyTetWild wheelをSHA-256で固定しているため、引数なしのbootstrapは異なる過去のPyPI wheelへ戻らず、明示的に停止します。対応する`v0.8beta-r32.1`完全対応ソースasset内の`build-evidence/pytetwild/repaired-wheel/`にある修復wheel、またはcontrolled recipeで再現したwheelのローカルpathを渡してください。公式r32.1 assetはRelease公開前には利用できません。`-PyTetWildWheelhouse`も使用できます。`-SkipInstall`は検証済み環境の再テスト専用です。
 
-`-Build`は全回帰後にPyInstaller one-folder buildを作成します。r32の予定stage名は次のとおりで、検証完了までは配布しません。
+`-Build`は全回帰後にPyInstaller one-folder buildを作成します。r32.1の予定stage名は次のとおりで、検証完了までは配布しません。
 
-- source candidate: `ChromaMatter-0.8beta-r32-source-public-20260823`
-- gated Windows package: `ChromaMatter-0.8beta-r32-win64`
+- source candidate: `ChromaMatter-0.8beta-r32.1-source-public-20260824`
+- gated Windows package: `ChromaMatter-0.8beta-r32.1-win64`
 
 ## プライバシーとライセンス
 

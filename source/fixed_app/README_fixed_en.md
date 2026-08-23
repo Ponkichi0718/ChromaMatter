@@ -1,4 +1,4 @@
-# ChromaMatter — AI Model Print Studio 0.8beta (r32 source app)
+# ChromaMatter — AI Model Print Studio 0.8beta (r32.1 source app)
 
 <p align="center">
   <img src="assets/obj_adjuster_icon.png" width="160" alt="ChromaMatter icon">
@@ -6,9 +6,13 @@
 
 [Japanese](README_fixed_ja.md)
 
-This directory contains the fixed ChromaMatter — AI Model Print Studio source application. The display version is `0.8beta`, the edition is `AI Model Print Studio r32`, and the artifact revision is `r32-ai-model-print-studio`; the Windows numeric version remains `0.8.0.0`.
+This directory contains the fixed ChromaMatter — AI Model Print Studio source application. The display version is `0.8beta`, the edition is `AI Model Print Studio r32.1`, and the artifact revision is `r32.1-ai-model-print-studio`; the Windows numeric version remains `0.8.0.0`.
 
 See the [visual feature overview and production flow](../../FEATURES_EN.md) and the [development journal, including experiments, failures, and hardware calibration](https://note.com/ponkichi0718).
+
+## r32.1 release update
+
+r32.1 preserves the r32 modelling and 3MF contracts, changes the public preview heading to `AI Model Color`, and packages a rights-cleared Hi3D multipart GLB plus reference image under `DemoData/`. For that demo, verify parts in the preview instead of trusting imported part names and apply the `Weak Black 5–25%` preset before 3MF export. Published r32 remains immutable previous evidence.
 
 ## r32 output workflow
 
@@ -82,16 +86,16 @@ python .\TripoSpectrumMapper_fixed.py
 python .\TripoSpectrumMapper_fixed.py --self-test
 ```
 
-Repository-root `BOOTSTRAP_WINDOWS.ps1` is the standard setup and test entry point. r32 requires `-PyTetWildWheel C:\path\to\pytetwild-0.3.0-cp312-abi3-win_amd64.whl` (or `-PyTetWildWheelhouse`) because the application lock pins the controlled repaired wheel, not the historical PyPI wheel. The matching official complete corresponding-source release asset stores it under `build-evidence/pytetwild/repaired-wheel/`; `-SkipInstall` is only for an already verified environment.
+Repository-root `BOOTSTRAP_WINDOWS.ps1` is the standard setup and test entry point. r32.1 requires `-PyTetWildWheel C:\path\to\pytetwild-0.3.0-cp312-abi3-win_amd64.whl` (or `-PyTetWildWheelhouse`) because the application lock pins the controlled repaired wheel, not the historical PyPI wheel. The matching official complete corresponding-source release asset stores it under `build-evidence/pytetwild/repaired-wheel/`; `-SkipInstall` is only for an already verified environment.
 
-## r32 validation state
+## r32.1 validation state
 
-- current post-adoption working tree on Python `3.13.14`: `Ran 1244 tests: OK (skipped=2)`, 1242 passed / 2 optional skips / 0 failed; the earlier focused release/compliance set passed 178 tests with 1 optional skip and the post-adoption focused follow-up passed 108/108; the pre-adoption public-source stage passed at 395 files / 394 manifest records with privacy and independent SHA-256 parity, but final staging must be regenerated after adoption
+- published r32 exact final build log on Python `3.13.14`: `Ran 1270 tests in 236.319s: OK (skipped=3)`, 1267 passed / 3 optional skips / 0 failed, followed by clean build, packaged self-test, and Japanese/English UI smoke; immutable r32 previous evidence only, while every r32.1 exact regression/build/stage/checksum gate remains pending
 - focused binary-compliance, corresponding-source, and release-tooling set (80 tests) plus release identity (10 tests): passed
 - component-specific licence texts and static-linked component coverage are implemented and covered by fail-closed inventory tests
 - controlled run `20260823-174626-089357844d4b` succeeded; the application lock binds repaired wheel SHA-256 `e3b11ac058266d277b0f83448c6023d5da98e731d0d016e461dbce4ebdfd613d`, the `release-approved` PyTetWild closure binds that wheel and extension PYD SHA-256 `26a091b53279407014899c046691958c9df07e22703576da6a45d68a9be22430`, and attestation SHA-256 `3989fd1debe8b6c984938c4a64ee5fb3bcce1b612cf83524ea309b1fae3cde9f` remains recorded build evidence pending the final commit-specific rebuild lock
-- the old r32 EXE/ZIP does not match this source and remains private; closure approval does not approve a Windows application archive, so binary publication is NO-GO until a `release-approved` complete corresponding-source bundle, a current clean binary build with regenerated inventory, packaged self-test and Japanese/English smoke, fresh-extract manifest/privacy/archive/checksum parity, and immutable HTTPS simultaneous Release assets all pass
-- the r31 results below are **previous evidence** and do not validate r32
+- published r32 assets remain immutable previous evidence and do not match this r32.1 source; closure approval does not approve a Windows application archive, so binary publication is NO-GO until a `release-approved` complete corresponding-source bundle, a current clean binary build with regenerated inventory, packaged self-test and Japanese/English smoke, fresh-extract manifest/privacy/archive/checksum parity, and immutable HTTPS simultaneous Release assets all pass
+- the r32 and r31 results below are **previous evidence** and do not validate r32.1
 
 - previous evidence for the post-GLB r28 candidate immediately before the public-UI change: Python `3.13.14`, PyInstaller `6.20.0`, `Ran 992 tests in 87.406s: OK (skipped=1)`, 991 passed / 1 optional skip
 - that candidate's clean one-folder build in a new short path: passed
@@ -114,22 +118,22 @@ Repository-root `BOOTSTRAP_WINDOWS.ps1` is the standard setup and test entry poi
 - final ZIP SHA-256: `null`
 - icon publication rights: `passed-by-creator-declaration` (2026-08-20); the project owner accepted publication for that asset scope, without claiming independent legal clearance
 - r31 previous-evidence publication eligibility: true only for its validated `publication_scope=source-only`
-- current r32 source publication eligibility: false until the post-adoption source is restaged; binary publication also remains false
+- current r32.1 source publication eligibility: false until the final source is restaged; binary publication also remains false
 - binary publication eligibility: false until every final release-engineering gate above passes
 - public repository: [https://github.com/Ponkichi0718/ChromaMatter](https://github.com/Ponkichi0718/ChromaMatter) (owner handle `Ponkichi0718`)
 - Innovation Fund submission ready: false pending the rights-cleared sample, Orca/U1 evidence, cover/video, and community post
 - physical XP-PEN validation and physical print: pending disclosed limitations, not source-publication blockers
 
-The r31, r30, r29, r28, and r27 results above are **previous evidence** for their respective revisions only. The exact r32 post-adoption source regression and focused compliance tests are current evidence; the recorded public-source stage predates adoption and must be regenerated. Any earlier r32 build, packaged-smoke, or preflight-artifact result predates the present compliance/spec changes and is historical evidence only; a current clean binary build and all remaining binary gates are still pending. The unchanged icon, including its robot and fictional `ZENITH DYNAMICS CORP.` wording, retains the 2026-08-20 creator declaration and owner acceptance without claiming independent legal clearance. Binary publication eligibility remains false until every final release-engineering gate above passes.
+The published r32 Release and the r31, r30, r29, r28, and r27 results above are **previous evidence** for their respective revisions only. They do not validate r32.1. A new exact regression, clean binary build, corresponding-source/software stages, package smoke, Japanese/English UI smoke, fresh extraction, archive/privacy parity, SBOM, component map, and detached checksum are pending for r32.1. The unchanged icon, including its robot and fictional `ZENITH DYNAMICS CORP.` wording, retains the 2026-08-20 creator declaration and owner acceptance without claiming independent legal clearance. Binary publication eligibility remains false until every final release-engineering gate above passes.
 
 Creator Studio r26 results are previous evidence as well and do not validate ChromaMatter r31.
 
 ## Package identity
 
-- source candidate: `ChromaMatter-0.8beta-r32-source-public-20260823`
-- gated Windows package: `ChromaMatter-0.8beta-r32-win64`
+- source candidate: `ChromaMatter-0.8beta-r32.1-source-public-20260824`
+- gated Windows package: `ChromaMatter-0.8beta-r32.1-win64`
 
-The detached `SHA256SUMS-r32.txt` remains pending until final r32 artifacts exist. Completed `SHA256SUMS-r31.txt` applies only to r31 previous evidence. Self-referential ZIP hashes are not embedded in canonical documents.
+The detached `SHA256SUMS-r32.1.txt` remains pending until final r32.1 artifacts exist. Completed `SHA256SUMS-r32.txt` and `SHA256SUMS-r31.txt` apply only to previous evidence. Self-referential ZIP hashes are not embedded in canonical documents.
 
 ## Notes
 

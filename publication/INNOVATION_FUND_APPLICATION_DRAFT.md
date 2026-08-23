@@ -1,8 +1,8 @@
 # ChromaMatter — Innovation Fund応募原稿案
 
-更新日: 2026-08-23
-状態: **`ChromaMatter_0.8beta-r31-source-public-20260820`のsource-only repositoryは[GitHub](https://github.com/Ponkichi0718/ChromaMatter)で公開済み。r32 exact source regressionはPASSし、全身一体sampleのU1完走観測もnoteで公開済み。r32 final build／stage／checksum／GitHub update、sample／3MF hash、4本のfilament、Orca／U1 profileを一組にしたrelease-bound再現性証拠、Innovation Fund submission readyはpendingで、応募文は未投稿・未提出。残る角括弧のplaceholderと応募sample実証値を置換するまで提出しない。EXE／software ZIPは最終binary gate完了まで公開しない。**
-対象: `ChromaMatter — AI Model Print Studio 0.8beta` r32候補
+更新日: 2026-08-24
+状態: **`v0.8beta-r32`は[GitHub](https://github.com/Ponkichi0718/ChromaMatter)で公開済みのimmutableなprevious evidence。r32.1はAIモデル色表記と権利確認済みHi3D DemoDataを加える更新で、exact regression／build／stage／`SHA256SUMS-r32.1.txt`／GitHub updateがpending。全身一体sampleのU1完走観測はnoteで公開済みだが、sample／3MF hash、4本のfilament、Orca／U1 profileを一組にしたrelease-bound再現性証拠とInnovation Fund submission readyはpending。残る角括弧のplaceholderと応募sample実証値を置換するまで提出しない。**
+対象: `ChromaMatter — AI Model Print Studio 0.8beta` r32.1候補
 
 ## 1. 応募の基本情報
 
@@ -79,7 +79,7 @@ basic exact-match web checkでは`ZENITH DYNAMICS CORP.`と`ChromaMatter`の完�
 
 同記事には、Hi3D系分割GLBの識別色が本来のbaseColorへ影響する問題と、part構成・色を保ったpart別3MF経路も含まれる。ただしChromaMatterはHi3D AIの公式・提携製品ではなく、識別用`COLOR_0`はexporter／node／material／共通texture／既知paletteの証拠がすべて一致した場合だけ除外する限定的なβ対応である。
 
-この結果はpractical observationとして使用できるが、現時点ではexact r32 release revision、sample／3MF hash、4本のfilament製品・lot、Snapmaker Orca版、U1 profileへ一括追跡できない。応募のrelease-bound再現性証拠としては未完了のまま扱う。
+この結果はpractical observationとして使用できるが、現時点ではexact r32.1 release revision、sample／3MF hash、4本のfilament製品・lot、Snapmaker Orca版、U1 profileへ一括追跡できない。応募のrelease-bound再現性証拠としては未完了のまま扱う。
 
 言い切るべき価値は、**「4色へ減らす」ではなく「4本から生まれるFull Spectrum stateを、AI生成modelの制作単位として編集・保存する」**こと。
 
@@ -339,18 +339,18 @@ READMEではditherforgeを攻撃的に比較しない。必要なら`Related pro
 - [x] r31 clean build、built self-test、日英UI smoke（previous evidence）
 - [x] r31 preflight fresh extract self-test、日英UI smoke、manifest／archive／path safety／privacy audit（previous evidence）
 - [x] r31 final source-only restage、Downloads配置、detached `SHA256SUMS-r31.txt`、archive／CRC／privacy／identity照合（previous evidence）
-- [ ] r32 exact full regression、clean build、built self-test、1920×1080日英UI smoke
-- [ ] r32 final source／software stage、fresh extract、manifest／archive／path safety／privacy／identity照合
-- [ ] r32 Downloads配置、外部detached `SHA256SUMS-r32.txt`、GitHub update／公開tree一致
+- [ ] r32.1 exact full regression、clean build、built self-test、1920×1080日英UI smoke
+- [ ] r32.1 final source／software stage、DemoData manifest、fresh extract、archive／path safety／privacy／identity照合
+- [ ] r32.1外部detached `SHA256SUMS-r32.1.txt`、GitHub update／公開tree一致
 - [ ] clean cloneでsetup／test／public sampleを第三者手順だけで再現
 - [ ] GPL、第三者license notice、TetGen／Qt等binary distribution条件を確認
 - [ ] known limitations、issue template、security／privacy窓口
 
 ### C. sample権利とprovenance
 
-- [ ] 2D生成service／plan／date／prompt／seed: `[RECORD]`
-- [ ] TripoAI等3D生成service／plan／date／input: `[RECORD]`
-- [ ] model、画像、動画、音源の公開／改変／再配布権
+- [x] 同梱DemoDataのreference画像はowner作成、公開・再配布承認済み
+- [x] 同梱multipart GLBはHi3D有料plan生成、公開・再配布承認済み
+- [ ] 応募hero用の追加model、画像、動画、音源について公開／改変／再配布権を個別記録
 - [ ] 既存character、logo、特徴的silhouetteとの類似をhuman review
 - [ ] public sampleのlicenseとattribution file
 - [ ] private検証file、個人path、account名、API keyが公開treeにない
@@ -392,8 +392,8 @@ READMEではditherforgeを攻撃的に比較しない。必要なら`Related pro
 
 ## 9. 最終submit前の順番
 
-1. r32 exact source-only release gateを完了する。EXE／software ZIPは第三者binary再配布監査まで保留する。
-2. 権利処理済みsampleを同じr32でGLB／OBJ→project→3MF→Orca→U1まで完走する。
+1. r32.1 exact regression／binary／source／software／DemoData package gateを完了する。
+2. 権利処理済みsampleを同じr32.1でGLB／OBJ→project→3MF→Orca→U1まで完走する。
 3. hash、profile、filament、失敗／改善写真を記録する。
 4. 公開済みGitHubへREADME hero、sample、known limitations、validationを追記する。
 5. `ChromaMatter-simple-workflow-demo.mp4`を最終Releaseへ同時uploadし、public URLとchecksumを確認する。

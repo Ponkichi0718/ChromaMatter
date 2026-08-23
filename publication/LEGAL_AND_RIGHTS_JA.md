@@ -1,7 +1,7 @@
 # ChromaMatter 公開前のライセンス・権利整理
 
-更新日: 2026-08-21
-対象: ChromaMatter — AI Model Print Studio 0.8beta r32 のsource-only更新と、将来の実行ファイル配布
+更新日: 2026-08-24
+対象: ChromaMatter — AI Model Print Studio 0.8beta r32.1 のsource／Windows package更新
 
 ## 先に結論
 
@@ -11,13 +11,13 @@ TetGen が AGPL のオープンソースであることだけを理由に、「�
 
 現時点の推奨順序は次のとおりです。
 
-1. 個人データと由来不明物を除去した「ソースのみ」の公開候補を先に整える。
-2. 新しい空の環境で再現できることをクリーンクローン検証する。
-3. EXE は、全依存関係、対応ソース、ライセンス表示、再リンク・置換可能性を含むバイナリ配布監査が完了するまで公開しない。
+1. 公開済みr32のtag／assetを変更せず、r32.1 sourceとmanifest固定済みDemoDataをfreezeする。
+2. 新しい空の環境でr32.1をbuildし、クリーンクローン／fresh-extract検証する。
+3. r32.1 EXEは、全依存関係、対応ソース、ライセンス表示、再リンク・置換可能性、DemoData権利／hashを含む配布監査が完了するまで公開しない。
 
 これは法的助言ではありません。正式な公開、とくに企業への提案や広い範囲へのバイナリ配布の前には、ライセンスに詳しい専門家による最終確認が望まれます。
 
-2026-08-20、project ownerは当時記録された技術監査、ライセンス表示、既知の制約を確認したうえで、ChromaMatter r31のsource-only公開GOを出しました。r32は変更していないアイコンのcreator declarationだけを継承し、exact regression／build／stage／checksumとGitHub更新の公開判断はpendingです。このGOはproject ownerによる公開判断であり、独立した法律事務所のreview、商標登録可能性の判定、第三者意匠clearanceを完了したという意味ではありません。
+2026-08-20、project ownerはChromaMatter r31のsource-only公開GOを出し、その後r32はtag `v0.8beta-r32`／commit `86e34b2a9468f81768ee134a680a792b1a83df05`で公開されました。これらはimmutableなprevious evidenceです。r32.1は変更していないアイコンのcreator declarationを継承しますが、exact regression／build／source・software stage／DemoData package監査／checksum／GitHub更新の公開判断はpendingです。このGOと権利申告はproject ownerによる判断であり、独立した法律事務所のreview、商標登録可能性の判定、第三者意匠clearanceを完了したという意味ではありません。
 
 ## 1. TetGen の扱い
 
@@ -143,32 +143,40 @@ OpenAI の利用規約上、OpenAI と利用者の関係では、法令上許さ
 
 ## 5. 実モデル、画像、3MF、動画の扱い
 
-実際の検証に使うモデル、元画像、出力 3MF は、公開リポジトリや配布物には含めません。動画に表示する場合も公開行為であるため、作成者、入力画像、生成サービスの契約プラン、生成日、利用条件、第三者ブランドの有無を記録します。
+私有の検証モデル、元画像、出力3MFは、公開リポジトリや配布物には含めません。例外は、ownerが公開・再配布を明示承認し、canonical manifestで固定したr32.1 DemoDataの2 payloadだけです。動画に表示する場合も公開行為であるため、作成者、入力画像、生成サービスの契約プラン、生成日、利用条件、第三者ブランドの有無を記録します。
 
 「ファイルをダウンロード配布しない」ことはリスクを下げますが、動画公開の権利確認を不要にはしません。詳細は [PRIVATE_SAMPLE_POLICY_JA.md](PRIVATE_SAMPLE_POLICY_JA.md) に定めます。
+
+2026-08-24、project ownerはr32.1 DemoDataの分割GLBが有料Hi3D planで生成されたこと、
+reference画像をowner自身が作成したこと、両fileをChromaMatterのWindows packageで公開・
+再配布してよいことを確認しました。固定名、size、SHA-256、権利gateは
+`source/fixed_app/public_binary/DemoData/DEMO_DATA_MANIFEST.json`に記録し、実payloadと一致
+しないpackageはstageで拒否します。これはowner declarationであり、第三者IPの独立した
+法務clearanceやHi3Dとの提携・承認を意味しません。
 
 2026-08-24、project ownerは自ら提供した約2分の操作動画を、ChromaMatterのGitHubおよび
 Innovation Fund向け資料へ「シンプルな使い方」として掲載することを明示的に承認しました。
 公開時は個人情報を除去し、音声を外したprivacy確認済みcopyだけを
 `ChromaMatter-simple-workflow-demo.mp4`として使います。Git履歴やsoftware／対応ソースZIPへは
 入れず、GitHub Releaseの独立assetとしてchecksum対象にします。この承認は動画ファイルの
-掲載範囲を記録するものであり、映像内に現れる第三者製品・serviceとの提携や、元モデルを
-ダウンロード再配布する権利を意味しません。元モデル自体は配布しません。
+掲載範囲を記録するものであり、映像内に現れる第三者製品・serviceとの提携や、manifestで
+明示したDemoData以外のモデルをダウンロード再配布する権利を意味しません。
 
 ## 6. 現時点の公開判定
 
 | 項目 | 現在の判断 | 公開前に必要なこと |
 |---|---|---|
 | r31整理済みソースのみ（previous evidence） | **source-published** | `ChromaMatter_0.8beta-r31-source-public-20260820`のprivacy、license notice、clean build／test、final stage、archive parity、CRC、identity／icon／tooling、Downloads配置、detached checksum照合が完了 |
-| r32 source-only更新 | **pending** | exact regression、clean build、packaged smoke、final stage、archive、privacy、identity、外部detached `SHA256SUMS-r32.txt`、GitHub tree一致を実測してから公開判断する |
-| EXE・software配布 ZIP | 保留 | ownerの公開GOでも第三者license義務は免除されない。PyTetWild/fTetWild、TetGen、PyMeshLab、Qt、GEOS等を含むexact binary再配布監査を完了する |
+| r32公開Release（previous evidence） | **published** | tag `v0.8beta-r32`、commit `86e34b2a9468f81768ee134a680a792b1a83df05`と既存assetを変更しない |
+| r32.1更新 | **pending** | exact regression、clean build、packaged smoke、source／software final stage、DemoData hash／rights gate、archive、privacy、identity、外部detached `SHA256SUMS-r32.1.txt`、GitHub tree一致を実測してから公開判断する |
+| r32.1 EXE・software配布ZIP | 保留 | ownerの公開GOでも第三者license義務は免除されない。実装済みのSBOM／component map／対応ソース／license契約をexact final binaryに対して再生成・監査する |
 | 旧 EXE、recovered_pyc、旧アイコン | 除外 | 権利と由来が文書で確認できるまで公開しない |
 | 合成テストデータ | 公開候補 | 自作生成手順とライセンスを明示 |
-| 実モデル・元画像・3MF | 非配布 | 動画表示だけでも権利記録を残す |
+| 私有の実モデル・元画像・3MF | 非配布 | manifest固定済みr32.1 DemoData 2 payloadだけを例外とし、その他は動画表示だけでも権利記録を残す |
 | Snapmaker Orca 一貫操作 | 未完了 | 動画チェックリストに沿った実機能確認 |
 | Snapmaker U1 物理造形 | 未完了 | 実フィラメントでの造形、色、寸法、ジョイント評価 |
 
-r31で`publication_eligible=true`とした範囲は`source-only`に限定されます。r32のpublication decisionはpendingです。checksum値は外部detached recordだけを正本とし、canonical source文書には埋め込みません。物理XP-PEN検証とU1造形matrixは未完了evidenceとして残し、EXE／software ZIPには第三者binary再配布監査が別のhard gateとして残ります。
+r31の`source-only`公開と公開済みr32 Releaseはprevious evidenceです。r32.1のpublication decisionは、現行bytesのfinal gateが揃うまでpendingです。checksum値は外部detached recordだけを正本とし、canonical source文書には埋め込みません。物理XP-PEN検証とU1造形matrixは未完了evidenceとして残し、r32.1 EXE／software ZIPにはexact binary再配布監査がhard gateとして残ります。
 
 ## 7. 一次情報
 

@@ -1,18 +1,20 @@
-# ChromaMatter — AI Model Print Studio 0.8beta (r32) provenance
+# ChromaMatter — AI Model Print Studio 0.8beta (r32.1) provenance
 
-更新日: 2026-08-21
-対象revision: `r32-ai-model-print-studio`
+更新日: 2026-08-24
+対象revision: `r32.1-ai-model-print-studio`
 
 ## 1. プロジェクトとidentity
 
 ChromaMatter — AI Model Print Studioは、AI生成された頂点カラー付きOBJまたはUV baseColor texture付きGLBを、Snapmaker OrcaのFull Spectrum／Color Mixingワークフロー向け3MFへ変換・調整する独立プロジェクトです。Hi3D AI、TripoAI、Snapmaker、Blender、ZBrush、Substance 3D Painter、OpenAIまたは各社の公式・提携製品ではありません。
 
-表示versionは利用者の指定どおり`0.8beta`、Windows数値versionは`0.8.0.0`に固定し、人向けeditionを`AI Model Print Studio r32`とします。
+表示versionは利用者の指定どおり`0.8beta`、Windows数値versionは`0.8.0.0`に固定し、人向けeditionを`AI Model Print Studio r32.1`とします。
 
-- public source: `ChromaMatter-0.8beta-r32-source-public-20260823`
-- software package: `ChromaMatter-0.8beta-r32-win64`
+- public source: `ChromaMatter-0.8beta-r32.1-source-public-20260824`
+- software package: `ChromaMatter-0.8beta-r32.1-win64`
 
-## 2. r32出力workflowとr31 identity継承
+## 2. r32.1更新とr32出力workflowの継承
+
+r32.1は公開previewの「Tripo 元モデル色」を「AIモデル色」へ変更し、権利確認済みのHi3D分割GLBと元画像をWindows packageの`DemoData/`へ加えるpost-r32更新です。demoではimportしたpart名をsemanticな印刷part名として信用せずpreviewで対象を確認し、3MF出力前に実際の最暗filamentを選んで「黒弱め 5〜25%」presetを必ず適用します。model処理、閉立体化、識別色抑制、palette、manual paint、3MF provenanceのr32契約は変更しません。公開済み`v0.8beta-r32`のtag／assetは変更せずprevious evidenceとして保持します。
 
 r32は、閉立体化前の適格modelを3MF出力しようとした場合に、安全確認済みのpart境界またはGLB同一座標seamだけを閉立体化すると宣言し、成功後に同じ出力操作を再開します。本当の穴へ推測で蓋を追加せず、対応を証明できない境界、非manifold結果、または処理失敗は従来どおりfail-closedです。
 
@@ -84,15 +86,17 @@ r30は、Hi3D AI等から出力されるstatic GLB／glTF 2.0 meshを直接読�
 
 メイン画面、mixed palette、calibration chart、全体共通palette count、実機黒補正、公開機能の境界、Manual Editingのtool配置はCreator Studio r26の公開契約を継続します。
 
-## 4. r32検証状態
+## 4. r32.1検証状態とr32 previous evidence
 
-r32の採用後current exact-source full regressionはPython `3.13.14`で`Ran 1244 tests in 185.852s: OK (skipped=2)`、1242 PASS／2 optional SKIP／0 FAILです。controlled PyTetWild run `20260823-174626-089357844d4b`、application lock、release-approved static-closure contractも採用済みです。以前の1048-test結果、`C:\OBJAdjR32CM3`のPyInstaller build／packaged self-test／日英UI smoke、およびSHA-256 `8BBABEACCF9B47AC2750C86B7C38966E46F00A624C648036D600C9601CF86EBB`のEXEは、現在のcompliance／adoption変更より前の**previous evidence**であり、現行r32 binaryを検証しません。
+r32.1はsource bytes、frozen executable、software ZIP、完全対応ソース、SBOM、component map、fresh extraction、日英UI smoke、privacy／archive parity、`SHA256SUMS-r32.1.txt`を新しく測定します。これらが完了するまでr32.1のsource／binary publication eligibilityはfalseです。
 
-採用前のr32 public-source stageは395 files／394 manifest recordsで、manifest全SHA、privacy、独立path／SHA-256 parityがPASSしました。採用によってsource bytesが変わったため、final corresponding-source stageは再生成が必要です。以前のsoftware stage 1,404 files／1,403 manifest recordsとfresh software self-test／日英UI smokeも**previous evidence**です。現行sourceからのclean build、final source／software stage、fresh extract、detached `SHA256SUMS-r32.txt`、Git-tree parity、GitHub更新は**pending**です。
+公開済みr32のexact final build logはPython `3.13.14`で`Ran 1270 tests in 236.319s: OK (skipped=3)`、1267 PASS／3 optional SKIP／0 FAILを記録し、clean build、packaged self-test、日英UI smokeもPASSしました。controlled PyTetWild run `20260823-174626-089357844d4b`、application lock、release-approved static-closure contractも採用済みです。これらと、以前の1048-test結果、`C:\OBJAdjR32CM3`のbuild証拠、SHA-256 `8BBABEACCF9B47AC2750C86B7C38966E46F00A624C648036D600C9601CF86EBB`のEXEはr32系の**previous evidence**であり、r32.1 binaryを検証しません。
 
-以下のr31結果は公開済みrevisionだけに適用する**previous evidence**であり、r32を検証しません。
+採用前のr32 public-source stageは395 files／394 manifest recordsで、manifest全SHA、privacy、独立path／SHA-256 parityがPASSしました。以前のsoftware stage 1,404 files／1,403 manifest recordsとfresh software self-test／日英UI smokeも**previous evidence**です。r32.1の現行sourceからのclean build、final source／software stage、fresh extract、detached `SHA256SUMS-r32.1.txt`、Git-tree parity、GitHub更新は**pending**です。
 
-Creator Studio r30には次のsoftware evidenceがあります。ChromaMatter r31および現在のr32 exact sourceには流用しない**previous evidence**です。
+以下のr31結果は公開済みrevisionだけに適用する**previous evidence**であり、r32.1を検証しません。
+
+Creator Studio r30には次のsoftware evidenceがあります。ChromaMatter r31、公開済みr32、および現在のr32.1 exact sourceには流用しない**previous evidence**です。
 
 - Python `3.13.14` full regression: `Ran 1019 tests in 86.932s: OK (skipped=1)`、1018 PASS／1 optional SKIP
 - `C:\OBJAdjR30FIX1`、PyInstaller `6.20.0` clean one-folder build: PASS
@@ -113,13 +117,13 @@ r31 preflight public sourceは227 files（manifest含む）／226 manifest recor
 - software stage: 1,340 files total／1,339 manifest records
 - source／software ZIP、manifest equality、path safety、CRC、privacy: PASS
 
-この証拠はr27 artifactだけに適用し、r32 source、binary、package、checksumの検証には流用しません。preflight ZIP hashはcanonical文書へ埋め込みません。
+この証拠はr27 artifactだけに適用し、r32.1 source、binary、package、checksumの検証には流用しません。preflight ZIP hashはcanonical文書へ埋め込みません。
 
-r31以前のregression／build／artifact evidenceはr32 sourceへ流用しません。上記1244-test r32 source regressionだけが現行exact evidenceで、r32の旧build／smoke／stageはprevious evidenceです。project ownerは2026-08-20にr31公開GOを出し、icon publication rightsはcreator declarationによりpass、当該asset scopeのlegal gateはowner acceptanceとして完了しました。これは独立した法務clearanceではありません。最終r31 source-only stage `ChromaMatter_0.8beta-r31-source-public-20260820`は227 files／226 manifest recordsで、folder／archive parity、CRC、privacy、staged identity／icon／tooling 32 testsを全て通過しました。Downloads配置と外部detached `SHA256SUMS-r31.txt`の照合もr31 source-only distributionについて完了しています。source-only repositoryはpublic owner handle `Ponkichi0718`により[https://github.com/Ponkichi0718/ChromaMatter](https://github.com/Ponkichi0718/ChromaMatter)で公開されています。r32更新はまだ公開済みと主張しません。現行sourceからのclean buildと全package gateが完了するまで`binary_publication_eligible`はfalseです。
+r32以前のregression／build／artifact evidenceはr32.1 sourceへ流用しません。公開済みr32 Releaseはtag `v0.8beta-r32`、commit `86e34b2a9468f81768ee134a680a792b1a83df05`に固定されたprevious evidenceです。project ownerは2026-08-20にr31公開GOを出し、icon publication rightsはcreator declarationによりpass、当該asset scopeのlegal gateはowner acceptanceとして完了しました。これは独立した法務clearanceではありません。最終r31 source-only stage `ChromaMatter_0.8beta-r31-source-public-20260820`は227 files／226 manifest recordsで、folder／archive parity、CRC、privacy、staged identity／icon／tooling 32 testsを全て通過しました。Downloads配置と外部detached `SHA256SUMS-r31.txt`の照合もr31 source-only distributionについて完了しています。repositoryはpublic owner handle `Ponkichi0718`により[https://github.com/Ponkichi0718/ChromaMatter](https://github.com/Ponkichi0718/ChromaMatter)で公開されています。r32.1現行sourceからのclean buildと全package gateが完了するまで`binary_publication_eligible`はfalseです。
 
 ## 5. Previous evidence
 
-ChromaMatter r31およびCreator Studio r30、r29、r28、r27の上記結果は**previous evidence only**であり、ChromaMatter r32のsource、binary、package、checksumを検証しません。
+公開済みChromaMatter r32、r31およびCreator Studio r30、r29、r28、r27の上記結果は**previous evidence only**であり、ChromaMatter r32.1のsource、binary、package、checksumを検証しません。
 
 Creator Studio r26のsource regression、clean build、packaged self-test、日英UI smoke、stage、fresh-extract、privacy、archive、detached-checksum監査もr26 artifactだけのprevious evidenceです。
 
@@ -135,4 +139,4 @@ r30は離散印刷stateと互換なsoft falloff、time build-up、visible-face�
 
 公開sourceと配布候補には、非公開の検証OBJ／GLB／textureその他のassetや識別可能な詳細を含めません。公開文書には一般化した機能契約と、再現可能なpublic-source testだけを記録します。
 
-r32配布checksum `SHA256SUMS-r32.txt`はfinal restage後に外部作成するため現在pendingです。完成済みの`SHA256SUMS-r31.txt`はr31 previous evidenceだけに適用します。canonical文書へfinal ZIPの自己参照hashは埋め込みません。
+r32.1配布checksum `SHA256SUMS-r32.1.txt`はfinal restage後に外部作成するため現在pendingです。完成済みの`SHA256SUMS-r32.txt`と`SHA256SUMS-r31.txt`はprevious evidenceだけに適用します。canonical文書へfinal ZIPの自己参照hashは埋め込みません。

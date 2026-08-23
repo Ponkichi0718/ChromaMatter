@@ -1,4 +1,4 @@
-# ChromaMatter 0.8beta (r32)
+# ChromaMatter 0.8beta (r32.1)
 
 [日本語](README_JA.md)
 
@@ -10,6 +10,8 @@ ChromaMatter is a Windows desktop application that maps the colours of a vertex-
 2. Run `START_CHROMAMATTER.cmd` or `ChromaMatter.exe`.
 3. Open an OBJ or GLB, review F1-F4, mixed-state count, size, and geometry, then export 3MF.
 4. Open the 3MF **as a project** in Snapmaker Orca and inspect tool order, materials, and the slice preview before printing.
+
+To try the shortest workflow with the bundled Hi3D multipart GLB, see [DemoData/README_EN.md](DemoData/README_EN.md).
 
 If Windows displays a protection warning, first verify the SHA-256 on the official Release page and any signing information when a signature is provided. Do not bypass a warning for a file whose origin you cannot verify.
 
@@ -34,4 +36,4 @@ Do not attach a private model to an issue. Report the ChromaMatter version, Wind
 
 ChromaMatter is licensed under `GPL-3.0-or-later`. See [LICENSE.txt](LICENSE.txt) for the licence text and [licenses](licenses/) for third-party terms and notices. The location of the complete corresponding source for this binary is recorded in [licenses/SOURCE_OFFER_EN.txt](licenses/SOURCE_OFFER_EN.txt).
 
-`SOFTWARE_PACKAGE_SHA256.txt` covers files inside this package. `SHA256SUMS-r32.txt`, published alongside the Release assets, is the checksum authority for the complete Release.
+`SOFTWARE_PACKAGE_SHA256.txt` covers files inside this package. `SHA256SUMS-r32.1.txt`, published alongside the Release assets, is the checksum authority for the complete Release.

@@ -1,19 +1,31 @@
 # ChromaMatter cross-PC handoff
 
-Updated: 2026-08-23
-Branch: `codex/r32-public-release` (sanitized public branch)
-Draft PR: pending; publish only this sanitized branch, not the superseded
-personal-metadata branch
+Updated: 2026-08-24
+Branch: `codex/demo-data-ui-label-update`
+Draft PR: pending; publish only the final reviewed r32.1 branch
 Public version: `0.8beta` (do not change without an explicit owner request)
+Current release revision: `r32.1`; Windows numeric version remains `0.8.0.0`
 
 ## Current objective
 
-Prepare a redistributable Windows r32 release while retaining TetGen under its
+Prepare a redistributable Windows r32.1 release while retaining TetGen under its
 AGPL route. Keep the ChromaMatter application under `GPL-3.0-or-later`, preserve
 each third-party license, and publish the Windows ZIP only together with a
 single complete corresponding-source bundle containing both the matching
 application source and all required third-party source, plus the SBOM,
 component map, notices, relinking instructions, and checksums.
+
+Published `v0.8beta-r32` at commit
+`86e34b2a9468f81768ee134a680a792b1a83df05` is immutable previous evidence.
+Do not replace its tag, assets, or `SHA256SUMS-r32.txt`. The r32.1 update uses
+new `ChromaMatter-0.8beta-r32.1-*` asset names and `SHA256SUMS-r32.1.txt`.
+
+The r32.1 scope changes the preview label to AI Model Color and adds the
+rights-cleared Hi3D multipart GLB/reference demo to the Windows package with
+short instructions, part-name warnings, and mandatory Weak Black guidance.
+The r32 modelling and 3MF contracts remain unchanged.
+
+## Previous r32 engineering handoff
 
 This continuation resumed from GitHub on the home PC. The controlled build was
 bound to pushed source commit

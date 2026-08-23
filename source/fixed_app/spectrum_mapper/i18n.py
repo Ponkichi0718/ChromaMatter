@@ -1322,10 +1322,10 @@ CATALOG: dict[str, dict[str, str]] = {
     },
     # Preview and recipes
     "preview.compare": {"ja": "比較", "en": "Compare"},
-    "preview.columns": {"ja": "元画像  ｜  Tripoの元モデル色  ｜  Full Spectrum変換色", "en": "Reference  |  Original Tripo Color  |  Full Spectrum Color"},
+    "preview.columns": {"ja": "元画像  ｜  AIモデル色  ｜  Full Spectrum変換色", "en": "Reference  |  AI Model Color  |  Full Spectrum Color"},
     "preview.recipe_group": {"ja": "スポイト色の再現候補（公式混色モデルによる予測）", "en": "Sampled Color Recipes (Official Mixing Model Prediction)"},
     "preview.reference": {"ja": "元画像（スポイト対象）", "en": "Reference (Eyedropper)"},
-    "preview.source": {"ja": "Tripo 元モデル色", "en": "Original Tripo Color"},
+    "preview.source": {"ja": "AIモデル色", "en": "AI Model Color"},
     "preview.target": {"ja": "Full Spectrum 変換色", "en": "Full Spectrum Color"},
     "preview.open_reference": {"ja": "元画像を開いてください", "en": "Open a reference image"},
     "preview.process_obj": {"ja": "モデルを処理すると表示されます", "en": "Shown after processing a model"},

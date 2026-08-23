@@ -1,8 +1,10 @@
-# r32 Windows バイナリ公開 引継ぎ
+# r32.1 Windows バイナリ公開 引継ぎ
 
-更新日: 2026-08-23
+更新日: 2026-08-24
 対象リポジトリ: <https://github.com/Ponkichi0718/ChromaMatter>
-作業ブランチ: `codex/r32-full-spectrum-workflow`
+作業ブランチ: `codex/demo-data-ui-label-update`
+
+公開済み`v0.8beta-r32`のtag／asset／`SHA256SUMS-r32.txt`は変更しない。r32.1は新しいexact commit、annotated tag、asset名、checksumで公開する。
 Draft PR: <https://github.com/Ponkichi0718/ChromaMatter/pull/1>
 
 ## 最重要の停止条件
@@ -57,11 +59,11 @@ Draft PR: <https://github.com/Ponkichi0718/ChromaMatter/pull/1>
 
 ## 残っている公開ブロッカー
 
-2026-08-23時点で、採用後のworking treeはPython 3.13.14のfull regressionで
-1,244 tests中1,242 PASS／2 optional SKIP／0 FAIL。release／compliance集中テスト178件も
-1 optional SKIP以外PASSしている。採用前の公開source stageは395 files／394 manifest
-records、privacy audit、独立SHA-256 parityまでPASSしたが、採用後にsource bytesが
-変わったため最終stageは再生成が必要である。これはWindows binaryの公開GOではない。
+公開済みr32のexact final build logはPython 3.13.14のfull regressionで
+`Ran 1270 tests in 236.319s: OK (skipped=3)`、1,267 PASS／3 optional SKIP／0 FAILを記録し、
+clean build、packaged self-test、日英UI smokeもPASSした。これはimmutableなr32 previous
+evidenceであり、r32.1へ流用しない。r32.1のexact regression／clean build／source・software
+stage／fresh-extract監査は未実施で、Windows binaryの公開GOではない。
 
 controlled PyTetWild run `20260823-174626-089357844d4b`はcommit
 `5feb198eef3432cdec19a0367d53e1b52bd4a363`で成功し、outbound deny-allとcleanup、
@@ -95,7 +97,7 @@ component固有license assetと静的link subcomponent coverageは実装済み�
 git clone https://github.com/Ponkichi0718/ChromaMatter.git
 Set-Location .\ChromaMatter
 git fetch origin
-git switch --track origin/codex/r32-full-spectrum-workflow
+git switch codex/demo-data-ui-label-update
 git status --short
 ```
 
@@ -255,7 +257,7 @@ $rebuildLock = Join-Path $releaseInputs 'pytetwild-rebuild-lock.json'
   --application-requirements-lock $applicationLock
 if ($LASTEXITCODE -ne 0) { throw 'PyTetWild rebuild lock generation failed' }
 
-$sourceStage = 'C:\release\ChromaMatter-0.8beta-r32-complete-corresponding-source'
+$sourceStage = 'C:\release\ChromaMatter-0.8beta-r32.1-complete-corresponding-source'
 $sourceArchive = "$sourceStage.zip"
 
 Get-PSDrive C
@@ -278,7 +280,16 @@ powershell.exe -ExecutionPolicy Bypass -File .\tooling\stage_corresponding_sourc
 
 $sourceManifest = Join-Path $sourceStage 'COMPONENT_SOURCES.json'
 $sourceSha256 = (Get-FileHash -LiteralPath $sourceArchive -Algorithm SHA256).Hash
-$softwareStage = 'C:\release\ChromaMatter-0.8beta-r32-win64'
+$softwareStage = 'C:\release\ChromaMatter-0.8beta-r32.1-win64'
+$demoDataPayloadRoot = 'C:\release-inputs\ChromaMatter-r32.1-DemoData-payloads'
+$demoDataManifest = Join-Path `
+  (Get-Location).Path `
+  'source\fixed_app\public_binary\DemoData\DEMO_DATA_MANIFEST.json'
+
+# $demoDataPayloadRootにはmanifest記載の次の2 payloadだけを置く。
+#   Original AI model Color.glb
+#   Reference.jpg
+# canonical README／NOTICE／manifestはrepositoryからstage scriptが同梱する。
 powershell.exe -ExecutionPolicy Bypass -File .\tooling\stage_software_package.ps1 `
   -BuiltAppRoot C:\CMR32AGPL1\dist\ChromaMatter `
   -Destination $softwareStage `
@@ -288,13 +299,15 @@ powershell.exe -ExecutionPolicy Bypass -File .\tooling\stage_software_package.ps
   -CorrespondingSourceManifestPath $sourceManifest `
   -CorrespondingSourceArchiveSha256 $sourceSha256 `
   -CorrespondingSourceProjectCommit $projectCommit `
-  -CorrespondingSourceUrl https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32/ChromaMatter-0.8beta-r32-complete-corresponding-source.zip
+  -CorrespondingSourceUrl https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.1/ChromaMatter-0.8beta-r32.1-complete-corresponding-source.zip `
+  -DemoDataRoot $demoDataPayloadRoot `
+  -DemoDataManifestPath $demoDataManifest
 
 # Buildで生成したJSON bytesを再serializeせず、固定したRelease asset名へcopyする。
 $sbomInput = 'C:\CMR32AGPL1\compliance\SBOM.cdx.json'
 $componentMapInput = 'C:\CMR32AGPL1\compliance\BINARY_COMPONENT_MAP.json'
-$sbomAsset = 'C:\release\ChromaMatter-0.8beta-r32-SBOM.cdx.json'
-$componentMapAsset = 'C:\release\ChromaMatter-0.8beta-r32-BINARY_COMPONENT_MAP.json'
+$sbomAsset = 'C:\release\ChromaMatter-0.8beta-r32.1-SBOM.cdx.json'
+$componentMapAsset = 'C:\release\ChromaMatter-0.8beta-r32.1-BINARY_COMPONENT_MAP.json'
 foreach ($target in @($sbomAsset, $componentMapAsset)) {
   if (Test-Path -LiteralPath $target) {
     throw "Release asset already exists; use a new empty release root: $target"
@@ -331,22 +344,22 @@ attestationの`output.audit_logs`と照合してから
 
 ## 想定する同時公開asset
 
-- `ChromaMatter-0.8beta-r32-win64.zip`
-- `ChromaMatter-0.8beta-r32-complete-corresponding-source.zip`
+- `ChromaMatter-0.8beta-r32.1-win64.zip`
+- `ChromaMatter-0.8beta-r32.1-complete-corresponding-source.zip`
   （ChromaMatter本体と第三者対応ソースを含む。大きすぎる場合だけ番号付きで分割し、
   `SOURCE_OFFER`にも全partの取得方法を明記する）
-- `ChromaMatter-0.8beta-r32-SBOM.cdx.json`
-- `ChromaMatter-0.8beta-r32-BINARY_COMPONENT_MAP.json`
+- `ChromaMatter-0.8beta-r32.1-SBOM.cdx.json`
+- `ChromaMatter-0.8beta-r32.1-BINARY_COMPONENT_MAP.json`
 - `ChromaMatter-simple-workflow-demo.mp4`
   （約2分の補助動画。OBJ／GLB読込から3MF出力、Snapmaker Orcaでのslice、
   U1造形までの基本workflowを示す。software ZIPには同梱しない）
-- `SHA256SUMS-r32.txt`
+- `SHA256SUMS-r32.1.txt`
 
-公開tagは `v0.8beta-r32`、上記asset名は大文字小文字を含めて固定する。
-`SHA256SUMS-r32.txt` は補助動画を含む手動添付payload assetをすべて記録する。
+公開tagは `v0.8beta-r32.1`、上記asset名は大文字小文字を含めて固定する。
+`SHA256SUMS-r32.1.txt` は補助動画を含む手動添付payload assetをすべて記録する。
 最低でもsoftware ZIP、完全対応ソースZIP、version付きSBOM、version付きcomponent map、
 補助動画の5件を含め、対応ソースを分割した場合は全partも含める。
-`SHA256SUMS-r32.txt` 自身はchecksum行の対象に含めない。
+`SHA256SUMS-r32.1.txt` 自身はchecksum行の対象に含めない。
 
 GitHubが自動生成する `Source code (zip)` はsubmoduleを含まないため、第三者対応ソースの
 代用にしない。完全な対応ソースbundleのimmutable HTTPS最終Release URLを
@@ -354,10 +367,11 @@ GitHubが自動生成する `Source code (zip)` はsubmoduleを含まないた�
 
 ## 公開サンプルについて
 
-作者申告では、公開候補はHi3D Proで生成した3Dモデルで、元の2D生成工程では
-TripoAI Proを使用している。サンプルを実際に同梱・公開する前に、生成日、job ID、
-当時のplan証跡、入力／出力hash、利用規約の保存、必要なHi3D attributionを記録する。
-サブスクリプション加入だけを第三者権利の包括保証とは表現しない。
+project ownerは、同梱候補の分割GLBが有料Hi3D planで生成されたこと、owner自身が作成した
+reference画像とともに公開・再配布してよいことを確認した。canonical
+`DEMO_DATA_MANIFEST.json`は2 payloadの固定名、size、SHA-256とこの権利gateを記録する。
+software stageはmanifestと実bytesが完全一致しない限り失敗する。この確認はowner declaration
+であり、第三者IPの独立した法務clearanceやHi3Dとの提携・承認を意味しない。
 
 ## 完了条件
 

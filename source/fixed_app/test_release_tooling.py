@@ -1565,9 +1565,20 @@ class PackagedLanguageSmokeTests(unittest.TestCase):
 
 class SoftwarePackageStageTests(unittest.TestCase):
     CORRESPONDING_SOURCE_ASSET = (
-        "ChromaMatter-0.8beta-r32-complete-corresponding-source.zip"
+        "ChromaMatter-0.8beta-r32.1-complete-corresponding-source.zip"
     )
     CORRESPONDING_SOURCE_COMMIT = "1" * 40
+    DEMO_DOCUMENT_NAMES = (
+        "README_EN.md",
+        "README_JA.md",
+        "NOTICE_EN.md",
+        "NOTICE_JA.md",
+        "DEMO_DATA_MANIFEST.json",
+    )
+    DEMO_PAYLOAD_NAMES = (
+        "Original AI model Color.glb",
+        "Reference.jpg",
+    )
     QT_LICENSE_RUNTIME_FILES = tuple(
         "_internal/" + source.removeprefix("source/fixed_app/")
         for source in QT_STATIC_COMPONENTS["license_assets"]
@@ -1893,7 +1904,7 @@ class SoftwarePackageStageTests(unittest.TestCase):
         if source_hash_override is not None:
             source_archive_sha256 = source_hash_override
         versions = {
-            "chromamatter": ("0.8beta-r32", "GPL-3.0-or-later"),
+            "chromamatter": ("0.8beta-r32.1", "GPL-3.0-or-later"),
             "cpython": ("3.13.14", "Python-2.0"),
             "cpython-bzip2": ("1.0.8", "bzip2-1.0.6"),
             "cpython-liblzma": (
@@ -2109,7 +2120,7 @@ class SoftwarePackageStageTests(unittest.TestCase):
             "generator": {"name": "fixture", "version": "1"},
             "package": {
                 "name": "ChromaMatter",
-                "version": "0.8beta-r32",
+                "version": "0.8beta-r32.1",
                 "root": ".",
                 "content_sha256": package_digest,
             },
@@ -2291,11 +2302,93 @@ class SoftwarePackageStageTests(unittest.TestCase):
         index = arguments.index(name)
         return arguments[index + 1]
 
+    def _demo_data_fixture(
+        self,
+        root: Path,
+        *,
+        payload_root_name: str = "demo-input",
+    ) -> tuple[Path, Path, dict[str, bytes]]:
+        payload_root = root / payload_root_name
+        payload_root.mkdir()
+        payload_bytes = {
+            "Original AI model Color.glb": (
+                b"glTF\x02\x00\x00\x00synthetic-multipart-demo\x00"
+            ),
+            "Reference.jpg": b"\xff\xd8synthetic-reference-image\xff\xd9",
+        }
+        for name, content in payload_bytes.items():
+            (payload_root / name).write_bytes(content)
+
+        manifest = {
+            "schema_version": 1,
+            "document_id": "chromamatter.demo-data.r32.1",
+            "release_status": "approved-for-publication",
+            "expected_documents": [
+                "README_EN.md",
+                "README_JA.md",
+                "NOTICE_EN.md",
+                "NOTICE_JA.md",
+            ],
+            "payloads": [
+                {
+                    "path": name,
+                    "bytes": len(payload_bytes[name]),
+                    "sha256": hashlib.sha256(payload_bytes[name]).hexdigest(),
+                    "media_type": media_type,
+                    "role": role,
+                }
+                for name, media_type, role in (
+                    (
+                        "Original AI model Color.glb",
+                        "model/gltf-binary",
+                        "multipart-glb-demo",
+                    ),
+                    ("Reference.jpg", "image/jpeg", "reference-image"),
+                )
+            ],
+            "publication_gate": {
+                "status": "approved-for-publication",
+                "raw_glb_redistribution_confirmed": True,
+                "reference_image_redistribution_confirmed": True,
+                "hi3d_plan_terms_confirmed": True,
+            },
+        }
+        manifest_path = root / f"{payload_root_name}-manifest.json"
+        manifest_path.write_text(
+            json.dumps(manifest, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        return payload_root, manifest_path, payload_bytes
+
+    def _run_demo_validation_failure(
+        self,
+        root: Path,
+        payload_root: Path,
+        manifest_path: Path,
+        *,
+        destination_name: str,
+    ) -> tuple[subprocess.CompletedProcess[str], Path]:
+        built = root / "minimal-built-app"
+        built.mkdir(exist_ok=True)
+        destination = root / destination_name
+        result = _run_powershell(
+            SOFTWARE_STAGE_SCRIPT,
+            "-BuiltAppRoot",
+            str(built),
+            "-Destination",
+            str(destination),
+            "-DemoDataRoot",
+            str(payload_root),
+            "-DemoDataManifestPath",
+            str(manifest_path),
+        )
+        return result, destination
+
     def test_stage_manifest_zip_and_extracted_verification(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             built = self._fake_build(root)
-            destination = root / "ChromaMatter_0.8beta-r32-ai-model-print-studio"
+            destination = root / "ChromaMatter_0.8beta-r32.1-ai-model-print-studio"
             archive = Path(f"{destination}.zip")
             compliance_arguments = self._compliance_arguments(
                 root,
@@ -2367,6 +2460,7 @@ class SoftwarePackageStageTests(unittest.TestCase):
             )
             self.assertTrue((destination / "_internal").is_dir())
             self.assertTrue((destination / "licenses").is_dir())
+            self.assertFalse((destination / "DemoData").exists())
             for excluded in (
                 "CURRENT_STATE.json",
                 "PROVENANCE.md",
@@ -2418,6 +2512,198 @@ class SoftwarePackageStageTests(unittest.TestCase):
                 "SOFTWARE_PACKAGE_SHA256.txt",
             )
             self.assertIn("Software archive verified after extraction", output)
+
+    def test_stage_includes_strict_demo_data_and_manifest_hashes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            built = self._fake_build(root)
+            payload_root, manifest_path, payload_bytes = self._demo_data_fixture(
+                root
+            )
+            destination = root / "ChromaMatter-0.8beta-r32.1-demo-package"
+            archive = Path(f"{destination}.zip")
+            compliance_arguments = self._compliance_arguments(
+                root,
+                built,
+                destination,
+            )
+
+            result = _run_powershell(
+                SOFTWARE_STAGE_SCRIPT,
+                "-BuiltAppRoot",
+                str(built),
+                "-Destination",
+                str(destination),
+                "-DemoDataRoot",
+                str(payload_root),
+                "-DemoDataManifestPath",
+                str(manifest_path),
+                *compliance_arguments,
+            )
+
+            output = result.stdout + result.stderr
+            self.assertEqual(result.returncode, 0, output)
+            demo_destination = destination / "DemoData"
+            self.assertEqual(
+                {path.name for path in demo_destination.iterdir()},
+                set(self.DEMO_DOCUMENT_NAMES + self.DEMO_PAYLOAD_NAMES),
+            )
+            for name, expected in payload_bytes.items():
+                with self.subTest(payload=name):
+                    self.assertEqual(
+                        (demo_destination / name).read_bytes(),
+                        expected,
+                    )
+            staged_manifest = json.loads(
+                (demo_destination / "DEMO_DATA_MANIFEST.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertEqual(
+                staged_manifest["document_id"],
+                "chromamatter.demo-data.r32.1",
+            )
+            _assert_relative_manifest(
+                self,
+                destination,
+                "SOFTWARE_PACKAGE_SHA256.txt",
+            )
+            manifest_paths = {
+                line.partition("  ")[2]
+                for line in (
+                    destination / "SOFTWARE_PACKAGE_SHA256.txt"
+                ).read_text(encoding="utf-8").splitlines()
+                if line
+            }
+            expected_demo_paths = {
+                f"DemoData/{name}"
+                for name in self.DEMO_DOCUMENT_NAMES + self.DEMO_PAYLOAD_NAMES
+            }
+            self.assertTrue(expected_demo_paths.issubset(manifest_paths))
+            with ZipFile(archive) as package:
+                zip_paths = {
+                    member.filename
+                    for member in package.infolist()
+                    if not member.is_dir()
+                }
+            self.assertTrue(
+                {
+                    f"{destination.name}/{relative}"
+                    for relative in expected_demo_paths
+                }.issubset(zip_paths)
+            )
+
+    def test_demo_data_rejects_missing_modified_and_extra_payloads(self) -> None:
+        cases = ("missing", "modified-size", "modified-hash", "extra")
+        for case in cases:
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                payload_root, manifest_path, _ = self._demo_data_fixture(root)
+                if case == "missing":
+                    (payload_root / "Reference.jpg").unlink()
+                    expected = "exactly two regular payload files"
+                elif case == "modified-size":
+                    (payload_root / "Reference.jpg").write_bytes(
+                        b"modified-reference-image"
+                    )
+                    expected = "payload size mismatch: Reference.jpg"
+                elif case == "modified-hash":
+                    reference = payload_root / "Reference.jpg"
+                    original = reference.read_bytes()
+                    reference.write_bytes(
+                        original[:-1] + bytes((original[-1] ^ 1,))
+                    )
+                    self.assertEqual(reference.stat().st_size, len(original))
+                    expected = "payload SHA-256 mismatch: Reference.jpg"
+                else:
+                    (payload_root / "unexpected.txt").write_text(
+                        "must not ship\n",
+                        encoding="utf-8",
+                    )
+                    expected = "exactly two regular payload files"
+
+                result, destination = self._run_demo_validation_failure(
+                    root,
+                    payload_root,
+                    manifest_path,
+                    destination_name=f"rejected-demo-{case}",
+                )
+                output = result.stdout + result.stderr
+                self.assertNotEqual(result.returncode, 0, output)
+                self.assertIn(expected, output)
+                self.assertFalse(destination.exists())
+                self.assertFalse(Path(f"{destination}.zip").exists())
+                self._assert_no_stage_debris(root, destination)
+
+    def test_demo_data_rejects_unapproved_publication_gate(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            payload_root, manifest_path, _ = self._demo_data_fixture(root)
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            manifest["publication_gate"][
+                "raw_glb_redistribution_confirmed"
+            ] = False
+            manifest_path.write_text(
+                json.dumps(manifest, ensure_ascii=False),
+                encoding="utf-8",
+            )
+
+            result, destination = self._run_demo_validation_failure(
+                root,
+                payload_root,
+                manifest_path,
+                destination_name="rejected-demo-publication-gate",
+            )
+            output = result.stdout + result.stderr
+            self.assertNotEqual(result.returncode, 0, output)
+            self.assertIn("DemoData publication is not approved", output)
+            self.assertFalse(destination.exists())
+            self.assertFalse(Path(f"{destination}.zip").exists())
+            self._assert_no_stage_debris(root, destination)
+
+    def test_demo_data_rejects_reparse_payload(self) -> None:
+        if os.name != "nt":
+            self.skipTest("Windows directory junction regression")
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            payload_root, manifest_path, _ = self._demo_data_fixture(root)
+            reparse_path = payload_root / "Reference.jpg"
+            reparse_path.unlink()
+            outside = root / "outside-reference"
+            outside.mkdir()
+            link_result = subprocess.run(
+                (
+                    "cmd.exe",
+                    "/d",
+                    "/c",
+                    "mklink",
+                    "/J",
+                    str(reparse_path),
+                    str(outside),
+                ),
+                check=False,
+                capture_output=True,
+                text=True,
+                errors="replace",
+            )
+            self.assertEqual(
+                link_result.returncode,
+                0,
+                link_result.stdout + link_result.stderr,
+            )
+
+            result, destination = self._run_demo_validation_failure(
+                root,
+                payload_root,
+                manifest_path,
+                destination_name="rejected-demo-reparse",
+            )
+            output = result.stdout + result.stderr
+            self.assertNotEqual(result.returncode, 0, output)
+            self.assertIn("DemoDataRoot contains a reparse point", output)
+            self.assertFalse(destination.exists())
+            self.assertFalse(Path(f"{destination}.zip").exists())
+            self._assert_no_stage_debris(root, destination)
 
     def test_software_zip_audit_rejects_unsafe_original_members(self) -> None:
         def write_archive(
@@ -2883,14 +3169,14 @@ class SoftwarePackageStageTests(unittest.TestCase):
     def test_software_stage_uses_public_win64_default_name(self) -> None:
         stage = SOFTWARE_STAGE_SCRIPT.read_text(encoding="utf-8")
         self.assertIn(
-            '"artifacts\\ChromaMatter-0.8beta-r32-win64"',
+            '"artifacts\\ChromaMatter-0.8beta-r32.1-win64"',
             stage,
         )
         policy = (
             REPO_ROOT / "source" / "fixed_app" / "VERSION_POLICY.md"
         ).read_text(encoding="utf-8")
         self.assertIn(
-            "Public software artifact: `ChromaMatter-0.8beta-r32-win64`",
+            "Public software artifact: `ChromaMatter-0.8beta-r32.1-win64`",
             policy,
         )
 
@@ -3310,6 +3596,7 @@ class SoftwarePackageStageTests(unittest.TestCase):
         self.assertIn('"AGENTS.md"', stage)
         self.assertIn('"HANDOFF.md"', stage)
         self.assertIn('"publication/BINARY_RELEASE_HANDOFF_JA.md"', stage)
+        self.assertIn('"publication/RELEASE_NOTES_r32.1.md"', stage)
         for relative in (
             "source/fixed_app/public_binary/README_JA.md",
             "source/fixed_app/public_binary/README_EN.md",
@@ -3401,6 +3688,7 @@ class SoftwarePackageStageTests(unittest.TestCase):
             "!publication/INNOVATION_FUND_APPLICATION_DRAFT.md",
             "!publication/INNOVATION_FUND_STATUS_JA.md",
             "!publication/BINARY_RELEASE_HANDOFF_JA.md",
+            "!publication/RELEASE_NOTES_r32.1.md",
             "!tooling/generate_binary_compliance_inventory.py",
             "!tooling/generate_pytetwild_rebuild_lock.py",
             "!tooling/pymeshlab_audited_native_identities.json",
@@ -3455,6 +3743,7 @@ class PublicSourceStageRollbackTests(unittest.TestCase):
         "publication/INNOVATION_FUND_APPLICATION_DRAFT.md",
         "publication/INNOVATION_FUND_STATUS_JA.md",
         "publication/BINARY_RELEASE_HANDOFF_JA.md",
+        "publication/RELEASE_NOTES_r32.1.md",
     )
     REQUIRED_FIXED_APP_FILES = (
         "source/fixed_app/TripoSpectrumMapper_fixed.py",
