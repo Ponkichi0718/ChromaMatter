@@ -46,11 +46,42 @@ class PackagedRadialSmokeTests(unittest.TestCase):
         self.assertTrue({"resvg", "resvg._resvg"}.isdisjoint(hidden_imports))
         self.assertIn("spectrum_mapper.decal_image", hidden_imports)
         self.assertIn("def is_source_only_resvg_metadata(entry):", spec_text)
-        self.assertIn(
-            'destination == "resvg-0.2.0.dist-info"',
-            spec_text,
-        )
         self.assertIn("and not is_source_only_resvg_metadata(entry)", spec_text)
+        helper_node = next(
+            node
+            for node in tree.body
+            if isinstance(node, ast.FunctionDef)
+            and node.name == "is_source_only_resvg_metadata"
+        )
+        helper_tree = ast.Module(body=[helper_node], type_ignores=[])
+        ast.fix_missing_locations(helper_tree)
+        helper_namespace: dict[str, object] = {}
+        exec(
+            compile(helper_tree, filename=str(spec_path), mode="exec"),
+            helper_namespace,
+        )
+        is_source_only_resvg_metadata = helper_namespace[
+            "is_source_only_resvg_metadata"
+        ]
+        for excluded_metadata in (
+            "resvg-0.2.0.dist-info",
+            "resvg-0.2.0.dist-info/METADATA",
+            "RESVG-0.2.0.DIST-INFO/licenses/LICENSE.txt",
+            r"resvg-0.2.0.dist-info\sboms\resvg.cyclonedx.json",
+        ):
+            with self.subTest(excluded_metadata=excluded_metadata):
+                self.assertTrue(
+                    is_source_only_resvg_metadata((excluded_metadata,))
+                )
+        for retained_metadata in (
+            "resvg-0.2.0.dist-info-extra/METADATA",
+            "other/resvg-0.2.0.dist-info/METADATA",
+            "resvg-0.2.0.dist-info.txt",
+        ):
+            with self.subTest(retained_metadata=retained_metadata):
+                self.assertFalse(
+                    is_source_only_resvg_metadata((retained_metadata,))
+                )
         for removed_runtime_asset in (
             "RESVG_DATAS",
             "licenses/resvg-py",
