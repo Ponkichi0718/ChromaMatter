@@ -41,6 +41,11 @@ WOW6432Node、32-bit viewの`KitsRoot10` registry値を調べ、固定versionの
 `Program Files (x86)`側にある構成へ対応し、完全なrootが0個または複数ならbuildを
 停止します。
 
+Windows PowerShell 5.1では、`vswhere.exe -utf8`の呼出中だけ
+`[Console]::OutputEncoding`を厳密なBOMなしUTF-8へ変更し、`finally`で元のencodingへ
+復元します。これにより、localized installation nameをactive console code pageで
+誤ってdecodeしてJSONを壊すことを防ぎます。
+
 実行前にOSまたはhypervisorで外向き通信をdeny-allにするか、builderを物理的に
 切断してください。次のswitchは作業者による確認記録であり、script自体がOSの
 firewallを設定したという意味ではありません。

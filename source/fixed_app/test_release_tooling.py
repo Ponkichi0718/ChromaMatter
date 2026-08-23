@@ -680,6 +680,84 @@ foreach ($path in @('{success_log}', '{failure_log}')) {{
             )
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
+    def test_utf8_native_capture_decodes_json_and_restores_console_encoding(self) -> None:
+        if POWERSHELL is None:
+            self.skipTest("Windows PowerShell is unavailable")
+        payload = json.dumps(
+            {"displayName": "ビルド ツール"},
+            ensure_ascii=False,
+        ).encode("utf-8") + b"\n"
+        encoded_payload = base64.b64encode(payload).decode("ascii")
+        invalid_json_payload = base64.b64encode(b"{{not-json}}\n").decode("ascii")
+        recipe = str(PYTETWILD_BUILD_RECIPE).replace("'", "''")
+        python = sys.executable.replace("'", "''")
+        command = f"""
+$tokens=$null
+$errors=$null
+$ast=[System.Management.Automation.Language.Parser]::ParseFile(
+    '{recipe}', [ref]$tokens, [ref]$errors
+)
+if ($errors.Count) {{ throw ($errors -join [Environment]::NewLine) }}
+$definitions = @($ast.FindAll({{
+    param($node)
+    $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and
+        $node.Name -eq 'Invoke-Utf8NativeCapture'
+}}, $true))
+if ($definitions.Count -ne 1) {{
+    throw 'Expected exactly one Invoke-Utf8NativeCapture definition'
+}}
+Invoke-Expression $definitions[0].Extent.Text
+$ErrorActionPreference = 'Stop'
+$originalEncoding = [Console]::OutputEncoding
+try {{
+    [Console]::OutputEncoding = [System.Text.UnicodeEncoding]::new($false, $false)
+    $expectedCodePage = [Console]::OutputEncoding.CodePage
+    $pythonCode = 'import base64,sys;sys.stdout.buffer.write(base64.b64decode(sys.argv[1]))'
+    $capture = Invoke-Utf8NativeCapture '{python}' @(
+        '-I', '-c', $pythonCode, '{encoded_payload}'
+    )
+    if ($capture.ExitCode -ne 0) {{ throw "UTF-8 fixture failed: $($capture.ExitCode)" }}
+    if ([Console]::OutputEncoding.CodePage -ne $expectedCodePage) {{
+        throw 'Console output encoding was not restored'
+    }}
+    $decoded = @(($capture.Output -join [Environment]::NewLine) | ConvertFrom-Json)
+    if ($decoded.Count -ne 1 -or $decoded[0].displayName -cne 'ビルド ツール') {{
+        throw 'UTF-8 native JSON was corrupted'
+    }}
+    $nonzero = Invoke-Utf8NativeCapture '{python}' @(
+        '-I', '-c', "$pythonCode;sys.exit(7)", '{encoded_payload}'
+    )
+    if ($nonzero.ExitCode -ne 7) {{ throw 'Native nonzero exit code was not preserved' }}
+    if ([Console]::OutputEncoding.CodePage -ne $expectedCodePage) {{
+        throw 'Console output encoding was not restored after nonzero exit'
+    }}
+    $invalidJsonRejected = $false
+    try {{
+        $invalidJson = Invoke-Utf8NativeCapture '{python}' @(
+            '-I', '-c', $pythonCode, '{invalid_json_payload}'
+        )
+        ($invalidJson.Output -join [Environment]::NewLine) |
+            ConvertFrom-Json -ErrorAction Stop
+    }} catch {{
+        $invalidJsonRejected = $true
+    }}
+    if (-not $invalidJsonRejected) {{ throw 'Invalid UTF-8 JSON was accepted' }}
+    if ([Console]::OutputEncoding.CodePage -ne $expectedCodePage) {{
+        throw 'Console output encoding was not restored before invalid JSON handling'
+    }}
+}} finally {{
+    [Console]::OutputEncoding = $originalEncoding
+}}
+"""
+        result = subprocess.run(
+            [POWERSHELL, "-NoProfile", "-Command", command],
+            check=False,
+            capture_output=True,
+            text=True,
+            errors="replace",
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
     def test_recipe_exports_immutable_sources_before_building(self) -> None:
         text = PYTETWILD_BUILD_RECIPE.read_text(encoding="utf-8")
         for expected in (
@@ -878,6 +956,23 @@ foreach ($path in @('{success_log}', '{failure_log}')) {{
                 self.assertIn(expected, text)
 
         self.assertNotIn("MsvcVersion = '14.44.35211'", text)
+
+    def test_vswhere_utf8_output_is_decoded_with_a_scoped_console_override(self) -> None:
+        text = PYTETWILD_BUILD_RECIPE.read_text(encoding="utf-8")
+        for expected in (
+            "function Invoke-Utf8NativeCapture",
+            "$savedConsoleOutputEncoding = [Console]::OutputEncoding",
+            "[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false, $true)",
+            "[Console]::OutputEncoding = $savedConsoleOutputEncoding",
+            "$vsWhereResult = Invoke-Utf8NativeCapture $VsWhere",
+            "'-format', 'json', '-utf8'",
+            "$vsInstallationsJson = @($vsWhereResult.Output)",
+            "ConvertFrom-Json -ErrorAction Stop",
+            "vswhere.exe UTF-8 output capture failed",
+            "vswhere.exe emitted invalid UTF-8 JSON",
+        ):
+            with self.subTest(expected=expected):
+                self.assertIn(expected, text)
 
     def test_explicit_sdk_root_requires_both_fixed_sdk_files(self) -> None:
         if POWERSHELL is None:

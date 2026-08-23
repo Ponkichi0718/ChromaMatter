@@ -148,10 +148,10 @@ class ReleaseIdentityTests(unittest.TestCase):
             with self.subTest(passed_gate=passed_gate):
                 self.assertTrue(validation[passed_gate].startswith("passed"))
         self.assertIn(
-            "Ran 1236 tests: OK (skipped=2)",
+            "Ran 1238 tests: OK (skipped=2)",
             validation["current_full_regression"],
         )
-        self.assertIn("1234 passed", validation["current_full_regression"])
+        self.assertIn("1236 passed", validation["current_full_regression"])
         self.assertIn("0 failed", validation["current_full_regression"])
         self.assertIn(
             "VCTools directory 14.44.35207",
@@ -247,7 +247,7 @@ class ReleaseIdentityTests(unittest.TestCase):
             "source-branch-validated-for-draft-pr-update",
             latest["status"],
         )
-        self.assertIn("Ran 1236 tests", latest["source_full_regression"])
+        self.assertIn("Ran 1238 tests", latest["source_full_regression"])
         self.assertEqual(
             395,
             latest["public_source_stage"]["total_files_including_manifest"],

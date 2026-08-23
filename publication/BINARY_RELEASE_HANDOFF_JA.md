@@ -134,6 +134,9 @@ redistributableのversionなのでVCTools directoryとして使用しない。SD
 `KitsRoot10`候補から、固定versionのx64 `signtool.exe`と`kernel32.lib`を両方持つ
 正確に1個のdistinct rootだけをrecipeが採用する。
 現在はnative候補が不完全で、WOW6432Node候補に正確なSDKがある。
+Windows PowerShell 5.1でlocalized `vswhere.exe -utf8` JSONを壊さないよう、recipeは
+そのnative呼出中だけconsole output decoderを厳密なBOMなしUTF-8へ固定し、`finally`で
+以前のencodingへ戻す。この復元契約を外さない。
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass `

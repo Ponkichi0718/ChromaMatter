@@ -41,6 +41,12 @@ exactly one distinct root that contains both the fixed-version x64
 root is incomplete but the exact SDK is installed under `Program Files (x86)`;
 zero or multiple complete roots stop the build.
 
+On Windows PowerShell 5.1, the recipe scopes `[Console]::OutputEncoding` to
+strict UTF-8 without a BOM only while invoking `vswhere.exe -utf8`, then
+restores the previous encoding in `finally`. This prevents localized
+installation names in the JSON from being decoded through the active console
+code page.
+
 Before running it, enforce outbound deny-all at the OS or hypervisor layer, or
 physically disconnect the builder. The switch below records the operator's
 confirmation; it does not claim that the script configured the OS firewall.

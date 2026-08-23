@@ -138,6 +138,27 @@ function Invoke-Checked([string]$FilePath, [string[]]$Arguments) {
     }
 }
 
+function Invoke-Utf8NativeCapture([string]$FilePath, [string[]]$Arguments) {
+    if (-not (Test-Path -LiteralPath $FilePath -PathType Leaf)) {
+        throw "Command executable is missing: $FilePath"
+    }
+    $savedConsoleOutputEncoding = [Console]::OutputEncoding
+    try {
+        # Windows PowerShell 5.1 decodes native stdout using this property.
+        # vswhere -utf8 always emits UTF-8, independent of the active console
+        # code page, so bind the decoder for this invocation and then restore it.
+        [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false, $true)
+        $output = @(& $FilePath @Arguments)
+        $exitCode = $LASTEXITCODE
+    } finally {
+        [Console]::OutputEncoding = $savedConsoleOutputEncoding
+    }
+    return [pscustomobject]@{
+        ExitCode = $exitCode
+        Output = $output
+    }
+}
+
 function Invoke-Logged(
     [string]$FilePath,
     [string[]]$Arguments,
@@ -525,15 +546,27 @@ $VsWhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer
 if (-not (Test-Path -LiteralPath $VsWhere -PathType Leaf)) {
     throw "vswhere.exe is missing: $VsWhere"
 }
-$vsInstallationsJson = & $VsWhere @(
-    '-products', '*',
-    '-requires', 'Microsoft.VisualStudio.Component.VC.Tools.x86.x64',
-    '-format', 'json', '-utf8'
-)
-if ($LASTEXITCODE -ne 0) {
-    throw "vswhere.exe failed: $LASTEXITCODE"
+try {
+    $vsWhereResult = Invoke-Utf8NativeCapture $VsWhere @(
+        '-products', '*',
+        '-requires', 'Microsoft.VisualStudio.Component.VC.Tools.x86.x64',
+        '-format', 'json', '-utf8'
+    )
+} catch {
+    throw "vswhere.exe UTF-8 output capture failed: $($_.Exception.Message)"
 }
-$vsInstallations = @(($vsInstallationsJson -join [Environment]::NewLine) | ConvertFrom-Json)
+if ($vsWhereResult.ExitCode -ne 0) {
+    throw "vswhere.exe failed: $($vsWhereResult.ExitCode)"
+}
+$vsInstallationsJson = @($vsWhereResult.Output)
+try {
+    $vsInstallations = @(
+        ($vsInstallationsJson -join [Environment]::NewLine) |
+            ConvertFrom-Json -ErrorAction Stop
+    )
+} catch {
+    throw "vswhere.exe emitted invalid UTF-8 JSON: $($_.Exception.Message)"
+}
 $expectedVsPath = [System.IO.Path]::GetFullPath($VsInstall).TrimEnd('\')
 $matchingVsInstallations = @($vsInstallations | Where-Object {
     [System.IO.Path]::GetFullPath([string]$_.installationPath).TrimEnd('\') -ieq $expectedVsPath

@@ -197,6 +197,20 @@ current bytes.
 - A current generator probe against the old audit-only package failed closed as
   designed. It reported the historical PyTetWild wheel/application-lock
   mismatch and blocked closure gate; that old package is not release evidence.
+- The first outbound-isolated rebuild attempt stopped before source export and
+  its merged PowerShell stream retained only the first traceback line. The
+  local-only launcher now runs the recipe as a separate non-elevated process,
+  records stdout and stderr independently, records an unambiguous integer exit
+  code, and preserves the elevated firewall guardian's fail-closed cleanup.
+- The process-isolated retry exposed and reproduced a Windows PowerShell 5.1
+  localized-output defect: `vswhere.exe -utf8` JSON was decoded through the
+  active Japanese console code page. The recipe now scopes strict BOM-free
+  UTF-8 decoding to that command, restores the previous decoder in `finally`,
+  and rejects capture, exit-code, or JSON failures separately.
+- The UTF-8 recipe/static-closure follow-up passed 143 focused tests. The exact
+  changed source then passed 1,238 tests: 1,236 passed, two optional skips, and
+  zero failures. No rebuilt PyTetWild wheel or attestation exists yet; the next
+  step remains a new outbound-isolated run from the committed recipe bytes.
 
 ## Current state
 
@@ -305,6 +319,13 @@ registry root is incomplete and the verified SDK root is the WOW6432Node
 candidate. An explicit `-WindowsSdkRoot` remains supported but must itself be
 the one complete root.
 
+The process-isolated controlled-build retry exposed a deterministic Windows
+PowerShell 5.1 decoding bug: `vswhere.exe -utf8` JSON containing Japanese text
+was decoded through the active console code page. The recipe now invokes that
+one command through a scoped strict BOM-free UTF-8 native-output capture and
+restores the prior `[Console]::OutputEncoding` in `finally`; a runtime
+regression emits and parses non-ASCII UTF-8 JSON and verifies restoration.
+
 For that future verified-lock stage, the `-PyTetWildAuditLogs` directory must
 contain exactly these eight direct files and nothing else:
 `visual-studio-layout-verification.log`, `build-wheel.log`,
@@ -340,6 +361,7 @@ Primary continuation paths in the source-publication checkpoint:
 - `.gitignore`
 - `BOOTSTRAP_WINDOWS.ps1`
 - `HANDOFF.md`
+- `CURRENT_STATE.json`
 - `licenses/BUILD_ENVIRONMENT_EN.md`
 - `licenses/BUILD_ENVIRONMENT_JA.md`
 - `publication/BINARY_RELEASE_HANDOFF_JA.md`
@@ -500,6 +522,9 @@ Current compliance-integration validation on exact Python 3.13.14
 - Latest full source regression after the corrected toolchain identity contract:
   1,236 tests, 1,234 passed, two optional skips, zero failures. The preceding
   1,234-test result remains the pre-toolchain-contract checkpoint.
+- Windows PowerShell 5.1 UTF-8 native-capture/static-closure/release follow-up:
+  143 focused tests passed. The final changed source regression ran 1,238
+  tests: 1,236 passed, two optional skips, and zero failures.
 - Production corresponding-source manifest validation: PASS with intended
   status `candidate-only-not-release-approved`.
 - Public-source stage: 395 files including `SOURCE_MANIFEST_SHA256.txt`, 394
@@ -550,3 +575,8 @@ Keep these outside Git and do not copy them to the public release by default:
   provenance statement when needed.
 - `C:\CMR32PYTETPROBE1\` and any later fail-closed software-stage probe output;
   these are local audit evidence only and must not be committed or published.
+- `C:\ChromaMatterToolchain\orchestration\` and
+  `C:\ChromaMatterToolchain\orchestration-runs\`; these local firewall/build
+  launchers and failed-run logs are operational evidence only. Preserve failed
+  runs, never treat them as release evidence, and do not copy them into Git or
+  a public package.
