@@ -29,7 +29,7 @@ This is more than a file-format converter. The project gives AI 3D generation a 
   </tr>
 </table>
 
-These are previously published project images linked from the author's note. The public downloadable test model and physical U1 comparison set are still in preparation; no finished-print image is presented as completed validation. The [development journal on note](https://note.com/ponkichi0718) contains the longer experiment history.
+These are previously published project images linked from the author's note. A full-body, one-piece U1 result is now documented in [ChromaMatter Sample Character — Print Results](https://note.com/ponkichi0718/n/nf6c77165127c); the exact release-bound sample, hashes, filament records, Orca/U1 profile, and comparison set are still being assembled. The [development journal on note](https://note.com/ponkichi0718) contains the longer experiment history.
 
 ## 1. One local workflow for OBJ and GLB
 
@@ -40,7 +40,18 @@ ChromaMatter accepts:
 
 Scene and node transforms are applied, supported GLB colour is baked into the existing vertex-colour pipeline, and the source model stays on the local PC. Supported multipart GLB assets retain their part structure through solidification and can be exported as a combined 3MF or one 3MF per print part. Unsupported compression, animation, skinning, external assets, and other ambiguous inputs fail closed instead of being silently approximated.
 
-## 2. Four filaments, up to 32 printable colour states
+## 2. Limited, unofficial Hi3D-style multipart GLB support (beta)
+
+ChromaMatter is independent and is not an official or affiliated Hi3D AI product. It does not claim compatibility with every file produced by Hi3D. For a supported static GLB with embedded assets, it can preserve mesh-node parts and their placement through the colour and 3MF workflow.
+
+- A categorical part-identification `COLOR_0` is suppressed only when exporter provenance, node structure, materials, a shared base-colour texture, and the known identification-palette sequence all agree. If that proof is incomplete, ordinary authored vertex colour keeps the normal glTF multiply behaviour.
+- Each source part is normalised and solidified independently. Separate parts are not welded together, and imported faces remain distinguishable from repair-generated faces.
+- A validated assembly can be exported as one combined 3MF and, when requested, as standalone 3MF files per print part with a manifest. Incomplete or stale part/provenance mapping stops safely instead of weakening validation.
+- Only proven exact seams and narrowly bounded, explicitly requested tiny planar repairs are eligible. Animation, skinning, morph targets, Draco, meshopt, BasisU, external URIs, and unsupported or ambiguous geometry remain outside this beta scope.
+
+The [public print and multipart-GLB development record](https://note.com/ponkichi0718/n/nf6c77165127c) shows why identification colours must be separated from the intended base colour and records the current per-part export path.
+
+## 3. Four filaments, up to 32 printable colour states
 
 <a href="https://note.com/ponkichi0718/n/n711977c75aa4"><img src="https://assets.st-note.com/img/1787193878-2RMCKirmlunSDIXfhzQgEHpd.png?width=1200" alt="Filament candidate library for assigning real products to F1 through F4"></a>
 
@@ -50,7 +61,7 @@ The same state order is used in the preview, 3MF, and numbered calibration chart
 
 PLA is the default. ABS and PETG support are beta. A single project does not intentionally mix different material families.
 
-## 3. Compare, calibrate, and manually refine
+## 4. Compare, calibrate, and manually refine
 
 <a href="https://note.com/ponkichi0718/n/n711977c75aa4"><img src="https://assets.st-note.com/img/1787194049-FwXqus5ArK8B4NoU1eIQYzPg.png?width=1200" alt="Numbered physical comparison chart arranged in the same order as the ChromaMatter palette"></a>
 
@@ -66,7 +77,7 @@ The main view places the original model colour beside the Full Spectrum conversi
 
 Catalogue colours and on-screen previews are estimates, not promises of physical colour. Filament translucency, walls, slopes, top layers, calibration, and integer layer switching can all change the printed result. Use a calibration chart and the Orca slice preview for final decisions.
 
-## 4. Safer 3MF export for Snapmaker Orca
+## 5. Safer 3MF export for Snapmaker Orca
 
 Before export, ChromaMatter checks the prepared geometry. An eligible GLB can safely weld apparent openings only when coincident boundary edges prove exact 1:1 reversed UV or texture seams. Supported multipart assets are normalised independently per source part, without welding separate parts together, while source and repair-generated faces remain distinguishable. Hi3D-style categorical identification colour is suppressed only when exporter, node, material, texture, and known-palette evidence all agree; ordinary authored colour remains intact. If export needs solidification, the app announces it, processes the model, and resumes only after success.
 
@@ -81,7 +92,7 @@ ChromaMatter is currently `0.8beta`.
 - Source code is public.
 - A Windows binary is not public while the [third-party binary redistribution audit](licenses/THIRD_PARTY_LICENSES.txt) is in progress.
 - A rights-cleared public test model is in preparation.
-- Physical Snapmaker U1 validation is in progress.
+- A public physical U1 result has been observed; exact release-bound reproducibility validation remains in progress.
 
 The project is independent and is not an official or affiliated product of TripoAI, Hi3D AI, Snapmaker, OpenAI, or any other third party.
 
@@ -90,5 +101,7 @@ The project is independent and is not an official or affiliated product of Tripo
 ChatGPT, OpenAI Codex, and other AI tools have been used throughout planning, specification, implementation, testing, documentation, image work, and GitHub publication. The project author makes the final decisions about behaviour, acceptance, physical validation, and release.
 
 AI-generated code and writing can contain awkward language or technical mistakes. Please verify important settings in the source, exported 3MF, Snapmaker Orca preview, and your own hardware. Reports are welcome through [GitHub Issues](https://github.com/Ponkichi0718/ChromaMatter/issues).
+
+- [Public sample-character print result and multipart GLB development record](https://note.com/ponkichi0718/n/nf6c77165127c)
 
 [Back to the English README](README.md) · [日本語の機能紹介](FEATURES_JA.md) · [Development journal](https://note.com/ponkichi0718)

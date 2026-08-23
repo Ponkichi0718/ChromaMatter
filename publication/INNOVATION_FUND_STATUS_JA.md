@@ -1,11 +1,11 @@
 # ChromaMatter — Snapmaker U1 Innovation Fund 応募準備状況
 
 更新日: 2026-08-23
-対象: `ChromaMatter — AI Model Print Studio 0.8beta` r32 candidate（以下「r32候補」）。r32は、3MF出力時の安全な自動閉立体化、手動変更したF1～F4を`現在の4色をプレビュー・3MFへ反映`で明示適用する経路、安定したFull Spectrum layer-cycle／prime-tower baselineを追加します。public version `0.8beta`、schema、アイコン、既存設定互換性は維持します。採用後r32 exact sourceはPython 3.13.14で1,244 tests中1,242 PASS／2 optional SKIP／0 FAILです。現行sourceからのclean build、packaged smoke、source/software stage、checksum、GitHub updateはpendingで、EXE path／size／hashを推測しません。r31 source-only repositoryはowner handle `Ponkichi0718`により[GitHub](https://github.com/Ponkichi0718/ChromaMatter)で公開済みですが、r31の実測値はr32へ流用しないprevious evidenceです。binary publication eligibilityは最終binary gate完了までfalse、Innovation Fund submission readyも権利処理済みsample、Orca／U1 evidence、cover／video／community postまでfalseです。
+対象: `ChromaMatter — AI Model Print Studio 0.8beta` r32 candidate（以下「r32候補」）。r32は、3MF出力時の安全な自動閉立体化、手動変更したF1～F4を`現在の4色をプレビュー・3MFへ反映`で明示適用する経路、安定したFull Spectrum layer-cycle／prime-tower baselineを追加します。public version `0.8beta`、schema、アイコン、既存設定互換性は維持します。採用後r32 exact sourceはPython 3.13.14で1,244 tests中1,242 PASS／2 optional SKIP／0 FAILです。現行sourceからのclean build、packaged smoke、source/software stage、checksum、GitHub updateはpendingで、EXE path／size／hashを推測しません。r31 source-only repositoryはowner handle `Ponkichi0718`により[GitHub](https://github.com/Ponkichi0718/ChromaMatter)で公開済みですが、r31の実測値はr32へ流用しないprevious evidenceです。全身一体の公開sampleがU1で48時間、prime tower込み約220 gで完走した観測はnoteで公開済みですが、exact r32 release、sample／3MF hash、4本のfilament、Orca版、U1 profileへ紐づくrelease-bound再現性証拠はpendingです。binary publication eligibilityは最終binary gate完了までfalse、Innovation Fund submission readyも権利処理、release同一性、cover／video／community postの全gateが揃うまでfalseです。
 
 ## 結論
 
-**r31 source-only repositoryは公開済み、r32更新はrelease gate完了までpending。Innovation Fundへの提出は「r32で実機完走した権利処理済み公開デモ」が揃うまで未readyとする。EXEは第三者binary再配布監査まで公開しない。**
+**r31 source-only repositoryとU1実機の公開観測は存在するが、r32更新はrelease gate完了までpending。Innovation Fundへの提出は、権利、exact revision／hash、Orca／U1条件、公開assetを一組にしたrelease-bound demoが揃うまで未readyとする。EXEは第三者binary再配布監査まで公開しない。**
 
 ChromaMatterは、Full Spectrumそのものを作り直すのではなく、**AI生成された頂点カラーOBJまたはUV baseColor付きGLBを、色・パーツ・陰影を生かしたSnapmaker Orca用Full Spectrum 3MFへ持ち込む前処理と修正の空白**を埋める。Hi3D AIのように頂点カラーOBJを出さずGLBを主経路とする生成サービスからも、同じ制作workflowへ直接入れる。これはU1に明確に結び付いた実用課題であり、Innovation Fundの「Innovation & Technical Depth」「Openness & Quality」「Practicality & Adaptability」の三軸と合う。
 
@@ -92,8 +92,9 @@ r31以前のevidenceはr32へ適用しない。r31のsource regression／clean b
 - [再出力: 黒補正、toolhead XY／flow calibrationで改善](https://note.com/ponkichi0718/n/n628186c33d88)
 - [全身造形の完結報告: 材質感と色味、残る黒積層、接着面の課題](https://note.com/ponkichi0718/n/n36b89097dad8)
 - [公開サンプルの生成と最終出力開始](https://note.com/ponkichi0718/n/nad23088e6f2d)
+- [公開sampleの実機結果: 全身一体48時間／約220 g、残るsupport・台座・色境界、分割GLB対応](https://note.com/ponkichi0718/n/nf6c77165127c)
 
-これは「実機に触れていない概念実証」ではない。ただし応募証拠としては、各記事の写真と設定が同一revision、同一3MF、同一filament lotへ追跡できる形にまだ整理されていない。r32 exact buildに紐づく公開デモで、同じ流れを一度通し直す必要がある。
+これは「実機に触れていない概念実証」ではない。全身一体sampleは48時間、prime tower込み約220 gで完走し、通常の鑑賞距離では意図したグラフィック調の陰影が形と奥行きとして読めた。一方、背面support跡、台座の緩さ、近接時の色境界を課題として隠さず記録している。ただし応募証拠としては、記事の写真と設定が同一revision、同一3MF、同一filament lotへ追跡できる形にまだ整理されていない。r32 exact releaseに紐づく公開デモとして同じ流れを一度通し直す必要がある。
 
 ## 類似応募との比較と差別化
 
@@ -141,9 +142,9 @@ r31以前のevidenceはr32へ適用しない。r31のsource regression／clean b
 - 現在出力中のsampleが既存robot作品を連想させる状態のまま、由来・prompt・Tripo plan・再配布権を確認せず公開する。
 - EXE license監査が未完了なのにbinaryを先に配る。
 
-## 現在出力中の公開サンプルの使い方
+## 公開実機sampleの使い方
 
-完成後は、最終写真を応募coverと動画のhero shot候補にする。ただし次の条件を満たす場合だけ使用する。
+完成写真と動画は公開済みの観測記録として使用できる。ただしInnovation Fundの主coverとrelease-bound demoへ使うのは、次の条件を満たす場合だけとする。
 
 1. 正面・背面・左右・45度、同一照明・white balance・背景で撮影する。
 2. 元2D、OBJ／GLB preview、ChromaMatter変換preview、Orca layer preview、完成品を同じ向きで並べる。
@@ -195,11 +196,12 @@ r31以前のevidenceはr32へ適用しない。r31のsource regression／clean b
 
 1. **Public GitHub**: source、README日英、LICENSE、PROVENANCE、setup、合成sample、tests、known limitations
 2. **640×360 cover**: 元2D／AI GLB・OBJ／U1完成品の3分割。文字は「4 Filaments / AI 3D Color / Full Spectrum 3MF」程度
-3. **90秒hero video**: 完成品→入力→自動変換→1箇所手修正→chart→Orca→print。日英字幕
-4. **3～5分technical demo**: part palette、16／24／32、黒補正、portable restore、per-part 3MF、Orca reopen
-5. **一枚architecture図**: Vertex Color OBJ / UV baseColor GLB → palette fitting → canonical states → manual overrides → Snapmaker 3MF
-6. **validation表**: version／commit、tests、sample hash、Orca版、U1条件、成功・既知問題
-7. **community post**: noteまとめ＋Snapmaker Forum英語投稿＋GitHub issue導線
+3. **シンプルな使い方（約2分）**: [Release asset `ChromaMatter-simple-workflow-demo.mp4`](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32/ChromaMatter-simple-workflow-demo.mp4)。対応OBJ／GLB→サイズ・形状準備→Full Spectrum 3MF export／validation→Snapmaker Orcaでproject open／slice→U1 print。125.33秒、1920×1080、H.264／AAC、132,164,241 bytesのためGit treeへ入れず、最終Releaseで他assetと同時uploadする
+4. **90秒hero video**: 完成品→入力→自動変換→1箇所手修正→chart→Orca→print。日英字幕
+5. **3～5分technical demo**: part palette、16／24／32、黒補正、portable restore、per-part 3MF、Orca reopen
+6. **一枚architecture図**: Vertex Color OBJ / UV baseColor GLB → palette fitting → canonical states → manual overrides → Snapmaker 3MF
+7. **validation表**: version／commit、tests、sample hash、Orca版、U1条件、成功・既知問題
+8. **community post**: noteまとめ＋Snapmaker Forum英語投稿＋GitHub issue導線
 
 応募categoryは、現在の価値を最も表す`3D Model Editor`を第一候補、選択肢に無ければ`Software`とする。`3MF Converter`だけではManual Editing、part palette、calibrationの価値が伝わりにくい。
 
@@ -227,6 +229,7 @@ r31以前のevidenceはr32へ適用しない。r31のsource regression／clean b
 - [ ] 応募sampleの権利記録と第三者IP確認を完了した
 - [ ] 公開sampleでOrca open→slice→save→reopenを完走した
 - [ ] 同じsampleをU1で完走し、完成写真、条件、失敗／制限を公開した
+- [ ] `ChromaMatter-simple-workflow-demo.mp4`を最終Releaseへ同時uploadし、sign-in不要の公開URLとchecksumを確認した
 - [ ] cover、short description、90秒video、forum postを公開URLから閲覧できる
 
 ### NO-GO／Phase 2へ送る条件

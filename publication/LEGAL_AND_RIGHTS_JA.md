@@ -147,6 +147,14 @@ OpenAI の利用規約上、OpenAI と利用者の関係では、法令上許さ
 
 「ファイルをダウンロード配布しない」ことはリスクを下げますが、動画公開の権利確認を不要にはしません。詳細は [PRIVATE_SAMPLE_POLICY_JA.md](PRIVATE_SAMPLE_POLICY_JA.md) に定めます。
 
+2026-08-23、project ownerは約2分の操作動画
+`ChromaMatte -AI model print studio-.mp4`を自ら提供し、ChromaMatterのGitHubおよび
+Innovation Fund向け資料へ「シンプルな使い方」として掲載することを明示的に承認しました。
+公開時のasset名は`ChromaMatter-simple-workflow-demo.mp4`とし、Git履歴やsoftware ZIPへは
+入れず、GitHub Releaseの独立assetとしてchecksum対象にします。この承認は動画ファイルの
+掲載範囲を記録するものであり、映像内に現れる第三者製品・serviceとの提携や、元モデルを
+ダウンロード再配布する権利を意味しません。
+
 ## 6. 現時点の公開判定
 
 | 項目 | 現在の判断 | 公開前に必要なこと |

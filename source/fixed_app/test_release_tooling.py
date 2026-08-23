@@ -30,6 +30,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 AUDIT_SCRIPT = REPO_ROOT / "tooling" / "audit_public_tree.ps1"
 SOURCE_STAGE_SCRIPT = REPO_ROOT / "tooling" / "stage_public_source.ps1"
 SOFTWARE_STAGE_SCRIPT = REPO_ROOT / "tooling" / "stage_software_package.ps1"
+SOFTWARE_ZIP_MODULE = REPO_ROOT / "tooling" / "SoftwareZipContract.psm1"
 BUILD_SCRIPT = REPO_ROOT / "BUILD_AND_TEST.ps1"
 BOOTSTRAP_SCRIPT = REPO_ROOT / "BOOTSTRAP_WINDOWS.ps1"
 PYTETWILD_BUILD_RECIPE = REPO_ROOT / "tooling" / "BUILD_PYTETWILD_WINDOWS.ps1"
@@ -76,6 +77,40 @@ def _run_powershell(
         errors="replace",
         env=environment,
     )
+
+
+def _run_software_zip_audit(
+    archive: Path,
+    *,
+    expected_root: str = "package",
+) -> subprocess.CompletedProcess[str]:
+    wrapper = archive.parent / "audit-software-zip.ps1"
+    wrapper.write_text(
+        """param(
+    [Parameter(Mandatory = $true)][string]$ModulePath,
+    [Parameter(Mandatory = $true)][string]$ArchivePath,
+    [Parameter(Mandatory = $true)][string]$ExpectedRoot
+)
+$ErrorActionPreference = "Stop"
+Import-Module -Name $ModulePath -Force -ErrorAction Stop
+Test-CanonicalSoftwareZip `
+    -ArchivePath $ArchivePath `
+    -ExpectedRootName $ExpectedRoot | Out-Null
+""",
+        encoding="utf-8",
+    )
+    try:
+        return _run_powershell(
+            wrapper,
+            "-ModulePath",
+            str(SOFTWARE_ZIP_MODULE),
+            "-ArchivePath",
+            str(archive),
+            "-ExpectedRoot",
+            expected_root,
+        )
+    finally:
+        wrapper.unlink(missing_ok=True)
 
 
 def _manifest_line(path: str, content: bytes) -> str:
@@ -2269,9 +2304,24 @@ class SoftwarePackageStageTests(unittest.TestCase):
                 self.assertNotIn("PROVENANCE", readme)
             extracted = root / "independent-extract"
             with ZipFile(archive) as package:
+                members = package.infolist()
                 file_names = {
-                    name for name in package.namelist() if not name.endswith("/")
+                    member.filename
+                    for member in members
+                    if not member.is_dir()
                 }
+                self.assertTrue(members)
+                for member in members:
+                    with self.subTest(zip_member=member.filename):
+                        self.assertEqual(member.orig_filename, member.filename)
+                        self.assertNotIn("\\", member.filename)
+                        self.assertNotIn("\x00", member.orig_filename)
+                        self.assertFalse(member.flag_bits & 0x41)
+                        self.assertFalse(member.is_dir())
+                        self.assertEqual(
+                            stat.S_IFMT(member.external_attr >> 16),
+                            stat.S_IFREG,
+                        )
                 package.extractall(extracted)
             prefix = f"{destination.name}/"
             self.assertTrue(file_names)
@@ -2286,6 +2336,165 @@ class SoftwarePackageStageTests(unittest.TestCase):
                 "SOFTWARE_PACKAGE_SHA256.txt",
             )
             self.assertIn("Software archive verified after extraction", output)
+
+    def test_software_zip_audit_rejects_unsafe_original_members(self) -> None:
+        def write_archive(
+            path: Path,
+            members: tuple[tuple[str, int], ...],
+        ) -> None:
+            with ZipFile(path, "w", compression=ZIP_DEFLATED) as package:
+                for name, mode in members:
+                    info = ZipInfo(name)
+                    info.compress_type = ZIP_DEFLATED
+                    info.create_system = 3
+                    info.external_attr = mode << 16
+                    package.writestr(info, b"payload")
+
+        def patch_all(raw: bytes, old: bytes, new: bytes) -> bytes:
+            self.assertEqual(len(old), len(new))
+            self.assertIn(old, raw)
+            return raw.replace(old, new)
+
+        def set_encryption_flag(raw: bytes) -> bytes:
+            payload = bytearray(raw)
+            signatures = ((b"PK\x03\x04", 6), (b"PK\x01\x02", 8))
+            for signature, relative_offset in signatures:
+                offset = 0
+                matches = 0
+                while True:
+                    offset = payload.find(signature, offset)
+                    if offset < 0:
+                        break
+                    flag_offset = offset + relative_offset
+                    flags = int.from_bytes(
+                        payload[flag_offset : flag_offset + 2],
+                        "little",
+                    )
+                    payload[flag_offset : flag_offset + 2] = (
+                        flags | 0x0001
+                    ).to_bytes(2, "little")
+                    matches += 1
+                    offset += 4
+                self.assertGreater(matches, 0)
+            return bytes(payload)
+
+        cases: tuple[
+            tuple[
+                str,
+                tuple[tuple[str, int], ...],
+                str,
+                object | None,
+            ],
+            ...,
+        ] = (
+            (
+                "backslash",
+                (("package/evil.txt", stat.S_IFREG | 0o644),),
+                "not a canonical POSIX relative path",
+                lambda raw: patch_all(
+                    raw,
+                    b"package/evil.txt",
+                    b"package\\evil.txt",
+                ),
+            ),
+            (
+                "traversal",
+                (("package/../evil.txt", stat.S_IFREG | 0o644),),
+                "unsafe Windows path segment",
+                None,
+            ),
+            (
+                "absolute",
+                (("/package/evil.txt", stat.S_IFREG | 0o644),),
+                "not a canonical POSIX relative path",
+                None,
+            ),
+            (
+                "drive",
+                (("C:/package/evil.txt", stat.S_IFREG | 0o644),),
+                "not a canonical POSIX relative path",
+                None,
+            ),
+            (
+                "casefold duplicate",
+                (
+                    ("package/File.txt", stat.S_IFREG | 0o644),
+                    ("package/file.txt", stat.S_IFREG | 0o644),
+                ),
+                "Duplicate casefold-equivalent software ZIP member",
+                None,
+            ),
+            (
+                "symlink",
+                (("package/link", stat.S_IFLNK | 0o777),),
+                "symlink member is forbidden",
+                None,
+            ),
+            (
+                "special",
+                (("package/fifo", stat.S_IFIFO | 0o644),),
+                "special member is forbidden",
+                None,
+            ),
+            (
+                "encrypted",
+                (("package/encrypted.txt", stat.S_IFREG | 0o644),),
+                "Encrypted software ZIP member is forbidden",
+                set_encryption_flag,
+            ),
+            (
+                "NUL in raw original name",
+                (("package/good.txt", stat.S_IFREG | 0o644),),
+                "empty or NUL-containing original name",
+                lambda raw: patch_all(
+                    raw,
+                    b"package/good.txt",
+                    b"package/go\x00d.txt",
+                ),
+            ),
+            (
+                "local-central raw-name mismatch",
+                (("package/good.txt", stat.S_IFREG | 0o644),),
+                "local and central original names or flags disagree",
+                lambda raw: raw.replace(
+                    b"package/good.txt",
+                    b"package/evil.txt",
+                    1,
+                ),
+            ),
+        )
+
+        for label, members, expected_error, mutate in cases:
+            with self.subTest(case=label), tempfile.TemporaryDirectory() as temporary:
+                archive = Path(temporary) / "unsafe.zip"
+                write_archive(archive, members)
+                if mutate is not None:
+                    archive.write_bytes(mutate(archive.read_bytes()))
+
+                result = _run_software_zip_audit(archive)
+
+                output = result.stdout + result.stderr
+                self.assertNotEqual(result.returncode, 0, output)
+                self.assertIn(expected_error, output)
+
+    def test_software_stage_uses_canonical_zip_module_before_extracting(self) -> None:
+        stage = SOFTWARE_STAGE_SCRIPT.read_text(encoding="utf-8")
+        module = SOFTWARE_ZIP_MODULE.read_text(encoding="utf-8")
+        self.assertNotIn("CreateFromDirectory", stage)
+        self.assertIn('"SoftwareZipContract.psm1"', stage)
+        self.assertLess(
+            stage.index("Test-CanonicalSoftwareZip"),
+            stage.index("ExtractToDirectory"),
+        )
+        for contract in (
+            "local and central original names or flags disagree",
+            "Duplicate casefold-equivalent software ZIP member",
+            "Encrypted software ZIP member is forbidden",
+            "Software ZIP symlink member is forbidden",
+            "Software ZIP special member is forbidden",
+        ):
+            with self.subTest(contract=contract):
+                self.assertIn(contract, module)
 
     def test_complete_corresponding_source_gate_fails_closed(self) -> None:
         cases = (
@@ -2952,6 +3161,7 @@ class SoftwarePackageStageTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn('"tooling/stage_software_package.ps1"', stage)
+        self.assertIn('"tooling/SoftwareZipContract.psm1"', stage)
         self.assertIn('"tooling/stage_corresponding_source.py"', stage)
         self.assertIn('"tooling/stage_corresponding_source.ps1"', stage)
         self.assertIn('"tooling/corresponding_source_components.json"', stage)
@@ -3082,6 +3292,7 @@ class SoftwarePackageStageTests(unittest.TestCase):
             "!tooling/stage_corresponding_source.py",
             "!tooling/stage_corresponding_source.ps1",
             "!tooling/stage_software_package.ps1",
+            "!tooling/SoftwareZipContract.psm1",
         ):
             with self.subTest(required_negation=required_negation):
                 self.assertIn(required_negation, gitignore.splitlines())
@@ -3192,6 +3403,10 @@ class PublicSourceStageRollbackTests(unittest.TestCase):
         shutil.copy2(
             SOFTWARE_STAGE_SCRIPT,
             tooling / SOFTWARE_STAGE_SCRIPT.name,
+        )
+        shutil.copy2(
+            SOFTWARE_ZIP_MODULE,
+            tooling / SOFTWARE_ZIP_MODULE.name,
         )
         shutil.copy2(
             REPO_ROOT / "tooling" / "stage_corresponding_source.py",

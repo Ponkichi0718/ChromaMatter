@@ -18,6 +18,8 @@ If Windows displays a protection warning, first verify the SHA-256 on the offici
 - Windows x64 is supported.
 - OBJ vertex colour is expected in `v x y z r g b` form.
 - GLB support targets static embedded base colour and `COLOR_0`. Animation, skinning, morph targets, Draco, meshopt, BasisU, and external URIs are unsupported.
+- Hi3D-style multipart GLB support is beta and unofficial. ChromaMatter suppresses categorical part-identification `COLOR_0` only when exporter, node, material, shared-texture, and known-palette evidence all agree; otherwise ordinary authored colour is preserved.
+- For an eligible multipart GLB, source parts are solidified independently without welding separate parts together, then may be exported as one combined 3MF and optional standalone 3MF files per print part. Unsupported or ambiguous files stop safely; compatibility with every Hi3D export is not guaranteed.
 - Displayed and printed colour are not guaranteed to match. Use a comparison chart and test print with the same materials and production conditions.
 - Solidify acts only when its safety conditions can be proven. Displaying a model does not guarantee automatic repair or printability.
 - Preparing, solidifying, and manually editing large models can require substantial time and memory.

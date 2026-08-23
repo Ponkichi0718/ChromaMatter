@@ -13,6 +13,14 @@ ChromaMatter — AI Model Print Studioは、AI生成された頂点カラー付�
 - [画像で見る主な機能と制作フロー](FEATURES_JA.md)
 - [試作・失敗・実機調整を含む開発記録（note）](https://note.com/ponkichi0718)
 
+## 実機出力結果
+
+全身一体の公開sampleは、Snapmaker U1で**48時間**、prime tower込み**約220 g**で完走しました。意図したグラフィック調の陰影は、通常の鑑賞距離では形と奥行きとして読み取れます。一方で、背面のsupport跡、台座の緩さ、近くで見たときに色境界が整って見えにくい箇所が残りました。結果と動画は[ChromaMatter サンプルキャラ出力編](https://note.com/ponkichi0718/n/nf6c77165127c)で公開しています。
+
+[シンプルな使い方（約2分・Release asset）](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32/ChromaMatter-simple-workflow-demo.mp4)では、対応OBJ／GLBの読込、サイズ・形状準備、Full Spectrum 3MFの出力・検証、Snapmaker Orcaでprojectとして開いてsliceする手順、U1での造形までを一続きで確認できます。
+
+これは実機で確認した観測結果ですが、正式releaseに紐づく再現性証拠はまだ整理中です。exact r32 release revision、sample／3MF hash、4本のfilament記録、Snapmaker Orca版、U1 profileを一組として引き続き検証します。
+
 公開表示versionは利用者指定どおり`0.8beta`に固定し、editionを`AI Model Print Studio r32`、artifact slugを`r32-ai-model-print-studio`とします。Windowsの数値versionも`0.8.0.0`のままです。
 
 ## AI Model Print Studio r32

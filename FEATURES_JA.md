@@ -14,6 +14,17 @@ ChromaMatter — AI Model Print Studioは、AI生成された色付き3Dモデ�
 
 頂点カラー付きOBJ、または埋め込みbaseColor／`COLOR_0`を持つ静的GLBを読み込めます。TripoAIだけでなく、Hi3D AIのようにGLBを出力するサービスも同じ制作フローへ取り込めます。対応する分割GLBはパーツ構成を保ったまま閉立体化し、結合3MFまたはパーツ別3MFへ出力できます。モデルの処理はローカルで行い、ChromaMatterから外部サーバーへアップロードしません。
 
+## Hi3D系分割GLB対応（β・非公式）
+
+ChromaMatterは独立projectであり、Hi3D AIの公式・提携製品ではありません。Hi3Dから出力されるすべてのfileとの互換性を保証するものではありません。対応する静的・埋込assetのGLBに限り、mesh node単位のpartと配置を保って、色変換と3MF出力へ進めます。
+
+- パーツ識別用の`COLOR_0`は、exporter由来、node構造、material、共通baseColor texture、既知の識別palette順がすべて一致した場合だけ除外します。証明が不足する場合、通常の作者指定頂点色はglTF標準どおりbaseColorへ乗算して保持します。
+- 元のpartは一つずつ正規化・閉立体化し、別part同士を溶接しません。importした面と修復で追加した面も区別して追跡します。
+- 検証に合格したassemblyは、結合3MFに加えて、指定時には各印刷partの独立3MFとmanifestを出力できます。part対応やprovenanceが不完全・古い場合は、検証を弱めず安全停止します。
+- exactに証明できたseamと、利用者が明示した上限内の微小平面修復だけが対象です。animation、skin、morph、Draco、meshopt、BasisU、外部URI、曖昧または非対応のgeometryはβ対応外です。
+
+[公開sampleの実機結果と分割GLBの開発記録](https://note.com/ponkichi0718/n/nf6c77165127c)では、識別色を本来のbaseColorから分離する必要性と、現在のpart別出力経路を記録しています。
+
 <table>
   <tr>
     <td width="50%"><a href="https://note.com/ponkichi0718/n/nad23088e6f2d"><img src="https://assets.st-note.com/img/1787038136-QYcX12yPUL4fzm5RWZNbiEqM.jpg?width=1200" alt="AIで生成したオリジナルの赤いロボットの元画像"></a></td>
@@ -93,6 +104,7 @@ AI 3D生成は、専門的なモデリング技術がなくても「作りたい
 
 - [ChromaMatterへの改名と現行機能](https://note.com/ponkichi0718/n/n711977c75aa4)
 - [公開用オリジナルモデルをAIで作る工程](https://note.com/ponkichi0718/n/nad23088e6f2d)
+- [公開sampleの実機結果と分割GLB対応](https://note.com/ponkichi0718/n/nf6c77165127c)
 - [このソフトを作り始めた理由と初期機能](https://note.com/ponkichi0718/n/nc7f466bf8078)
 
 > **AI利用について：** ChromaMatterは、企画整理、仕様設計、実装、テスト、文書化、画像制作、GitHub公開作業の各段階でChatGPT／OpenAI CodexなどのAIを活用しています。最終的な仕様、採否、実機検証、公開判断はプロジェクト作者が行っています。AI生成のコード、画像、説明文には、不自然な表現や技術的な誤りが残る可能性があります。重要な印刷設定はソース、生成3MF、スライサープレビュー、ご自身の実機で確認してください。お気づきの点は[GitHub Issues](https://github.com/Ponkichi0718/ChromaMatter/issues)でお知らせください。

@@ -287,7 +287,7 @@ powershell.exe -ExecutionPolicy Bypass -File .\tooling\stage_software_package.ps
   -CorrespondingSourceManifestPath $sourceManifest `
   -CorrespondingSourceArchiveSha256 $sourceSha256 `
   -CorrespondingSourceProjectCommit $projectCommit `
-  -CorrespondingSourceUrl https://github.com/Ponkichi0718/ChromaMatter/releases/download/TAG/ChromaMatter-0.8beta-r32-complete-corresponding-source.zip
+  -CorrespondingSourceUrl https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32/ChromaMatter-0.8beta-r32-complete-corresponding-source.zip
 ```
 
 verified rebuild lockを渡す場合、`-PyTetWildRawWheel`と
@@ -308,7 +308,13 @@ attestationの`output.audit_logs`と照合してから
   `SOURCE_OFFER`にも全partの取得方法を明記する）
 - `ChromaMatter-0.8beta-r32-SBOM.cdx.json`
 - `ChromaMatter-0.8beta-r32-BINARY_COMPONENT_MAP.json`
+- `ChromaMatter-simple-workflow-demo.mp4`
+  （約2分の補助動画。OBJ／GLB読込から3MF出力、Snapmaker Orcaでのslice、
+  U1造形までの基本workflowを示す。software ZIPには同梱しない）
 - `SHA256SUMS-r32.txt`
+
+公開tagは `v0.8beta-r32`、上記asset名は大文字小文字を含めて固定する。
+`SHA256SUMS-r32.txt` は補助動画を含む手動添付assetをすべて記録する。
 
 GitHubが自動生成する `Source code (zip)` はsubmoduleを含まないため、第三者対応ソースの
 代用にしない。完全な対応ソースbundleのimmutable HTTPS最終Release URLを

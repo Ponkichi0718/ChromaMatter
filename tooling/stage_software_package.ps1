@@ -19,6 +19,10 @@ $ErrorActionPreference = "Stop"
 Import-Module Microsoft.PowerShell.Utility -ErrorAction Stop
 
 $repoRoot = (Get-Item -LiteralPath (Split-Path -Parent $PSScriptRoot)).FullName
+Import-Module `
+    (Join-Path $PSScriptRoot "SoftwareZipContract.psm1") `
+    -Force `
+    -ErrorAction Stop
 $builtRoot = (Get-Item -LiteralPath $BuiltAppRoot -ErrorAction Stop).FullName
 if (-not (Test-Path -LiteralPath $builtRoot -PathType Container)) {
     throw "Built application root is not a directory: $BuiltAppRoot"
@@ -2912,13 +2916,44 @@ try {
         -Root $stagingRoot `
         -ManifestName $manifestName
 
-    Add-Type -AssemblyName System.IO.Compression.FileSystem
-    [System.IO.Compression.ZipFile]::CreateFromDirectory(
-        $stagingRoot,
-        $archiveTemporary,
-        [System.IO.Compression.CompressionLevel]::Optimal,
-        $true
+    $stagingPrefix = (
+        $stagingRoot.TrimEnd([char[]]"\/") +
+        [System.IO.Path]::DirectorySeparatorChar
     )
+    $expectedArchiveRelativeFiles = @(
+        Get-ChildItem -LiteralPath $stagingRoot -Recurse -Force -File |
+            ForEach-Object {
+                if (-not $_.FullName.StartsWith(
+                    $stagingPrefix,
+                    [System.StringComparison]::OrdinalIgnoreCase
+                )) {
+                    throw "Software ZIP input escaped the staging root: $($_.FullName)"
+                }
+                $_.FullName.Substring($stagingPrefix.Length).Replace("\", "/")
+            } |
+            Sort-Object -CaseSensitive
+    )
+    $createdArchiveFileCount = New-CanonicalSoftwareZip `
+        -Root $stagingRoot `
+        -ArchivePath $archiveTemporary `
+        -RootName $destinationLeaf
+    if ($createdArchiveFileCount -ne $expectedArchiveRelativeFiles.Count) {
+        throw (
+            "Software ZIP creation file count changed: " +
+            "$($expectedArchiveRelativeFiles.Count) -> $createdArchiveFileCount"
+        )
+    }
+    $auditedArchiveFileCount = Test-CanonicalSoftwareZip `
+        -ArchivePath $archiveTemporary `
+        -ExpectedRootName $destinationLeaf `
+        -ExpectedRelativeFiles $expectedArchiveRelativeFiles
+    if ($auditedArchiveFileCount -ne $createdArchiveFileCount) {
+        throw (
+            "Software ZIP audit file count changed: " +
+            "$createdArchiveFileCount -> $auditedArchiveFileCount"
+        )
+    }
+
     New-Item -ItemType Directory -Path $verificationContainer | Out-Null
     [System.IO.Compression.ZipFile]::ExtractToDirectory(
         $archiveTemporary,

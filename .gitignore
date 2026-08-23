@@ -90,6 +90,7 @@ tooling/*
 !tooling/stage_corresponding_source.ps1
 !tooling/stage_public_source.ps1
 !tooling/stage_software_package.ps1
+!tooling/SoftwareZipContract.psm1
 
 # OBJ files are private by default; explicitly authored public fixtures may be
 # kept below samples/ or as the existing test tetrahedron.

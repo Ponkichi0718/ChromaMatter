@@ -629,7 +629,8 @@ class ReleaseIdentityTests(unittest.TestCase):
             "**Windows binary:** Not yet public",
             "final release-engineering gates",
             "**Public test model:** In preparation",
-            "**Physical U1 validation:** In progress",
+            "**Physical U1 validation:** Public print observed; "
+            "release-bound reproducibility validation in progress",
             "## Four things ChromaMatter does",
             "## Quick Start",
             "## Technical details",
@@ -669,10 +670,33 @@ class ReleaseIdentityTests(unittest.TestCase):
                 with self.subTest(image_source=source):
                     self.assertIn(source, allowed_image_sources)
             self.assertNotIn("decal", document.casefold())
+        self.assertIn("## Physical U1 result", readme)
+        self.assertIn("48 hours", readme)
+        self.assertIn("220 g including the prime tower", readme)
         self.assertIn(
-            "no finished-print image is presented as validated evidence yet",
+            "not yet release-bound reproducibility evidence",
             readme,
         )
+        self.assertIn(
+            "ChromaMatter-simple-workflow-demo.mp4",
+            readme,
+        )
+        self.assertIn(
+            "## 2. Limited, unofficial Hi3D-style multipart GLB support (beta)",
+            features,
+        )
+        self.assertIn("It does not claim compatibility with every file", features)
+        self.assertIn("nf6c77165127c", features)
+
+        japanese_features = read_text(REPO_ROOT / "FEATURES_JA.md")
+        self.assertIn("## Hi3D系分割GLB対応（β・非公式）", japanese_features)
+        self.assertIn("すべてのfileとの互換性を保証するものではありません", japanese_features)
+        self.assertIn("nf6c77165127c", japanese_features)
+
+        binary_en = read_text(FIXED_APP / "public_binary" / "README_EN.md")
+        binary_ja = read_text(FIXED_APP / "public_binary" / "README_JA.md")
+        self.assertIn("Hi3D-style multipart GLB support is beta and unofficial", binary_en)
+        self.assertIn("Hi3D系分割GLB対応はβ・非公式", binary_ja)
 
 
 if __name__ == "__main__":

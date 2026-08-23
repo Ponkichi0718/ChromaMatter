@@ -115,7 +115,8 @@ $requiredToolingFiles = @(
     "tooling/stage_corresponding_source.py",
     "tooling/stage_corresponding_source.ps1",
     "tooling/stage_public_source.ps1",
-    "tooling/stage_software_package.ps1"
+    "tooling/stage_software_package.ps1",
+    "tooling/SoftwareZipContract.psm1"
 )
 $optionalToolingFiles = @(
     "tooling/build_mixer_model.py"

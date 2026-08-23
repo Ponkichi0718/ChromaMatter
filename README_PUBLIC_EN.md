@@ -23,7 +23,13 @@
   </tr>
 </table>
 
-**Physical U1 print validation is in progress, so no finished-print image is presented as validated evidence yet.**
+## Physical U1 result
+
+A public full-body, one-piece sample completed on a Snapmaker U1 in **48 hours** and used about **220 g including the prime tower**. At normal viewing distance, its deliberately graphic shading reads as form and depth. The recorded limitations are rear support scarring, a loose stand, and colour boundaries that can look less clean at close range. See [ChromaMatter Sample Character — Print Results](https://note.com/ponkichi0718/n/nf6c77165127c) for the result and video.
+
+The [Simple Workflow Demo (about two minutes, Release asset)](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32/ChromaMatter-simple-workflow-demo.mp4) shows the public path from a compatible OBJ/GLB through size and geometry preparation, Full Spectrum 3MF export and validation, opening and slicing the project in Snapmaker Orca, and the U1 print.
+
+This is a practical print observation, not yet release-bound reproducibility evidence. The exact r32 release revision, sample and 3MF hashes, four filament records, Snapmaker Orca version, and U1 profile are still being assembled and verified together.
 
 ChromaMatter is an independent Windows desktop project. It is not an official or affiliated product of TripoAI, Hi3D AI, Snapmaker, OpenAI, or any other third party.
 
@@ -33,7 +39,7 @@ ChromaMatter is an independent Windows desktop project. It is not an official or
 - **Windows binary:** Not yet public
 - **Reason:** Component-specific licence/static-link coverage is implemented; the final release-engineering gates below are pending
 - **Public test model:** In preparation
-- **Physical U1 validation:** In progress
+- **Physical U1 validation:** Public print observed; release-bound reproducibility validation in progress
 - **Version:** `0.8beta`
 
 ## Four things ChromaMatter does
@@ -43,7 +49,7 @@ ChromaMatter is an independent Windows desktop project. It is not an official or
 3. **Lets you inspect and refine the result.** Compares source colour with converted colour, supports 3D manual editing, and explicitly applies experimental F1-F4 changes to both preview and 3MF.
 4. **Exports a safer Orca project.** Performs topology checks, safely welds only proven seams when eligible, and records a conservative Full Spectrum layer-cycle and prime-tower baseline.
 
-[See the visual feature overview](FEATURES_EN.md) · [Read the Japanese development journal on note](https://note.com/ponkichi0718)
+[See the visual feature overview](FEATURES_EN.md) · [Read the public print result](https://note.com/ponkichi0718/n/nf6c77165127c) · [Read the Japanese development journal on note](https://note.com/ponkichi0718)
 
 ## Quick Start
 
