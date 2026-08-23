@@ -45,9 +45,14 @@ class PackagedRadialSmokeTests(unittest.TestCase):
         self.assertEqual(excluded, {"resvg", "resvg._resvg"})
         self.assertTrue({"resvg", "resvg._resvg"}.isdisjoint(hidden_imports))
         self.assertIn("spectrum_mapper.decal_image", hidden_imports)
+        self.assertIn("def is_source_only_resvg_metadata(entry):", spec_text)
+        self.assertIn(
+            'destination == "resvg-0.2.0.dist-info"',
+            spec_text,
+        )
+        self.assertIn("and not is_source_only_resvg_metadata(entry)", spec_text)
         for removed_runtime_asset in (
             "RESVG_DATAS",
-            "resvg-0.2.0.dist-info",
             "licenses/resvg-py",
             "LICENSE_RESVG_PY.txt",
             "LICENSE_RESVG_MIT.txt",
