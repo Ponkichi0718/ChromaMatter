@@ -1292,10 +1292,15 @@ if (-not $rejected) {{ throw 'Incomplete explicit SDK root was accepted' }}
 
     def test_build_inputs_are_explicitly_public_tree_candidates(self) -> None:
         ignored = (REPO_ROOT / ".gitignore").read_text(encoding="utf-8")
+        attributes = (REPO_ROOT / ".gitattributes").read_text(encoding="utf-8")
         self.assertIn("!tooling/BUILD_PYTETWILD_WINDOWS.ps1", ignored)
         self.assertIn("!tooling/requirements-pytetwild-build.lock", ignored)
         self.assertIn(
             "!tooling/patches/pytetwild-0.3.0-optional-pyvista.patch", ignored
+        )
+        self.assertIn(
+            "tooling/requirements-pytetwild-build.lock text eol=lf",
+            attributes,
         )
         lock = PYTETWILD_BUILD_LOCK.read_text(encoding="utf-8")
         lock_sha256 = hashlib.sha256(PYTETWILD_BUILD_LOCK.read_bytes()).hexdigest()
