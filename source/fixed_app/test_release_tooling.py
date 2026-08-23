@@ -18,7 +18,7 @@ import tempfile
 import types
 import unittest
 from unittest import mock
-from zipfile import ZipFile, ZipInfo
+from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -489,6 +489,7 @@ class ControlledPyTetWildBuildRecipeTests(unittest.TestCase):
         *,
         phase: str,
         extra_members: tuple[tuple[str | ZipInfo, bytes], ...] = (),
+        include_directory_rows: bool = False,
     ) -> None:
         dist_info = "pytetwild-0.3.0.dist-info"
         members: list[tuple[str | ZipInfo, bytes]] = [
@@ -506,6 +507,8 @@ class ControlledPyTetWildBuildRecipeTests(unittest.TestCase):
         rows: list[list[str]] = []
         for member, data in members:
             name = member.filename if isinstance(member, ZipInfo) else member
+            if name.endswith("/") and not include_directory_rows:
+                continue
             digest = base64.urlsafe_b64encode(hashlib.sha256(data).digest()).decode(
                 "ascii"
             ).rstrip("=")
@@ -896,6 +899,90 @@ try {{
                     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                     self.assertIn("verified RECORD", result.stdout)
 
+    def test_wheel_record_probe_accepts_safe_repaired_explicit_directories(
+        self,
+    ) -> None:
+        dist_info = "pytetwild-0.3.0.dist-info"
+        directory_members = (
+            ("pytetwild/", b""),
+            ("pytetwild.libs/", b""),
+            ("pytetwild.libs/mpir-test.dll", b"dll"),
+            (f"{dist_info}/licenses/", b""),
+            (f"{dist_info}/licenses/LICENSE", b"license"),
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            wheel = root / "repaired-directories.whl"
+            self._write_probe_wheel(
+                wheel,
+                phase="repaired",
+                extra_members=directory_members,
+            )
+            result = self._run_wheel_record_probe(wheel, "repaired")
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn("verified RECORD", result.stdout)
+
+    def test_wheel_record_probe_rejects_raw_and_orphan_directories(self) -> None:
+        bad_mode = ZipInfo("pytetwild/")
+        bad_mode.create_system = 3
+        bad_mode.external_attr = ((stat.S_IFREG | 0o644) << 16) | 0x10
+        compressed = ZipInfo("pytetwild/")
+        compressed.create_system = 3
+        compressed.external_attr = ((stat.S_IFDIR | 0o755) << 16) | 0x10
+        compressed.compress_type = ZIP_DEFLATED
+        cases = (
+            ("raw", "raw", (("pytetwild/", b""),), False, "unsafe wheel member"),
+            (
+                "orphan",
+                "repaired",
+                (("orphan/", b""),),
+                False,
+                "orphan directory member",
+            ),
+            (
+                "bad-mode",
+                "repaired",
+                ((bad_mode, b""),),
+                False,
+                "unsafe wheel member",
+            ),
+            (
+                "compressed",
+                "repaired",
+                ((compressed, b""),),
+                False,
+                "unsafe wheel member",
+            ),
+            (
+                "file-directory-collision",
+                "repaired",
+                (("collision", b"file"), ("collision/", b"")),
+                False,
+                "file/directory ZIP member collision",
+            ),
+            (
+                "recorded-directory",
+                "repaired",
+                (("pytetwild/", b""),),
+                True,
+                "RECORD names a missing wheel member",
+            ),
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for label, phase, members, include_directories, expected in cases:
+                with self.subTest(case=label):
+                    wheel = root / f"{label}-directory.whl"
+                    self._write_probe_wheel(
+                        wheel,
+                        phase=phase,
+                        extra_members=members,
+                        include_directory_rows=include_directories,
+                    )
+                    result = self._run_wheel_record_probe(wheel, phase)
+                    self.assertNotEqual(result.returncode, 0, result.stdout)
+                    self.assertIn(expected, result.stderr)
+
     def test_wheel_record_probe_rejects_noncanonical_and_special_members(self) -> None:
         symlink = ZipInfo("symlink")
         symlink.create_system = 3
@@ -1006,10 +1093,27 @@ try {{
             "$env:PIP_NO_INDEX = '1'",
             "'-DFETCHCONTENT_FULLY_DISCONNECTED=ON'",
             "'-DFETCHCONTENT_TRY_FIND_PACKAGE_MODE=NEVER'",
-            "'show', '--add-path', $MpirBin, '-vv'",
+            "'show', '--add-path', $DelvewheelAddPath, '-vv'",
             "'repair', '--wheel-dir', $WheelDirectory, '-v'",
+            "Assert-DelvewheelDependencySelection",
+            '"$PinnedCrtDirectory;$MpirBin"',
+            "UserWarning|newer platform toolset",
+            'excluded_runtime = {"vcruntime140.dll", "vcruntime140_1.dll"}',
+            "observed_ignored != expected_ignored",
+            '"api-ms-win-crt-utility-l1-1-0.dll"',
+            "observed_discovered_vendored != matched_vendored",
+            'pattern = re.compile(rf"{re.escape(stem)}-[0-9a-f]{{32}}\\.dll"',
+            "unexpected native extension set",
+            "repaired wheel contains non-AMD64 binaries",
+            "expected_direct = {",
+            "_dll_utils.get_direct_needed(str(binary))",
+            "unexpected direct import graph",
             "entry.orig_filename",
-            "pathlib.PureWindowsPath(name).drive",
+            "pathlib.PureWindowsPath(member_path).drive",
+            "phase != \"repaired\"",
+            "entry.compress_type != zipfile.ZIP_STORED",
+            "wheel contains an orphan directory member",
+            "entries = {entry.filename: entry for entry in infos if not entry.is_dir()}",
             'any(part in {"", ".", ".."} for part in parts)',
             "entry.flag_bits & 0x41",
             "csv.reader(",
@@ -1020,7 +1124,19 @@ try {{
             "native_extension_load = 'passed'",
             "normal_isolated_package_import = 'passed'",
             "from pytetwild import PyfTetWildWrapper as native",
+            'expected_native_path = (package_directory / "PyfTetWildWrapper.pyd").resolve(strict=True)',
+            "native extension loaded from an unexpected path",
+            "unexpected delvewheel 1.12.1 add_dll_directory patch",
+            'init_text.count("os.add_dll_directory") != 1',
+            'if load_orders:',
+            'sys.addaudithook(audit_hook)',
+            'event == "os.add_dll_directory"',
+            "os.add_dll_directory targeted unexpected paths",
             "kernel32.GetModuleHandleW",
+            "kernel32.GetModuleFileNameW",
+            "vendored DLL loaded from the wrong path",
+            "Python host runtime loaded from the wrong path",
+            'expected_audited_directories = [libs_directory, numpy_libs_directory]',
             "Invoke-CheckedLogged $NativePython $nativeProbeArguments",
             "--require-hashes', '--only-binary=:all:'",
             "runner_image = 'self-hosted-windows-controlled-offline'",
@@ -1029,8 +1145,13 @@ try {{
             "visual-studio-layout-verification.log",
             "native-normal-import.log",
             "audit_logs = $auditLogEvidence",
+            "vendored_dll_runtime_load = 'passed'",
         ):
             self.assertIn(expected, text)
+
+        self.assertEqual(text.count("'--add-path', $DelvewheelAddPath"), 2)
+        self.assertNotIn("expected one delvewheel load-order file", text)
+        self.assertNotIn("vendored_dll_load_order", text)
 
     def test_recipe_pins_installed_msvc_and_selects_one_complete_sdk_root(self) -> None:
         text = PYTETWILD_BUILD_RECIPE.read_text(encoding="utf-8")
@@ -1040,6 +1161,20 @@ try {{
             "CompilerProductVersion = '14.44.35228.0'",
             "LinkerFileVersion = '14.44.35228.0'",
             "LinkerProductVersion = '14.44.35228.0'",
+            "MsvcRedistributableDirectoryVersion = '14.44.35112'",
+            "MsvcRedistributableFileVersion = '14.44.35211.0'",
+            "Python3DllSha256 = 'fb975a",
+            "PythonVcruntime140Sha256 = '052ad6",
+            "PythonVcruntime1401Sha256 = '6a99bc",
+            "Concrt140Sha256 = '2405355f0a58067b258f8df33c327e3a3d716eaac5a3a5aebb757842d85bd376'",
+            "Msvcp140Sha256 = '0f885b509a685d2bbfa652fed26b5fb31d88fbdab0a978c641d1c7b8aa460aa9'",
+            "MpirDllSha256 = '08d901b97a987dd23023ef4273d26fc6e0ff7fcddcdba6b6e39dc057931af994'",
+            "MangledConcrt140Name = 'concrt140-f0bbbe239e5790ab18aee7b037c2c8d7.dll'",
+            "MangledMsvcp140Name = 'msvcp140-0f885b509a685d2bbfa652fed26b5fb3.dll'",
+            "MangledMpirName = 'mpir-edacc3ad4d6953dad7efea4fd55460a3.dll'",
+            "$PinnedCrtDirectory = Join-Path $VsInstall",
+            "Pinned MSVC redistributable directory is unsafe",
+            "Pinned MSVC redistributable version mismatch",
             "function Resolve-WindowsSdkRoot",
             "[Microsoft.Win32.RegistryView]::Registry64",
             "[Microsoft.Win32.RegistryView]::Registry32",

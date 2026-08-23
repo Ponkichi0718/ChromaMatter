@@ -58,7 +58,7 @@ Draft PR: <https://github.com/Ponkichi0718/ChromaMatter/pull/1>
 
 2026-08-23時点で、現在の公開source stageは395 files／394 manifest records、
 privacy audit、独立SHA-256 parityまでPASSした。Python 3.13.14のfull regressionは
-1,239 tests中1,237 PASS／2 optional SKIP／0 FAIL、release／compliance集中テスト178件も
+1,241 tests中1,239 PASS／2 optional SKIP／0 FAIL、release／compliance集中テスト178件も
 1 optional SKIP以外PASSしている。これはsource-only branch更新の証拠であり、
 Windows binaryの公開GOではない。1,179-test checkpointと前回273／272 stageは
 変更前のprevious evidenceである。

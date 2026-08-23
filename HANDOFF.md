@@ -220,10 +220,19 @@ current bytes.
   `sys.argv` preserved. The runtime regression covers double quotes,
   backslashes, non-ASCII source/arguments, and the exact temporary-directory
   probe under Windows PowerShell 5.1. The Base64 transport/release/static-
-  closure follow-up passed 78/78. The exact changed source then passed 1,239
-  tests: 1,237 passed, two optional skips, and zero failures. No rebuilt
-  PyTetWild wheel or attestation exists yet; the next step remains a new
-  outbound-isolated run from the committed recipe bytes.
+  closure follow-up passed 78/78. The exact changed source then passed 1,241
+  tests: 1,239 passed, two optional skips, and zero failures.
+- Controlled run `20260823-160956-6e2612066766` received explicit UAC approval,
+  verified outbound deny-all, and completed fail-closed cleanup with zero
+  residual firewall rules or scheduled tasks. It compiled all 227 targets and
+  produced distinct raw and repaired wheels plus 12 source archives. It then
+  failed closed in the repaired-wheel RECORD audit because the wheel contained
+  the benign explicit directory members `pytetwild/`, `pytetwild.libs/`, and
+  `pytetwild-0.3.0.dist-info/licenses/`. Only four of the required eight direct
+  audit logs were produced and no attestation exists. The partial wheels,
+  source archives, and logs are not verified release evidence and must not be
+  adopted; the next step is a new outbound-isolated run with a unique unused
+  output directory after the directory-entry contract is corrected and tested.
 
 ## Current state
 
@@ -263,8 +272,10 @@ current bytes.
   2026-08-23 at `C:\ChromaMatterToolchain\VS2022BuildTools`. The installed
   instance is complete and launchable, selects VCTools 14.44.35207 and Windows
   SDK 10.0.26100.0, and matches the fixed layout evidence. No reinstall or
-  redownload is required. No PyTetWild wheel has yet been built from the
-  corrected recipe; the next blocker is the controlled outbound-isolated build.
+  redownload is required. The latest run produced partial raw and repaired
+  wheels, but stopped before the remaining four logs and attestation; neither
+  wheel is accepted evidence. The next blocker is a new controlled
+  outbound-isolated build in a unique unused output directory.
 - The root `SOURCE_MANIFEST_SHA256.txt` is historical and stale for this changed
   tree. Regenerate it only through final source staging after release inputs are
   frozen; do not edit it manually as present evidence.
@@ -281,7 +292,8 @@ current bytes.
    the builder), then run `tooling/BUILD_PYTETWILD_WINDOWS.ps1` with
    `-OsNetworkIsolationConfirmed` and a new, unused output directory. Preserve
    the repaired wheel, distinct raw wheel, exact eight direct audit logs, build
-   recipe, 39-package lock, source patch, and attestation together.
+   recipe, 39-package lock, source patch, and attestation together. Do not reuse
+   or adopt any partial artifact from run `20260823-160956-6e2612066766`.
 4. Replace the historical PyTetWild hash in the application
    `requirements-build.lock`, then use `BOOTSTRAP_WINDOWS.ps1 -PyTetWildWheel`
    from a new clone/venv. Preserve the wheel, application lock, rebuild lock,
@@ -346,6 +358,16 @@ by the temporary-directory, safe-tar, package-version, raw/repaired RECORD,
 native-dependency, and isolated-import probes. Each source string is strict
 UTF-8/Base64 and only a fixed ASCII bootstrap is transported directly through
 `-c`; a negative static contract rejects the old direct multiline forms.
+
+The subsequent controlled run `20260823-160956-6e2612066766` verified UAC,
+outbound deny-all, and zero-residual cleanup, compiled all 227 targets, and
+created distinct raw/repaired wheels and 12 source archives. It stopped
+fail-closed at the repaired-wheel RECORD audit after encountering the explicit
+directory members `pytetwild/`, `pytetwild.libs/`, and
+`pytetwild-0.3.0.dist-info/licenses/`. Post-run inspection identified those
+three entries as benign directory metadata, but the stopped run has only four
+of eight required direct logs and no attestation. Its outputs remain partial,
+unadoptable evidence; the retry must use a new unique output directory.
 
 For that future verified-lock stage, the `-PyTetWildAuditLogs` directory must
 contain exactly these eight direct files and nothing else:
@@ -554,7 +576,7 @@ Current compliance-integration validation on exact Python 3.13.14
 - Windows PowerShell 5.1 UTF-8 native-capture/static-closure/release follow-up:
   143 focused tests passed. The later Base64 native Python-probe transport,
   release-tooling, and static-closure follow-up passed 78/78. The final changed
-  source regression ran 1,239 tests: 1,237 passed, two optional skips, and zero
+  source regression ran 1,241 tests: 1,239 passed, two optional skips, and zero
   failures.
 - Production corresponding-source manifest validation: PASS with intended
   status `candidate-only-not-release-approved`.

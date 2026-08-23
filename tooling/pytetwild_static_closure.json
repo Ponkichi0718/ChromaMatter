@@ -15,8 +15,8 @@
   },
   "build_binding": {
     "recipe_path": "tooling/BUILD_PYTETWILD_WINDOWS.ps1",
-    "recipe_bytes": 64068,
-    "recipe_sha256": "fe812e9fb36200a40c9ac7a1f0976065587f057d7c195552d4a97ad269680d06",
+    "recipe_bytes": 82572,
+    "recipe_sha256": "d00cc6cdbc61abeaa040dfc81a3dfe7086ac0027685d798ac70f46e14e4360c8",
     "required_cmake_definitions": [
       "BUILD_SHARED_LIBS=OFF",
       "EIGEN_MPL2_ONLY=ON",

@@ -109,7 +109,7 @@ project-folder/
 
 ## 検証とrelease gate
 
-現在の作業treeはQt／PyMeshLab identity manifest、PyTetWild static-closure contract、修正済みcontrolled-toolchain identity、Windows PowerShell 5.1で安全なnative Python probe transportを含め、Python `3.13.14`のfull regressionで`Ran 1239 tests: OK (skipped=2)`、1237 PASS／2 optional SKIP／0 FAILです。release／compliance集中テスト178件も1 optional SKIP以外PASSしました。public-source再stageは395 files／394 manifest recordsでprivacy auditと独立SHA-256 parityがPASSしました。
+現在の作業treeはQt／PyMeshLab identity manifest、PyTetWild static-closure contract、修正済みcontrolled-toolchain identity、Windows PowerShell 5.1で安全なnative Python probe transportを含め、Python `3.13.14`のfull regressionで`Ran 1241 tests: OK (skipped=2)`、1239 PASS／2 optional SKIP／0 FAILです。release／compliance集中テスト178件も1 optional SKIP以外PASSしました。public-source再stageは395 files／394 manifest recordsでprivacy auditと独立SHA-256 parityがPASSしました。
 
 component固有license原文と静的link componentのcoverageは実装済みで、fail-closedなinventory testもPASSしています。旧r32 EXE／ZIPは今回のsourceと一致しないため公開しません。新しいWindows実行ZIPには、controlled PyTetWild再build証拠、そのwheelへ更新したapplication lock、`release-approved`完全対応ソースbundle、現行sourceからのclean binary buildとpackaged self-test／日英UI smoke、fresh-extractのmanifest／privacy／archive／checksum parity、全assetを同時掲載するimmutable HTTPS Release URLが必要です。現時点の`binary publication eligibility`は**false**です。
 

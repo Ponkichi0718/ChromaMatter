@@ -29,6 +29,9 @@ if (-not $OsNetworkIsolationConfirmed.IsPresent) {
 $Expected = [ordered]@{
     PythonVersion = '3.12.10'
     PythonInstallerSha256 = '67b5635e80ea51072b87941312d00ec8927c4db9ba18938f7ad2d27b328b95fb'
+    Python3DllSha256 = 'fb975a606e7fbf74f64260e3f60c3490b4f74a183c0926fd6ed1ac4c52ac7b1c'
+    PythonVcruntime140Sha256 = '052ad6a20d375957e82aa6a3c441ea548d89be0981516ca7eb306e063d5027f4'
+    PythonVcruntime1401Sha256 = '6a99bc0128e0c7d6cbbf615fcc26909565e17d4ca3451b97f8987f9c6acbc6c8'
     PortableGitVersion = '2.55.0.windows.5'
     PortableGitSha256 = '5aa8a20f6e9abb2c755f0e73c91c687701a46b309ad84a0ca6509380fa4ae290'
     VsBootstrapperSha256 = '236367b68ba9a51708263ab10a1c85546cc4a8eca78b365168811d19c4fb2f29'
@@ -45,6 +48,14 @@ $Expected = [ordered]@{
     CompilerProductVersion = '14.44.35228.0'
     LinkerFileVersion = '14.44.35228.0'
     LinkerProductVersion = '14.44.35228.0'
+    MsvcRedistributableDirectoryVersion = '14.44.35112'
+    MsvcRedistributableFileVersion = '14.44.35211.0'
+    Concrt140Sha256 = '2405355f0a58067b258f8df33c327e3a3d716eaac5a3a5aebb757842d85bd376'
+    Msvcp140Sha256 = '0f885b509a685d2bbfa652fed26b5fb31d88fbdab0a978c641d1c7b8aa460aa9'
+    MpirDllSha256 = '08d901b97a987dd23023ef4273d26fc6e0ff7fcddcdba6b6e39dc057931af994'
+    MangledConcrt140Name = 'concrt140-f0bbbe239e5790ab18aee7b037c2c8d7.dll'
+    MangledMsvcp140Name = 'msvcp140-0f885b509a685d2bbfa652fed26b5fb3.dll'
+    MangledMpirName = 'mpir-edacc3ad4d6953dad7efea4fd55460a3.dll'
     WindowsSdkVersion = '10.0.26100.0'
     WindowsSdkServicingVersion = '10.0.26100.7705'
     CMakeVersion = '3.29.6'
@@ -235,6 +246,33 @@ function Invoke-CheckedLogged(
     $result = Invoke-Logged $FilePath $Arguments $LogPath
     if ($result.ExitCode -ne 0) {
         throw "Command failed ($($result.ExitCode)): $FilePath $($Arguments -join ' ')"
+    }
+}
+
+function Assert-DelvewheelDependencySelection(
+    [object]$Result,
+    [string]$PinnedCrtDirectory,
+    [string]$MpirBin,
+    [string]$Phase
+) {
+    if ($Result.ExitCode -ne 0) {
+        throw "Delvewheel $Phase failed: $($Result.ExitCode)"
+    }
+    $output = [string]$Result.Output
+    if (
+        $output -match '(?i)\(Error: Not Found\)|UserWarning|newer platform toolset' -or
+        $output -match '(?i)[a-z]:\\windows\\system32\\(?:concrt140|msvcp140)\.dll'
+    ) {
+        throw "Delvewheel $Phase reported an unsafe or unresolved dependency selection"
+    }
+    foreach ($expectedSource in @(
+        (Join-Path $PinnedCrtDirectory 'concrt140.dll'),
+        (Join-Path $PinnedCrtDirectory 'msvcp140.dll'),
+        (Join-Path $MpirBin 'mpir.dll')
+    )) {
+        if ($output -notmatch [regex]::Escape($expectedSource)) {
+            throw "Delvewheel $Phase did not select the pinned dependency: $expectedSource"
+        }
     }
 }
 
@@ -533,6 +571,23 @@ $pythonVersion = (& $Python -c 'import platform; print(platform.python_version()
 if ($LASTEXITCODE -ne 0 -or $pythonVersion -ne $Expected.PythonVersion) {
     throw "Python mismatch: expected $($Expected.PythonVersion), got $pythonVersion"
 }
+$PythonBaseDirectory = Split-Path -Parent $Python
+$PinnedPythonRuntimeFiles = [ordered]@{
+    'python3.dll' = $Expected.Python3DllSha256
+    'vcruntime140.dll' = $Expected.PythonVcruntime140Sha256
+    'vcruntime140_1.dll' = $Expected.PythonVcruntime1401Sha256
+}
+foreach ($binding in $PinnedPythonRuntimeFiles.GetEnumerator()) {
+    $runtimePath = Join-Path $PythonBaseDirectory $binding.Key
+    $runtimeItem = Get-Item -LiteralPath $runtimePath -Force -ErrorAction Stop
+    if (
+        $runtimeItem.PSIsContainer -or
+        ($runtimeItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0
+    ) {
+        throw "Pinned Python runtime file is unsafe: $runtimePath"
+    }
+    Assert-Sha256 $runtimePath $binding.Value
+}
 $gitVersion = (& $Git --version).Trim()
 if ($LASTEXITCODE -ne 0 -or $gitVersion -ne "git version $($Expected.PortableGitVersion)") {
     throw "PortableGit mismatch: $gitVersion"
@@ -654,6 +709,40 @@ if ($LinkerProductVersion -cne $Expected.LinkerProductVersion) {
         "MSVC linker product version mismatch: expected " +
         "$($Expected.LinkerProductVersion), got $LinkerProductVersion"
     )
+}
+$PinnedCrtDirectory = Join-Path $VsInstall (
+    'VC\Redist\MSVC\' + $Expected.MsvcRedistributableDirectoryVersion +
+    '\x64\Microsoft.VC143.CRT'
+)
+$pinnedCrtDirectoryItem = Get-Item -LiteralPath $PinnedCrtDirectory -Force -ErrorAction Stop
+if (
+    -not $pinnedCrtDirectoryItem.PSIsContainer -or
+    ($pinnedCrtDirectoryItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0
+) {
+    throw "Pinned MSVC redistributable directory is unsafe: $PinnedCrtDirectory"
+}
+$PinnedCrtFiles = [ordered]@{
+    'concrt140.dll' = $Expected.Concrt140Sha256
+    'msvcp140.dll' = $Expected.Msvcp140Sha256
+}
+foreach ($binding in $PinnedCrtFiles.GetEnumerator()) {
+    $runtimePath = Join-Path $PinnedCrtDirectory $binding.Key
+    $runtimeItem = Get-Item -LiteralPath $runtimePath -Force -ErrorAction Stop
+    if (
+        $runtimeItem.PSIsContainer -or
+        ($runtimeItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0
+    ) {
+        throw "Pinned MSVC redistributable file is unsafe: $runtimePath"
+    }
+    Assert-Sha256 $runtimePath $binding.Value
+    if (
+        [string]$runtimeItem.VersionInfo.FileVersion -cne
+            $Expected.MsvcRedistributableFileVersion -or
+        [string]$runtimeItem.VersionInfo.ProductVersion -cne
+            $Expected.MsvcRedistributableFileVersion
+    ) {
+        throw "Pinned MSVC redistributable version mismatch: $runtimePath"
+    }
 }
 $MsvcFamilyVersion = (($MsvcVersion -split '\.')[0..1] -join '.')
 Import-VsEnvironment $DevCmd $MsvcFamilyVersion $Expected.WindowsSdkVersion
@@ -884,6 +973,9 @@ foreach ($required in @(
         throw "Freshly extracted build input is missing: $required"
     }
 }
+$MpirDll = Join-Path $MpirBin 'mpir.dll'
+Assert-Sha256 $MpirDll $Expected.MpirDllSha256
+$DelvewheelAddPath = "$PinnedCrtDirectory;$MpirBin"
 
 $BuilderVenv = Join-Path $OutputRoot 'builder-venv'
 Invoke-Checked $Python @('-m', 'venv', $BuilderVenv)
@@ -1048,43 +1140,84 @@ with zipfile.ZipFile(wheel) as archive:
     folded = [unicodedata.normalize("NFC", name).casefold() for name in names]
     if len(folded) != len(set(folded)):
         raise SystemExit("wheel contains Unicode/case-colliding ZIP member names")
+    member_paths = [name[:-1] if name.endswith("/") else name for name in names]
+    folded_member_paths = [
+        unicodedata.normalize("NFC", name).casefold() for name in member_paths
+    ]
+    if len(folded_member_paths) != len(set(folded_member_paths)):
+        raise SystemExit("wheel contains a file/directory ZIP member collision")
     total_size = 0
+    directory_names = set()
+    file_names = set()
     for entry in infos:
         raw_name = entry.orig_filename
         name = entry.filename
-        parts = name.split("/")
+        is_directory = entry.is_dir()
+        member_path = name[:-1] if is_directory else name
+        parts = member_path.split("/")
         mode = entry.external_attr >> 16
         file_type = stat.S_IFMT(mode)
         if (
             not name
+            or not member_path
             or raw_name != name
             or "\x00" in raw_name
             or any(ord(character) < 32 or ord(character) == 127 for character in raw_name)
             or "\\" in name
             or name.startswith("/")
-            or name.endswith("/")
             or any(part in {"", ".", ".."} for part in parts)
             or any(":" in part or part.endswith((".", " ")) for part in parts)
-            or pathlib.PureWindowsPath(name).drive
-            or pathlib.PureWindowsPath(name).root
+            or pathlib.PureWindowsPath(member_path).drive
+            or pathlib.PureWindowsPath(member_path).root
             or unicodedata.normalize("NFC", name) != name
             or any(part.split(".", 1)[0].casefold() in reserved for part in parts)
-            or entry.is_dir()
             or entry.flag_bits & 0x41
-            or file_type not in {0, stat.S_IFREG}
             or entry.external_attr & 0x400
             or entry.file_size > 1024 * 1024 * 1024
+            or (
+                is_directory
+                and (
+                    phase != "repaired"
+                    or entry.file_size != 0
+                    or entry.compress_size != 0
+                    or entry.CRC != 0
+                    or entry.compress_type != zipfile.ZIP_STORED
+                    or file_type != stat.S_IFDIR
+                    or not entry.external_attr & 0x10
+                )
+            )
+            or (
+                not is_directory
+                and (
+                    name.endswith("/")
+                    or file_type not in {0, stat.S_IFREG}
+                    or entry.external_attr & 0x10
+                )
+            )
         ):
             raise SystemExit(f"unsafe wheel member: {name!r}")
+        if is_directory:
+            directory_names.add(name)
+        else:
+            file_names.add(name)
         total_size += entry.file_size
     if total_size > 4 * 1024 * 1024 * 1024:
         raise SystemExit(f"unsafe wheel uncompressed size: {total_size}")
-    name_set = set(names)
-    for name in names:
-        parts = name.split("/")
+    for directory in directory_names:
+        if not any(name.startswith(directory) for name in file_names):
+            raise SystemExit(f"wheel contains an orphan directory member: {directory!r}")
+    folded_file_names = {
+        unicodedata.normalize("NFC", name).casefold() for name in file_names
+    }
+    for member_path in member_paths:
+        parts = member_path.split("/")
         for index in range(1, len(parts)):
-            if "/".join(parts[:index]) in name_set:
-                raise SystemExit(f"wheel has file/ancestor conflict: {name!r}")
+            ancestor = unicodedata.normalize(
+                "NFC", "/".join(parts[:index])
+            ).casefold()
+            if ancestor in folded_file_names:
+                raise SystemExit(f"wheel has file/ancestor conflict: {member_path!r}")
+    name_set = set(names)
     foreign_dist_info = [
         name for name in names
         if ".dist-info/" in name and not name.startswith(expected_dist_info + "/")
@@ -1110,7 +1243,7 @@ with zipfile.ZipFile(wheel) as archive:
         )
         rows = list(reader)
     seen = set()
-    entries = {entry.filename: entry for entry in infos}
+    entries = {entry.filename: entry for entry in infos if not entry.is_dir()}
     for row in rows:
         if len(row) != 3:
             raise SystemExit(f"invalid RECORD row: {row!r}")
@@ -1133,7 +1266,7 @@ with zipfile.ZipFile(wheel) as archive:
         actual_digest = base64.urlsafe_b64encode(hashlib.sha256(data).digest()).decode().rstrip("=")
         if digest[7:] != actual_digest or int(size) != len(data):
             raise SystemExit(f"RECORD content mismatch: {name!r}")
-    missing = set(names) - seen
+    missing = file_names - seen
     if missing:
         raise SystemExit(f"wheel members missing from RECORD: {sorted(missing)!r}")
 print(f"verified RECORD: {wheel.name}")
@@ -1143,24 +1276,20 @@ $rawWheelRecordArguments = Get-ControlledPythonArguments `
     $wheelRecordProbe @($rawWheels[0].FullName, 'raw')
 Invoke-Checked $BuilderPython $rawWheelRecordArguments
 $rawDelvewheelArguments = @(
-    'show', '--add-path', $MpirBin, '-vv', $rawWheels[0].FullName
+    'show', '--add-path', $DelvewheelAddPath, '-vv', $rawWheels[0].FullName
 )
 $rawDelvewheelResult = Invoke-Logged $Delvewheel $rawDelvewheelArguments `
     (Join-Path $EvidenceLogs 'delvewheel-show-raw.log')
-$rawDelvewheelExit = $rawDelvewheelResult.ExitCode
-$rawDelvewheelText = $rawDelvewheelResult.Output
-if (
-    $rawDelvewheelExit -ne 0 -or
-    $rawDelvewheelText -match '\(Error: Not Found\)'
-) {
-    throw 'Raw wheel DLL analysis found an unresolved dependency'
-}
+Assert-DelvewheelDependencySelection `
+    $rawDelvewheelResult $PinnedCrtDirectory $MpirBin 'show'
 $repairArguments = @(
     'repair', '--wheel-dir', $WheelDirectory, '-v',
-    $rawWheels[0].FullName, '--add-path', $MpirBin
+    $rawWheels[0].FullName, '--add-path', $DelvewheelAddPath
 )
-Invoke-CheckedLogged $Delvewheel $repairArguments `
+$repairResult = Invoke-Logged $Delvewheel $repairArguments `
     (Join-Path $EvidenceLogs 'delvewheel-repair.log')
+Assert-DelvewheelDependencySelection `
+    $repairResult $PinnedCrtDirectory $MpirBin 'repair'
 $wheels = @(Get-ChildItem -LiteralPath $WheelDirectory -Filter 'pytetwild-0.3.0-cp312-abi3-win_amd64.whl' -File)
 if ($wheels.Count -ne 1) {
     throw "Expected one repaired cp312-abi3-win_amd64 wheel, got $($wheels.Count)"
@@ -1177,17 +1306,42 @@ Invoke-CheckedLogged $Abi3Audit $abi3AuditArguments `
 $nativeDependencyProbe = @'
 import hashlib
 import io
-import os
 import pathlib
+import re
 import sys
 import tempfile
 import zipfile
 
-from delvewheel import _dll_utils
+from delvewheel import _dll_list, _dll_utils
 
 wheel = pathlib.Path(sys.argv[1]).resolve()
 expected_delvewheel = sys.argv[2]
 expected_sha256 = sys.argv[3]
+expected_vendored = {
+    "concrt140": sys.argv[4].casefold(),
+    "msvcp140": sys.argv[5].casefold(),
+    "mpir": sys.argv[6].casefold(),
+}
+excluded_runtime = {"vcruntime140.dll", "vcruntime140_1.dll"}
+expected_ignored = {
+    "advapi32.dll",
+    "api-ms-win-crt-convert-l1-1-0.dll",
+    "api-ms-win-crt-environment-l1-1-0.dll",
+    "api-ms-win-crt-filesystem-l1-1-0.dll",
+    "api-ms-win-crt-heap-l1-1-0.dll",
+    "api-ms-win-crt-locale-l1-1-0.dll",
+    "api-ms-win-crt-math-l1-1-0.dll",
+    "api-ms-win-crt-runtime-l1-1-0.dll",
+    "api-ms-win-crt-stdio-l1-1-0.dll",
+    "api-ms-win-crt-string-l1-1-0.dll",
+    "api-ms-win-crt-time-l1-1-0.dll",
+    "api-ms-win-crt-utility-l1-1-0.dll",
+    "kernel32.dll",
+    "python3.dll",
+    "shell32.dll",
+    "vcruntime140.dll",
+    "vcruntime140_1.dll",
+}
 wheel_bytes = wheel.read_bytes()
 if hashlib.sha256(wheel_bytes).hexdigest() != expected_sha256:
     raise SystemExit("repaired wheel changed between validation and dependency audit")
@@ -1202,34 +1356,157 @@ with tempfile.TemporaryDirectory(prefix="pytetwild-wheel-audit-") as temporary:
     if first_line != f"Version: {expected_delvewheel}":
         raise SystemExit(f"unexpected DELVEWHEEL metadata: {first_line!r}")
     wheel_dirs = [str(root)] + [str(path) for path in root.rglob("*") if path.is_dir()]
-    binaries = sorted(
-        path for path in root.rglob("*")
-        if path.is_file() and path.suffix.casefold() in {".pyd", ".dll"}
+    vendored_directory = (root / "pytetwild.libs").resolve(strict=True)
+    vendored_dlls = sorted(vendored_directory.glob("*.dll"))
+    expected_extension = (root / "pytetwild" / "PyfTetWildWrapper.pyd").resolve(strict=True)
+    pyds = sorted(path.resolve() for path in root.rglob("*.pyd"))
+    if pyds != [expected_extension]:
+        raise SystemExit(
+            f"unexpected native extension set: "
+            f"{[path.relative_to(root).as_posix() for path in pyds]!r}"
+        )
+    all_dlls = sorted(path.resolve() for path in root.rglob("*.dll"))
+    if set(all_dlls) != set(vendored_dlls):
+        raise SystemExit(
+            f"native DLL escaped pytetwild.libs: "
+            f"{[path.relative_to(root).as_posix() for path in all_dlls]!r}"
+        )
+    binaries = [expected_extension, *vendored_dlls]
+    wrong_architecture = sorted(
+        path.relative_to(root).as_posix() for path in binaries
+        if _dll_utils.get_arch(str(path)) is not _dll_list.MachineType.AMD64
     )
-    if not binaries or not any(path.suffix.casefold() == ".pyd" for path in binaries):
-        raise SystemExit("repaired wheel does not contain a native extension")
+    if wrong_architecture:
+        raise SystemExit(f"repaired wheel contains non-AMD64 binaries: {wrong_architecture!r}")
+    matched_vendored = set()
+    vendored_by_stem = {}
+    for stem, expected_name in expected_vendored.items():
+        pattern = re.compile(rf"{re.escape(stem)}-[0-9a-f]{{32}}\.dll", re.IGNORECASE)
+        if pattern.fullmatch(expected_name) is None:
+            raise SystemExit(f"unsafe expected mangled DLL name: {expected_name!r}")
+        matches = [
+            path for path in vendored_dlls
+            if path.name.casefold() == expected_name
+        ]
+        if len(matches) != 1:
+            raise SystemExit(
+                f"expected one mangled {stem} DLL, got {[path.name for path in matches]!r}"
+            )
+        matched_vendored.add(matches[0].name.casefold())
+        vendored_by_stem[stem] = matches[0]
+    unexpected_vendored = sorted(
+        path.name for path in vendored_dlls
+        if path.name.casefold() not in matched_vendored
+    )
+    if unexpected_vendored or len(vendored_dlls) != len(expected_vendored):
+        raise SystemExit(f"unexpected vendored DLLs: {unexpected_vendored!r}")
+    if any(path.name.casefold().startswith("vcruntime140") for path in vendored_dlls):
+        raise SystemExit("MSVC platform runtime was unexpectedly vendored")
+    api_crt = {
+        "api-ms-win-crt-convert-l1-1-0.dll",
+        "api-ms-win-crt-environment-l1-1-0.dll",
+        "api-ms-win-crt-filesystem-l1-1-0.dll",
+        "api-ms-win-crt-heap-l1-1-0.dll",
+        "api-ms-win-crt-locale-l1-1-0.dll",
+        "api-ms-win-crt-math-l1-1-0.dll",
+        "api-ms-win-crt-runtime-l1-1-0.dll",
+        "api-ms-win-crt-stdio-l1-1-0.dll",
+        "api-ms-win-crt-string-l1-1-0.dll",
+        "api-ms-win-crt-time-l1-1-0.dll",
+        "api-ms-win-crt-utility-l1-1-0.dll",
+    }
+    expected_direct = {
+        expected_extension: expected_ignored | matched_vendored,
+        vendored_by_stem["concrt140"]: {
+            "api-ms-win-crt-heap-l1-1-0.dll",
+            "api-ms-win-crt-math-l1-1-0.dll",
+            "api-ms-win-crt-runtime-l1-1-0.dll",
+            "api-ms-win-crt-stdio-l1-1-0.dll",
+            "api-ms-win-crt-string-l1-1-0.dll",
+            "kernel32.dll",
+            "vcruntime140.dll",
+            "vcruntime140_1.dll",
+            expected_vendored["msvcp140"],
+        },
+        vendored_by_stem["mpir"]: {
+            "api-ms-win-crt-convert-l1-1-0.dll",
+            "api-ms-win-crt-heap-l1-1-0.dll",
+            "api-ms-win-crt-locale-l1-1-0.dll",
+            "api-ms-win-crt-runtime-l1-1-0.dll",
+            "api-ms-win-crt-stdio-l1-1-0.dll",
+            "api-ms-win-crt-string-l1-1-0.dll",
+            "kernel32.dll",
+            "vcruntime140.dll",
+            expected_vendored["msvcp140"],
+        },
+        vendored_by_stem["msvcp140"]: api_crt | {
+            "kernel32.dll",
+            "vcruntime140.dll",
+            "vcruntime140_1.dll",
+        },
+    }
+    for binary, expected_dependencies in expected_direct.items():
+        direct_dependencies = {
+            name.casefold() for name in _dll_utils.get_direct_needed(str(binary))
+        }
+        if direct_dependencies != expected_dependencies:
+            raise SystemExit(
+                f"unexpected direct import graph for "
+                f"{binary.relative_to(root).as_posix()!r}: "
+                f"{sorted(direct_dependencies)!r}"
+            )
     unresolved = {}
     external = {}
+    observed_ignored = set()
+    observed_discovered_vendored = set()
     for binary in binaries:
-        discovered, _, _, not_found = _dll_utils.get_all_needed(
-            str(binary), set(), wheel_dirs, "ignore", False, False
+        discovered, associated, ignored, not_found = _dll_utils.get_all_needed(
+            str(binary), excluded_runtime, wheel_dirs, "ignore", False, False
         )
         if not_found:
             unresolved[binary.relative_to(root).as_posix()] = sorted(not_found)
-        escaped = sorted(
-            dependency for dependency in discovered
-            if not pathlib.Path(dependency).resolve().is_relative_to(root)
-        )
-        if escaped:
-            external[binary.relative_to(root).as_posix()] = escaped
+        if associated:
+            raise SystemExit(
+                f"unexpected native associated files for "
+                f"{binary.relative_to(root).as_posix()!r}: {sorted(associated)!r}"
+            )
+        observed_ignored.update(name.casefold() for name in ignored)
+        for dependency in sorted(discovered):
+            resolved_dependency = pathlib.Path(dependency).resolve(strict=True)
+            if resolved_dependency.is_relative_to(root):
+                if resolved_dependency.parent == vendored_directory:
+                    observed_discovered_vendored.add(resolved_dependency.name.casefold())
+                continue
+            external.setdefault(binary.relative_to(root).as_posix(), []).append(
+                str(resolved_dependency)
+            )
     if unresolved:
         raise SystemExit(f"unresolved native dependencies: {unresolved!r}")
     if external:
         raise SystemExit(f"unvendored native dependencies: {external!r}")
-print(f"verified repaired native dependency closure: {len(binaries)} binaries")
+    if observed_ignored != expected_ignored:
+        raise SystemExit(
+            "unexpected target-provided native dependency set: "
+            f"{sorted(observed_ignored)!r}"
+        )
+    if observed_discovered_vendored != matched_vendored:
+        raise SystemExit(
+            "unexpected discovered vendored DLL set: "
+            f"{sorted(observed_discovered_vendored)!r}"
+        )
+print(
+    "verified repaired native dependency policy: "
+    f"{len(binaries)} binaries; vendored={len(vendored_dlls)}; "
+    f"target-provided={len(observed_ignored)}"
+)
 '@
 $nativeDependencyArguments = Get-ControlledPythonArguments $nativeDependencyProbe @(
-    $wheel.FullName, $Expected.DelvewheelVersion, $repairedWheelSha256BeforeAudit
+    $wheel.FullName,
+    $Expected.DelvewheelVersion,
+    $repairedWheelSha256BeforeAudit,
+    $Expected.MangledConcrt140Name,
+    $Expected.MangledMsvcp140Name,
+    $Expected.MangledMpirName
 )
 Invoke-CheckedLogged $BuilderPython $nativeDependencyArguments `
     (Join-Path $EvidenceLogs 'native-dependency-closure.log')
@@ -1267,20 +1544,113 @@ Invoke-CheckedLogged $NativePython $nativeInstallArguments `
 $nativeProbe = @'
 import ctypes
 import importlib.metadata
+import os
 import pathlib
+import re
 import sys
 import sysconfig
 
-site_packages = pathlib.Path(sysconfig.get_paths()["purelib"]).resolve()
+site_packages = pathlib.Path(sysconfig.get_paths()["purelib"]).resolve(strict=True)
+package_directory = (site_packages / "pytetwild").resolve(strict=True)
+package_init = (package_directory / "__init__.py").resolve(strict=True)
+libs_directory = (site_packages / "pytetwild.libs").resolve(strict=True)
+numpy_libs_directory = (site_packages / "numpy.libs").resolve(strict=True)
+if not package_directory.is_relative_to(site_packages):
+    raise SystemExit(f"pytetwild package escaped isolated site-packages: {package_directory}")
+if not libs_directory.is_relative_to(site_packages) or not libs_directory.is_dir():
+    raise SystemExit(f"vendored DLL directory escaped isolated site-packages: {libs_directory}")
+if not numpy_libs_directory.is_relative_to(site_packages) or not numpy_libs_directory.is_dir():
+    raise SystemExit(f"NumPy DLL directory escaped isolated site-packages: {numpy_libs_directory}")
+
+metadata_files = list(site_packages.glob("pytetwild-0.3.0.dist-info/DELVEWHEEL"))
+if len(metadata_files) != 1:
+    raise SystemExit(f"expected one installed DELVEWHEEL metadata file, got {len(metadata_files)}")
+metadata_lines = metadata_files[0].read_text(encoding="utf-8").splitlines()
+if not metadata_lines or metadata_lines[0] != "Version: 1.12.1":
+    raise SystemExit("installed DELVEWHEEL metadata version mismatch")
+
+init_text = package_init.read_text(encoding="utf-8").replace("\r\n", "\n").replace("\r", "\n")
+start_marker = "# start delvewheel patch"
+end_marker = "# end delvewheel patch"
+if init_text.count(start_marker) != 1 or init_text.count(end_marker) != 1:
+    raise SystemExit("delvewheel add_dll_directory patch markers are missing or duplicated")
+patch_start = init_text.index(start_marker)
+patch_end = init_text.index(end_marker) + len(end_marker)
+expected_patch = """# start delvewheel patch
+def _delvewheel_patch_1_12_1():
+    import os
+    if os.path.isdir(libs_dir := os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, 'pytetwild.libs'))):
+        os.add_dll_directory(libs_dir)
+
+
+_delvewheel_patch_1_12_1()
+del _delvewheel_patch_1_12_1
+# end delvewheel patch"""
+if init_text[patch_start:patch_end] != expected_patch:
+    raise SystemExit("unexpected delvewheel 1.12.1 add_dll_directory patch")
+if init_text.count("os.add_dll_directory") != 1:
+    raise SystemExit("unexpected add_dll_directory call count in delvewheel patch")
+import_statement = "from .pytetwild import"
+if import_statement not in init_text or patch_start >= init_text.index(import_statement):
+    raise SystemExit("delvewheel patch does not precede the native package import")
+if "LoadLibraryExW" in init_text or ".load-order-" in init_text:
+    raise SystemExit("unexpected legacy delvewheel load-order patch")
+load_orders = list(site_packages.rglob(".load-order-*"))
+if load_orders:
+    raise SystemExit(f"unexpected delvewheel load-order files: {load_orders!r}")
+
+vendored_dlls = sorted(libs_directory.glob("*.dll"))
+expected_vendored = {
+    "concrt140": sys.argv[1].casefold(),
+    "msvcp140": sys.argv[2].casefold(),
+    "mpir": sys.argv[3].casefold(),
+}
+if len(vendored_dlls) != len(expected_vendored):
+    raise SystemExit(f"unexpected vendored DLL count: {[path.name for path in vendored_dlls]!r}")
+for stem, expected_name in expected_vendored.items():
+    pattern = re.compile(rf"{re.escape(stem)}-[0-9a-f]{{32}}\.dll", re.IGNORECASE)
+    if pattern.fullmatch(expected_name) is None:
+        raise SystemExit(f"unsafe expected mangled DLL name: {expected_name!r}")
+actual_vendored_names = {path.name.casefold() for path in vendored_dlls}
+if actual_vendored_names != set(expected_vendored.values()):
+    raise SystemExit(
+        f"unexpected vendored DLL set: {sorted(actual_vendored_names)!r}"
+    )
+if any(path.name.casefold().startswith("vcruntime140") for path in vendored_dlls):
+    raise SystemExit("MSVC platform runtime was unexpectedly vendored")
+
+add_dll_directory_events = []
+def audit_hook(event, arguments):
+    if event == "os.add_dll_directory":
+        add_dll_directory_events.append(arguments)
+sys.addaudithook(audit_hook)
+
 import pytetwild
 from pytetwild import PyfTetWildWrapper as native
 
+if any(len(arguments) != 1 for arguments in add_dll_directory_events):
+    raise SystemExit(
+        f"malformed os.add_dll_directory audit events: {add_dll_directory_events!r}"
+    )
+audited_dll_directories = [
+    pathlib.Path(arguments[0]).resolve(strict=True)
+    for arguments in add_dll_directory_events
+]
+expected_audited_directories = [libs_directory, numpy_libs_directory]
+if [os.path.normcase(str(path)) for path in audited_dll_directories] != [
+    os.path.normcase(str(path)) for path in expected_audited_directories
+]:
+    raise SystemExit(
+        f"os.add_dll_directory targeted unexpected paths: {audited_dll_directories!r}"
+    )
+
 package_path = pathlib.Path(pytetwild.__file__).resolve()
 native_path = pathlib.Path(native.__file__).resolve()
-if not package_path.is_relative_to(site_packages):
-    raise SystemExit(f"pytetwild loaded outside isolated site-packages: {package_path}")
-if not native_path.is_relative_to(site_packages):
-    raise SystemExit(f"native extension loaded outside isolated site-packages: {native_path}")
+expected_native_path = (package_directory / "PyfTetWildWrapper.pyd").resolve(strict=True)
+if package_path != package_init:
+    raise SystemExit(f"pytetwild loaded from an unexpected path: {package_path}")
+if native_path != expected_native_path:
+    raise SystemExit(f"native extension loaded from an unexpected path: {native_path}")
 if pytetwild.__version__ != "0.3.0" or importlib.metadata.version("pytetwild") != "0.3.0":
     raise SystemExit("unexpected pytetwild package version")
 if not callable(pytetwild.tetrahedralize):
@@ -1288,23 +1658,48 @@ if not callable(pytetwild.tetrahedralize):
 if not callable(native.tetrahedralize_mesh):
     raise SystemExit("native tetrahedralize_mesh is unavailable")
 
-load_orders = list(site_packages.rglob(".load-order-*"))
-if len(load_orders) != 1:
-    raise SystemExit(f"expected one delvewheel load-order file, got {len(load_orders)}")
 kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
 kernel32.GetModuleHandleW.argtypes = [ctypes.c_wchar_p]
 kernel32.GetModuleHandleW.restype = ctypes.c_void_p
-vendored = [line.strip() for line in load_orders[0].read_text(encoding="utf-8").splitlines() if line.strip()]
-if not vendored:
-    raise SystemExit("delvewheel load-order file is empty")
-not_loaded = []
-for reference in vendored:
-    name = pathlib.PureWindowsPath(reference).name
-    if not kernel32.GetModuleHandleW(name):
-        not_loaded.append(name)
-if not_loaded:
-    raise SystemExit(f"delvewheel did not load vendored DLLs: {not_loaded!r}")
-print(f"normal package import passed: {package_path.name}; vendored DLLs: {len(vendored)}")
+kernel32.GetModuleFileNameW.argtypes = [
+    ctypes.c_void_p,
+    ctypes.c_wchar_p,
+    ctypes.c_uint32,
+]
+kernel32.GetModuleFileNameW.restype = ctypes.c_uint32
+def loaded_module_path(name):
+    handle = kernel32.GetModuleHandleW(name)
+    if not handle:
+        raise SystemExit(f"required native module is not loaded: {name}")
+    loaded_path_buffer = ctypes.create_unicode_buffer(32768)
+    loaded_path_length = kernel32.GetModuleFileNameW(
+        handle,
+        loaded_path_buffer,
+        len(loaded_path_buffer),
+    )
+    if loaded_path_length == 0 or loaded_path_length >= len(loaded_path_buffer) - 1:
+        raise SystemExit(f"unable to resolve loaded native module path: {name}")
+    return pathlib.Path(loaded_path_buffer.value).resolve(strict=True)
+
+for expected_path in vendored_dlls:
+    loaded_path = loaded_module_path(expected_path.name)
+    if os.path.normcase(str(loaded_path)) != os.path.normcase(str(expected_path.resolve())):
+        raise SystemExit(
+            f"vendored DLL loaded from the wrong path: {expected_path.name}: {loaded_path}"
+        )
+
+base_python_directory = pathlib.Path(sys.base_prefix).resolve(strict=True)
+for runtime_name in ("python3.dll", "vcruntime140.dll", "vcruntime140_1.dll"):
+    expected_runtime_path = (base_python_directory / runtime_name).resolve(strict=True)
+    loaded_path = loaded_module_path(runtime_name)
+    if os.path.normcase(str(loaded_path)) != os.path.normcase(str(expected_runtime_path)):
+        raise SystemExit(
+            f"Python host runtime loaded from the wrong path: {runtime_name}: {loaded_path}"
+        )
+print(
+    f"normal package import passed: {package_path.name}; "
+    f"vendored DLLs: {len(vendored_dlls)}; add_dll_directory patch: passed"
+)
 '@
 $HostileCwd = Join-Path $NativeTest 'hostile-cwd'
 New-Item -ItemType Directory -Path $HostileCwd | Out-Null
@@ -1322,7 +1717,11 @@ try {
     [Environment]::SetEnvironmentVariable('PYTHONHOME', $null, 'Process')
     Push-Location $HostileCwd
     try {
-        $nativeProbeArguments = Get-ControlledPythonArguments $nativeProbe
+        $nativeProbeArguments = Get-ControlledPythonArguments $nativeProbe @(
+            $Expected.MangledConcrt140Name,
+            $Expected.MangledMsvcp140Name,
+            $Expected.MangledMpirName
+        )
         Invoke-CheckedLogged $NativePython $nativeProbeArguments `
             (Join-Path $EvidenceLogs 'native-normal-import.log')
     } finally {
@@ -1343,6 +1742,23 @@ Assert-Sha256 $rawWheels[0].FullName $rawWheelSha256
 Assert-Sha256 $PSCommandPath $recipeSha256AtStart
 Assert-Sha256 $RequirementsLock $requirementsLockSha256AtStart
 Assert-Sha256 $PyTetWildSourcePatch $sourcePatchSha256AtStart
+Assert-Sha256 $MpirDll $Expected.MpirDllSha256
+foreach ($binding in $PinnedPythonRuntimeFiles.GetEnumerator()) {
+    Assert-Sha256 (Join-Path $PythonBaseDirectory $binding.Key) $binding.Value
+}
+foreach ($binding in $PinnedCrtFiles.GetEnumerator()) {
+    $runtimePath = Join-Path $PinnedCrtDirectory $binding.Key
+    Assert-Sha256 $runtimePath $binding.Value
+    $runtimeItem = Get-Item -LiteralPath $runtimePath -Force -ErrorAction Stop
+    if (
+        [string]$runtimeItem.VersionInfo.FileVersion -cne
+            $Expected.MsvcRedistributableFileVersion -or
+        [string]$runtimeItem.VersionInfo.ProductVersion -cne
+            $Expected.MsvcRedistributableFileVersion
+    ) {
+        throw "Pinned MSVC redistributable changed during the build: $runtimePath"
+    }
+}
 $auditLogFiles = [ordered]@{
     visual_studio_layout_verification = 'visual-studio-layout-verification.log'
     build_wheel = 'build-wheel.log'
@@ -1482,7 +1898,7 @@ $attestation = [ordered]@{
         repaired_delvewheel_metadata = 'passed'
         native_extension_load = 'passed'
         normal_isolated_package_import = 'passed'
-        vendored_dll_load_order = 'passed'
+        vendored_dll_runtime_load = 'passed'
         audit_logs = $auditLogEvidence
     }
 }

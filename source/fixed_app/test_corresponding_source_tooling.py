@@ -1537,7 +1537,7 @@ class CorrespondingSourceManifestTests(unittest.TestCase):
                     "repaired_delvewheel_metadata": "passed",
                     "native_extension_load": "passed",
                     "normal_isolated_package_import": "passed",
-                    "vendored_dll_load_order": "passed",
+                    "vendored_dll_runtime_load": "passed",
                     "audit_logs": audit_log_evidence,
                 },
             }

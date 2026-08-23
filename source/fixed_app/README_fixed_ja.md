@@ -86,7 +86,7 @@ repository rootの`BOOTSTRAP_WINDOWS.ps1`が標準の準備・test入口です�
 
 ## r32 validation state
 
-- 現行full regression: Python `3.13.14`、`Ran 1239 tests: OK (skipped=2)`、1237 PASS／2 optional SKIP／0 FAIL。release／compliance集中テスト178件は1 optional SKIP以外PASS。現行public-source stageは395 files／394 manifest recordsでprivacyと独立SHA-256 parity PASS
+- 現行full regression: Python `3.13.14`、`Ran 1241 tests: OK (skipped=2)`、1239 PASS／2 optional SKIP／0 FAIL。release／compliance集中テスト178件は1 optional SKIP以外PASS。現行public-source stageは395 files／394 manifest recordsでprivacyと独立SHA-256 parity PASS
 - binary compliance／対応ソース／release toolingの集中テスト80件とrelease identity 10件: PASS
 - component固有license原文と静的link componentのcoverageは実装済みで、fail-closedなinventory testもPASS
 - 旧r32 EXE／ZIPは今回のsourceと一致しないため非公開。controlled PyTetWild再build証拠、そのwheelへ更新したapplication lock、`release-approved`完全対応ソースbundle、現行sourceからのclean binary buildとpackaged self-test／日英UI smoke、fresh-extractのmanifest／privacy／archive／checksum parity、immutable HTTPS URLで全assetを同時掲載するReleaseが揃うまでbinary publicationはNO-GO
