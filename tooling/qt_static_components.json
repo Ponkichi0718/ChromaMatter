@@ -1,0 +1,1829 @@
+{
+  "schema_version": 1,
+  "document_id": "chromamatter-qt-static-components-5.15.2-msvc2019-x64",
+  "scope": "Static third-party components carried by the seven audited Qt runtime DLLs distributed by PyMeshLab 2025.7.post1.",
+  "generated_from_read_only_audit": "2026-08-23",
+  "qt_runtime_component": {
+    "id": "qt",
+    "version": "5.15.2",
+    "license_expression": "LGPL-3.0-only",
+    "source_url": "https://download.qt.io/archive/qt/5.15/5.15.2/single/",
+    "note": "The existing top-level Qt runtime component remains mapped to every audited DLL in addition to the static child components below."
+  },
+  "binary_provenance": {
+    "package_id": "qt.qt5.5152.win64_msvc2019_64",
+    "package_version": "5.15.2-0-202011130602",
+    "updates_xml_url": "https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt5_5152/Updates.xml",
+    "pymeshlab": {
+      "version": "2025.7.post1",
+      "tag_commit": "1dc199f9b6c43e58b6db346ba4600866b950b8ae",
+      "wheel_sha256": "25eb2578dd6c4d1b2e0253fb3b4f8f7895e8bb4f3f1236832db0ab58e6a44998",
+      "workflow_url": "https://github.com/cnr-isti-vclab/PyMeshLab/blob/v2025.7.post1/.github/workflows/CreateAndTestRelease.yml",
+      "qt_version_declared": "5.15.2"
+    },
+    "official_binary_archives": [
+      {
+        "id": "qtbase-msvc2019-x64-5.15.2",
+        "url": "https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt5_5152/qt.qt5.5152.win64_msvc2019_64/5.15.2-0-202011130602qtbase-Windows-Windows_10-MSVC2019-Windows-Windows_10-X86_64.7z",
+        "sha256": "e563de40230295841c2eece26e347de709edc4bf035515cc239cae3c994c9af6"
+      },
+      {
+        "id": "qtimageformats-msvc2019-x64-5.15.2",
+        "url": "https://download.qt.io/online/qtsdkrepository/windows_x86/desktop/qt5_5152/qt.qt5.5152.win64_msvc2019_64/5.15.2-0-202011130602qtimageformats-Windows-Windows_10-MSVC2019-Windows-Windows_10-X86_64.7z",
+        "sha256": "3cc93e55c0e8509290db49de36d879dee1e84cb74ddf177fb611f25562cd5f2c"
+      }
+    ],
+    "source_archives": [
+      {
+        "id": "qt-5.15.2-corresponding-source",
+        "url": "https://download.qt.io/archive/qt/5.15/5.15.2/single/qt-everywhere-src-5.15.2.tar.xz",
+        "sha256": "3a530d1b243b5dec00bc54937455471aaa3e56849d2593edb8ded07228202240",
+        "existing_spec_path": "tooling/corresponding_source_components.json",
+        "covers_all_qt_components": true,
+        "modules": [
+          "qtbase",
+          "qtimageformats"
+        ]
+      },
+      {
+        "id": "qtbase-source-5.15.2",
+        "url": "https://download.qt.io/archive/qt/5.15/5.15.2/submodules/qtbase-everywhere-src-5.15.2.zip",
+        "sha256": "6bc369d0a9d24f185abcd718ee0f003b8da09ddeef4f90b35088bd46152b7507",
+        "qt_tag": "v5.15.2",
+        "commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      },
+      {
+        "id": "qtimageformats-source-5.15.2",
+        "url": "https://download.qt.io/archive/qt/5.15/5.15.2/submodules/qtimageformats-everywhere-src-5.15.2.zip",
+        "sha256": "40b6fea27337d0781f783704c14ad29cb8fba9eadeb40d494df8252b8a80d163",
+        "qt_tag": "v5.15.2",
+        "commit": "b00ebc3929b5792d3f791b7a01bcb981d31cec9b"
+      },
+      {
+        "id": "chromium-base-license-28b5",
+        "url": "https://chromium.googlesource.com/chromium/src/+/28b5bbb227d331c01e6ff9b2f8729732135aadc7/LICENSE",
+        "sha256": "845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308",
+        "commit": "28b5bbb227d331c01e6ff9b2f8729732135aadc7"
+      }
+    ]
+  },
+  "files": [
+    {
+      "path": "_internal/pymeshlab/Qt5Core.dll",
+      "size": 6023664,
+      "sha256": "8d2ff4ce9096ddccc4f4cd62c2e41fc854cfd1b0d6e8d296645a7f5fd4ae565a",
+      "pe_version": "5.15.2.0",
+      "official_archive_id": "qtbase-msvc2019-x64-5.15.2",
+      "official_archive_member": "5.15.2/msvc2019_64/bin/Qt5Core.dll",
+      "runtime_component_ids": [
+        "qt",
+        "qt-doubleconversion",
+        "qt-pcre2",
+        "qt-pcre2-sljit",
+        "qt-zlib",
+        "qt-harfbuzz-legacy",
+        "qt-tinycbor",
+        "qt-md4",
+        "qt-md5",
+        "qt-sha1",
+        "qt-sha3-endian",
+        "qt-sha3-keccak",
+        "qt-rfc6234",
+        "qt-easing",
+        "qt-qbig5codecs",
+        "qt-qbkcodec",
+        "qt-qeucjpcodec",
+        "qt-qeuckrcodec",
+        "qt-qjiscodec",
+        "qt-qsjiscodec",
+        "qt-qtsciicodec",
+        "qt-unicode-ucd",
+        "qt-unicode-cldr",
+        "qt-public-suffix-list"
+      ]
+    },
+    {
+      "path": "_internal/pymeshlab/Qt5Gui.dll",
+      "size": 7008240,
+      "sha256": "5e7d2d41b8b92a880e83b8cc0ca173f5da61218604186196787ee1600956be1e",
+      "pe_version": "5.15.2.0",
+      "official_archive_id": "qtbase-msvc2019-x64-5.15.2",
+      "official_archive_member": "5.15.2/msvc2019_64/bin/Qt5Gui.dll",
+      "runtime_component_ids": [
+        "qt",
+        "qt-freetype",
+        "qt-freetype-zlib",
+        "qt-freetype-bdf",
+        "qt-freetype-pcf",
+        "qt-grayraster",
+        "qt-harfbuzz-ng",
+        "qt-libpng",
+        "qt-md4c",
+        "qt-vulkan-memory-allocator",
+        "qt-icc-srgb",
+        "qt-aglfn",
+        "qt-smooth-scaling",
+        "qt-webgradients",
+        "qt-xserverhelper",
+        "qt-opengl-headers",
+        "qt-opengles2-headers",
+        "qt-vulkan-api-registry"
+      ]
+    },
+    {
+      "path": "_internal/pymeshlab/imageformats/qjpeg.dll",
+      "size": 421360,
+      "sha256": "fb4e980cb5fafa8a4cd4239329aed93f7c32ed939c94b61fb2df657f3c6ad158",
+      "pe_version": "5.15.2.0",
+      "official_archive_id": "qtbase-msvc2019-x64-5.15.2",
+      "official_archive_member": "5.15.2/msvc2019_64/plugins/imageformats/qjpeg.dll",
+      "runtime_component_ids": [
+        "qt",
+        "qt-libjpeg-turbo"
+      ]
+    },
+    {
+      "path": "_internal/pymeshlab/imageformats/qtiff.dll",
+      "size": 390128,
+      "sha256": "825174429ced6b3dab18115dbc6c9da07bf5248c86ec1bd5c0dcaeca93b4c22d",
+      "pe_version": "5.15.2.0",
+      "official_archive_id": "qtimageformats-msvc2019-x64-5.15.2",
+      "official_archive_member": "5.15.2/msvc2019_64/plugins/imageformats/qtiff.dll",
+      "runtime_component_ids": [
+        "qt",
+        "qt-libtiff"
+      ]
+    },
+    {
+      "path": "_internal/pymeshlab/imageformats/qwebp.dll",
+      "size": 510448,
+      "sha256": "6e37acd0d357871f92b7fde7206c904c734caa02f94544df646957df8c4987af",
+      "pe_version": "5.15.2.0",
+      "official_archive_id": "qtimageformats-msvc2019-x64-5.15.2",
+      "official_archive_member": "5.15.2/msvc2019_64/plugins/imageformats/qwebp.dll",
+      "runtime_component_ids": [
+        "qt",
+        "qt-libwebp"
+      ]
+    },
+    {
+      "path": "_internal/pymeshlab/libEGL.dll",
+      "size": 25072,
+      "sha256": "32092de077fd57b6ef355705ec46c6d21f6d72fbe3d3a5dd628f2a29185a96fa",
+      "pe_version": "5.15.2.0",
+      "official_archive_id": "qtbase-msvc2019-x64-5.15.2",
+      "official_archive_member": "5.15.2/msvc2019_64/bin/libEGL.dll",
+      "runtime_component_ids": [
+        "qt",
+        "qt-angle-core",
+        "qt-angle-khronos"
+      ]
+    },
+    {
+      "path": "_internal/pymeshlab/libGLESv2.dll",
+      "size": 3385328,
+      "sha256": "50fad5605b3d57627848b3b84a744dfb6a045609b8236b04124f2234676758d8",
+      "pe_version": "5.15.2.0",
+      "official_archive_id": "qtbase-msvc2019-x64-5.15.2",
+      "official_archive_member": "5.15.2/msvc2019_64/bin/libGLESv2.dll",
+      "runtime_component_ids": [
+        "qt",
+        "qt-angle-core",
+        "qt-angle-arrayboundsclamper",
+        "qt-angle-khronos",
+        "qt-angle-systeminfo",
+        "qt-angle-trace-event",
+        "qt-angle-murmurhash",
+        "qt-angle-chromium-base"
+      ]
+    }
+  ],
+  "static_components": [
+    {
+      "id": "qt-doubleconversion",
+      "name": "double-conversion",
+      "version": "3.1.5",
+      "version_basis": "Qt 5.15.2 upstream attribution metadata",
+      "license_expression": "BSD-3-Clause",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/double-conversion/LICENSE"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/double-conversion"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/Qt5Core.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-pcre2",
+      "name": "PCRE2",
+      "version": "10.35",
+      "version_basis": "Qt 5.15.2 upstream attribution metadata",
+      "license_expression": "BSD-3-Clause",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/pcre2/LICENCE"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/pcre2"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/Qt5Core.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-pcre2-sljit",
+      "name": "PCRE2 SLJIT",
+      "version": "10.35",
+      "version_basis": "Qt 5.15.2 upstream attribution metadata",
+      "license_expression": "BSD-2-Clause",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/pcre2/LICENCE-SLJIT"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/pcre2"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/Qt5Core.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-zlib",
+      "name": "zlib",
+      "version": "1.2.11",
+      "version_basis": "Qt 5.15.2 upstream attribution metadata",
+      "license_expression": "Zlib",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/zlib/LICENSE"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/zlib"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/Qt5Core.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-harfbuzz-legacy",
+      "name": "HarfBuzz legacy snapshot",
+      "version": "5.15.2-vendored",
+      "version_basis": "Qt attribution has no independent version; content is pinned by Qtbase v5.15.2 commit.",
+      "license_expression": "MIT",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/harfbuzz/COPYING"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/harfbuzz"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/Qt5Core.dll"
+      ],
+      "provenance": "Qtbase src/corelib/text/text.pri unconditionally compiles the vendored legacy HarfBuzz sources into Qt5Core.dll."
+    },
+    {
+      "id": "qt-tinycbor",
+      "name": "TinyCBOR",
+      "version": "0.6+patches",
+      "version_basis": "Qt 5.15.2 upstream attribution metadata",
+      "license_expression": "MIT",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/tinycbor/LICENSE"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/tinycbor"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/Qt5Core.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-md4",
+      "name": "MD4 implementation",
+      "version": "5.15.2-vendored",
+      "version_basis": "Qt attribution declares Public Domain and has no independent version or LicenseFile.",
+      "license_expression": "LicenseRef-Public-Domain",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/md4/qt_attribution.json"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/md4"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/Qt5Core.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-md5",
+      "name": "MD5 implementation",
+      "version": "5.15.2-vendored",
+      "version_basis": "Qt attribution declares Public Domain and has no independent version or LicenseFile.",
+      "license_expression": "LicenseRef-Public-Domain",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/md5/qt_attribution.json"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/md5"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/Qt5Core.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-sha1",
+      "name": "SHA-1 implementation",
+      "version": "5.15.2-vendored",
+      "version_basis": "Qt attribution declares Public Domain and has no independent version or LicenseFile.",
+      "license_expression": "LicenseRef-Public-Domain",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/sha1/qt_attribution.json"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/sha1"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/Qt5Core.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-sha3-endian",
+      "name": "SHA-3 brg_endian",
+      "version": "4b9e13ead2c5b5e41ca27c65de4dd69ae0bac228",
+      "version_basis": "Exact upstream commit recorded by Qt attribution metadata.",
+      "license_expression": "BSD-2-Clause",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/sha3/BRG_ENDIAN_LICENSE"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/sha3"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/Qt5Core.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-sha3-keccak",
+      "name": "SHA-3 Keccak",
+      "version": "3.2",
+      "version_basis": "Qt 5.15.2 upstream attribution metadata",
+      "license_expression": "CC0-1.0",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/sha3/CC0_LICENSE"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/sha3"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/Qt5Core.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-rfc6234",
+      "name": "RFC 6234 SHA-384/SHA-512",
+      "version": "5.15.2-vendored",
+      "version_basis": "Qt attribution has no independent version; content is pinned by Qtbase v5.15.2 commit.",
+      "license_expression": "BSD-3-Clause",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/rfc6234/LICENSE"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/rfc6234"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/Qt5Core.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-easing",
+      "name": "Robert Penner easing equations",
+      "version": "5.15.2-vendored",
+      "version_basis": "Qt attribution has no independent version; content is pinned by Qtbase v5.15.2 commit.",
+      "license_expression": "BSD-3-Clause",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/easing/LICENSE"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/easing"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/Qt5Core.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-qbig5codecs",
+      "name": "Qt Big5 codecs",
+      "version": "5.15.2-vendored",
+      "version_basis": "Qt 5.15.2 upstream attribution metadata",
+      "license_expression": "BSD-2-Clause",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/corelib/codecs/QBIG5CODEC_LICENSE.txt"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/corelib/codecs"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/Qt5Core.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-qbkcodec",
+      "name": "Qt GBK codec",
+      "version": "5.15.2-vendored",
+      "version_basis": "Qt 5.15.2 upstream attribution metadata",
+      "license_expression": "BSD-2-Clause",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/corelib/codecs/QBKCODEC_LICENSE.txt"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/corelib/codecs"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/Qt5Core.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-qeucjpcodec",
+      "name": "Qt EUC-JP codec",
+      "version": "5.15.2-vendored",
+      "version_basis": "Qt 5.15.2 upstream attribution metadata",
+      "license_expression": "BSD-2-Clause",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/corelib/codecs/QEUCJPCODEC_LICENSE.txt"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/corelib/codecs"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/Qt5Core.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-qeuckrcodec",
+      "name": "Qt EUC-KR codec",
+      "version": "5.15.2-vendored",
+      "version_basis": "Qt 5.15.2 upstream attribution metadata",
+      "license_expression": "BSD-2-Clause",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/corelib/codecs/QEUCKRCODEC_LICENSE.txt"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/corelib/codecs"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/Qt5Core.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-qjiscodec",
+      "name": "Qt JIS codec",
+      "version": "5.15.2-vendored",
+      "version_basis": "Qt 5.15.2 upstream attribution metadata",
+      "license_expression": "BSD-2-Clause",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/corelib/codecs/QJISCODEC_LICENSE.txt"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/corelib/codecs"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/Qt5Core.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-qsjiscodec",
+      "name": "Qt Shift-JIS codec",
+      "version": "5.15.2-vendored",
+      "version_basis": "Qt 5.15.2 upstream attribution metadata",
+      "license_expression": "BSD-2-Clause",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/corelib/codecs/QSJISCODEC_LICENSE.txt"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/corelib/codecs"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/Qt5Core.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-qtsciicodec",
+      "name": "Qt TSCII codec",
+      "version": "5.15.2-vendored",
+      "version_basis": "Qt 5.15.2 upstream attribution metadata",
+      "license_expression": "BSD-2-Clause",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/corelib/codecs/QTSCIICODEC_LICENSE.txt"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/corelib/codecs"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/Qt5Core.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-unicode-ucd",
+      "name": "Unicode Character Database",
+      "version": "26",
+      "version_basis": "Literal Version field in Qt 5.15.2 qt_attribution.json.",
+      "license_expression": "Unicode-DFS-2016",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/corelib/text/UNICODE_LICENSE.txt"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/corelib/text"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/Qt5Core.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-unicode-cldr",
+      "name": "Unicode CLDR",
+      "version": "v36",
+      "version_basis": "Qt 5.15.2 upstream attribution metadata",
+      "license_expression": "Unicode-DFS-2016",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/corelib/text/UNICODE_LICENSE.txt"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/corelib/text"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/Qt5Core.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-public-suffix-list",
+      "name": "Public Suffix List",
+      "version": "b880425f09bca902da412bdece4f68e942f3a23b",
+      "version_basis": "Exact list commit recorded by Qt attribution; fetched 2020-03-13.",
+      "license_expression": "MPL-2.0",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/corelib/io/PSL-LICENSE.txt"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/corelib/io"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/Qt5Core.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-freetype",
+      "name": "FreeType",
+      "version": "2.10.1",
+      "version_basis": "Qt 5.15.2 upstream attribution metadata",
+      "license_expression": "FTL OR GPL-2.0-only",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/freetype/LICENSE.txt"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/freetype"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/Qt5Gui.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-freetype-zlib",
+      "name": "FreeType zlib-derived code",
+      "version": "2.10.1",
+      "version_basis": "Qt 5.15.2 upstream attribution metadata",
+      "license_expression": "Zlib",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/freetype/ZLIB-LICENSE.txt"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/freetype"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/Qt5Gui.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-freetype-bdf",
+      "name": "FreeType BDF support",
+      "version": "2.10.1",
+      "version_basis": "Qt 5.15.2 upstream attribution metadata",
+      "license_expression": "MIT",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/freetype/BDF-LICENSE.txt"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/freetype"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/Qt5Gui.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-freetype-pcf",
+      "name": "FreeType PCF support",
+      "version": "2.10.1",
+      "version_basis": "Qt 5.15.2 upstream attribution metadata",
+      "license_expression": "MIT",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/freetype/PCF-LICENSE.txt"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/freetype"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/Qt5Gui.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-grayraster",
+      "name": "FreeType-derived gray rasterizer",
+      "version": "5.15.2-vendored",
+      "version_basis": "Qt 5.15.2 upstream attribution metadata",
+      "license_expression": "FTL OR GPL-2.0-only",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/freetype/docs/LICENSE.TXT"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/gui/painting/qgrayraster.c"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/Qt5Gui.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-harfbuzz-ng",
+      "name": "HarfBuzz-NG",
+      "version": "1.7.4",
+      "version_basis": "Qt 5.15.2 upstream attribution metadata",
+      "license_expression": "MIT",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/harfbuzz-ng/COPYING"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/harfbuzz-ng"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/Qt5Gui.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-libpng",
+      "name": "libpng",
+      "version": "1.6.37",
+      "version_basis": "Qt 5.15.2 upstream attribution metadata",
+      "license_expression": "Libpng AND libpng-2.0",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/libpng/LICENSE"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/libpng"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/Qt5Gui.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-md4c",
+      "name": "MD4C",
+      "version": "0.4.3",
+      "version_basis": "Qt 5.15.2 upstream attribution metadata",
+      "license_expression": "MIT",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/md4c/LICENSE.md"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/md4c"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/Qt5Gui.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-vulkan-memory-allocator",
+      "name": "Vulkan Memory Allocator",
+      "version": "2.2.0",
+      "version_basis": "Qt 5.15.2 upstream attribution metadata",
+      "license_expression": "MIT",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/VulkanMemoryAllocator/LICENSE.txt"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/VulkanMemoryAllocator"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/Qt5Gui.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-icc-srgb",
+      "name": "ICC sRGB color profile",
+      "version": "5.15.2-vendored",
+      "version_basis": "Qt attribution has no independent version; profile bytes are pinned by Qtbase v5.15.2.",
+      "license_expression": "LicenseRef-ICC",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/icc/LICENSE.txt"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/icc"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/Qt5Gui.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-aglfn",
+      "name": "Adobe Glyph List For New Fonts",
+      "version": "1.7",
+      "version_basis": "Qt 5.15.2 upstream attribution metadata",
+      "license_expression": "BSD-3-Clause",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/gui/text/AGLFN_LICENSE.txt"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/gui/text"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/Qt5Gui.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-smooth-scaling",
+      "name": "Qt smooth scaling algorithm",
+      "version": "5.15.2-vendored",
+      "version_basis": "Qt 5.15.2 upstream attribution metadata",
+      "license_expression": "BSD-2-Clause AND Imlib2",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/gui/painting/QIMAGETRANSFORM_LICENSE.txt"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/gui/painting/qimagescale.cpp"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/Qt5Gui.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-webgradients",
+      "name": "WebGradients",
+      "version": "2017-vendored",
+      "version_basis": "Qt 5.15.2 upstream attribution metadata",
+      "license_expression": "MIT",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/gui/painting/WEBGRADIENTS_LICENSE.txt"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/gui/painting/webgradients.css"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/Qt5Gui.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-xserverhelper",
+      "name": "X Server region helper",
+      "version": "5.15.2-vendored",
+      "version_basis": "Qt 5.15.2 upstream attribution metadata",
+      "license_expression": "X11 AND HPND",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/gui/painting/XCONSORTIUM_LICENSE.txt"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/gui/painting/qregion.cpp"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/Qt5Gui.dll"
+      ],
+      "provenance": "qregion.cpp contains the X Consortium and Digital Equipment region implementation and is compiled into the Windows Qt5Gui.dll."
+    },
+    {
+      "id": "qt-opengl-headers",
+      "name": "Khronos OpenGL headers",
+      "version": "Revision 27684",
+      "version_basis": "Qt 5.15.2 upstream attribution metadata",
+      "license_expression": "MIT",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/gui/opengl/KHRONOS_LICENSE.txt"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/gui/opengl"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/Qt5Gui.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-opengles2-headers",
+      "name": "Khronos OpenGL ES 2 headers",
+      "version": "Revision 27673",
+      "version_basis": "Qt 5.15.2 upstream attribution metadata",
+      "license_expression": "MIT",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/gui/opengl/KHRONOS_LICENSE.txt"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/gui/opengl"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/Qt5Gui.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-vulkan-api-registry",
+      "name": "Vulkan API Registry",
+      "version": "1.0.39",
+      "version_basis": "Qt 5.15.2 upstream attribution metadata",
+      "license_expression": "MIT",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/gui/vulkan/KHRONOS_LICENSE.txt"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/gui/vulkan"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/Qt5Gui.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-libjpeg-turbo",
+      "name": "libjpeg-turbo",
+      "version": "2.0.5",
+      "version_basis": "Qt 5.15.2 upstream attribution metadata",
+      "license_expression": "IJG AND BSD-3-Clause AND Zlib",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/libjpeg/LICENSE",
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/libjpeg/src/README.ijg"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/libjpeg"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/imageformats/qjpeg.dll"
+      ],
+      "provenance": "Qt attribution labels the component IJG; the bundled libjpeg-turbo LICENSE states that the distribution is covered by IJG, BSD-3-Clause, and Zlib. The complete LICENSE and README.ijg are preserved."
+    },
+    {
+      "id": "qt-libtiff",
+      "name": "libtiff",
+      "version": "4.1.0",
+      "version_basis": "Qt 5.15.2 upstream attribution metadata",
+      "license_expression": "libtiff",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtimageformats/src/3rdparty/libtiff/COPYRIGHT"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtimageformats",
+        "qt_tag": "v5.15.2",
+        "module_commit": "b00ebc3929b5792d3f791b7a01bcb981d31cec9b",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtimageformats/src/3rdparty/libtiff"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/imageformats/qtiff.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-libwebp",
+      "name": "libwebp",
+      "version": "1.1.0",
+      "version_basis": "Qt 5.15.2 upstream attribution metadata",
+      "license_expression": "BSD-3-Clause",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtimageformats/src/3rdparty/libwebp/COPYING"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtimageformats",
+        "qt_tag": "v5.15.2",
+        "module_commit": "b00ebc3929b5792d3f791b7a01bcb981d31cec9b",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtimageformats/src/3rdparty/libwebp"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/imageformats/qwebp.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-angle-core",
+      "name": "ANGLE Library",
+      "version": "chromium/3280",
+      "version_basis": "Qt 5.15.2 upstream attribution metadata",
+      "license_expression": "BSD-3-Clause",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/angle/LICENSE"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/libEGL.dll",
+        "_internal/pymeshlab/libGLESv2.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-angle-arrayboundsclamper",
+      "name": "ANGLE Array Bounds Clamper",
+      "version": "5.15.2-vendored",
+      "version_basis": "Qt 5.15.2 upstream attribution metadata",
+      "license_expression": "BSD-2-Clause",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/angle/src/third_party/compiler/LICENSE"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle/src/third_party/compiler"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/libGLESv2.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-angle-khronos",
+      "name": "ANGLE Khronos headers",
+      "version": "chromium/3280-vendored",
+      "version_basis": "Qt 5.15.2 upstream attribution metadata",
+      "license_expression": "MIT",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/angle/KHRONOS_LICENSE"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle/include"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/libEGL.dll",
+        "_internal/pymeshlab/libGLESv2.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-angle-systeminfo",
+      "name": "ANGLE SystemInfo",
+      "version": "5.15.2-vendored",
+      "version_basis": "Qt 5.15.2 upstream attribution metadata",
+      "license_expression": "BSD-2-Clause",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/angle/SYSTEMINFO_LICENSE"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle/src/third_party/systeminfo"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/libGLESv2.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-angle-trace-event",
+      "name": "ANGLE trace_event",
+      "version": "5.15.2-vendored",
+      "version_basis": "Qt 5.15.2 upstream attribution metadata",
+      "license_expression": "BSD-3-Clause",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/angle/TRACEEVENT_LICENSE"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle/src/third_party/trace_event"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/libGLESv2.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-angle-murmurhash",
+      "name": "ANGLE MurmurHash",
+      "version": "5.15.2-vendored",
+      "version_basis": "Qt attribution declares the compiled MurmurHash code Public Domain and has no independent version.",
+      "license_expression": "LicenseRef-Public-Domain",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/angle/src/common/third_party/smhasher/LICENSE",
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/angle/qt_attribution.json"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle/src/common/third_party/smhasher"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/libGLESv2.dll"
+      ],
+      "provenance": "Compiled into the exact official Qt MSVC2019 x64 binary identified by the pinned file hash."
+    },
+    {
+      "id": "qt-angle-chromium-base",
+      "name": "Chromium base helper classes in ANGLE",
+      "version": "28b5bbb227d331c01e6ff9b2f8729732135aadc7",
+      "version_basis": "Exact Chromium revision recorded in README.angle.",
+      "license_expression": "BSD-3-Clause",
+      "license_assets": [
+        "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/angle/src/common/third_party/base/README.angle",
+        "source/fixed_app/licenses/qt-5.15.2/chromium/28b5bbb227d331c01e6ff9b2f8729732135aadc7/LICENSE"
+      ],
+      "source": {
+        "archive_id": "qt-5.15.2-corresponding-source",
+        "module": "qtbase",
+        "qt_tag": "v5.15.2",
+        "module_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e",
+        "corresponding_source_member_root": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle/src/common/third_party/base",
+        "upstream_repository": "https://chromium.googlesource.com/chromium/src",
+        "upstream_commit": "28b5bbb227d331c01e6ff9b2f8729732135aadc7",
+        "upstream_license_url": "https://chromium.googlesource.com/chromium/src/+/28b5bbb227d331c01e6ff9b2f8729732135aadc7/LICENSE"
+      },
+      "runtime_files": [
+        "_internal/pymeshlab/libGLESv2.dll"
+      ],
+      "provenance": "Qt attribution omits this child, but gles_common.pri explicitly compiles anglebase/sha1.cc into libGLESv2.dll; README.angle records the exact Chromium revision."
+    }
+  ],
+  "license_assets": {
+    "source/fixed_app/licenses/qt-5.15.2/chromium/28b5bbb227d331c01e6ff9b2f8729732135aadc7/LICENSE": {
+      "sha256": "845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308",
+      "size": 1559,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "chromium-base-license-28b5",
+        "source_member": "LICENSE",
+        "source_commit": "28b5bbb227d331c01e6ff9b2f8729732135aadc7",
+        "source_url": "https://chromium.googlesource.com/chromium/src/+/28b5bbb227d331c01e6ff9b2f8729732135aadc7/LICENSE"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/angle/KHRONOS_LICENSE": {
+      "sha256": "9f5fcd512f7f61b0b0c81e787ab1c7fe845fec0daa767e58e5079b9673cec718",
+      "size": 1106,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/3rdparty/angle/KHRONOS_LICENSE",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle/KHRONOS_LICENSE",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/angle/LICENSE": {
+      "sha256": "d0636fcb5ad0e21e61c0ecfd209526ee2600013e991e4c1295d1130a2a046c38",
+      "size": 1687,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/3rdparty/angle/LICENSE",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle/LICENSE",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/angle/qt_attribution.json": {
+      "sha256": "8298fb1c17cd39bb52794e0b034f0a3d748eded7f8df428a8a5c193fe814e699",
+      "size": 3366,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/3rdparty/angle/qt_attribution.json",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle/qt_attribution.json",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/angle/src/common/third_party/base/README.angle": {
+      "sha256": "64c7711f7edc6934b2c0ff09655fd04daba54fd60b851b9ce918be7a1aed615c",
+      "size": 1255,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/3rdparty/angle/src/common/third_party/base/README.angle",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle/src/common/third_party/base/README.angle",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/angle/src/common/third_party/smhasher/LICENSE": {
+      "sha256": "85846aed88383d3e027f640211ec8ee6cb6d32dbd24f3d0a3d03a22f3df34da8",
+      "size": 1199,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/3rdparty/angle/src/common/third_party/smhasher/LICENSE",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle/src/common/third_party/smhasher/LICENSE",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/angle/src/third_party/compiler/LICENSE": {
+      "sha256": "929d973921dfc4aa73d54d43303e829d382156fc0a70a3daf6dce26b5fcdb3f7",
+      "size": 1284,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/3rdparty/angle/src/third_party/compiler/LICENSE",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle/src/third_party/compiler/LICENSE",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/angle/SYSTEMINFO_LICENSE": {
+      "sha256": "7a1e1cedd9ec813cb88f62c06703fe38f1b41ec7514ef95745ab7c45a4b9b7c3",
+      "size": 1282,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/3rdparty/angle/SYSTEMINFO_LICENSE",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle/SYSTEMINFO_LICENSE",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/angle/TRACEEVENT_LICENSE": {
+      "sha256": "66564c156c4b82d0af63612fd212c3cfe1f533fae3d27f465cd1eda496c9d8c6",
+      "size": 1508,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/3rdparty/angle/TRACEEVENT_LICENSE",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle/TRACEEVENT_LICENSE",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/double-conversion/LICENSE": {
+      "sha256": "befd10530f302b2108022be94d74eed4943880fc0626ab762ca7b53521813eeb",
+      "size": 1553,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/3rdparty/double-conversion/LICENSE",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/double-conversion/LICENSE",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/easing/LICENSE": {
+      "sha256": "45237edb6ae41c7aa67e2ca9de302206a31d55657f849a9c17ee5207c01345f5",
+      "size": 1530,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/3rdparty/easing/LICENSE",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/easing/LICENSE",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/freetype/BDF-LICENSE.txt": {
+      "sha256": "d87ffc9bfd9f829877b9a0c1ad02f156f26c07a172854b44cf0b1b16f7738099",
+      "size": 2348,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/3rdparty/freetype/BDF-LICENSE.txt",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/freetype/BDF-LICENSE.txt",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/freetype/docs/LICENSE.TXT": {
+      "sha256": "babc9edd370b7f7e8d385ec0d697f0ff6dee1118e0bb33286ca82c9f7c9ad651",
+      "size": 1782,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/3rdparty/freetype/docs/LICENSE.TXT",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/freetype/docs/LICENSE.TXT",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/freetype/LICENSE.txt": {
+      "sha256": "b439c456dba1cf3c4a6df71bd21f20171c7e377025e1cb9db0397b3c00c6d956",
+      "size": 26928,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/3rdparty/freetype/LICENSE.txt",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/freetype/LICENSE.txt",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/freetype/PCF-LICENSE.txt": {
+      "sha256": "b6f21f1d5ef5ff804f1ea9d67c10ee8ed0c777e331f9d07bd26f1823015eed0c",
+      "size": 1091,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/3rdparty/freetype/PCF-LICENSE.txt",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/freetype/PCF-LICENSE.txt",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/freetype/ZLIB-LICENSE.txt": {
+      "sha256": "bc82e519d6a282651fe9ee0b93e3be5cd999962badef68ff7ce624636965ce1a",
+      "size": 982,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/3rdparty/freetype/ZLIB-LICENSE.txt",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/freetype/ZLIB-LICENSE.txt",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/harfbuzz-ng/COPYING": {
+      "sha256": "2c631526dad2d97beacfe20c3957b323a8bc98e425d5e8059bf1c7c603392814",
+      "size": 1726,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/3rdparty/harfbuzz-ng/COPYING",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/harfbuzz-ng/COPYING",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/harfbuzz/COPYING": {
+      "sha256": "2cb46daad3744adcc5565d135b865e800fc590f1c7f14826ac43d93b207081f4",
+      "size": 1265,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/3rdparty/harfbuzz/COPYING",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/harfbuzz/COPYING",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/icc/LICENSE.txt": {
+      "sha256": "38beed26819b3bf9fc3fb0c217b9be0293ff49bc8654663c2ad52d6b39dc95d5",
+      "size": 473,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/3rdparty/icc/LICENSE.txt",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/icc/LICENSE.txt",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/libjpeg/LICENSE": {
+      "sha256": "ef5e4629b22261d62f14aa9e35dee709d3a5a6b7859668397ddbf50cc7f6f13c",
+      "size": 5341,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/3rdparty/libjpeg/LICENSE",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/libjpeg/LICENSE",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/libjpeg/src/README.ijg": {
+      "sha256": "cde9bcd9bba47a04e0ebb93fda7d503733f9fb6db3a789bd79fb75087a7edd36",
+      "size": 13964,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/3rdparty/libjpeg/src/README.ijg",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/libjpeg/src/README.ijg",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/libpng/LICENSE": {
+      "sha256": "0ad3bfee8be10e5519949e7af492e36bc349376b75fbeb412229a5967e3e9434",
+      "size": 5479,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/3rdparty/libpng/LICENSE",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/libpng/LICENSE",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/md4/qt_attribution.json": {
+      "sha256": "e36673864aa211bb563ed6816496ec459a44acef21122d2bace78d0469404680",
+      "size": 588,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/3rdparty/md4/qt_attribution.json",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/md4/qt_attribution.json",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/md4c/LICENSE.md": {
+      "sha256": "287f6e0f800c500eaac8c9d66e9c9a8a9c7bee6acd754e2ae892aa3f8c463438",
+      "size": 1118,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/3rdparty/md4c/LICENSE.md",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/md4c/LICENSE.md",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/md5/qt_attribution.json": {
+      "sha256": "4b9ebf814e138dd74659b64393a3367750399db4609bfa867e0387068b1613ba",
+      "size": 461,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/3rdparty/md5/qt_attribution.json",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/md5/qt_attribution.json",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/pcre2/LICENCE": {
+      "sha256": "08bebda80b178f4b558faed4e52930f66e855614e4dfae15a436733b4712e041",
+      "size": 3550,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/3rdparty/pcre2/LICENCE",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/pcre2/LICENCE",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/pcre2/LICENCE-SLJIT": {
+      "sha256": "27dbcd46052b66abea11a7de24f7fe974de2b864088c680875548a2077aca0a0",
+      "size": 1441,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/3rdparty/pcre2/LICENCE-SLJIT",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/pcre2/LICENCE-SLJIT",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/rfc6234/LICENSE": {
+      "sha256": "532d9994b97124f63cdb50bc4c1ba0ac700e4a44731155fccca3f97dacf33e3b",
+      "size": 1602,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/3rdparty/rfc6234/LICENSE",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/rfc6234/LICENSE",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/sha1/qt_attribution.json": {
+      "sha256": "ae94e8b6c91ff57fb866915900bb157daed46955661d490612535658a3c4b5fc",
+      "size": 439,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/3rdparty/sha1/qt_attribution.json",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/sha1/qt_attribution.json",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/sha3/BRG_ENDIAN_LICENSE": {
+      "sha256": "fbec333250b8cd75e1eac4d442762fddc444db557af7a931921652449f5e4df0",
+      "size": 659,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/3rdparty/sha3/BRG_ENDIAN_LICENSE",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/sha3/BRG_ENDIAN_LICENSE",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/sha3/CC0_LICENSE": {
+      "sha256": "dfdb52abd51dac81d289e314964be541c23d353b1de9fc12f0b96849d60a72a6",
+      "size": 7112,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/3rdparty/sha3/CC0_LICENSE",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/sha3/CC0_LICENSE",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/tinycbor/LICENSE": {
+      "sha256": "a164c0d1600a6ae3dda400f6f3365ac21577aa146c9330c34f6e142ab47562fe",
+      "size": 1095,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/3rdparty/tinycbor/LICENSE",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/tinycbor/LICENSE",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/VulkanMemoryAllocator/LICENSE.txt": {
+      "sha256": "69710e2e534aabfc401eb3e8722f838b925a3444e09bfe1458a6b37fa64a48ff",
+      "size": 1118,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/3rdparty/VulkanMemoryAllocator/LICENSE.txt",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/VulkanMemoryAllocator/LICENSE.txt",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/3rdparty/zlib/LICENSE": {
+      "sha256": "7835e731da238372611797f1c24d7214f8b55f57cbd80141a73715eeb2ad7d6d",
+      "size": 1493,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/3rdparty/zlib/LICENSE",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/zlib/LICENSE",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/corelib/codecs/QBIG5CODEC_LICENSE.txt": {
+      "sha256": "7976165716faf91fb1a237749596e24a1b03ae44bf7556292838bbcee3ba7632",
+      "size": 1449,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/corelib/codecs/QBIG5CODEC_LICENSE.txt",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/corelib/codecs/QBIG5CODEC_LICENSE.txt",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/corelib/codecs/QBKCODEC_LICENSE.txt": {
+      "sha256": "fedc902897b31a915324bb0397b5d8be2cd1f90d7d0df8ef2f7b209a27d620c6",
+      "size": 1462,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/corelib/codecs/QBKCODEC_LICENSE.txt",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/corelib/codecs/QBKCODEC_LICENSE.txt",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/corelib/codecs/QEUCJPCODEC_LICENSE.txt": {
+      "sha256": "a1da1dbd4e0ed4d8276623a12d8eda222658a47d46ff317e94cbfbf255326c16",
+      "size": 1308,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/corelib/codecs/QEUCJPCODEC_LICENSE.txt",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/corelib/codecs/QEUCJPCODEC_LICENSE.txt",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/corelib/codecs/QEUCKRCODEC_LICENSE.txt": {
+      "sha256": "84675aaea19f8d4bb165b9035f66272efb4c25d71566743c0528f8fef4f13502",
+      "size": 1313,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/corelib/codecs/QEUCKRCODEC_LICENSE.txt",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/corelib/codecs/QEUCKRCODEC_LICENSE.txt",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/corelib/codecs/QJISCODEC_LICENSE.txt": {
+      "sha256": "a1da1dbd4e0ed4d8276623a12d8eda222658a47d46ff317e94cbfbf255326c16",
+      "size": 1308,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/corelib/codecs/QJISCODEC_LICENSE.txt",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/corelib/codecs/QJISCODEC_LICENSE.txt",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/corelib/codecs/QSJISCODEC_LICENSE.txt": {
+      "sha256": "a1da1dbd4e0ed4d8276623a12d8eda222658a47d46ff317e94cbfbf255326c16",
+      "size": 1308,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/corelib/codecs/QSJISCODEC_LICENSE.txt",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/corelib/codecs/QSJISCODEC_LICENSE.txt",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/corelib/codecs/QTSCIICODEC_LICENSE.txt": {
+      "sha256": "332cdf7c9fde55034b65bcb1564a9a35b7a9daed052edf904162473bfe407604",
+      "size": 1309,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/corelib/codecs/QTSCIICODEC_LICENSE.txt",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/corelib/codecs/QTSCIICODEC_LICENSE.txt",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/corelib/io/PSL-LICENSE.txt": {
+      "sha256": "9221c2f936159b8446d329249fb4c0f25be510f447383a0f13336ac7985668a3",
+      "size": 17099,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/corelib/io/PSL-LICENSE.txt",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/corelib/io/PSL-LICENSE.txt",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/corelib/text/UNICODE_LICENSE.txt": {
+      "sha256": "e82e9d4a7641ea8b57dd323ddf4a0dbd13adbf5cb6e2c881001c165f6bc70fff",
+      "size": 2321,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/corelib/text/UNICODE_LICENSE.txt",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/corelib/text/UNICODE_LICENSE.txt",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/gui/opengl/KHRONOS_LICENSE.txt": {
+      "sha256": "58d955844ce5c8e69f81f73b575528a4ba1ae9ba3fbf5ea9c0fa07534b28f525",
+      "size": 1104,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/gui/opengl/KHRONOS_LICENSE.txt",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/gui/opengl/KHRONOS_LICENSE.txt",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/gui/painting/QIMAGETRANSFORM_LICENSE.txt": {
+      "sha256": "8f7e00a8707432a31fc56ab2e9b14ab1d0ab45fd0019d661abd9b9ff9d91caa7",
+      "size": 3064,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/gui/painting/QIMAGETRANSFORM_LICENSE.txt",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/gui/painting/QIMAGETRANSFORM_LICENSE.txt",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/gui/painting/WEBGRADIENTS_LICENSE.txt": {
+      "sha256": "f2c1ac7b3e7e91c05345e27d065ec6154cf688396e07a959ed7a4b9281c4b91c",
+      "size": 1083,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/gui/painting/WEBGRADIENTS_LICENSE.txt",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/gui/painting/WEBGRADIENTS_LICENSE.txt",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/gui/painting/XCONSORTIUM_LICENSE.txt": {
+      "sha256": "cd4cddc08cfa5258210a1953802524465ca4736bdcbd202efb4a22d8b95baf93",
+      "size": 2337,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/gui/painting/XCONSORTIUM_LICENSE.txt",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/gui/painting/XCONSORTIUM_LICENSE.txt",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/gui/text/AGLFN_LICENSE.txt": {
+      "sha256": "9b767a85b74bd65017b8010925272f279b97e7de2056762aedeb96d304e5baf0",
+      "size": 1451,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/gui/text/AGLFN_LICENSE.txt",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/gui/text/AGLFN_LICENSE.txt",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtbase/src/gui/vulkan/KHRONOS_LICENSE.txt": {
+      "sha256": "ac262f3e72a559ac07bd72a00932a33fe656e8c0ccd0ca3b645238811e9eae7e",
+      "size": 1104,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtbase-source-5.15.2",
+        "source_member": "qtbase-everywhere-src-5.15.2/src/gui/vulkan/KHRONOS_LICENSE.txt",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtbase/src/gui/vulkan/KHRONOS_LICENSE.txt",
+        "source_commit": "f5bcf9b017a84c08983d8e8d00d7177ecd6bbd2e"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtimageformats/src/3rdparty/libtiff/COPYRIGHT": {
+      "sha256": "8f859efd8916b7df374bd39dc9eeea9d53dbcf35e62fcf670d2b3b4c4d8f251a",
+      "size": 1167,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtimageformats-source-5.15.2",
+        "source_member": "qtimageformats-everywhere-src-5.15.2/src/3rdparty/libtiff/COPYRIGHT",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtimageformats/src/3rdparty/libtiff/COPYRIGHT",
+        "source_commit": "b00ebc3929b5792d3f791b7a01bcb981d31cec9b"
+      }
+    },
+    "source/fixed_app/licenses/qt-5.15.2/qtimageformats/src/3rdparty/libwebp/COPYING": {
+      "sha256": "17c029a902ad45a199dfe8e3a1c39305ab28d302b0703360c4a27351a4673dcb",
+      "size": 1526,
+      "byte_preserving": true,
+      "upstream": {
+        "source_archive_id": "qtimageformats-source-5.15.2",
+        "source_member": "qtimageformats-everywhere-src-5.15.2/src/3rdparty/libwebp/COPYING",
+        "corresponding_source_member": "qt-everywhere-src-5.15.2/qtimageformats/src/3rdparty/libwebp/COPYING",
+        "source_commit": "b00ebc3929b5792d3f791b7a01bcb981d31cec9b"
+      }
+    }
+  },
+  "implementation_notes": [
+    "This manifest is consumed fail-closed by the inventory generator, PyInstaller specification, and software-package staging validation.",
+    "All license assets under source/fixed_app/licenses/qt-5.15.2 are byte-preserving copies of the pinned upstream source member, except the Chromium LICENSE fetched from the exact recorded Chromium commit.",
+    "The full existing Qt 5.15.2 corresponding-source archive covers qtbase and qtimageformats source code. The separately preserved Chromium LICENSE supplies a notice referenced by ANGLE but absent from the Qt source archive."
+  ]
+}

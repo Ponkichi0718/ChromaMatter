@@ -1,0 +1,709 @@
+{
+  "schema_version": 1,
+  "bundle_id": "chromamatter-windows-corresponding-source",
+  "bundle_status": "candidate-only-not-release-approved",
+  "release_approval": {
+    "status": "release-approved",
+    "requires_all_known_gaps_resolved": true,
+    "required_gap_ids": [
+      "pytetwild-nanobind-exact-build-version",
+      "meshlab-md5-only-external-archives"
+    ]
+  },
+  "default_external_archive_lock": "meshlab_windows_external_archives.lock.json",
+  "project": {
+    "id": "chromamatter",
+    "display_name": "ChromaMatter",
+    "public_url": "https://github.com/Ponkichi0718/ChromaMatter.git",
+    "destination": "components/ChromaMatter"
+  },
+  "known_gaps": [
+    {
+      "id": "pytetwild-nanobind-exact-build-version",
+      "status": "unresolved",
+      "reason": "PyTetWild 0.3.0 declares nanobind >=1.3.2 without an exact build lock; recover the exact wheel-build version before release approval",
+      "resolution_evidence": {
+        "kind": "pytetwild-controlled-rebuild"
+      }
+    },
+    {
+      "id": "meshlab-md5-only-external-archives",
+      "status": "unresolved",
+      "reason": "Other MeshLab external archives are verified against hashes from the exact CMake commit, but those upstream pins are MD5; release review should preserve the generated SHA-256 values in a final lock",
+      "resolution_evidence": {
+        "kind": "complete-dynamic-archive-sha256-lock",
+        "rule_id": "meshlab-windows-external-build-inputs"
+      }
+    }
+  ],
+  "pytetwild_rebuild_policy": {
+    "component": "pytetwild-0.3.0",
+    "known_gap_id": "pytetwild-nanobind-exact-build-version",
+    "template": "pytetwild_rebuild_lock.template.json",
+    "nanobind_destination": "components/pytetwild-build-dependencies/nanobind-controlled-rebuild",
+    "nanobind_required_gitlinks": [
+      {
+        "path": "ext/robin_map",
+        "url": "https://github.com/Tessil/robin-map.git"
+      }
+    ],
+    "required_for_staging": true
+  },
+  "allowed_redirect_host_suffixes": [
+    "download.qt.io",
+    "qt.io",
+    "github.com",
+    "githubusercontent.com",
+    "gitlab.com",
+    "freedesktop.org",
+    "llvm.org",
+    "meshlab.net",
+    "sourceforge.net",
+    "apache.org",
+    "boost.io"
+  ],
+  "components": [
+    {
+      "id": "tetgen-python-0.8.3",
+      "display_name": "tetgen Python wrapper 0.8.3 with modified TetGen 1.6 core",
+      "version": "0.8.3",
+      "kind": "git",
+      "url": "https://github.com/pyvista/tetgen.git",
+      "commit": "af5ff36f069f7f203db031c24e1f05d109d8c25c",
+      "destination": "components/tetgen-python-0.8.3",
+      "required_paths": [
+        "LICENSE",
+        "src/tetgen-license",
+        "src/tetgen.cxx",
+        "src/tetgen.h"
+      ]
+    },
+    {
+      "id": "pytetwild-0.3.0",
+      "display_name": "PyTetWild 0.3.0",
+      "version": "0.3.0",
+      "kind": "git",
+      "url": "https://github.com/pyvista/pytetwild.git",
+      "commit": "eea46df87ef58e861956b7a710f42ab58eaa02a0",
+      "destination": "components/pytetwild-0.3.0",
+      "required_paths": [
+        "LICENSE",
+        "CMakeLists.txt",
+        "pyproject.toml"
+      ]
+    },
+    {
+      "id": "ftetwild-d7d99bb",
+      "display_name": "fTetWild used by PyTetWild 0.3.0",
+      "version": "d7d99bb4387a07895b9adce058dc7305f6b6e5ab",
+      "kind": "git",
+      "url": "https://github.com/wildmeshing/fTetWild.git",
+      "commit": "d7d99bb4387a07895b9adce058dc7305f6b6e5ab",
+      "destination": "components/pytetwild-0.3.0/src/fTetWild",
+      "required_paths": [
+        "LICENSE.MPL2",
+        "CMakeLists.txt",
+        "cmake/FloatTetwildDependencies.cmake"
+      ]
+    },
+    {
+      "id": "ftetwild-fmt-11.2.0",
+      "display_name": "fmt 11.2.0 used by fTetWild",
+      "version": "11.2.0",
+      "kind": "git",
+      "url": "https://github.com/fmtlib/fmt.git",
+      "commit": "40626af88bd7df9a5fb80be7b25ac85b122d6c21",
+      "destination": "components/pytetwild-build-dependencies/fmt-11.2.0",
+      "required_paths": ["LICENSE", "CMakeLists.txt"]
+    },
+    {
+      "id": "ftetwild-spdlog-1.15.3",
+      "display_name": "spdlog 1.15.3 used by fTetWild",
+      "version": "1.15.3",
+      "kind": "git",
+      "url": "https://github.com/gabime/spdlog.git",
+      "commit": "6fa36017cfd5731d617e1a934f0e5ea9c4445b13",
+      "destination": "components/pytetwild-build-dependencies/spdlog-1.15.3",
+      "required_paths": ["LICENSE", "CMakeLists.txt"]
+    },
+    {
+      "id": "ftetwild-libigl-2.6.0",
+      "display_name": "libigl 2.6.0 used by fTetWild",
+      "version": "2.6.0",
+      "kind": "git",
+      "url": "https://github.com/libigl/libigl.git",
+      "commit": "40e7900ccbd767f1f360e0eb10f0f1a6432e0993",
+      "destination": "components/pytetwild-build-dependencies/libigl-2.6.0",
+      "required_paths": ["LICENSE.GPL", "CMakeLists.txt"]
+    },
+    {
+      "id": "ftetwild-libigl-eigen-3.4.0",
+      "display_name": "Eigen 3.4.0 required by libigl core",
+      "version": "3.4.0",
+      "kind": "git",
+      "url": "https://gitlab.com/libeigen/eigen.git",
+      "commit": "3147391d946bb4b6c68edd901f2add6ac1f31f8c",
+      "destination": "components/pytetwild-build-dependencies/libigl-eigen-3.4.0",
+      "required_paths": ["COPYING.MPL2", "CMakeLists.txt"]
+    },
+    {
+      "id": "ftetwild-libigl-predicates",
+      "display_name": "libigl predicates required by fTetWild",
+      "version": "decb7bc1260e689cbe008109e3cc5d3a5a433aea",
+      "kind": "git",
+      "url": "https://github.com/libigl/libigl-predicates.git",
+      "commit": "decb7bc1260e689cbe008109e3cc5d3a5a433aea",
+      "destination": "components/pytetwild-build-dependencies/libigl-predicates",
+      "required_paths": ["README.md", "CMakeLists.txt"]
+    },
+    {
+      "id": "ftetwild-geogram-1.9.6",
+      "display_name": "Geogram 1.9.6 used by fTetWild",
+      "version": "1.9.6",
+      "kind": "git",
+      "url": "https://github.com/BrunoLevy/geogram.git",
+      "commit": "fc3eb9bf44d2ee29686592e3ef5f5f4daeda27f8",
+      "destination": "components/pytetwild-build-dependencies/geogram-1.9.6",
+      "required_paths": ["LICENSE", "CMakeLists.txt"],
+      "required_gitlinks": [
+        {
+          "path": "src/lib/geogram/third_party/amgcl",
+          "url": "https://github.com/ddemidov/amgcl.git",
+          "commit": "ab57038d68ee372ed5df280631051b91f17ed2d1"
+        },
+        {
+          "path": "src/lib/geogram/third_party/libMeshb",
+          "url": "https://github.com/LoicMarechal/libMeshb.git",
+          "commit": "952a157c9d516b28cc6c69cd1550c3e48d4792f9"
+        },
+        {
+          "path": "src/lib/geogram/third_party/rply",
+          "url": "https://github.com/diegonehab/rply.git",
+          "commit": "4296cc91b5c8c26d4e7d7aac0cee2b194ffc5800"
+        }
+      ]
+    },
+    {
+      "id": "ftetwild-onetbb-2022.2.0",
+      "display_name": "oneTBB 2022.2.0 used by fTetWild",
+      "version": "2022.2.0",
+      "kind": "git",
+      "url": "https://github.com/oneapi-src/oneTBB.git",
+      "commit": "06ce6212da6710f4bb2d20a1904b018aa44069bf",
+      "destination": "components/pytetwild-build-dependencies/oneTBB-2022.2.0",
+      "required_paths": ["LICENSE.txt", "CMakeLists.txt"]
+    },
+    {
+      "id": "ftetwild-json",
+      "display_name": "jdumas/json used by fTetWild",
+      "version": "0901d33bf6e7dfe6f70fd9d142c8f5c6695c6c5b",
+      "kind": "git",
+      "url": "https://github.com/jdumas/json.git",
+      "commit": "0901d33bf6e7dfe6f70fd9d142c8f5c6695c6c5b",
+      "destination": "components/pytetwild-build-dependencies/jdumas-json",
+      "required_paths": ["LICENSE.MIT", "include/nlohmann/json.hpp"]
+    },
+    {
+      "id": "mpir-3.0.0",
+      "display_name": "MPIR 3.0.0 used by the PyTetWild Windows wheel",
+      "version": "3.0.0",
+      "kind": "git",
+      "url": "https://github.com/wbhart/mpir.git",
+      "commit": "cdd444aedfcbb190f00328526ef278428702d56e",
+      "destination": "components/pytetwild-build-dependencies/mpir-3.0.0",
+      "required_paths": ["COPYING", "COPYING.LIB", "README"]
+    },
+    {
+      "id": "pymeshlab-2025.7.post1",
+      "display_name": "PyMeshLab 2025.7.post1",
+      "version": "2025.7.post1",
+      "kind": "git",
+      "url": "https://github.com/cnr-isti-vclab/PyMeshLab.git",
+      "commit": "1dc199f9b6c43e58b6db346ba4600866b950b8ae",
+      "destination": "components/pymeshlab-2025.7.post1",
+      "required_paths": ["LICENSE", "CMakeLists.txt", "setup.py"]
+    },
+    {
+      "id": "meshlab-d876376",
+      "display_name": "MeshLab used by PyMeshLab 2025.7.post1",
+      "version": "d876376e3cc4f92d257e248023d82cbac5b03c7d",
+      "kind": "git",
+      "url": "https://github.com/cnr-isti-vclab/meshlab.git",
+      "commit": "d876376e3cc4f92d257e248023d82cbac5b03c7d",
+      "destination": "components/pymeshlab-2025.7.post1/src/meshlab",
+      "required_paths": ["LICENSE.txt", "CMakeLists.txt", "src/external/CMakeLists.txt"]
+    },
+    {
+      "id": "pymeshlab-onetbb-2021.11.0",
+      "display_name": "oneTBB 2021.11.0 runtime carried by the Embree 4.3.3 Windows package used by MeshLab",
+      "version": "2021.11.0",
+      "kind": "git",
+      "url": "https://github.com/uxlfoundation/oneTBB.git",
+      "commit": "8b829acc65569019edb896c5150d427f288e8aba",
+      "destination": "components/pymeshlab-build-dependencies/oneTBB-2021.11.0",
+      "required_paths": ["LICENSE.txt", "CMakeLists.txt"]
+    },
+    {
+      "id": "pymeshlab-pybind11-2.13.6",
+      "display_name": "pybind11 2.13.6 used by PyMeshLab",
+      "version": "2.13.6",
+      "kind": "git",
+      "url": "https://github.com/pybind/pybind11.git",
+      "commit": "a2e59f0e7065404b44dfe92a28aca47ba1378dc4",
+      "destination": "components/pymeshlab-2025.7.post1/src/pymeshlab/pybind11",
+      "required_paths": ["LICENSE", "CMakeLists.txt"]
+    },
+    {
+      "id": "meshlab-vcglib-2025.07",
+      "display_name": "VCGLib 2025.07 used by MeshLab",
+      "version": "2025.07",
+      "kind": "git",
+      "url": "https://github.com/cnr-isti-vclab/vcglib.git",
+      "commit": "c94ef4e12e9ea3ae986d9af91005be8328d13719",
+      "destination": "components/pymeshlab-2025.7.post1/src/meshlab/src/vcglib",
+      "required_paths": ["LICENSE.txt", "CMakeLists.txt"]
+    },
+    {
+      "id": "shapely-2.1.2",
+      "display_name": "Shapely 2.1.2",
+      "version": "2.1.2",
+      "kind": "git",
+      "url": "https://github.com/shapely/shapely.git",
+      "commit": "5fb639d1056888d135fe56bfaf750c9648addeec",
+      "destination": "components/shapely-2.1.2",
+      "required_paths": ["LICENSE.txt", "pyproject.toml"]
+    },
+    {
+      "id": "geos-3.13.1",
+      "display_name": "GEOS 3.13.1 used by the Shapely wheel",
+      "version": "3.13.1",
+      "kind": "git",
+      "url": "https://github.com/libgeos/geos.git",
+      "commit": "431568d6e311e0bbfb057b4ec3d44d0d3ba3335f",
+      "destination": "components/geos-3.13.1",
+      "required_paths": ["COPYING", "CMakeLists.txt"]
+    },
+    {
+      "id": "cpython-3.13.14",
+      "display_name": "CPython 3.13.14 runtime source",
+      "version": "3.13.14",
+      "kind": "git",
+      "url": "https://github.com/python/cpython.git",
+      "commit": "fd17997c3866d61e0e7bd8201b1d8f35b40a40bd",
+      "destination": "components/cpython-3.13.14",
+      "required_paths": [
+        "LICENSE",
+        "PCbuild/get_externals.bat",
+        "PCbuild/python.props",
+        "PCbuild/tcltk.props",
+        "PCbuild/_decimal.vcxproj",
+        "PCbuild/pyexpat.vcxproj",
+        "PCbuild/_elementtree.vcxproj",
+        "Modules/expat/COPYING",
+        "Modules/expat/expat.h"
+      ]
+    },
+    {
+      "id": "cpython-bzip2-1.0.8",
+      "display_name": "bzip2 1.0.8 used by CPython 3.13.14",
+      "version": "1.0.8",
+      "kind": "git",
+      "url": "https://github.com/python/cpython-source-deps.git",
+      "commit": "05301997b2f9590f49c672cf3dfd3d3dfa7ad521",
+      "destination": "components/cpython-build-dependencies/bzip2-1.0.8",
+      "required_paths": ["LICENSE", "README", "bzlib.h"]
+    },
+    {
+      "id": "cpython-xz-5.2.5",
+      "display_name": "XZ Utils liblzma 5.2.5 used by CPython 3.13.14",
+      "version": "5.2.5",
+      "kind": "git",
+      "url": "https://github.com/python/cpython-source-deps.git",
+      "commit": "c6bc0c612605622aaef101a33a751f9de2ecc193",
+      "destination": "components/cpython-build-dependencies/xz-5.2.5",
+      "required_paths": ["COPYING", "README", "configure.ac"]
+    },
+    {
+      "id": "cpython-mpdecimal-4.0.0",
+      "display_name": "libmpdec 4.0.0 used by CPython 3.13.14",
+      "version": "4.0.0",
+      "kind": "git",
+      "url": "https://github.com/python/cpython-source-deps.git",
+      "commit": "780e21d43a92832d12c2add68fcc8e03cee38bcf",
+      "destination": "components/cpython-build-dependencies/mpdecimal-4.0.0",
+      "required_paths": [
+        "COPYRIGHT.txt",
+        "README.txt",
+        "configure.ac",
+        "libmpdec/mpdecimal.h.in"
+      ]
+    },
+    {
+      "id": "cpython-openssl-3.0.21",
+      "display_name": "OpenSSL 3.0.21 used by CPython 3.13.14",
+      "version": "3.0.21",
+      "kind": "git",
+      "url": "https://github.com/python/cpython-source-deps.git",
+      "commit": "460451a0bb19cdbf0ab1add4de1420d143995467",
+      "destination": "components/cpython-build-dependencies/openssl-3.0.21",
+      "required_paths": [
+        "LICENSE.txt",
+        "README.md",
+        "VERSION.dat",
+        "Configure",
+        "include/openssl/ssl.h.in"
+      ]
+    },
+    {
+      "id": "cpython-sqlite-3.50.4.0",
+      "display_name": "SQLite 3.50.4.0 used by CPython 3.13.14",
+      "version": "3.50.4.0",
+      "kind": "git",
+      "url": "https://github.com/python/cpython-source-deps.git",
+      "commit": "c8123bc55da6467f4ef3e9b70cdb67cecf33b937",
+      "destination": "components/cpython-build-dependencies/sqlite-3.50.4.0",
+      "required_paths": ["README.md", "sqlite3.c", "sqlite3.h", "sqlite3ext.h"]
+    },
+    {
+      "id": "cpython-tcl-8.6.15.0",
+      "display_name": "Tcl 8.6.15.0 used by CPython 3.13.14",
+      "version": "8.6.15.0",
+      "kind": "git",
+      "url": "https://github.com/python/cpython-source-deps.git",
+      "commit": "275286594fd3e162af29e8c0ba4e365d3d1f7775",
+      "destination": "components/cpython-build-dependencies/tcl-core-8.6.15.0",
+      "required_paths": [
+        "license.terms",
+        "README.md",
+        "win/Makefile.in",
+        "generic/tcl.h"
+      ]
+    },
+    {
+      "id": "cpython-tk-8.6.15.0",
+      "display_name": "Tk 8.6.15.0 used by CPython 3.13.14",
+      "version": "8.6.15.0",
+      "kind": "git",
+      "url": "https://github.com/python/cpython-source-deps.git",
+      "commit": "a526badcf885e4986e13e68695398a0bb64d5ea1",
+      "destination": "components/cpython-build-dependencies/tk-8.6.15.0",
+      "required_paths": [
+        "license.terms",
+        "README.md",
+        "win/Makefile.in",
+        "generic/tk.h"
+      ]
+    },
+    {
+      "id": "cpython-libffi-3.4.4",
+      "display_name": "libffi 3.4.4 used by CPython 3.13.14",
+      "version": "3.4.4",
+      "kind": "git",
+      "url": "https://github.com/python/cpython-source-deps.git",
+      "commit": "73b247f34ef3ae1859b8c2c34d321d34ebc5db15",
+      "destination": "components/cpython-build-dependencies/libffi-3.4.4",
+      "required_paths": [
+        "LICENSE",
+        "README.md",
+        "configure.ac",
+        "include/ffi.h.in",
+        "msvc_build/aarch64/Ffi_staticLib.vcxproj"
+      ]
+    },
+    {
+      "id": "cpython-zlib-1.3.1",
+      "display_name": "zlib 1.3.1 used by CPython 3.13.14",
+      "version": "1.3.1",
+      "kind": "git",
+      "url": "https://github.com/python/cpython-source-deps.git",
+      "commit": "4dc98e1909830e2bdc2a9cc2236e3c5d5037335b",
+      "destination": "components/cpython-build-dependencies/zlib-1.3.1",
+      "required_paths": ["LICENSE", "README", "CMakeLists.txt", "zlib.h", "adler32.c"]
+    },
+    {
+      "id": "qt-5.15.2",
+      "display_name": "Qt 5.15.2 source archive",
+      "version": "5.15.2",
+      "kind": "archive",
+      "urls": [
+        "https://download.qt.io/archive/qt/5.15/5.15.2/single/qt-everywhere-src-5.15.2.tar.xz"
+      ],
+      "sha256": "3a530d1b243b5dec00bc54937455471aaa3e56849d2593edb8ded07228202240",
+      "destination": "components/qt-5.15.2/qt-everywhere-src-5.15.2.tar.xz",
+      "stage_mode": "preserve",
+      "validate_archive_members": true,
+      "required_source_members": [
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle/KHRONOS_LICENSE",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle/LICENSE",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle/qt_attribution.json",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle/src/common/third_party/base/README.angle",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle/src/common/third_party/smhasher/LICENSE",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle/src/third_party/compiler/LICENSE",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle/SYSTEMINFO_LICENSE",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle/TRACEEVENT_LICENSE",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/double-conversion/LICENSE",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/easing/LICENSE",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/freetype/BDF-LICENSE.txt",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/freetype/docs/LICENSE.TXT",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/freetype/LICENSE.txt",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/freetype/PCF-LICENSE.txt",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/freetype/ZLIB-LICENSE.txt",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/harfbuzz-ng/COPYING",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/harfbuzz/COPYING",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/icc/LICENSE.txt",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/libjpeg/LICENSE",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/libjpeg/src/README.ijg",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/libpng/LICENSE",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/md4/qt_attribution.json",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/md4c/LICENSE.md",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/md5/qt_attribution.json",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/pcre2/LICENCE",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/pcre2/LICENCE-SLJIT",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/rfc6234/LICENSE",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/sha1/qt_attribution.json",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/sha3/BRG_ENDIAN_LICENSE",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/sha3/CC0_LICENSE",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/tinycbor/LICENSE",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/VulkanMemoryAllocator/LICENSE.txt",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/zlib/LICENSE",
+        "qt-everywhere-src-5.15.2/qtbase/src/corelib/codecs/QBIG5CODEC_LICENSE.txt",
+        "qt-everywhere-src-5.15.2/qtbase/src/corelib/codecs/QBKCODEC_LICENSE.txt",
+        "qt-everywhere-src-5.15.2/qtbase/src/corelib/codecs/QEUCJPCODEC_LICENSE.txt",
+        "qt-everywhere-src-5.15.2/qtbase/src/corelib/codecs/QEUCKRCODEC_LICENSE.txt",
+        "qt-everywhere-src-5.15.2/qtbase/src/corelib/codecs/QJISCODEC_LICENSE.txt",
+        "qt-everywhere-src-5.15.2/qtbase/src/corelib/codecs/QSJISCODEC_LICENSE.txt",
+        "qt-everywhere-src-5.15.2/qtbase/src/corelib/codecs/QTSCIICODEC_LICENSE.txt",
+        "qt-everywhere-src-5.15.2/qtbase/src/corelib/io/PSL-LICENSE.txt",
+        "qt-everywhere-src-5.15.2/qtbase/src/corelib/text/UNICODE_LICENSE.txt",
+        "qt-everywhere-src-5.15.2/qtbase/src/gui/opengl/KHRONOS_LICENSE.txt",
+        "qt-everywhere-src-5.15.2/qtbase/src/gui/painting/qgrayraster.c",
+        "qt-everywhere-src-5.15.2/qtbase/src/gui/painting/qimagescale.cpp",
+        "qt-everywhere-src-5.15.2/qtbase/src/gui/painting/QIMAGETRANSFORM_LICENSE.txt",
+        "qt-everywhere-src-5.15.2/qtbase/src/gui/painting/qregion.cpp",
+        "qt-everywhere-src-5.15.2/qtbase/src/gui/painting/WEBGRADIENTS_LICENSE.txt",
+        "qt-everywhere-src-5.15.2/qtbase/src/gui/painting/webgradients.css",
+        "qt-everywhere-src-5.15.2/qtbase/src/gui/painting/XCONSORTIUM_LICENSE.txt",
+        "qt-everywhere-src-5.15.2/qtbase/src/gui/text/AGLFN_LICENSE.txt",
+        "qt-everywhere-src-5.15.2/qtbase/src/gui/vulkan/KHRONOS_LICENSE.txt",
+        "qt-everywhere-src-5.15.2/qtimageformats/src/3rdparty/libtiff/COPYRIGHT",
+        "qt-everywhere-src-5.15.2/qtimageformats/src/3rdparty/libwebp/COPYING"
+      ],
+      "required_source_prefixes": [
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle/include",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle/src/common/third_party/base",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle/src/common/third_party/smhasher",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle/src/third_party/compiler",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle/src/third_party/systeminfo",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/angle/src/third_party/trace_event",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/double-conversion",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/easing",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/freetype",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/harfbuzz",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/harfbuzz-ng",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/icc",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/libjpeg",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/libpng",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/md4",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/md4c",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/md5",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/pcre2",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/rfc6234",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/sha1",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/sha3",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/tinycbor",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/VulkanMemoryAllocator",
+        "qt-everywhere-src-5.15.2/qtbase/src/3rdparty/zlib",
+        "qt-everywhere-src-5.15.2/qtbase/src/corelib/codecs",
+        "qt-everywhere-src-5.15.2/qtbase/src/corelib/io",
+        "qt-everywhere-src-5.15.2/qtbase/src/corelib/text",
+        "qt-everywhere-src-5.15.2/qtbase/src/gui/opengl",
+        "qt-everywhere-src-5.15.2/qtbase/src/gui/text",
+        "qt-everywhere-src-5.15.2/qtbase/src/gui/vulkan",
+        "qt-everywhere-src-5.15.2/qtimageformats/src/3rdparty/libtiff",
+        "qt-everywhere-src-5.15.2/qtimageformats/src/3rdparty/libwebp"
+      ]
+    },
+    {
+      "id": "mesa-12.0.0-rc2",
+      "display_name": "Mesa 12.0.0-rc2 source for Qt llvmpipe runtime",
+      "version": "12.0.0-rc2",
+      "kind": "git",
+      "url": "https://gitlab.freedesktop.org/mesa/mesa.git",
+      "commit": "a7649abe9fc19671493957a8ffbbf6053c77cab4",
+      "destination": "components/mesa-12.0.0-rc2",
+      "required_paths": [
+        "docs/license.html",
+        "VERSION",
+        "SConstruct",
+        "src/gallium/drivers/llvmpipe"
+      ]
+    },
+    {
+      "id": "llvm-3.6.2",
+      "display_name": "LLVM 3.6.2 source used by Mesa llvmpipe",
+      "version": "3.6.2",
+      "kind": "archive",
+      "urls": [
+        "https://releases.llvm.org/3.6.2/llvm-3.6.2.src.tar.xz"
+      ],
+      "sha256": "f60dc158bfda6822de167e87275848969f0558b3134892ff54fced87e4667b94",
+      "destination": "components/llvm-3.6.2/llvm-3.6.2.src.tar.xz",
+      "stage_mode": "preserve",
+      "validate_archive_members": true
+    },
+    {
+      "id": "pyinstaller-6.20.0",
+      "display_name": "PyInstaller 6.20.0",
+      "version": "6.20.0",
+      "kind": "git",
+      "url": "https://github.com/pyinstaller/pyinstaller.git",
+      "commit": "8a6172796b56aa428980c3628663ba08e77ad81e",
+      "destination": "components/pyinstaller-6.20.0",
+      "required_paths": ["COPYING.txt", "pyproject.toml"]
+    }
+  ],
+  "submodule_relations": [
+    {
+      "parent": "pytetwild-0.3.0",
+      "path": "src/fTetWild",
+      "child": "ftetwild-d7d99bb"
+    },
+    {
+      "parent": "pymeshlab-2025.7.post1",
+      "path": "src/meshlab",
+      "child": "meshlab-d876376"
+    },
+    {
+      "parent": "pymeshlab-2025.7.post1",
+      "path": "src/pymeshlab/pybind11",
+      "child": "pymeshlab-pybind11-2.13.6"
+    },
+    {
+      "parent": "meshlab-d876376",
+      "path": "src/vcglib",
+      "child": "meshlab-vcglib-2025.07"
+    }
+  ],
+  "pin_evidence": [
+    {
+      "component": "cpython-3.13.14",
+      "path": "PCbuild/get_externals.bat",
+      "required_literals": [
+        "bzip2-1.0.8",
+        "libffi-3.4.4",
+        "openssl-3.0.21",
+        "mpdecimal-4.0.0",
+        "sqlite-3.50.4.0",
+        "tcl-core-8.6.15.0",
+        "tk-8.6.15.0",
+        "xz-5.2.5",
+        "zlib-1.3.1"
+      ]
+    },
+    {
+      "component": "cpython-3.13.14",
+      "path": "Modules/expat/expat.h",
+      "required_literals": [
+        "#  define XML_MAJOR_VERSION 2",
+        "#  define XML_MINOR_VERSION 8",
+        "#  define XML_MICRO_VERSION 1"
+      ]
+    },
+    {
+      "component": "cpython-3.13.14",
+      "path": "PCbuild/_decimal.vcxproj",
+      "required_literals": [
+        "BUILD_LIBMPDEC",
+        "$(mpdecimalDir)\\libmpdec\\mpdecimal.c"
+      ]
+    },
+    {
+      "component": "cpython-3.13.14",
+      "path": "PCbuild/pyexpat.vcxproj",
+      "required_literals": [
+        "..\\Modules\\expat\\xmlparse.c",
+        "..\\Modules\\expat\\xmlrole.c",
+        "..\\Modules\\expat\\xmltok.c"
+      ]
+    },
+    {
+      "component": "cpython-3.13.14",
+      "path": "PCbuild/_elementtree.vcxproj",
+      "required_literals": [
+        "..\\Modules\\expat\\xmlparse.c",
+        "..\\Modules\\expat\\xmlrole.c",
+        "..\\Modules\\expat\\xmltok.c"
+      ]
+    },
+    {
+      "component": "mesa-12.0.0-rc2",
+      "path": "VERSION",
+      "required_literals": ["12.0.0-rc2"]
+    },
+    {
+      "component": "ftetwild-d7d99bb",
+      "path": "cmake/FloatTetwildDependencies.cmake",
+      "required_literals": [
+        "https://github.com/fmtlib/fmt",
+        "GIT_TAG        11.2.0",
+        "https://github.com/gabime/spdlog",
+        "GIT_TAG        v1.15.3",
+        "https://github.com/libigl/libigl.git",
+        "GIT_TAG        v2.6.0",
+        "https://github.com/BrunoLevy/geogram",
+        "GIT_TAG        v1.9.6",
+        "https://github.com/oneapi-src/oneTBB",
+        "GIT_TAG        v2022.2.0",
+        "https://github.com/jdumas/json",
+        "0901d33bf6e7dfe6f70fd9d142c8f5c6695c6c5b"
+      ]
+    },
+    {
+      "component": "ftetwild-libigl-2.6.0",
+      "path": "cmake/recipes/external/eigen.cmake",
+      "required_literals": [
+        "https://gitlab.com/libeigen/eigen.git",
+        "GIT_TAG tags/3.4.0"
+      ]
+    },
+    {
+      "component": "ftetwild-libigl-2.6.0",
+      "path": "cmake/recipes/external/predicates.cmake",
+      "required_literals": [
+        "https://github.com/libigl/libigl-predicates.git",
+        "decb7bc1260e689cbe008109e3cc5d3a5a433aea"
+      ]
+    },
+    {
+      "component": "meshlab-d876376",
+      "path": "src/external/embree.cmake",
+      "required_literals": [
+        "set(EMBREE_MINOR 3.3)",
+        "set(EMBREE_WIN_LINK https://github.com/embree/embree/releases/download/v${EMBREE_VER}/embree-${EMBREE_VER}.x64.windows.zip)",
+        "${EMBREE_WIN_DIR}/bin/tbb12.dll"
+      ]
+    }
+  ],
+  "dynamic_archive_rules": [
+    {
+      "id": "meshlab-windows-external-build-inputs",
+      "component": "meshlab-d876376",
+      "source_glob": "src/external/*.cmake",
+      "link_variable_suffix": "_LINK",
+      "md5_variable_suffix": "_MD5",
+      "destination": "components/pymeshlab-2025.7.post1/meshlab-external-archives",
+      "known_unhashed_variables": [
+        "EMBREE_WIN_LINK",
+        "TBB_WIN_LINK"
+      ],
+      "excluded_variables": {
+        "EMBREE_LINK": "Linux-only source branch; this bundle targets the Windows wheel",
+        "ISPC_LINK": "Linux-only source branch; this bundle targets the Windows wheel"
+      },
+      "require_sha256_lock_for_unhashed": true,
+      "require_release_asset_provenance": true,
+      "validate_archive_members": true
+    }
+  ]
+}

@@ -42,11 +42,11 @@ class MainGuiLayoutTests(unittest.TestCase):
             "ChromaMatter — AI Model Print Studio",
         )
         self.assertEqual(__version__, "0.8beta")
-        self.assertEqual(RELEASE_REVISION, "r31")
-        self.assertEqual(EDITION_LABEL, "AI Model Print Studio r31")
+        self.assertEqual(RELEASE_REVISION, "r32")
+        self.assertEqual(EDITION_LABEL, "AI Model Print Studio r32")
         self.assertEqual(
             APP_TITLE,
-            "ChromaMatter — AI Model Print Studio 0.8beta (r31)",
+            "ChromaMatter — AI Model Print Studio 0.8beta (r32)",
         )
         self.assertTrue(VERSION_PINNED_UNTIL_USER_REQUEST)
 
@@ -674,7 +674,7 @@ class MainGuiLayoutTests(unittest.TestCase):
             else:
                 root.destroy()
 
-    def test_open_mesh_is_blocked_before_the_3mf_save_dialog(self) -> None:
+    def test_open_mesh_auto_solidify_is_confirmed_before_3mf_save_dialog(self) -> None:
         try:
             import tkinter as tk
         except ImportError as exc:
@@ -703,6 +703,12 @@ class MainGuiLayoutTests(unittest.TestCase):
                     "watertight": False,
                     "boundary_edges": 6,
                 }
+                prepared.assembly = {
+                    "solidify_parts": False,
+                    "unmatched_boundary_loop_count": 0,
+                    "boundary_diagnostics": [],
+                }
+                prepared.source.has_explicit_parts = True
                 app.prepared = prepared
                 app.asset = prepared.source
                 app.obj_path = prepared.source.path

@@ -1503,7 +1503,13 @@ def _install_prepare_provenance_scope(
 
 def _make_scoped_mesh_quality(original: Callable[..., dict[str, object]]):
     @functools.wraps(original)
-    def mesh_quality_r8(vertices, faces, *, check_self_intersections=False):
+    def mesh_quality_r8(
+        vertices,
+        faces,
+        *,
+        check_self_intersections=False,
+        self_intersection_face_id_limit=None,
+    ):
         context = _LINEAR_EXPORT_VALIDATION_CONTEXT.get()
         face_count = int(len(faces)) if faces is not None else -1
         remaining = context.get("remaining_face_counts") if context is not None else None
@@ -1511,11 +1517,16 @@ def _make_scoped_mesh_quality(original: Callable[..., dict[str, object]]):
         inherited = bool(
             context is not None and check_self_intersections and available > 0
         )
-        result = original(
-            vertices,
-            faces,
-            check_self_intersections=False if inherited else check_self_intersections,
-        )
+        quality_kwargs: dict[str, object] = {
+            "check_self_intersections": (
+                False if inherited else check_self_intersections
+            )
+        }
+        if self_intersection_face_id_limit is not None:
+            quality_kwargs["self_intersection_face_id_limit"] = (
+                self_intersection_face_id_limit
+            )
+        result = original(vertices, faces, **quality_kwargs)
         if not inherited:
             return result
         remaining[face_count] = available - 1

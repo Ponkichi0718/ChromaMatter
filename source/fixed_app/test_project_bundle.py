@@ -88,6 +88,10 @@ def prepared_geometry(source: Path) -> PreparedGeometry:
         part_vertex_counts=(3,),
         part_marker_kind="object",
         has_explicit_parts=True,
+        import_metadata={
+            "schema": "obj-adjuster.test-import.v1",
+            "compatible_exploded_multipart": True,
+        },
     )
     return PreparedGeometry(
         source=asset,
@@ -234,6 +238,10 @@ class PortableProjectBundleTests(unittest.TestCase):
         self.assertEqual(decoded.paint_mesh_fingerprint, fingerprint)
         self.assertEqual(decoded.geometry_key, geometry_key)
         self.assertEqual(decoded.prepared.source.path, saved.source_obj)
+        self.assertEqual(
+            decoded.prepared.source.import_metadata,
+            prepared.source.import_metadata,
+        )
         project_bundle.np.testing.assert_array_equal(
             decoded.prepared.final.faces,
             prepared.final.faces,

@@ -220,6 +220,48 @@ class ExtendedPaletteTests(unittest.TestCase):
                 self.assertEqual(
                     project["filament_settings_id"], ["Generic PLA"] * 4
                 )
+                for key, expected in (
+                    engine.FULL_SPECTRUM_STABLE_CADENCE_SETTINGS.items()
+                ):
+                    self.assertEqual(project[key], expected)
+                for key, expected in (
+                    engine.SNAPMAKER_U1_008_TRANSITION_SETTINGS.items()
+                ):
+                    self.assertEqual(project[key], expected)
+                self.assertNotIn("enable_support", project)
+
+    def test_stable_orca_process_settings_do_not_drift_by_material_or_depth(self) -> None:
+        expected_profiles = {
+            "PLA": "Generic PLA",
+            "ABS": "Generic ABS",
+            "PETG": "Generic PETG",
+        }
+        for material, profile in expected_profiles.items():
+            for count in mixer.SUPPORTED_PALETTE_STATE_COUNTS:
+                with self.subTest(material=material, count=count):
+                    palette = PaletteSettings(
+                        material=material,
+                        palette_state_count=count,
+                        enabled_states=[True] * count,
+                    )
+                    project = json.loads(engine._make_project_settings(palette))
+                    self.assertEqual(project["filament_settings_id"], [profile] * 4)
+                    self.assertTrue(
+                        all(
+                            project[key] == expected
+                            for key, expected in (
+                                engine.FULL_SPECTRUM_STABLE_CADENCE_SETTINGS.items()
+                            )
+                        )
+                    )
+                    self.assertTrue(
+                        all(
+                            project[key] == expected
+                            for key, expected in (
+                                engine.SNAPMAKER_U1_008_TRANSITION_SETTINGS.items()
+                            )
+                        )
+                    )
 
     def test_optimizer_metrics_include_the_secondary_six_states(self) -> None:
         palette_hex, _palette_rgb = mixer.build_palette_rgb(

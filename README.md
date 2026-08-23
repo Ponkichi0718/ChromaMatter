@@ -1,147 +1,217 @@
-# ChromaMatter — AI Model Print Studio 0.8beta (r31)
+# ChromaMatter — AI Model Print Studio 0.8beta (r32)
 
 <p align="center">
-  <img src="source/fixed_app/assets/obj_adjuster_icon.png" width="180" alt="ChromaMatter icon">
+  <img src="source/fixed_app/assets/obj_adjuster_icon.png" width="160" alt="ChromaMatter icon">
 </p>
 
-[English README](README_PUBLIC_EN.md)
+[日本語版はこちら](README_JA.md)
 
-ChromaMatter — AI Model Print Studioは、AI生成された頂点カラー付きOBJまたはUV baseColor付きGLBを、Snapmaker OrcaのFull Spectrum／Color Mixingワークフロー向け3MFへ変換・調整するWindowsデスクトップツールです。独立プロジェクトであり、TripoAI、Hi3D AI、Snapmaker、OpenAIその他第三者の公式・提携製品ではありません。
+**Turn AI-generated color OBJ and GLB models into Snapmaker U1 Full Spectrum 3MF projects using four physical filaments.**
 
-**AIで作った3Dを、画面の中だけで終わらせない。** ChromaMatterは、AI 3D生成に「カラー造形という出口」を、3Dプリンタに「AIモデルという新しい入力」をつくり、それぞれの利用価値を高めるための橋渡しを目指しています。
+<table>
+  <tr>
+    <td width="25%"><a href="https://note.com/ponkichi0718/n/nad23088e6f2d"><img src="https://assets.st-note.com/img/1787038136-QYcX12yPUL4fzm5RWZNbiEqM.jpg?width=1200" alt="Original AI-assisted concept image used for the public ChromaMatter workflow"></a></td>
+    <td width="25%"><a href="https://note.com/ponkichi0718/n/nad23088e6f2d"><img src="https://assets.st-note.com/img/1787038182-v0C8IT5i1jVeKLdNX3ZygYu4.png?width=1200" alt="Coloured 3D model generated from the original concept"></a></td>
+    <td width="25%"><a href="https://note.com/ponkichi0718/n/nad23088e6f2d"><img src="https://assets.st-note.com/img/1787038261-fQtHZho5CXvrYl94M7zJOqLD.png?width=1200" alt="ChromaMatter comparing source, model, and Full Spectrum colours"></a></td>
+    <td width="25%"><a href="https://note.com/ponkichi0718/n/nad23088e6f2d"><img src="https://assets.st-note.com/img/1787038285-sNiOGxEzyLoRrklQAXH7BJ8W.png?width=1200" alt="ChromaMatter 3MF project opened in Snapmaker Orca"></a></td>
+  </tr>
+  <tr>
+    <td align="center">AI concept</td>
+    <td align="center">Colour 3D model</td>
+    <td align="center">ChromaMatter</td>
+    <td align="center">Snapmaker Orca</td>
+  </tr>
+</table>
 
-- [画像で見る主な機能と制作フロー](FEATURES_JA.md)
-- [試作・失敗・実機調整を含む開発記録（note）](https://note.com/ponkichi0718)
+**Physical U1 print validation is in progress, so no finished-print image is presented as validated evidence yet.**
 
-公開表示versionは利用者指定どおり`0.8beta`に固定し、editionを`AI Model Print Studio r31`、artifact slugを`r31-ai-model-print-studio`とします。Windowsの数値versionも`0.8.0.0`のままです。
+ChromaMatter is an independent Windows desktop project. It is not an official or affiliated product of TripoAI, Hi3D AI, Snapmaker, OpenAI, or any other third party.
 
-## AI Model Print Studio r31
+## Current status
 
-r31は公開名とアイコンをChromaMatterへ統一したidentity releaseです。OBJ／GLB／3MF、project schema、旧設定保存先は互換性のためそのまま読み込めます。
+- **Source code:** Public
+- **Windows binary:** Not yet public
+- **Reason:** Component-specific licence/static-link coverage is implemented; the final release-engineering gates below are pending
+- **Public test model:** In preparation
+- **Physical U1 validation:** In progress
+- **Version:** `0.8beta`
 
-### GLB入力 β
+## Four things ChromaMatter does
 
-- 公開画面の「OBJ / GLBを開く」から、頂点カラーOBJまたは埋込baseColor付きの静的GLBを選べます。Hi3D AIのように頂点カラーOBJを出さないサービスも同じ制作pipelineへ取り込めます。
-- GLBのscene／node transform、mesh-node単位のpart、`COLOR_0`、baseColor factor／textureを読み、sRGBを線形空間で補間・合成して既存の頂点色へ焼き付けます。元GLBをサーバーへuploadしません。
-- 印刷色に使うのはbaseColorだけです。normal／metallic／roughness map、透明度、animation、skin、morph、Draco、meshopt、BasisU、GPU instancing、外部URIは再現せずfail-closedで停止します。
-- UV textureはmesh頂点でsampleするため、面より細かい模様は失われ、面数削減で差が広がる場合があります。上限は512 MiB、300万頂点、300万三角形です。
+1. **Bridges AI model formats to printing.** Opens vertex-coloured OBJ and static GLB with embedded base colour, then keeps processing local to the PC.
+2. **Maps model colour to four real filaments.** Proposes F1-F4 from a material-aware filament library and builds a 16, 24, or 32-state Full Spectrum palette.
+3. **Lets you inspect and refine the result.** Compares source colour with converted colour, supports 3D manual editing, and explicitly applies experimental F1-F4 changes to both preview and 3MF.
+4. **Exports a safer Orca project.** Performs topology checks, safely welds only proven seams when eligible, and records a conservative Full Spectrum layer-cycle and prime-tower baseline.
 
-### 単一GLBのUV seam閉立体化
+[See the visual feature overview](FEATURES_EN.md) · [Read the Japanese development journal on note](https://note.com/ponkichi0718)
 
-- part情報がない単一GLBでも、利用者が「閉立体化」を明示実行したときは、同一座標の境界edgeが逆向きにexact 1:1対応するUV／texture seamかを検証します。
-- 証明できたseamだけを、cleanupとQEM面数削減より前に頂点統合します。三角形の追加・削除・順番変更とpart ID変更を行わないため、manual paintとadaptive treeのface対応をexact carryします。
-- この経路は蓋を追加しません。未対応・同方向・曖昧なseam、非manifold化、本当の穴はfail-closedで停止し、処理前のgeometryを維持します。
-- 3MF出力前のstrict topology検証は、build item直下だけでなく全`type=model` resourceを対象にします。必須の閉立体検証後にQEM由来の上限内の微小自己交差だけが残る場合はwarningとし、Snapmaker Orcaで「プロジェクトとして開く」を選んだslice preview確認を必須にします。
+## Quick Start
 
-### Manual Editingの表示安定化
+ChromaMatter currently ships as source code. On Windows with Python 3.13 installed:
 
-- Airbrushの確定待ちguideは2Dのscreen-space feedbackです。viewが変わらない間だけ表示し、zoom、pan、orbit、またはprogrammatic camera changeを検出した瞬間に消します。古い軌跡を変換後の画面座標へ描き直しません。
-- guideを消しても、受付済みcommit tokenと1 stroke = 1 Undoのtransactionはexact frameまで保持します。確定した3D色は新しいviewで正しく表示します。
-- 円形soft falloff、噴射時間による濃度、visible-face／selected-part guard、Brush、Fill、Smudge、Eyedropper、Windows Pointer pressure／fallback taperの結果は変えません。
+```powershell
+git clone https://github.com/Ponkichi0718/ChromaMatter.git
+cd ChromaMatter
+$pyTetWildWheel = "C:\path\to\pytetwild-0.3.0-cp312-abi3-win_amd64.whl"
+.\BOOTSTRAP_WINDOWS.ps1 -PyTetWildWheel $pyTetWildWheel
+.\.venv\Scripts\python.exe .\source\fixed_app\TripoSpectrumMapper_fixed.py
+```
 
-### 手修正が増えたときの処理軽量化
+r32 pins the controlled PyTetWild wheel by SHA-256, so a bare bootstrap intentionally fails instead of downloading the different historical PyPI wheel. Use the repaired wheel from the matching official complete corresponding-source release asset at `build-evidence/pytetwild/repaired-wheel/`, or reproduce it with the controlled recipe before passing its local path. `-PyTetWildWheelhouse` is also supported; `-SkipInstall` is only for an already verified environment.
 
-- paint batchは対象rootだけのlocal effective-stateを取得し、検証済みgeometry配列を再利用します。各batchで全sceneの色配列とgeometryを作り直しません。
-- 互換性を確認できる9層Airbrushはadaptive treeを1回だけtraversalします。旧形式、非同心、または分割形状が前提に合わない場合は、実績のある逐次処理へ安全にfallbackします。
-- optimized pathと逐次処理で、encoded output、changed roots、override、adaptive tree、Undo／Redoが一致することを回帰testで確認しています。
+Then:
 
-### 公開画面
+1. Open a vertex-coloured OBJ or supported static GLB.
+2. Review the proposed F1-F4 filaments and palette size.
+3. Optionally refine colours or apply a different F1-F4 combination.
+4. Check size and geometry, export 3MF, then open it **as a project** in Snapmaker Orca and inspect the slice preview before printing.
 
-- メイン画面は「フィラメント設定」と「出力設定」の2ページです。長い説明や中間previewタブを減らし、3D previewを広くしています。
-- ヘッダーは同梱PNGロゴ、`ChromaMatter`、`AI Model Print Studio`をcompactな2段表示にします。
-- mixed paletteはF1+F2、F1+F3…のfamily-major順に固定比率を横並びで示します。表示番号はUI／比較chart専用で、canonical state ID、project、manual paint、3MF recipeは変えません。
-- 「全体共通」で16／24／32色を選ぶと既存の全パーツへ反映し、個別パーツ編集中は対象パーツだけを変更します。
-- 「基本4色を初期値へ戻す」は公開画面に表示しません。モデルからの自動提案と個別の色編集は維持します。
-- 実機黒補正はmixed palette内に置き、表示色と自動配色を保ったまま3MF出力の黒混色だけを弱めます。
-- 出力設定の形状再処理は1操作、修復名は「閉立体化」です。
+The bootstrap installs pinned build dependencies and runs the test suite. See [BUILD_AND_TEST.ps1](BUILD_AND_TEST.ps1), [PRIVACY.md](PRIVACY.md), and [THIRD_PARTY_LICENSES.txt](licenses/THIRD_PARTY_LICENSES.txt) for the complete source-build and distribution context.
 
-### フィラメント候補β
+## Technical details
 
-- PLA（初期値）／ABS β／PETG βを切り替え、選択した1素材だけでF1～F4の候補・手持ちフィラメント・3MFのGeneric material profileを統一します。異素材は1つの印刷ジョブへ混在させません。
-- 自動提案は、拡張DB全体をモデルの平均色へ近い順に並べません。選択素材内の実在製品を黒・白・灰・彩色・肌／茶の基準へ対応付けた色域バランス済み候補から4本を選び、似た茶系4本へ偏る回帰を防ぎます。多色／グラデーション糸は自動提案だけから除外し、手動ライブラリには残します。
-- 代表的な赤・黒・灰・茶モデルのsoftware-fit診断では、面積加重`ΔE76 <= 12`のcoverageが修正前28.63%から修正後98.37%へ改善しました。これは画面上の近似評価であり、実機の印刷色を保証する数値ではありません。
-- Open Filament Databaseの固定snapshotを使い、Geeetech、CC3D、Kingroon、TINMORRYを含む19ブランド・3,497色を収録しています。ABSはPLAより収録色と実測色が少なく、目的色の再現を保証しません。
-- 上記4社は、2026-08-19にAmazon.co.jpの代表商品が「星4.0以上かつレビュー20件以上」を満たしたことをメーカー単位の採用根拠にしています。個々の色・SKU・在庫・色精度をAmazon評価済みという意味ではなく、HEXはAmazon画像から推測していません。
+The public display version remains pinned to `0.8beta`. This edition is `AI Model Print Studio r32`, with artifact slug `r32-ai-model-print-studio`; the Windows numeric version remains `0.8.0.0`.
 
-件数、出典、再現手順、注意事項は[フィラメント色DB資料](source/fixed_app/resources/filament_db/filament_color_database_README.md)を参照してください。
+## AI Model Print Studio r32
+
+r32 adds a multipart GLB path that preserves part structure through solidification and individual 3MF export, narrowly suppresses proven categorical identification colours, explicitly applies edited F1-F4 colours to the converted preview, and records a conservative Snapmaker Orca Full Spectrum project baseline. The public name and icon established in r31, existing OBJ/GLB/3MF workflows, project schemas, and legacy settings locations remain compatible.
+
+### GLB input beta
+
+- `Open OBJ / GLB` accepts vertex-coloured OBJ or static GLB with embedded base colour, so services such as Hi3D AI that do not export vertex-coloured OBJ can enter the same authoring pipeline.
+- Scene/node transforms, mesh-node parts, `COLOR_0`, base-colour factors, and base-colour textures are read. sRGB texels are filtered and composed in linear space before being baked into the existing vertex-colour pipeline. Source GLB files are not uploaded.
+- Printing uses base colour only. Normal/metallic/roughness maps, alpha, animation, skinning, morph targets, Draco, meshopt, BasisU, GPU instancing, and external URIs are not reproduced and fail closed.
+- UV colour is sampled at mesh vertices, so texture detail finer than the tessellation can be lost and face reduction can increase that difference. Limits are 512 MiB, three million vertices, and three million triangles.
+
+### Single-GLB UV-seam solidification
+
+- On a single GLB without part markers, apparent open edges are accepted as UV/texture seams only when coincident boundary edges prove an exact 1:1 reversed pairing. If export starts before solidification, an eligible model announces and runs that safe step, then resumes export only after success.
+- Proven seams are vertex-welded before cleanup and QEM reduction. No triangle is added, removed, or reordered and no part ID changes, so manual paint and adaptive trees retain exact ordered-face carry.
+- This path adds no caps. Unmatched, same-direction, or ambiguous seams, a non-manifold result, and true holes fail closed while retaining the pre-operation geometry.
+- Strict pre-export 3MF topology checks cover every `type=model` resource, not only direct build items. If only a bounded minor QEM self-intersection remains after mandatory solid checks pass, export warns and requires opening the file as a project in Snapmaker Orca and checking the slice preview.
+- The 3MF records a stable Full Spectrum layer-cycle and prime-tower baseline. Experimental Local Z, advanced dithering, and pointillism remain disabled, while support selection stays in Snapmaker Orca.
+
+### Multipart GLB solidification and individual 3MF export
+
+- Supported exploded GLB assets are normalised per source part while retaining the original part boundaries and placement. Separate parts are never welded together, and repair-generated faces remain distinguishable from imported source faces.
+- Categorical `COLOR_0` used by supported Hi3D-style part exports is suppressed only when exporter, node, material, texture, and known-palette evidence all agree. Ordinary authored vertex colours are left unchanged.
+- The same strict validation protects both combined 3MF and `save each print part as an individual 3MF`. Individual export rebases part IDs and vertex references locally, and fails closed when the mapping or proof is incomplete or stale.
+
+### Stable Manual Editing feedback
+
+- The pending Airbrush guide is 2D screen-space feedback. It remains visible only while the view is unchanged and is suppressed as soon as zoom, pan, orbit, or a programmatic camera change begins. Old trail coordinates are never redrawn into a transformed view.
+- Hiding that guide does not discard the accepted commit token or the one-stroke / one-Undo transaction. Both remain alive until the exact frame arrives, and the committed 3D colour appears in the correct transformed view.
+- Circular soft falloff, time-based density, the visible-face and selected-part guards, Brush, Fill, Smudge, Eyedropper, Windows Pointer pressure, and fallback taper retain their committed result.
+
+### Lower accumulated manual-paint cost
+
+- A paint batch reads effective state only for candidate roots and reuses validated geometry arrays instead of rematerialising full-scene colour and geometry for every batch.
+- A compatible nine-layer Airbrush batch traverses the adaptive tree once. Legacy, non-concentric, or otherwise non-conforming layer geometry safely falls back to the proven sequential path.
+- Regression tests verify matching encoded output, changed roots, overrides, adaptive trees, and Undo/Redo semantics between the optimised and sequential paths.
+
+### Public workspace
+
+- The main window is organised into compact Filament Settings and Output Settings pages, leaving more room for the 3D preview.
+- The header presents the bundled PNG logo with compact two-line `ChromaMatter` and `AI Model Print Studio` text.
+- The read-only mixed palette shows fixed ratios in F1+F2, F1+F3, and subsequent F-pair family-major order. Visible numbers are presentation-only; canonical state IDs, projects, manual paint, and 3MF recipes are unchanged.
+- A common 16 / 24 / 32-state selection propagates to existing parts; an explicitly selected part can still be adjusted locally.
+- `Reset Four Base Colors` is not shown in the public workspace. Model-derived automatic proposals and individual colour editing remain available.
+- After an individual F1-F4 edit, `Apply Current F1-F4 to Preview / 3MF` updates the right-hand preview and 3MF palette. Automatic proposal remains the default, and existing manual paint remains canonical-state data.
+- Physical black correction stays inside the mixed-palette frame and alters only the relevant 3MF output recipe.
+- Output geometry reprocessing is one action, and the public repair action is labelled Solidify.
+
+### Filament candidates beta
+
+- Switch between PLA (default), ABS beta, and PETG beta. F1-F4 candidates, owned inventory, and the Generic material profile written to 3MF are restricted to the selected single material; one print job never mixes polymers.
+- Automatic proposals no longer rank the whole expanded database by distance to the model-wide average colour. Four products are selected from real products of the chosen material mapped to gamut-balanced black, white, grey, chromatic, and skin/brown anchors. This prevents the regression to four similar browns. Multi-colour and gradient spools remain browsable in the manual library but are excluded from automatic proposals.
+- In a representative red, black, grey, and brown model software-fit diagnostic, area-weighted coverage within `Delta E 76 <= 12` improved from 28.63% before the fix to 98.37% after it. This is a screen-space approximation metric, not a printed-colour guarantee.
+- The pinned Open Filament Database snapshot contains 3,497 colours across 19 brands, including Geeetech, CC3D, Kingroon, and TINMORRY. ABS has fewer catalogued and physically measured colours than PLA, so coverage does not guarantee that a target gamut can be reproduced.
+- Those four manufacturers qualified at brand level because a representative Amazon.co.jp filament result met `rating >= 4.0 AND review_count >= 20` on 2026-08-19. This is not a review of every colour, SKU, stock state, or colour accuracy, and no HEX value is inferred from Amazon imagery.
+
+See the [filament colour database notes](source/fixed_app/resources/filament_db/filament_color_database_README.md) for counts, sources, reproducibility, and limitations.
 
 ### Portable project folder
 
-「プロジェクト保存」は次のportable folderを作ります。
+Project Save creates this portable folder:
 
 ```text
 project-folder/
   source.obj | source.glb
   project.json
   prepared_geometry.npz
-  reference.<ext>        # 元画像がある場合だけ
+  reference.<ext>        # only when a reference image is present
 ```
 
-- bundleが一致すればprepared geometryとmanual paintをexact restoreします。
-- folderを移動しても内部の相対参照で開けます。
-- bundle v2は`source_asset`を正本とし、GLBは`source.glb`を保持します。旧OBJ bundle v1も読めます。
-- 旧JSON projectも読めますが、元modelを安全に特定できない場合は利用者がOBJ／GLBを明示選択します。
+- Matching bundles restore prepared geometry and manual paint exactly.
+- Relative references continue to work after the folder is moved.
+- Bundle v2 makes `source_asset` authoritative and retains GLB as `source.glb`; legacy OBJ bundle v1 remains readable.
+- Legacy JSON projects remain readable. When their source cannot be resolved safely, the user explicitly selects the original OBJ or GLB.
 
-## 基本手順
+## Basic workflow
 
-1. 「OBJ / GLBを開く」で頂点カラー付きOBJまたはbaseColor付きGLBを選びます。
-2. F1～F4と混色数を確認し、必要ならパーツpaletteを調整します。
-3. 「マニュアル修正」で色を修正します。
-4. 出力設定でサイズと形状診断を確認します。
-5. 3MFを書き出し、Snapmaker Orcaでtool順、material profile、previewを確認します。
+1. Use `Open OBJ / GLB` for a vertex-coloured OBJ or base-colour GLB.
+2. Confirm F1-F4 and the common mixed-state count, then adjust a part palette if needed.
+3. Use Manual Editing for colour corrections.
+4. Check size and geometry diagnostics in Output Settings.
+5. Export 3MF and verify tool order, material profiles, and preview in Snapmaker Orca.
 
-## 入力・出力上の注意
+## Input and output notes
 
-- OBJ頂点カラーは`v x y z r g b`形式を想定します。
-- GLBは静的な埋込baseColor／`COLOR_0`を対象とし、細部は頂点色へ焼き付けた解像度になります。
-- 非2-manifold面を含むOBJ／GLBはfail-softで表示・手修正できますが、自動修復や印刷可能性を保証しません。
-- 大規模OBJ／GLBの準備や閉立体化には時間とメモリが必要で、200万面級のManual Editingは重くなる場合があります。
-- 画面色と実機色は一致を保証しません。同じ造形条件のtest printで確認してください。
-- 実験engineのsourceは研究継続のため残していますが、公開workflowからは到達できません。
+- OBJ vertex colour is expected in `v x y z r g b` form.
+- GLB support targets static embedded base colour / `COLOR_0`; fine detail is limited by the vertex-colour bake resolution.
+- Fail-soft display and manual editing of non-2-manifold OBJ/GLB input do not guarantee automatic repair or printability.
+- Preparing or solidifying a large OBJ/GLB can require substantial time and memory, and Manual Editing on roughly two million faces may be heavy.
+- Displayed and printed colour are not guaranteed to match; use a test print under the same production conditions.
+- Research engines remain in source for continued development but cannot be reached from the public workflow.
 
-## 検証とrelease gate
+## Validation and release gates
 
-Creator Studio r30には次のsoftware evidenceがあります。ChromaMatterの公開名・アイコン・実行file identityへ変更した現在のr31 exact sourceには流用しない**previous evidence**です。
+The current post-adoption working tree passed the full Python `3.13.14` regression after the Qt/PyMeshLab identity manifests, PyTetWild static-closure contract, corrected controlled-toolchain identity, Windows PowerShell 5.1-safe native Python-probe transport, and final release-URL placeholder hardening: `Ran 1244 tests: OK (skipped=2)`, 1242 passed / 2 optional skips / 0 failed. The earlier focused release/compliance set passed 178 tests with 1 optional skip, and the post-adoption focused follow-up passed 108/108. The pre-adoption public-source stage passed at 395 files / 394 manifest records with privacy audit and independent SHA-256 parity; adoption changed source bytes, so the final source stage must be regenerated.
 
-- r30 full regression: Python `3.13.14`、`Ran 1019 tests in 86.932s: OK (skipped=1)`、1018 PASS／1 optional SKIP
-- `C:\OBJAdjR30FIX1`でのPyInstaller `6.20.0` clean build、packaged self-test、隔離profileの日英UI smoke: PASS
-- r30 public source 225 files／224 manifest records、software 1,404 files／1,403 manifest records、fresh extract、archive／privacy、detached `SHA256SUMS-r30.txt`契約: PASS
+Controlled outbound-isolated run `20260823-174626-089357844d4b` succeeded. The application lock binds repaired wheel SHA-256 `e3b11ac058266d277b0f83448c6023d5da98e731d0d016e461dbce4ebdfd613d`; the `release-approved` PyTetWild static closure binds that wheel and extension PYD SHA-256 `26a091b53279407014899c046691958c9df07e22703576da6a45d68a9be22430`. Attestation SHA-256 `3989fd1debe8b6c984938c4a64ee5fb3bcce1b612cf83524ea309b1fae3cde9f` is recorded as controlled-build evidence and must be bound into the final commit-specific rebuild lock. This approves only the controlled PyTetWild closure, not a Windows application archive. The old r32 EXE/ZIP does not match this source and will not be published. A new Windows ZIP still requires a `release-approved` complete corresponding-source bundle; a current clean binary build with regenerated inventory, packaged self-test, and Japanese/English UI smoke; fresh-extract manifest/privacy/archive/checksum parity; and immutable HTTPS Release URLs with all assets published simultaneously. `binary publication eligibility` is currently **false**.
 
-現在のChromaMatter r31 exact sourceは、Python `3.13.14`で`Ran 1024 tests in 100.656s: OK (skipped=1)`、1023 PASS／1 optional SKIPです。`BUILD_AND_TEST.ps1 -RuntimeRoot .\.venv -Build -BuildOutputRoot C:\OBJAdjR31CM1`はexit 0で、PyInstaller `6.20.0` clean one-folder build、built package self-test、隔離profileの日英UI smokeもPASSしました。preflight `ChromaMatter.exe`は13,986,866 bytes、FileVersion／ProductVersion `0.8beta`、InternalName `ChromaMatter`、OriginalFilename `ChromaMatter.exe`、SHA-256 `208167A225A37BAAAA473B574B2F746E46427FD0CA63FC5B7201BF3394243743`です。2026-08-20、project ownerは公開GOを出し、ChromaMatter icon rightsは`passed-by-creator-declaration`です。creatorはロボットをオリジナルの架空機体、`ZENITH DYNAMICS CORP.`を実在組織との関係を意図しない創作文言と申告しています。これは独立した商標／意匠clearanceや法的意見ではなく、近似名`Zenith Dynamics`を使う実在組織との提携も示しません。最終source-only stage `ChromaMatter_0.8beta-r31-source-public-20260820`は227 files／226 manifest recordsで、folder／archive parity、CRC、privacy、staged identity／icon／tooling 32 testsを全て通過し、Downloads配置とdetached `SHA256SUMS-r31.txt`照合も外部で完了しました。source-only版は公開owner handle `Ponkichi0718`で[GitHub](https://github.com/Ponkichi0718/ChromaMatter)へ公開済みで、release stateは`source-published`です。`publication_eligible=true`のscopeは`source-only`、source publication eligibilityはtrue、binary publication eligibilityは第三者binary再配布監査が終わるまでfalseです。Innovation Fund submission readyは権利処理済みsample、Orca／U1 evidence、cover／video／community postが揃うまでfalseです。physical XP-PEN／printは既知の未完了制約であり、source公開blockerにはしません。checksum値は外部detached recordだけを正本とし、canonical ZIP hash欄は`null`のままです。
+The following r31 and Creator Studio r30 results are **previous evidence** for their own revisions and do not validate r32.
 
-Icon publication-rights status: `passed-by-creator-declaration`（2026-08-20）。
+- r30 full regression: Python `3.13.14`, `Ran 1019 tests in 86.932s: OK (skipped=1)`, 1018 passed / 1 optional skip
+- PyInstaller `6.20.0` clean build at `C:\OBJAdjR30FIX1`, packaged self-test, and isolated-profile Japanese/English UI smoke: passed
+- r30 public source 225 files / 224 manifest records, software 1,404 files / 1,403 manifest records, fresh extraction, archive/privacy, and detached `SHA256SUMS-r30.txt` contract: passed
 
-- r27 full regression: Python `3.13.14`、PyInstaller `6.20`、`Ran 890 tests in 68.257s: OK (skipped=1)`、889 PASS／1 optional SKIP
-- preflight EXE: 13,683,090 bytes、version `0.8beta`、SHA-256 `F2AB0AF025430FF3D5587D6C7B2A68365B8C091A7775697A24DDB84DF34EF056`
-- public source stage: 204 files／203 manifest records
-- software stage: 1,340 files／1,339 manifest records
-- source／software ZIP、manifest equality、path safety、CRC、privacy: PASS
+The exact ChromaMatter r31 source **previous evidence** is Python `3.13.14`, `Ran 1024 tests in 100.656s: OK (skipped=1)`, 1023 passed / 1 optional skip, `BUILD_AND_TEST.ps1 -RuntimeRoot .\.venv -Build -BuildOutputRoot C:\OBJAdjR31CM1`, PyInstaller `6.20.0`, packaged smoke, a 13,986,866-byte `ChromaMatter.exe`, SHA-256 `208167A225A37BAAAA473B574B2F746E46427FD0CA63FC5B7201BF3394243743`, r31 source stage 227/226, software 1,404/1,403, and external `SHA256SUMS-r31.txt`. It does not validate r32. The unchanged icon retains its `passed-by-creator-declaration`, fictional `ZENITH DYNAMICS CORP.` wording, and non-affiliation explanation.
 
-上記r30とr27の証拠は各artifactだけに適用し、ChromaMatter r31の合格証拠には流用しません。r29、r28、r26の結果も同様に**previous evidence**です。icon publication rightsと当該asset scopeのowner legal acceptanceはcreator declarationにより記録済みです。physical XP-PEN validationとphysical printはpendingの既知制約で、EXE／software ZIPはPyTetWild/fTetWild、TetGen、PyMeshLab、Qt、GEOS等の第三者binary再配布監査が完了するまで公開しません。
+Icon publication-rights status: `passed-by-creator-declaration` (2026-08-20).
 
-正本は[CURRENT_STATE.json](CURRENT_STATE.json)と[PROVENANCE.md](PROVENANCE.md)です。
+- r27 full regression: Python `3.13.14`, PyInstaller `6.20`, `Ran 890 tests in 68.257s: OK (skipped=1)`, 889 passed / 1 optional skip
+- preflight EXE: 13,683,090 bytes, version `0.8beta`, SHA-256 `F2AB0AF025430FF3D5587D6C7B2A68365B8C091A7775697A24DDB84DF34EF056`
+- public-source stage: 204 files / 203 manifest records
+- software stage: 1,340 files / 1,339 manifest records
+- source and software ZIP structure, manifest equality, path safety, CRC, and privacy: passed
 
-## 開発・テスト
+The r31, r30, and r27 evidence above applies only to those artifacts and does not validate ChromaMatter r32. The r29, r28, and r26 results are likewise **previous evidence**. Icon publication rights and owner legal acceptance for that declared asset scope are recorded. Physical XP-PEN and print validation remain pending limitations. `binary publication eligibility` stays false until every final release-engineering gate listed above passes; `Innovation Fund submission ready` also stays false until the rights-cleared sample and Orca/U1 evidence exist.
 
-WindowsとPython 3.13で次を実行します。
+See [CURRENT_STATE.json](CURRENT_STATE.json) and [PROVENANCE.md](PROVENANCE.md) for the canonical boundary.
+
+## Development and tests
+
+On Windows with Python 3.13, run:
 
 ```powershell
-.\BOOTSTRAP_WINDOWS.ps1
+$pyTetWildWheel = "C:\path\to\pytetwild-0.3.0-cp312-abi3-win_amd64.whl"
+.\BOOTSTRAP_WINDOWS.ps1 -PyTetWildWheel $pyTetWildWheel
 ```
 
-`-Build`は全回帰後にPyInstaller one-folder buildを作成します。r31の既定stage名は次のとおりです。
+`-Build` creates a PyInstaller one-folder build after the full regression. The planned r32 stage names remain non-distributable until validation completes:
 
-- approved source-only release: `ChromaMatter_0.8beta-r31-source-public-20260820`
-- non-public software preflight: `ChromaMatter_0.8beta-r31-ai-model-print-studio`
+- source candidate: `ChromaMatter-0.8beta-r32-source-public-20260823`
+- gated Windows package: `ChromaMatter-0.8beta-r32-win64`
 
-## プライバシーとライセンス
+## Privacy and licensing
 
-公開treeや配布候補へ、非公開の検証assetまたは識別可能な詳細を含めません。公開sampleは権利と由来を確認できるものだけを使用します。
+Do not include non-public validation assets or identifying details in the public tree or release candidate. Public samples require traceable rights and provenance.
 
-アプリケーションは`GPL-3.0-or-later`です。同梱依存関係には別ライセンスがあり、TetGen本体は`AGPL-3.0-or-later`です。binary配布前に`licenses/`とpublication checklistを確認してください。
+The application is `GPL-3.0-or-later`. Bundled dependencies have their own licences, and TetGen itself is `AGPL-3.0-or-later`. Review `licenses/` and the publication checklist before binary distribution.
 
-## AI利用について
+## AI-use disclosure
 
-ChromaMatterは、企画整理、仕様設計、実装、テスト、文書化、画像制作、GitHub公開作業の各段階でChatGPT／OpenAI CodexなどのAIを活用しています。最終的な仕様、採否、実機検証、公開判断はプロジェクト作者が行っています。
+ChromaMatter uses AI assistance, including ChatGPT and OpenAI Codex, across planning, specification, implementation, testing, documentation, image creation, and GitHub publication work. The project author makes the final decisions on requirements, acceptance, physical validation, and publication.
 
-AI生成のコード、画像、説明文には、不自然な表現や技術的な誤りが残る可能性があります。重要な印刷設定はソース、生成3MF、スライサープレビュー、ご自身の実機で確認してください。お気づきの点は[GitHub Issues](https://github.com/Ponkichi0718/ChromaMatter/issues)でお知らせください。
+AI-generated code, images, and explanations may contain technical errors or unnatural wording. Verify critical print settings against the source, generated 3MF, slicer preview, and your own hardware. Please report anything suspicious through [GitHub Issues](https://github.com/Ponkichi0718/ChromaMatter/issues).

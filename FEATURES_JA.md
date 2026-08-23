@@ -12,7 +12,7 @@ ChromaMatter — AI Model Print Studioは、AI生成された色付き3Dモデ�
 
 ## AIモデルから3MFまでを、ひとつの流れに
 
-頂点カラー付きOBJ、または埋め込みbaseColor／`COLOR_0`を持つ静的GLBを読み込めます。TripoAIだけでなく、Hi3D AIのようにGLBを出力するサービスも同じ制作フローへ取り込めます。モデルの処理はローカルで行い、ChromaMatterから外部サーバーへアップロードしません。
+頂点カラー付きOBJ、または埋め込みbaseColor／`COLOR_0`を持つ静的GLBを読み込めます。TripoAIだけでなく、Hi3D AIのようにGLBを出力するサービスも同じ制作フローへ取り込めます。対応する分割GLBはパーツ構成を保ったまま閉立体化し、結合3MFまたはパーツ別3MFへ出力できます。モデルの処理はローカルで行い、ChromaMatterから外部サーバーへアップロードしません。
 
 <table>
   <tr>
@@ -40,6 +40,8 @@ ChromaMatter — AI Model Print Studioは、AI生成された色付き3Dモデ�
 印刷に使う基本色はF1～F4の4本です。ChromaMatterはモデルの色域を見て、実在する同一素材のフィラメントから4本を提案し、その組み合わせで16／24／32色の印刷用パレットを構成します。
 
 混色はF1+F2、F1+F3……という組み合わせごとにグラデーション順で表示します。画面、3MF、実機比較チャートで同じ並びと番号を使うため、「どの混色が、モデルのどこに使われているか」を追いやすくしています。
+
+自動提案後にF1～F4を試しに変更した場合は、「現在の4色をプレビュー・3MFへ反映」で右側の変換previewと3MF paletteを更新できます。自動提案は既定のままで、現在の色番号とmanual paintを保って比較できます。
 
 - PLAを既定とし、ABS／PETGはβです。
 - 1つの印刷ジョブでは、PLAならPLAだけというように4本を同じ素材で揃えます。
@@ -73,7 +75,9 @@ ChromaMatter — AI Model Print Studioは、AI生成された色付き3Dモデ�
 - サイズ、面数、形状診断、対応するUV seamの閉立体化
 - 全体3MFまたはパーツ別3MF、持ち運べるproject folder
 
-閉立体化は、証明できる境界だけを安全に処理します。すべての穴や壊れたモデルを自動修復できる機能ではなく、危険な形状は出力前に停止します。
+閉立体化は、証明できる境界だけを安全に処理します。対応する分割GLBでは別パーツ同士を溶接せず、元面と修復面を区別して追跡します。Hi3D系の識別用疑似色も、exporter・node・material・texture・既知paletteの条件がすべて揃った場合だけ除外し、通常の作者指定色は残します。閉立体化前に3MF出力を始めた場合も、適格なmodelでは処理を宣言し、成功後に出力を再開します。すべての穴や壊れたモデルを自動修復する機能ではありません。対応する分割GLBの修復では、閉じた未対応境界loopの幅が2.0 mm以下かつ平面性のずれが0.02 mm以下の場合だけ、厳密な局所平面capを追加できます。それより大きい穴、非平面・曖昧・non-manifoldな開口はfail-closedで停止し、単一GLBのUV seam溶接経路はcapを追加しません。
+
+出力3MFには安定したFull Spectrum layer-cycleとprime towerのbaselineを記録します。Local Z、advanced dithering、pointillism等の実験設定は有効化せず、supportはSnapmaker Orca側で選択します。最終判断は必ずOrcaのslice previewと実機testで行います。
 
 ## AI×3Dプリンタを、もう一つ前へ
 

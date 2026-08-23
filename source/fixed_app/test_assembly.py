@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import sys
 import unittest
+from unittest.mock import patch
 
 import numpy as np
 
@@ -11,10 +12,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from spectrum_mapper.assembly import (
     AssemblyError,
+    MULTIPART_INHERITED_SOURCE_WARNING,
     add_keyed_joint_for_seam,
     close_open_mesh,
     find_boundary_loops,
     mesh_is_watertight,
+    multipart_self_intersection_limits,
     pair_matching_loops,
     repair_small_unmatched_boundaries,
     solidify_partitioned_parts,
@@ -73,6 +76,89 @@ def _box_mesh(
     return vertices, faces, colors
 
 
+def _high_resolution_bipyramid(
+    face_count: int = 39_838,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Build a closed one-body mesh with a small cluster of tiny faces."""
+    if face_count <= 0 or face_count % 2:
+        raise ValueError("face_count must be a positive even number")
+    ring_count = face_count // 2
+    tiny_segment_count = min(200, ring_count - 1)
+    tiny_arc = 1.0e-4
+    widths = np.concatenate(
+        (
+            np.full(
+                tiny_segment_count,
+                tiny_arc / tiny_segment_count,
+                dtype=np.float64,
+            ),
+            np.full(
+                ring_count - tiny_segment_count,
+                (2.0 * np.pi - tiny_arc)
+                / (ring_count - tiny_segment_count),
+                dtype=np.float64,
+            ),
+        )
+    )
+    angles = np.concatenate(
+        (np.asarray([0.0], dtype=np.float64), np.cumsum(widths[:-1]))
+    )
+    ring = np.column_stack(
+        (
+            np.cos(angles),
+            np.sin(angles),
+            np.zeros(ring_count, dtype=np.float64),
+        )
+    )
+    vertices = np.vstack(
+        (
+            np.asarray([[0.0, 0.0, 1.0], [0.0, 0.0, -1.0]]),
+            ring,
+        )
+    )
+    ring_ids = np.arange(ring_count, dtype=np.int32)
+    next_ring_ids = (ring_ids + 1) % ring_count
+    faces = np.empty((face_count, 3), dtype=np.int32)
+    faces[0::2] = np.column_stack(
+        (
+            np.zeros(ring_count, dtype=np.int32),
+            2 + ring_ids,
+            2 + next_ring_ids,
+        )
+    )
+    faces[1::2] = np.column_stack(
+        (
+            np.ones(ring_count, dtype=np.int32),
+            2 + next_ring_ids,
+            2 + ring_ids,
+        )
+    )
+    colors = np.tile(DEFAULT_COLOR, (len(vertices), 1))
+    return vertices, faces, colors
+
+
+class _MockSelectedMesh:
+    def __init__(self, selected: np.ndarray) -> None:
+        self._selected = np.asarray(selected, dtype=bool)
+
+    def face_selection_array(self) -> np.ndarray:
+        return self._selected.copy()
+
+
+class _MockMeshSet:
+    def __init__(self, selected: np.ndarray) -> None:
+        self._mesh = _MockSelectedMesh(selected)
+
+    def add_mesh(self, *_args, **_kwargs) -> None:
+        return None
+
+    def apply_filter(self, *_args, **_kwargs) -> None:
+        return None
+
+    def current_mesh(self) -> _MockSelectedMesh:
+        return self._mesh
+
+
 def _matching_open_boxes() -> tuple[
     tuple[np.ndarray, np.ndarray, np.ndarray],
     tuple[np.ndarray, np.ndarray, np.ndarray],
@@ -110,6 +196,158 @@ def _assert_valid_colored_mesh(
 
 
 class ExistingPartSeamTests(unittest.TestCase):
+    def test_inherited_source_warning_uses_relative_bounded_limits(self) -> None:
+        face_limit, area_limit = multipart_self_intersection_limits(
+            39_838,
+            MULTIPART_INHERITED_SOURCE_WARNING,
+        )
+
+        self.assertEqual(face_limit, 399)
+        self.assertEqual(area_limit, 0.002)
+        self.assertEqual(
+            multipart_self_intersection_limits(
+                10_000,
+                MULTIPART_INHERITED_SOURCE_WARNING,
+            ),
+            (100, 0.002),
+        )
+        self.assertEqual(
+            multipart_self_intersection_limits(
+                10_001,
+                MULTIPART_INHERITED_SOURCE_WARNING,
+            ),
+            (101, 0.002),
+        )
+        self.assertEqual(
+            multipart_self_intersection_limits(
+                650_000,
+                MULTIPART_INHERITED_SOURCE_WARNING,
+            ),
+            (6_500, 0.002),
+        )
+
+    def test_inherited_source_warning_accepts_399_ids_but_rejects_400(
+        self,
+    ) -> None:
+        closed = _high_resolution_bipyramid()
+        source_face_limit = len(closed[1])
+
+        selected = np.zeros(source_face_limit, dtype=bool)
+        selected[:399] = True
+        with patch(
+            "spectrum_mapper.assembly.ml.MeshSet",
+            return_value=_MockMeshSet(selected),
+        ):
+            _parts, record = solidify_partitioned_parts(
+                [closed],
+                [],
+                height_mm=HEIGHT_MM,
+                source_face_limits=(source_face_limit,),
+                allow_bounded_source_self_intersections=True,
+                bounded_self_intersection_policy=(
+                    MULTIPART_INHERITED_SOURCE_WARNING
+                ),
+                source_triangle_ancestry_proven_parts=(True,),
+            )
+
+        part = record["parts"][0]
+        self.assertEqual(part["self_intersections"], 399)
+        self.assertEqual(part["self_intersection_face_limit"], 399)
+        self.assertLess(
+            part["self_intersecting_area_fraction"],
+            part["self_intersection_area_fraction_limit"],
+        )
+        self.assertIs(part["self_intersection_source_faces_only"], True)
+        self.assertIs(part["source_triangle_ancestry_proven"], True)
+        self.assertIs(
+            part["self_intersection_inherited_from_source"], True
+        )
+        self.assertEqual(
+            part["self_intersection_policy"],
+            MULTIPART_INHERITED_SOURCE_WARNING,
+        )
+
+        selected[399] = True
+        with patch(
+            "spectrum_mapper.assembly.ml.MeshSet",
+            return_value=_MockMeshSet(selected),
+        ), self.assertRaisesRegex(
+            AssemblyError,
+            "400 面 / 許容 399 面",
+        ):
+            solidify_partitioned_parts(
+                [closed],
+                [],
+                height_mm=HEIGHT_MM,
+                source_face_limits=(source_face_limit,),
+                allow_bounded_source_self_intersections=True,
+                bounded_self_intersection_policy=(
+                    MULTIPART_INHERITED_SOURCE_WARNING
+                ),
+                source_triangle_ancestry_proven_parts=(True,),
+            )
+
+    def test_inherited_source_warning_requires_explicit_ancestry_proof(
+        self,
+    ) -> None:
+        closed = _box_mesh(
+            (-0.20, -0.15, -0.20),
+            (0.20, 0.15, 0.20),
+        )
+
+        with self.assertRaisesRegex(AssemblyError, "入力由来三角形"):
+            solidify_partitioned_parts(
+                [closed],
+                [],
+                height_mm=HEIGHT_MM,
+                source_face_limits=(len(closed[1]),),
+                allow_bounded_source_self_intersections=True,
+                bounded_self_intersection_policy=(
+                    MULTIPART_INHERITED_SOURCE_WARNING
+                ),
+            )
+
+        _parts, record = solidify_partitioned_parts(
+            [closed],
+            [],
+            height_mm=HEIGHT_MM,
+            source_face_limits=(len(closed[1]),),
+            allow_bounded_source_self_intersections=True,
+            bounded_self_intersection_policy=(
+                MULTIPART_INHERITED_SOURCE_WARNING
+            ),
+            source_triangle_ancestry_proven_parts=(True,),
+        )
+        self.assertIs(
+            record["parts"][0]["source_triangle_ancestry_proven"],
+            True,
+        )
+        self.assertIs(
+            record["parts"][0][
+                "self_intersection_inherited_from_source"
+            ],
+            False,
+        )
+        self.assertEqual(
+            record["parts"][0]["self_intersection_policy"],
+            "strict_zero",
+        )
+
+    def test_inherited_source_ancestry_proof_count_must_match_parts(
+        self,
+    ) -> None:
+        closed = _box_mesh(
+            (-0.20, -0.15, -0.20),
+            (0.20, 0.15, 0.20),
+        )
+        with self.assertRaisesRegex(AssemblyError, "パーツ数"):
+            solidify_partitioned_parts(
+                [closed],
+                [],
+                height_mm=HEIGHT_MM,
+                source_triangle_ancestry_proven_parts=(True, False),
+            )
+
     def test_matching_open_boxes_detect_and_pair_their_boundary_loops(self) -> None:
         first, second = _matching_open_boxes()
 
@@ -197,6 +435,7 @@ class ExistingPartSeamTests(unittest.TestCase):
         self.assertEqual(record["source_parts"], 2)
         self.assertEqual(record["output_parts"], 2)
         self.assertEqual(record["matched_seams"], 1)
+        self.assertTrue(record["source_triangle_coordinates_preserved"])
         self.assertFalse(record["identity"])
         self.assertTrue(record["closed"])
         self.assertEqual(len(record["interfaces"]), 1)
@@ -234,6 +473,48 @@ class ExistingPartSeamTests(unittest.TestCase):
             )
             cap_geometry.append(canonical_triangles)
         self.assertEqual(cap_geometry[0], cap_geometry[1])
+
+    def test_near_matching_seam_disables_bounded_intersection_policy(
+        self,
+    ) -> None:
+        first, second = _matching_open_boxes()
+        shifted_vertices = second[0].copy()
+        shifted_vertices[:, 2] += 1.0e-4  # 0.01 mm at the test height.
+        second = (shifted_vertices, second[1], second[2])
+        loops = [
+            *find_boundary_loops(0, first[0], first[1]),
+            *find_boundary_loops(1, second[0], second[1]),
+        ]
+        seams = pair_matching_loops(
+            loops,
+            height_mm=HEIGHT_MM,
+            tolerance_mm=0.05,
+        )
+
+        _parts, record = solidify_partitioned_parts(
+            [first, second],
+            seams,
+            height_mm=HEIGHT_MM,
+            source_face_limits=(len(first[1]), len(second[1])),
+            allow_bounded_source_self_intersections=True,
+            bounded_self_intersection_policy=(
+                "normalized_multipart_bounded_qem_warning"
+            ),
+        )
+
+        self.assertFalse(record["source_triangle_coordinates_preserved"])
+        self.assertFalse(
+            record["interfaces"][0][
+                "source_triangle_coordinates_preserved"
+            ]
+        )
+        self.assertEqual(
+            [
+                value["self_intersection_source_face_limit"]
+                for value in record["parts"]
+            ],
+            [0, 0],
+        )
 
     def test_closed_partitioned_parts_are_identity_outputs(self) -> None:
         first = _box_mesh((-0.30, -0.10, -0.10), (-0.10, 0.10, 0.10))

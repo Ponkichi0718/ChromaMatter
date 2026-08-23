@@ -1,8 +1,8 @@
 # ChromaMatter — Innovation Fund応募原稿案
 
-更新日: 2026-08-20  
-状態: **`ChromaMatter_0.8beta-r31-source-public-20260820`のsource-only repositoryは[GitHub](https://github.com/Ponkichi0718/ChromaMatter)で公開済み。Innovation Fund submission readyはfalseで、応募文は未投稿・未提出。残る角括弧のplaceholderと応募sample実証値を置換するまで提出しない。EXE／software ZIPは第三者binary再配布監査まで公開しない。**  
-対象: `ChromaMatter — AI Model Print Studio 0.8beta` r31候補
+更新日: 2026-08-21  
+状態: **`ChromaMatter_0.8beta-r31-source-public-20260820`のsource-only repositoryは[GitHub](https://github.com/Ponkichi0718/ChromaMatter)で公開済み。r32 exact regression／build／stage／checksum／GitHub updateとInnovation Fund submission readyはpendingで、応募文は未投稿・未提出。残る角括弧のplaceholderと応募sample実証値を置換するまで提出しない。EXE／software ZIPは第三者binary再配布監査まで公開しない。**  
+対象: `ChromaMatter — AI Model Print Studio 0.8beta` r32候補
 
 ## 1. 応募の基本情報
 
@@ -107,7 +107,7 @@ basic exact-match web checkでは`ZENITH DYNAMICS CORP.`と`ChromaMatter`の完�
 ### 使用する実物asset
 
 - OBJ screenshot: `[PATH / SHA-256 / CAMERA ANGLE]`
-- app screenshot: `[PATH / r31 COMMIT / CAMERA ANGLE]`
+- app screenshot: `[PATH / r32 COMMIT / CAMERA ANGLE]`
 - final print photo: `[PATH / PHOTO DATE / CAMERA / WHITE BALANCE]`
 - sample rights record: `[URL OR LEDGER ID]`
 
@@ -141,7 +141,7 @@ basic exact-match web checkでは`ZENITH DYNAMICS CORP.`と`ChromaMatter`の完�
 
 - `[FINAL SAMPLE OBJ SHA-256]`
 - `[FINAL SAMPLE 3MF SHA-256]`
-- `[R31 SOURCE COMMIT / TAG]`
+- `[R32 SOURCE COMMIT / TAG]`
 - `[SNAPMAKER ORCA VERSION]`
 - `[U1 FIRMWARE VERSION]`
 - `[F1–F4 PRODUCT / COLOUR / LOT]`
@@ -154,7 +154,7 @@ basic exact-match web checkでは`ZENITH DYNAMICS CORP.`と`ChromaMatter`の完�
 ### 0:00–0:20 — 結果と入力契約
 
 - 完成品、元GLB／OBJ、Orca previewを同じ角度で提示。
-- `v x y z r g b`頂点カラーまたはGLB UV baseColor、権利処理済みpublic sample、r31 commit hashを画面に出す。
+- `v x y z r g b`頂点カラーまたはGLB UV baseColor、権利処理済みpublic sample、r32 commit hashを画面に出す。
 - 「任意meshの完全修復や画面色との完全一致は保証しない」と冒頭で境界を示す。
 
 ### 0:20–0:55 — multipart modelとpart palette
@@ -318,10 +318,13 @@ READMEではditherforgeを攻撃的に比較しない。必要なら`Related pro
 ### B. source quality
 
 - [x] 2026-08-20 owner publication GOとicon creator declaration／非提携方針を記録
-- [x] r31 exact source full regression: Python 3.13.14、1023 PASS／任意1 SKIP、100.656秒
-- [x] clean build、built self-test、日英UI smoke
-- [x] preflight fresh extract self-test、日英UI smoke、manifest／archive／path safety／privacy audit
-- [x] final source-only restage、Downloads配置、detached `SHA256SUMS-r31.txt`、archive／CRC／privacy／identity照合
+- [x] r31 exact source full regression: Python 3.13.14、1023 PASS／任意1 SKIP、100.656秒（previous evidence）
+- [x] r31 clean build、built self-test、日英UI smoke（previous evidence）
+- [x] r31 preflight fresh extract self-test、日英UI smoke、manifest／archive／path safety／privacy audit（previous evidence）
+- [x] r31 final source-only restage、Downloads配置、detached `SHA256SUMS-r31.txt`、archive／CRC／privacy／identity照合（previous evidence）
+- [ ] r32 exact full regression、clean build、built self-test、1920×1080日英UI smoke
+- [ ] r32 final source／software stage、fresh extract、manifest／archive／path safety／privacy／identity照合
+- [ ] r32 Downloads配置、外部detached `SHA256SUMS-r32.txt`、GitHub update／公開tree一致
 - [ ] clean cloneでsetup／test／public sampleを第三者手順だけで再現
 - [ ] GPL、第三者license notice、TetGen／Qt等binary distribution条件を確認
 - [ ] known limitations、issue template、security／privacy窓口
@@ -370,8 +373,8 @@ READMEではditherforgeを攻撃的に比較しない。必要なら`Related pro
 
 ## 9. 最終submit前の順番
 
-1. r31 exact source-only release gateは完了。EXE／software ZIPは第三者binary再配布監査まで保留する。
-2. 権利処理済みsampleを同じr31でGLB／OBJ→project→3MF→Orca→U1まで完走する。
+1. r32 exact source-only release gateを完了する。EXE／software ZIPは第三者binary再配布監査まで保留する。
+2. 権利処理済みsampleを同じr32でGLB／OBJ→project→3MF→Orca→U1まで完走する。
 3. hash、profile、filament、失敗／改善写真を記録する。
 4. 公開済みGitHubへREADME hero、sample、known limitations、validationを追記する。
 5. 90秒hero videoとtechnical demoを公開する。

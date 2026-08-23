@@ -1,0 +1,142 @@
+{
+  "schema_version": 1,
+  "distribution": {
+    "name": "pymeshlab",
+    "version": "2025.7.post1",
+    "wheel_sha256": "25eb2578dd6c4d1b2e0253fb3b4f8f7895e8bb4f3f1236832db0ab58e6a44998",
+    "source_commit": "1dc199f9b6c43e58b6db346ba4600866b950b8ae"
+  },
+  "purpose": "Bind non-wheel static and carried-runtime attribution to the exact reviewed native bytes. A matching basename is not sufficient.",
+  "identities": [
+    {
+      "path": "_internal/pymeshlab/E57Format.dll",
+      "size": 614400,
+      "sha256": "315fc56f9af30d7ad32de340004dc06f38979dde3d10aa19392d5a9c5fcbfdd9",
+      "audited_components": ["libe57format"]
+    },
+    {
+      "path": "_internal/pymeshlab/embree4.dll",
+      "size": 36419712,
+      "sha256": "967ea8c40c64f060bf697942a4ed44b8c19a9cab24585b0cf1ed6e690ff7c175",
+      "audited_components": ["embree", "onetbb-pymeshlab"]
+    },
+    {
+      "path": "_internal/pymeshlab/external-glew.dll",
+      "size": 498176,
+      "sha256": "ac033b0e0a478018c4f28b4a5e57b8c8fed461ba8b7183675ce795486db7361a",
+      "audited_components": ["glew"]
+    },
+    {
+      "path": "_internal/pymeshlab/external-lib3ds.dll",
+      "size": 114688,
+      "sha256": "fd3b3aebf87e49f446207fd51f04d54719700296068970c9549fb0abcb97bef1",
+      "audited_components": ["lib3ds"]
+    },
+    {
+      "path": "_internal/pymeshlab/IFXCore.dll",
+      "size": 2534912,
+      "sha256": "a4884152f31bf5d049f4b0f684a3c9b66b285b64f2ee6bcc64ccdee9356a350f",
+      "audited_components": [
+        "u3d",
+        "u3d-fnvhash",
+        "u3d-graphics-gems-iv",
+        "u3d-ijg-jpeg",
+        "u3d-libpng",
+        "u3d-nick-bobic-quaternion",
+        "u3d-shewchuk-predicates",
+        "u3d-wcmatch",
+        "u3d-zlib"
+      ]
+    },
+    {
+      "path": "_internal/pymeshlab/IFXExporting.dll",
+      "size": 328192,
+      "sha256": "22abbc70bf63b8cd9e0ce4c2d4d1082a9aef2590fa433168f87db92d8abbea76",
+      "audited_components": ["u3d"]
+    },
+    {
+      "path": "_internal/pymeshlab/IFXScheduling.dll",
+      "size": 191488,
+      "sha256": "69c3202201725cdaef740451875999ca9ed8879736edf8a32d18d4c394dc5b90",
+      "audited_components": ["u3d"]
+    },
+    {
+      "path": "_internal/pymeshlab/lib/plugins/filter_embree.dll",
+      "size": 79360,
+      "sha256": "285073bbbc4e57eba9c4ad205a1f1fb1e4fbd751186b26664b0854e467b0745f",
+      "audited_components": ["embree", "onetbb-pymeshlab"]
+    },
+    {
+      "path": "_internal/pymeshlab/lib/plugins/io_3ds.dll",
+      "size": 77824,
+      "sha256": "42031dcc2808367030b44642fe9ada999648a4e64a31bc9fdef06d19d05d898a",
+      "audited_components": ["lib3ds"]
+    },
+    {
+      "path": "_internal/pymeshlab/lib/plugins/io_3mf.dll",
+      "size": 163328,
+      "sha256": "dae7e6f9c9cfb16f2fb5b004d91788b1ccae29357373f3deefa467090d43d94e",
+      "audited_components": ["lib3mf"]
+    },
+    {
+      "path": "_internal/pymeshlab/lib/plugins/io_e57.dll",
+      "size": 99328,
+      "sha256": "d30e952d95dadd35e7ecc0d30386fe8122f663f0688f6482f2d733f6e045d7c0",
+      "audited_components": ["libe57format"]
+    },
+    {
+      "path": "_internal/pymeshlab/lib/plugins/io_u3d.dll",
+      "size": 459776,
+      "sha256": "4ff3c2073986ec17551bf3e31d88f56f186bc86741c90c1c2c25833b085ded47",
+      "audited_components": ["u3d"]
+    },
+    {
+      "path": "_internal/pymeshlab/lib3mf.dll",
+      "size": 6221824,
+      "sha256": "51bf9ecd11596d9c376ec71e14aefed48b2d84b61210747f6071ffe14491d9da",
+      "audited_components": [
+        "lib3mf",
+        "lib3mf-cpp-base64",
+        "lib3mf-fast-float",
+        "lib3mf-libzip",
+        "lib3mf-zlib"
+      ]
+    },
+    {
+      "path": "_internal/pymeshlab/libgmp-10.dll",
+      "size": 543027,
+      "sha256": "fec43cb18ce0ec8a5dd6ad1db745747167310ccb92b5acff0d445a8b3013f009",
+      "audited_components": ["gmp"]
+    },
+    {
+      "path": "_internal/pymeshlab/libmpfr-4.dll",
+      "size": 436011,
+      "sha256": "09b3b868b96433991fc15c9c5ae6f9a44c62d2e21194110442607917391ed927",
+      "audited_components": ["mpfr"]
+    },
+    {
+      "path": "_internal/pymeshlab/muparser.dll",
+      "size": 754688,
+      "sha256": "7b9d2bf618be77f314c2ca5e8926d88b30f3a9907249d099f0163adc54d53c87",
+      "audited_components": ["muparser"]
+    },
+    {
+      "path": "_internal/pymeshlab/opengl32sw.dll",
+      "size": 20923392,
+      "sha256": "963641a718f9cae2705d5299eae9b7444e84e72ab3bef96a691510dd05fa1da4",
+      "audited_components": ["llvm-mesa", "mesa-llvmpipe", "qt"]
+    },
+    {
+      "path": "_internal/pymeshlab/tbb12.dll",
+      "size": 318080,
+      "sha256": "68c07bc7c2161637f37f11ebf4af5be2f940138cbcaa717bb71282fd55a827ef",
+      "audited_components": ["embree", "onetbb-pymeshlab"]
+    },
+    {
+      "path": "_internal/pymeshlab/xerces-c_3_2.dll",
+      "size": 3192832,
+      "sha256": "867eabdb5b1222e186ee11af37adec5f0c7b6662a089e6ddc72b8117ac3551b4",
+      "audited_components": ["xerces-c"]
+    }
+  ]
+}

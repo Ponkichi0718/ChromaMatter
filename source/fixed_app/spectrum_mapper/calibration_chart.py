@@ -85,6 +85,11 @@ def _copy_palette(palette: PaletteSettings) -> PaletteSettings:
             if palette.output_mix_ratios_b is None
             else list(palette.output_mix_ratios_b)
         ),
+        assignment_palette_hex=(
+            None
+            if palette.assignment_palette_hex is None
+            else list(palette.assignment_palette_hex)
+        ),
         black_free_gradient_enabled=bool(
             palette.black_free_gradient_enabled
         ),

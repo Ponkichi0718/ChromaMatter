@@ -1,0 +1,65 @@
+name: Feature request
+description: Suggest an improvement to the AI-model-to-print workflow.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ChromaMatter focuses on turning AI-generated coloured 3D models into practical Full Spectrum print projects. Please describe the workflow problem before proposing a specific implementation.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Explain where the current workflow becomes difficult, slow, or unclear.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed improvement
+      description: Describe the desired behaviour from a user's point of view.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: stage
+    attributes:
+      label: Workflow stage
+      options:
+        - AI model import
+        - Colour and filament selection
+        - Mixed-colour preview
+        - Manual correction
+        - Geometry preparation
+        - 3MF export
+        - Snapmaker Orca or U1 validation
+        - Documentation or accessibility
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives or workarounds
+      description: Tell us what you do today, if anything.
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Screenshots or links are welcome when you have the right to share them publicly.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I removed personal paths, account information, and other sensitive data.
+          required: true
+        - label: I have permission to share every attached image or public link.
+          required: true

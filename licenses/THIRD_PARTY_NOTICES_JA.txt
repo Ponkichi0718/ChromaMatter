@@ -1,0 +1,84 @@
+ChromaMatterバイナリ配布：ライセンスとソース入手方法
+====================================================
+
+ChromaMatter本体のコードはGPL-3.0-or-laterです。Windowsポータブル版には、
+それぞれ別の著作権者とライセンスを持つ第三者コンポーネントも含まれます。
+各コンポーネントは元のライセンスを維持します。この文書によって第三者
+ソフトウェアを別ライセンスへ変更するものではありません。
+
+現在のバイナリ配布方針ではTetGenを残します。tetgen 0.8.3 Pythonラッパーは
+MITですが、同梱されるTetGen 1.6.0本体は、WIASの別途商用ライセンスを取得
+していない場合、AGPL-3.0-or-laterです。フリーソフトウェア条件でバイナリを
+配布する場合は、適用ライセンスが求める完全な対応ソースと、ビルド・
+インストールに必要な情報を一緒に入手できるようにします。配布物を単に
+「AGPL」と表示するだけでは、この提供義務の代わりにはなりません。
+
+主要な同梱コンポーネント
+--------------------------
+
+- ChromaMatter本体：GPL-3.0-or-later
+- CPython 3.13.14：Python Software Foundation License Version 2
+- CPythonネイティブモジュール由来：bzip2 1.0.8（bzip2-1.0.6条項）、
+  liblzma 5.2.5（public domain）、Expat 2.8.1（MIT）、libmpdec 4.0.0
+  （BSD-2-Clause）
+- PyInstaller 6.20.0ブートローダーおよびランタイムフック：
+  (GPL-2.0-or-later WITH Bootloader-exception) AND Apache-2.0
+- tetgen 0.8.3 Pythonラッパー：MIT
+- TetGen 1.6.0本体：AGPL-3.0-or-later（または別途商用ライセンス）
+- PyMeshLab 2025.7.post1：GPL-3.0-only
+- PyMeshLabが同梱するQt 5.15.2：この配布ではLGPL-3.0の選択肢を使用
+  （Qtには他のライセンス選択肢もあります）
+- Mesa llvmpipe 12.0.0-rc2と静的リンクされたLLVM 3.6.2：それぞれ
+  Mesaコンポーネント条項（MIT AND BSL-1.0）およびNCSA
+- 管理対象のPyTetWild 0.3.0ネイティブ閉包：PyTetWildおよびfTetWild
+  （MPL-2.0）、nanobind（BSD-3-Clause）およびTessil robin-map（MIT）、
+  fmtおよびspdlog（MIT）、libigl（MPL-2.0）およびlibigl predicates
+  （LicenseRef-Shewchuk-Public-Domain）、Geogram（BSD-3-Clause）、oneTBB
+  （Apache-2.0）、jdumas/json（MIT）、ならびに管理された
+  `EIGEN_MPL2_ONLY=ON`経路のEigen（MPL-2.0）
+- Geogram同梱の閉包：AMGCL、libMeshb、RPly、xatlas（MIT）、zlib
+  （Zlib）、stb_imageおよびstb_image_write
+  （MIT OR LicenseRef-STB-Public-Domain）、PoissonRecon（BSD-3-Clause）
+- Shapely 2.1.2：BSD-3-Clause
+- Shapely wheelが同梱するGEOS 3.13.1：LGPL-2.1-or-later
+- PyMeshLabが同梱するU3D 1.5.2：Apache-2.0
+- U3D IFXCoreの静的コンポーネント：zlib 1.2.8（Zlib）、libpng 1.6.2
+  （Libpng）、IJG JPEG release 9（IJG）、public domainのFNVHashおよび
+  Shewchuk predicates、wcmatch 0.5（freeware条項）、Graphics Gems IVの
+  Delaunayコード、Nick Bobicのquaternionコード
+- lib3mf 2.4.1（BSD-2-Clause）と、その静的コンポーネントである
+  cpp-base64 V2.rc.08（Zlib）、fast_float 6.0.0（MIT）、zlib 1.3.1
+  （Zlib）およびlibzip 1.10.1（BSD-3-Clause）
+- Microsoft Visual C++ Runtime：Microsoft再頒布可能コード条項
+  （ファイル別の正確な版はBINARY_COMPONENT_MAP.jsonに記録）
+
+完全な依存関係一覧はTHIRD_PARTY_LICENSES.txtにあります。ライセンス原文と
+wheel由来の通知は、このファイルと同じ場所および各コンポーネント用の
+サブフォルダーに収録します。BINARY_COMPONENT_MAP.jsonには、そのリリースの
+実ファイルと所有コンポーネントを記録し、SBOM.cdx.jsonには対応するCycloneDX
+一覧を収録します。
+
+PyTetWildの公開状態：`tooling/pytetwild_static_closure.json`は現在
+`release_gate.status=release-approved`および`release_eligible=true`を記録しています。
+管理対象の静的/ヘッダー閉包は20コンポーネントで構成され、パッケージ契約は
+29個すべてのバイト単位で固定されたライセンス原文・通知を
+`_internal/licenses/pytetwild-closure/`以下へ収録することを要求し、管理対象wheelの
+SHA-256とPYDのSHA-256を同契約に固定しています。runtime validatorはこれとは別に、
+canonical application lockが同じwheel SHA-256を固定していることを要求します。
+過去に監査した上流PyPI wheel/PYDは監査専用で、公開承認
+から除外されています。この閉包承認だけでは、凍結アプリケーションまたは
+software archive全体の公開を承認しません。
+
+CPythonランタイムの完全なライセンスは`cpython/LICENSE.txt`、PyInstallerの
+適用条件は`pyinstaller/COPYING.txt`に収録します。Qt、Mesa/LLVM、U3D、
+lib3mf、PyTetWild管理対象閉包、および上記CPythonネイティブモジュール由来成分
+の個別原文は、この文書と同じ場所または閉包用パスにある`LICENSE_*`および
+`NOTICE_*`（MesaのHTMLも含む）に収録し、必須パスと実ファイル対応は
+BINARY_COMPONENT_MAP.jsonに記録します。
+
+SOURCE_OFFER_JA.txtは、対象バイナリと一致する完全な対応ソースの場所を示し
+ます。BUILD_ENVIRONMENT_JA.mdは再ビルド入口、RELINKING_JA.mdはPyInstaller
+one-folder版でQtとGEOSを差し替える方法を説明します。
+
+本体および第三者コンポーネントは、各ライセンスで認められる範囲において
+無保証です。この一覧は実務上の整理であり、法的助言ではありません。

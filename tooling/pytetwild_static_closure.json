@@ -1,0 +1,396 @@
+{
+  "schema_version": 1,
+  "manifest_id": "chromamatter-pytetwild-static-closure",
+  "scope": "Static and header-only native-code closure expected inside the controlled Windows PyTetWild PyfTetWildWrapper.pyd build. Dynamically bundled MPIR and platform runtimes are intentionally outside this manifest and must remain covered by the binary/runtime manifest.",
+  "release_gate": {
+    "status": "release-approved",
+    "release_eligible": true,
+    "blockers": [
+      {
+        "id": "controlled-rebuild-binary-identities",
+        "resolved": true,
+        "reason": "Controlled outbound-isolated run 20260823-174626-089357844d4b produced an attested repaired wheel and PyfTetWildWrapper.pyd identity. Historical PyPI bytes remain audit evidence only and are excluded from release approval."
+      }
+    ]
+  },
+  "build_binding": {
+    "recipe_path": "tooling/BUILD_PYTETWILD_WINDOWS.ps1",
+    "recipe_bytes": 82572,
+    "recipe_sha256": "d00cc6cdbc61abeaa040dfc81a3dfe7086ac0027685d798ac70f46e14e4360c8",
+    "required_cmake_definitions": [
+      "BUILD_SHARED_LIBS=OFF",
+      "EIGEN_MPL2_ONLY=ON",
+      "FLOAT_TETWILD_ENABLE_TBB=ON",
+      "GEOGRAM_WITH_TBB=OFF",
+      "LIBIGL_WITH_PREDICATES=ON"
+    ],
+    "source_archive_recipe": {
+      "tool": "PortableGit",
+      "tool_version": "2.55.0.windows.5",
+      "arguments": [
+        "archive",
+        "--format=zip"
+      ],
+      "note": "All git-archive-zip hashes below bind the exact output of this tool/version and fixed revision."
+    },
+    "historical_audited_package": {
+      "package": "pytetwild",
+      "version": "0.3.0",
+      "pyd_relative_path": "pytetwild/PyfTetWildWrapper.pyd",
+      "pyd_bytes": 5897728,
+      "pyd_sha256": "ac801b37e298ee83be35f41193d384f64ef4b5064006e0019a209edff48495de",
+      "disposition": "excluded-historical-audit-only",
+      "reason": "This extension came from the previous upstream PyPI wheel, not the controlled rebuild."
+    },
+    "controlled_rebuild": {
+      "status": "approved",
+      "package": "pytetwild",
+      "version": "0.3.0",
+      "wheel_tag": "cp312-abi3-win_amd64",
+      "wheel_sha256": "e3b11ac058266d277b0f83448c6023d5da98e731d0d016e461dbce4ebdfd613d",
+      "pyd_relative_path": "pytetwild/PyfTetWildWrapper.pyd",
+      "pyd_sha256": "26a091b53279407014899c046691958c9df07e22703576da6a45d68a9be22430",
+      "approval_requires": [
+        "wheel_sha256",
+        "pyd_sha256",
+        "successful focused closure tests against the exact recipe"
+      ]
+    }
+  },
+  "source_archives": {
+    "pytetwild-source": {
+      "filename": "pytetwild-source.zip",
+      "kind": "git-archive-zip",
+      "source_url": "https://github.com/pyvista/pytetwild.git",
+      "version": "0.3.0",
+      "revision": "eea46df87ef58e861956b7a710f42ab58eaa02a0",
+      "bytes": 721021,
+      "sha256": "f68d4d76be195697df153dc4e5f86f47cd55c3807b7053b1863f36dcf7db8484"
+    },
+    "ftetwild-source": {
+      "filename": "ftetwild-source.zip",
+      "kind": "git-archive-zip",
+      "source_url": "https://github.com/wildmeshing/fTetWild.git",
+      "version": "d7d99bb4387a07895b9adce058dc7305f6b6e5ab",
+      "revision": "d7d99bb4387a07895b9adce058dc7305f6b6e5ab",
+      "bytes": 1940353,
+      "sha256": "e2a782e5711b8f890b55123d355d533405c34d5319035268e6f7f99b35a2c922"
+    },
+    "nanobind-source": {
+      "filename": "nanobind-source.zip",
+      "kind": "git-archive-zip",
+      "source_url": "https://github.com/wjakob/nanobind.git",
+      "version": "2.12.0",
+      "revision": "2a61ad2494d09fecb2e13322c1383342c299900d",
+      "bytes": 1044209,
+      "sha256": "97f9ab5bc8c87112da7c5a578f510944b1b20afbf924c7007462a8c4a8ab7fd9"
+    },
+    "nanobind-robin-map-source": {
+      "filename": "robin-map-4ec1bf19c6a96125ea22062f38c2cf5b958e448e.zip",
+      "kind": "github-codeload-zip",
+      "source_url": "https://codeload.github.com/Tessil/robin-map/zip/4ec1bf19c6a96125ea22062f38c2cf5b958e448e",
+      "version": "1.4.0",
+      "revision": "4ec1bf19c6a96125ea22062f38c2cf5b958e448e",
+      "bytes": 87395,
+      "sha256": "78c97483a8993866074f06b25fd288cdb7b8ebd6c61c2f0c43b0e324fd56ce10"
+    },
+    "fmt-source": {
+      "filename": "fmt-source.zip",
+      "kind": "git-archive-zip",
+      "source_url": "https://github.com/fmtlib/fmt.git",
+      "version": "11.2.0",
+      "revision": "40626af88bd7df9a5fb80be7b25ac85b122d6c21",
+      "bytes": 760785,
+      "sha256": "3fb8c43dd1d1dd422b20d6c9836a77fa44f9b48cde6dc1adccda7600f09a0446"
+    },
+    "spdlog-source": {
+      "filename": "spdlog-source.zip",
+      "kind": "git-archive-zip",
+      "source_url": "https://github.com/gabime/spdlog.git",
+      "version": "1.15.3",
+      "revision": "6fa36017cfd5731d617e1a934f0e5ea9c4445b13",
+      "bytes": 355882,
+      "sha256": "433f18fabe071c5c2ef17eb6676991f95dd9bfb48d138528218f452f73ada1cc"
+    },
+    "libigl-source": {
+      "filename": "libigl-source.zip",
+      "kind": "git-archive-zip",
+      "source_url": "https://github.com/libigl/libigl.git",
+      "version": "2.6.0",
+      "revision": "40e7900ccbd767f1f360e0eb10f0f1a6432e0993",
+      "bytes": 2112284,
+      "sha256": "37bb228c083260acaea36fd7ec07305639f17e09f669dbc07a36c0ad078ad750"
+    },
+    "libigl-predicates-source": {
+      "filename": "predicates-source.zip",
+      "kind": "git-archive-zip",
+      "source_url": "https://github.com/libigl/libigl-predicates.git",
+      "version": "decb7bc1260e689cbe008109e3cc5d3a5a433aea",
+      "revision": "decb7bc1260e689cbe008109e3cc5d3a5a433aea",
+      "bytes": 25544,
+      "sha256": "8d3d43a509fb0652b03a0ccfb23b60e56459dad3068e25ef137752bd245bea1f"
+    },
+    "geogram-source": {
+      "filename": "geogram-source.zip",
+      "kind": "git-archive-zip",
+      "source_url": "https://github.com/BrunoLevy/geogram.git",
+      "version": "1.9.6",
+      "revision": "fc3eb9bf44d2ee29686592e3ef5f5f4daeda27f8",
+      "bytes": 7174459,
+      "sha256": "7c600f7ef8fcb727b000531069925d23e611f703ef827c3447a71092a25247ca"
+    },
+    "geogram-amgcl-source": {
+      "filename": "geogram-amgcl-source.zip",
+      "kind": "git-archive-zip",
+      "source_url": "https://github.com/ddemidov/amgcl.git",
+      "version": "1.4.4-5-gab57038",
+      "revision": "ab57038d68ee372ed5df280631051b91f17ed2d1",
+      "bytes": 3311450,
+      "sha256": "54354071a42a28b77b0353aa9f206067b29e38795f31d8005e8467848f0a9bd6"
+    },
+    "geogram-libmeshb-source": {
+      "filename": "geogram-libmeshb-source.zip",
+      "kind": "git-archive-zip",
+      "source_url": "https://github.com/LoicMarechal/libMeshb.git",
+      "version": "v7.80-40-g952a157",
+      "revision": "952a157c9d516b28cc6c69cd1550c3e48d4792f9",
+      "bytes": 1225156,
+      "sha256": "9fc2278af2122bad6b1f6105590702fb00fecfebe98be5b25fbba4c8c43ffada"
+    },
+    "geogram-rply-source": {
+      "filename": "geogram-rply-source.zip",
+      "kind": "git-archive-zip",
+      "source_url": "https://github.com/diegonehab/rply.git",
+      "version": "v1.1.4-1-g4296cc9",
+      "revision": "4296cc91b5c8c26d4e7d7aac0cee2b194ffc5800",
+      "bytes": 35208,
+      "sha256": "1a204b399fe4a1d6067033e4a5d6a4494936be4d7bc009737b859277c7b4aa94"
+    },
+    "onetbb-source": {
+      "filename": "onetbb-source.zip",
+      "kind": "git-archive-zip",
+      "source_url": "https://github.com/oneapi-src/oneTBB.git",
+      "version": "2022.2.0",
+      "revision": "06ce6212da6710f4bb2d20a1904b018aa44069bf",
+      "bytes": 5022789,
+      "sha256": "905f0efbaeddd4d3280d4add1e0ef19bf2f1379612d86706a2f22b55d2e9e163"
+    },
+    "jdumas-json-source": {
+      "filename": "json-source.zip",
+      "kind": "git-archive-zip",
+      "source_url": "https://github.com/jdumas/json.git",
+      "version": "0901d33bf6e7dfe6f70fd9d142c8f5c6695c6c5b",
+      "revision": "0901d33bf6e7dfe6f70fd9d142c8f5c6695c6c5b",
+      "bytes": 145834,
+      "sha256": "c116a4ea81a105a7f54a9b2e52c8f836ae3e3b69b8746c26d5a0193e328838a8"
+    },
+    "eigen-source": {
+      "filename": "eigen-3.4.0.tar.gz",
+      "kind": "upstream-tar-gz",
+      "source_url": "https://gitlab.com/libeigen/eigen/-/archive/3.4.0/eigen-3.4.0.tar.gz",
+      "version": "3.4.0",
+      "revision": "3147391d946bb4b6c68edd901f2add6ac1f31f8c",
+      "bytes": 2705005,
+      "sha256": "8586084f71f9bde545ee7fa6d00288b264a2b7ac3607b974e54d13e7162c1c72"
+    }
+  },
+  "license_assets": {
+    "pytetwild-license": {"path": "source/fixed_app/licenses/pytetwild-closure/pytetwild/LICENSE", "upstream_path": "LICENSE", "bytes": 17096, "sha256": "9343f5b1b62ea515a5c68112bdb62ad94ce8316e8c5c0f382e5b6a47ee26128e"},
+    "ftetwild-mpl2": {"path": "source/fixed_app/licenses/pytetwild-closure/ftetwild/LICENSE.MPL2", "upstream_path": "LICENSE.MPL2", "bytes": 17099, "sha256": "cde215e5b42363eb28ca2462c4558ff4807b38f383c537624c31e44657ac58f4"},
+    "nanobind-license": {"path": "source/fixed_app/licenses/pytetwild-closure/nanobind/LICENSE", "upstream_path": "LICENSE", "bytes": 1547, "sha256": "33f4e77f926740b304c36d1e5e7a9ad3f68e5c942497e2f40a8f47d8d1d1a780"},
+    "nanobind-robin-map-license": {"path": "source/fixed_app/licenses/pytetwild-closure/nanobind-robin-map/LICENSE", "upstream_path": "LICENSE", "bytes": 1102, "sha256": "11f2c685ba565a31aef1219f63a7a8845602c97bff70016b9e3278dfe51a2ec5"},
+    "fmt-license": {"path": "source/fixed_app/licenses/pytetwild-closure/fmt/LICENSE", "upstream_path": "LICENSE", "bytes": 1458, "sha256": "25b5db04aa6070c12ac518b91cbd0a59725c050ecb091456e6ebc3d3eeb369cf"},
+    "spdlog-license": {"path": "source/fixed_app/licenses/pytetwild-closure/spdlog/LICENSE", "upstream_path": "LICENSE", "bytes": 1354, "sha256": "4ccecab18d1ff0b61174fe3d6c430541625d3ddb865b0d5887db296f883c76e7"},
+    "libigl-mpl2": {"path": "source/fixed_app/licenses/pytetwild-closure/libigl/LICENSE.MPL2", "upstream_path": "LICENSE.MPL2", "bytes": 17099, "sha256": "cde215e5b42363eb28ca2462c4558ff4807b38f383c537624c31e44657ac58f4"},
+    "libigl-gpl": {"path": "source/fixed_app/licenses/pytetwild-closure/libigl/LICENSE.GPL", "upstream_path": "LICENSE.GPL", "bytes": 35821, "sha256": "0b383d5a63da644f628d99c33976ea6487ed89aaa59f0b3257992deac1171e6b"},
+    "libigl-predicates-readme": {"path": "source/fixed_app/licenses/pytetwild-closure/libigl-predicates/README.md", "upstream_path": "README.md", "bytes": 1086, "sha256": "98284fda28d07def43bf31da9be805a5237409d8cb8a1df786059bbbc7922518"},
+    "libigl-predicates-source-notice": {"path": "source/fixed_app/licenses/pytetwild-closure/libigl-predicates/predicates.c", "upstream_path": "predicates.c", "bytes": 176294, "sha256": "50e4d231025285b3dc78100c0512822994a83661974bec6d801af8d8d27f3963"},
+    "geogram-license": {"path": "source/fixed_app/licenses/pytetwild-closure/geogram/LICENSE", "upstream_path": "LICENSE", "bytes": 1666, "sha256": "beddcf06f4e095e083af3778c758687be1192be17285a3e6c845b448719ff48d"},
+    "onetbb-license": {"path": "source/fixed_app/licenses/pytetwild-closure/onetbb/LICENSE.txt", "upstream_path": "LICENSE.txt", "bytes": 11558, "sha256": "1eb85fc97224598dad1852b5d6483bbcf0aa8608790dcc657a5a2a761ae9c8c6"},
+    "jdumas-json-license": {"path": "source/fixed_app/licenses/pytetwild-closure/jdumas-json/LICENSE.MIT", "upstream_path": "LICENSE.MIT", "bytes": 1097, "sha256": "574bffc80b747c87ea7f900182c4970cccb2be247fd9fedf0fe4640ca439960d"},
+    "eigen-apache": {"path": "source/fixed_app/licenses/pytetwild-closure/eigen/COPYING.APACHE", "upstream_path": "COPYING.APACHE", "bytes": 11362, "sha256": "03379001a7b12a2ec997a25554247d985270b353c10d5bafee9ac8d6519820b7"},
+    "eigen-bsd": {"path": "source/fixed_app/licenses/pytetwild-closure/eigen/COPYING.BSD", "upstream_path": "COPYING.BSD", "bytes": 1517, "sha256": "51928dce36213c5333ba3172e847d735d4c6e9b7ff2722a326c49067155b82eb"},
+    "eigen-gpl": {"path": "source/fixed_app/licenses/pytetwild-closure/eigen/COPYING.GPL", "upstream_path": "COPYING.GPL", "bytes": 35147, "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"},
+    "eigen-lgpl": {"path": "source/fixed_app/licenses/pytetwild-closure/eigen/COPYING.LGPL", "upstream_path": "COPYING.LGPL", "bytes": 26530, "sha256": "dc626520dcd53a22f727af3ee42c770e56c97a64fe3adb063799d8ab032fe551"},
+    "eigen-minpack": {"path": "source/fixed_app/licenses/pytetwild-closure/eigen/COPYING.MINPACK", "upstream_path": "COPYING.MINPACK", "bytes": 2193, "sha256": "c87b7f8ee88f6195e91743820c00354833583aef091b72e2d4a49c8e28e798a0"},
+    "eigen-mpl2": {"path": "source/fixed_app/licenses/pytetwild-closure/eigen/COPYING.MPL2", "upstream_path": "COPYING.MPL2", "bytes": 16726, "sha256": "fab3dd6bdab226f1c08630b1dd917e11fcb4ec5e1e020e2c16f83a0a13863e85"},
+    "eigen-readme": {"path": "source/fixed_app/licenses/pytetwild-closure/eigen/COPYING.README", "upstream_path": "COPYING.README", "bytes": 779, "sha256": "c83230b770f17ef1386ea1fd3681271dd98aa93646bdbfb5bff3a1b7050fff9d"},
+    "geogram-amgcl-license": {"path": "source/fixed_app/licenses/pytetwild-closure/geogram-amgcl/LICENSE.md", "upstream_path": "src/lib/geogram/third_party/amgcl/LICENSE.md", "bytes": 1145, "sha256": "73cbcf5dbcc124d36385e77001f9955b43b0bc249ddfc4d1450b71f6adba0dfa"},
+    "geogram-libmeshb-license": {"path": "source/fixed_app/licenses/pytetwild-closure/geogram-libmeshb/LICENSE.txt", "upstream_path": "src/lib/geogram/third_party/libMeshb/LICENSE.txt", "bytes": 1106, "sha256": "4d4a3de3231b2bd3ae5b6b31300e39cf3b832e77e664d65b7be4f29cdb6a81eb"},
+    "geogram-rply-license": {"path": "source/fixed_app/licenses/pytetwild-closure/geogram-rply/LICENSE", "upstream_path": "src/lib/geogram/third_party/rply/LICENSE", "bytes": 1091, "sha256": "8bac777ee5ec18b8dab40d98c4e476a228ee7227eb51dd9d1a6796cd6b8bffa1"},
+    "geogram-zlib-license": {"path": "source/fixed_app/licenses/pytetwild-closure/geogram-zlib/LICENSE", "upstream_path": "src/lib/geogram/third_party/zlib/LICENSE", "bytes": 1024, "sha256": "18dbd37f0ab175c37877e9053ff870a7de2809a3e9b9673b2696aa5009264638"},
+    "geogram-stb-image-notice": {"path": "source/fixed_app/licenses/pytetwild-closure/geogram-stb-image/stb_image.h", "upstream_path": "src/lib/geogram/third_party/stb_image/stb_image.h", "bytes": 292720, "sha256": "2d264ec3e6ce404fc2d0cfff4476c982eb3edf5a61122b03884fdef7bacd9deb"},
+    "geogram-stb-image-write-notice": {"path": "source/fixed_app/licenses/pytetwild-closure/geogram-stb-image-write/stb_image_write.h", "upstream_path": "src/lib/geogram/third_party/stb_image/stb_image_write.h", "bytes": 61498, "sha256": "35bab2b424e6722fd51fa6cfc2c57b0f6dd97a4a1a6d4eb730a4bb22ef5e819f"},
+    "geogram-poissonrecon-license": {"path": "source/fixed_app/licenses/pytetwild-closure/geogram-poissonrecon/LICENSE.txt", "upstream_path": "src/lib/geogram/third_party/PoissonRecon/LICENSE.txt", "bytes": 1680, "sha256": "dc1695ab9fe836cfa9698a1ab7918119f5388c452c398f3c22fae824c5cad831"},
+    "geogram-xatlas-header-notice": {"path": "source/fixed_app/licenses/pytetwild-closure/geogram-xatlas/xatlas.h", "upstream_path": "src/lib/geogram/third_party/xatlas/xatlas.h", "bytes": 9875, "sha256": "4f9c57b11e44a4c1cb69a0843ec2ec115454fee9580815798f449df885273997"},
+    "geogram-xatlas-source-notices": {"path": "source/fixed_app/licenses/pytetwild-closure/geogram-xatlas/xatlas.cpp", "upstream_path": "src/lib/geogram/third_party/xatlas/xatlas.cpp", "bytes": 323351, "sha256": "dd12d1927d7ac2a01544ace616e5e70cf61e82e79a35cfb40c74be4ec85b53ce"}
+  },
+  "components": {
+    "pytetwild": {
+      "name": "PyTetWild",
+      "version": "0.3.0",
+      "license_expression": "MPL-2.0",
+      "source_archive_ids": ["pytetwild-source"],
+      "license_asset_ids": ["pytetwild-license"],
+      "inclusion_basis": "native extension project compiled into PyfTetWildWrapper.pyd",
+      "dependencies": ["ftetwild", "nanobind"]
+    },
+    "ftetwild": {
+      "name": "fTetWild",
+      "version": "d7d99bb4387a07895b9adce058dc7305f6b6e5ab",
+      "license_expression": "MPL-2.0",
+      "source_archive_ids": ["ftetwild-source"],
+      "license_asset_ids": ["ftetwild-mpl2"],
+      "inclusion_basis": "static library linked into PyfTetWildWrapper.pyd",
+      "dependencies": ["fmt", "spdlog", "libigl", "geogram", "onetbb", "jdumas-json", "eigen"]
+    },
+    "nanobind": {
+      "name": "nanobind",
+      "version": "2.12.0",
+      "license_expression": "BSD-3-Clause",
+      "source_archive_ids": ["nanobind-source"],
+      "license_asset_ids": ["nanobind-license"],
+      "inclusion_basis": "binding support code and headers compiled into PyfTetWildWrapper.pyd",
+      "dependencies": ["nanobind-robin-map"]
+    },
+    "nanobind-robin-map": {
+      "name": "Tessil robin-map",
+      "version": "1.4.0",
+      "license_expression": "MIT",
+      "source_archive_ids": ["nanobind-robin-map-source"],
+      "license_asset_ids": ["nanobind-robin-map-license"],
+      "inclusion_basis": "nanobind ext/robin_map gitlink and header code compiled into the extension"
+    },
+    "fmt": {
+      "name": "fmt",
+      "version": "11.2.0",
+      "license_expression": "MIT",
+      "source_archive_ids": ["fmt-source"],
+      "license_asset_ids": ["fmt-license"],
+      "inclusion_basis": "fTetWild build dependency compiled statically or header-only into the extension"
+    },
+    "spdlog": {
+      "name": "spdlog",
+      "version": "1.15.3",
+      "license_expression": "MIT",
+      "source_archive_ids": ["spdlog-source"],
+      "license_asset_ids": ["spdlog-license"],
+      "inclusion_basis": "fTetWild build dependency compiled statically or header-only into the extension"
+    },
+    "libigl": {
+      "name": "libigl",
+      "version": "2.6.0",
+      "license_expression": "MPL-2.0",
+      "source_archive_ids": ["libigl-source"],
+      "license_asset_ids": ["libigl-mpl2", "libigl-gpl"],
+      "license_route": "The controlled configuration disables optional GPL-linked modules and uses libigl core under MPL-2.0; both upstream top-level license texts are preserved conservatively.",
+      "inclusion_basis": "header/static geometry code compiled into fTetWild"
+    },
+    "libigl-predicates": {
+      "name": "libigl predicates (Jonathan Shewchuk predicates)",
+      "version": "decb7bc1260e689cbe008109e3cc5d3a5a433aea",
+      "license_expression": "LicenseRef-Shewchuk-Public-Domain",
+      "source_archive_ids": ["libigl-predicates-source"],
+      "license_asset_ids": ["libigl-predicates-readme", "libigl-predicates-source-notice"],
+      "inclusion_basis": "LIBIGL_WITH_PREDICATES=ON compiles predicates.c into the native closure"
+    },
+    "geogram": {
+      "name": "Geogram",
+      "version": "1.9.6",
+      "license_expression": "BSD-3-Clause",
+      "source_archive_ids": ["geogram-source"],
+      "license_asset_ids": ["geogram-license"],
+      "inclusion_basis": "static Geogram archive linked by fTetWild",
+      "dependencies": ["geogram-amgcl", "geogram-libmeshb", "geogram-rply", "geogram-zlib", "geogram-stb-image", "geogram-stb-image-write", "geogram-poissonrecon", "geogram-xatlas"]
+    },
+    "onetbb": {
+      "name": "oneTBB",
+      "version": "2022.2.0",
+      "license_expression": "Apache-2.0",
+      "source_archive_ids": ["onetbb-source"],
+      "license_asset_ids": ["onetbb-license"],
+      "inclusion_basis": "FLOAT_TETWILD_ENABLE_TBB=ON with BUILD_SHARED_LIBS=OFF links oneTBB statically"
+    },
+    "jdumas-json": {
+      "name": "jdumas/json (nlohmann JSON fork)",
+      "version": "0901d33bf6e7dfe6f70fd9d142c8f5c6695c6c5b",
+      "license_expression": "MIT",
+      "source_archive_ids": ["jdumas-json-source"],
+      "license_asset_ids": ["jdumas-json-license"],
+      "inclusion_basis": "header-only fTetWild dependency compiled into the extension"
+    },
+    "eigen": {
+      "name": "Eigen",
+      "version": "3.4.0",
+      "license_expression": "MPL-2.0",
+      "source_archive_ids": ["eigen-source"],
+      "license_asset_ids": ["eigen-apache", "eigen-bsd", "eigen-gpl", "eigen-lgpl", "eigen-minpack", "eigen-mpl2", "eigen-readme"],
+      "license_route": "The exact controlled recipe requires EIGEN_MPL2_ONLY=ON. All upstream COPYING files are preserved byte-for-byte for conservative notice coverage.",
+      "inclusion_basis": "header-only dependency compiled into libigl/fTetWild"
+    },
+    "geogram-amgcl": {
+      "name": "AMGCL",
+      "version": "ab57038d68ee372ed5df280631051b91f17ed2d1",
+      "license_expression": "MIT",
+      "source_archive_ids": ["geogram-amgcl-source"],
+      "license_asset_ids": ["geogram-amgcl-license"],
+      "inclusion_basis": "Geogram gitlink compiled into its static archive"
+    },
+    "geogram-libmeshb": {
+      "name": "libMeshb",
+      "version": "952a157c9d516b28cc6c69cd1550c3e48d4792f9",
+      "license_expression": "MIT",
+      "source_archive_ids": ["geogram-libmeshb-source"],
+      "license_asset_ids": ["geogram-libmeshb-license"],
+      "inclusion_basis": "Geogram gitlink compiled into its static archive"
+    },
+    "geogram-rply": {
+      "name": "RPly",
+      "version": "4296cc91b5c8c26d4e7d7aac0cee2b194ffc5800",
+      "license_expression": "MIT",
+      "source_archive_ids": ["geogram-rply-source"],
+      "license_asset_ids": ["geogram-rply-license"],
+      "inclusion_basis": "Geogram gitlink compiled into its static archive"
+    },
+    "geogram-zlib": {
+      "name": "zlib (Geogram vendored copy)",
+      "version": "vendored-at-geogram-fc3eb9bf44d2ee29686592e3ef5f5f4daeda27f8",
+      "license_expression": "Zlib",
+      "source_archive_ids": ["geogram-source"],
+      "license_asset_ids": ["geogram-zlib-license"],
+      "inclusion_basis": "vendored source is part of the Geogram static archive compilation"
+    },
+    "geogram-stb-image": {
+      "name": "stb_image (Geogram vendored copy)",
+      "version": "vendored-at-geogram-fc3eb9bf44d2ee29686592e3ef5f5f4daeda27f8",
+      "license_expression": "MIT OR LicenseRef-STB-Public-Domain",
+      "source_archive_ids": ["geogram-source"],
+      "license_asset_ids": ["geogram-stb-image-notice"],
+      "inclusion_basis": "vendored header implementation is compiled by Geogram"
+    },
+    "geogram-stb-image-write": {
+      "name": "stb_image_write (Geogram vendored copy)",
+      "version": "vendored-at-geogram-fc3eb9bf44d2ee29686592e3ef5f5f4daeda27f8",
+      "license_expression": "MIT OR LicenseRef-STB-Public-Domain",
+      "source_archive_ids": ["geogram-source"],
+      "license_asset_ids": ["geogram-stb-image-write-notice"],
+      "inclusion_basis": "vendored header implementation is compiled by Geogram"
+    },
+    "geogram-poissonrecon": {
+      "name": "PoissonRecon (Geogram vendored copy)",
+      "version": "vendored-at-geogram-fc3eb9bf44d2ee29686592e3ef5f5f4daeda27f8",
+      "license_expression": "BSD-3-Clause",
+      "source_archive_ids": ["geogram-source"],
+      "license_asset_ids": ["geogram-poissonrecon-license"],
+      "inclusion_basis": "included conservatively because Geogram compiles these translation units into its static archive and no exact final-link map has been preserved to prove dead stripping"
+    },
+    "geogram-xatlas": {
+      "name": "xatlas (Geogram vendored copy)",
+      "version": "vendored-at-geogram-fc3eb9bf44d2ee29686592e3ef5f5f4daeda27f8",
+      "license_expression": "MIT",
+      "source_archive_ids": ["geogram-source"],
+      "license_asset_ids": ["geogram-xatlas-header-notice", "geogram-xatlas-source-notices"],
+      "inclusion_basis": "included conservatively because Geogram compiles these translation units into its static archive and no exact final-link map has been preserved to prove dead stripping"
+    }
+  }
+}

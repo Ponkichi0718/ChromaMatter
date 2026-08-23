@@ -296,6 +296,11 @@ def _copy_palette_settings(palette: PaletteSettings) -> PaletteSettings:
             if palette.output_mix_ratios_b is None
             else list(palette.output_mix_ratios_b)
         ),
+        assignment_palette_hex=(
+            None
+            if palette.assignment_palette_hex is None
+            else list(palette.assignment_palette_hex)
+        ),
         black_free_gradient_enabled=bool(
             getattr(palette, "black_free_gradient_enabled", False)
         ),
@@ -2095,6 +2100,11 @@ class PaintEditorWindow:
             if clean_key not in self.part_keys:
                 raise ValueError(f"Unknown part key: {clean_key}")
             self.settings.part_palettes[clean_key] = copied
+        refresh_adaptive_routing = getattr(
+            self, "_refresh_adaptive_palette_routing", None
+        )
+        if callable(refresh_adaptive_routing):
+            refresh_adaptive_routing()
         self._refresh_palette_buttons()
         self._queue_shading_reapply(
             message
@@ -2118,6 +2128,11 @@ class PaintEditorWindow:
         self.settings.palette = copied.palette
         self.settings.part_palettes = copied.part_palettes
         self._set_tone_control_values(self.settings.tone)
+        refresh_adaptive_routing = getattr(
+            self, "_refresh_adaptive_palette_routing", None
+        )
+        if callable(refresh_adaptive_routing):
+            refresh_adaptive_routing()
         self._refresh_palette_buttons()
         self._queue_shading_reapply(
             message

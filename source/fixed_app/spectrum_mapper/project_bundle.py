@@ -673,6 +673,7 @@ def encode_prepared_geometry_snapshot(
             "part_vertex_counts": list(prepared.source.part_vertex_counts),
             "part_marker_kind": prepared.source.part_marker_kind,
             "has_explicit_parts": bool(prepared.source.has_explicit_parts),
+            "import_metadata": dict(prepared.source.import_metadata),
         },
         "final": {
             "part_names": list(prepared.final.part_names),
@@ -1019,6 +1020,14 @@ def decode_prepared_geometry_snapshot(
         explicit = asset_meta.get("has_explicit_parts")
         if not isinstance(explicit, bool):
             _error("invalid_snapshot_metadata", "Asset explicit-parts flag is invalid.")
+        import_metadata = asset_meta.get("import_metadata", {})
+        if not isinstance(import_metadata, dict) or any(
+            not isinstance(key, str)
+            or not isinstance(value, (bool, int, float, str, type(None)))
+            or (isinstance(value, float) and not np.isfinite(value))
+            for key, value in import_metadata.items()
+        ):
+            _error("invalid_snapshot_metadata", "Asset import metadata is invalid.")
 
         topology = prepared_meta.get("topology")
         if not isinstance(topology, dict) or any(
@@ -1053,6 +1062,7 @@ def decode_prepared_geometry_snapshot(
             part_vertex_counts=tuple(part_vertex_counts),
             part_marker_kind=marker,
             has_explicit_parts=explicit,
+            import_metadata=dict(import_metadata),
         )
         prepared = PreparedGeometry(
             source=source,

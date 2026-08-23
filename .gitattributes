@@ -2,6 +2,9 @@
 *.py text eol=lf
 *.md text eol=lf
 *.json text eol=lf
+*.patch text eol=lf
+source/fixed_app/requirements-build.lock text eol=lf
+tooling/requirements-pytetwild-build.lock text eol=lf
 # Public release manifests hash exact staged bytes. Keep Windows scripts and
 # plain-text metadata byte-for-byte in Git archives instead of normalizing
 # their line endings inside Git objects.
@@ -11,7 +14,14 @@ LICENSE -text
 *.ps1 -text
 *.cmd -text
 *.txt -text
+*.html -text
 *.spec -text
+# Vendored third-party notices are hash-pinned byte-for-byte. Some upstream
+# files intentionally retain trailing spaces/CRLF, so exclude them from Git's
+# whitespace-diff checks without rewriting their licensed contents.
+licenses/LICENSE_* -diff
+licenses/NOTICE_* -diff
+source/fixed_app/licenses/** -diff
 *.npz binary
 *.sqlite binary
 *.ico binary

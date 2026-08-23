@@ -325,10 +325,10 @@ class ReleaseRegressionTests(unittest.TestCase):
             spectrum_mapper.APP_DISPLAY_NAME,
             "ChromaMatter — AI Model Print Studio",
         )
-        self.assertEqual(spectrum_mapper.EDITION_LABEL, "AI Model Print Studio r31")
+        self.assertEqual(spectrum_mapper.EDITION_LABEL, "AI Model Print Studio r32")
         self.assertEqual(
             gui.APP_TITLE,
-            "ChromaMatter — AI Model Print Studio 0.8beta (r31)",
+            "ChromaMatter — AI Model Print Studio 0.8beta (r32)",
         )
 
 
