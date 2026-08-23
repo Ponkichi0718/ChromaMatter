@@ -47,6 +47,13 @@ restores the previous encoding in `finally`. This prevents localized
 installation names in the JSON from being decoded through the active console
 code page.
 
+Windows PowerShell 5.1 can also strip embedded double quotes when multiline
+source is passed directly to a native `python -c` invocation. The recipe routes
+every multiline Python probe through `Get-ControlledPythonArguments`, which
+encodes strict UTF-8 source bytes as Base64 and sends a fixed ASCII bootstrap
+plus the original positional arguments. Do not replace this transport with a
+direct multiline `-c` argument.
+
 Before running it, enforce outbound deny-all at the OS or hypervisor layer, or
 physically disconnect the builder. The switch below records the operator's
 confirmation; it does not claim that the script configured the OS firewall.

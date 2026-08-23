@@ -46,6 +46,12 @@ Windows PowerShell 5.1では、`vswhere.exe -utf8`の呼出中だけ
 復元します。これにより、localized installation nameをactive console code pageで
 誤ってdecodeしてJSONを壊すことを防ぎます。
 
+Windows PowerShell 5.1は、multiline sourceをnativeの`python -c`へ直接渡した場合、
+埋込みdouble quoteを失うこともあります。recipe内の全multiline Python probeは
+`Get-ControlledPythonArguments`を通し、厳密なUTF-8 source bytesをBase64化して、固定の
+ASCII bootstrapと元のpositional argumentsを別々に渡します。このtransportを直接の
+multiline `-c`引数へ戻さないでください。
+
 実行前にOSまたはhypervisorで外向き通信をdeny-allにするか、builderを物理的に
 切断してください。次のswitchは作業者による確認記録であり、script自体がOSの
 firewallを設定したという意味ではありません。

@@ -86,7 +86,7 @@ Repository-root `BOOTSTRAP_WINDOWS.ps1` is the standard setup and test entry poi
 
 ## r32 validation state
 
-- current full regression on Python `3.13.14`: `Ran 1234 tests: OK (skipped=2)`, 1232 passed / 2 optional skips / 0 failed; focused release/compliance set 178 tests with 1 optional skip; current public-source stage 395 files / 394 manifest records with privacy and independent SHA-256 parity passed
+- current full regression on Python `3.13.14`: `Ran 1239 tests: OK (skipped=2)`, 1237 passed / 2 optional skips / 0 failed; focused release/compliance set 178 tests with 1 optional skip; current public-source stage 395 files / 394 manifest records with privacy and independent SHA-256 parity passed
 - focused binary-compliance, corresponding-source, and release-tooling set (80 tests) plus release identity (10 tests): passed
 - component-specific licence texts and static-linked component coverage are implemented and covered by fail-closed inventory tests
 - the old r32 EXE/ZIP does not match this source and remains private; binary publication is NO-GO until controlled PyTetWild rebuild evidence, the matching application lock update, a `release-approved` complete corresponding-source bundle, a current clean binary build with packaged self-test and Japanese/English smoke, fresh-extract manifest/privacy/archive/checksum parity, and immutable HTTPS simultaneous Release assets all pass

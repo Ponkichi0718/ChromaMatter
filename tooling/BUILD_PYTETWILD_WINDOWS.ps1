@@ -159,6 +159,33 @@ function Invoke-Utf8NativeCapture([string]$FilePath, [string[]]$Arguments) {
     }
 }
 
+function Get-ControlledPythonArguments(
+    [string]$Source,
+    [string[]]$Arguments = @()
+) {
+    if ([string]::IsNullOrWhiteSpace($Source)) {
+        throw 'Controlled Python source must not be empty'
+    }
+    $strictUtf8 = [System.Text.UTF8Encoding]::new($false, $true)
+    $encodedSource = [Convert]::ToBase64String($strictUtf8.GetBytes($Source))
+    $bootstrap = (
+        'import base64,sys;' +
+        'source=base64.b64decode(sys.argv.pop(1),validate=True);' +
+        'exec(compile(source,''<controlled-build>'',''exec''))'
+    )
+    $pythonArguments = New-Object 'System.Collections.Generic.List[string]'
+    foreach ($argument in @('-I', '-c', $bootstrap, $encodedSource)) {
+        [void]$pythonArguments.Add($argument)
+    }
+    foreach ($argument in @($Arguments)) {
+        if ($null -eq $argument) {
+            throw 'Controlled Python arguments must not contain null values'
+        }
+        [void]$pythonArguments.Add([string]$argument)
+    }
+    return $pythonArguments.ToArray()
+}
+
 function Invoke-Logged(
     [string]$FilePath,
     [string[]]$Arguments,
@@ -442,7 +469,9 @@ with tarfile.open(archive, mode="r:*") as source:
             raise SystemExit(f"Unsafe tar member: {member.name!r}")
     source.extractall(destination, members=members, filter="data")
 '@
-    Invoke-Checked $Python @('-c', $extractScript, $Archive, $Destination)
+    $extractArguments = Get-ControlledPythonArguments `
+        $extractScript @($Archive, $Destination)
+    Invoke-Checked $Python $extractArguments
 }
 
 $Downloads = Join-Path $ToolchainRoot 'downloads'
@@ -715,7 +744,9 @@ print(json.dumps({
     "actual": real_full_path(tempfile.gettempdir()),
 }, sort_keys=True))
 '@
-$tempDirectoryProbeOutput = @(& $Python -I -c $tempDirectoryProbe $BuildTempFullPath)
+$tempDirectoryProbeArguments = Get-ControlledPythonArguments `
+    $tempDirectoryProbe @($BuildTempFullPath)
+$tempDirectoryProbeOutput = @(& $Python @tempDirectoryProbeArguments)
 if ($LASTEXITCODE -ne 0 -or $tempDirectoryProbeOutput.Count -ne 1) {
     throw 'Fixed Python could not verify the controlled-build temporary directory'
 }
@@ -870,11 +901,13 @@ Invoke-Checked $BuilderPython @(
 Invoke-Checked $BuilderPython @('-m', 'pip', 'check')
 $env:Path = "$(Join-Path $BuilderVenv 'Scripts');$(Split-Path -Parent $Git);$env:Path"
 
-$packageVersions = & $BuilderPython -c @'
+$packageVersionProbe = @'
 import importlib.metadata as m, json
 names = ['pip', 'cmake', 'ninja', 'numpy', 'nanobind', 'cibuildwheel', 'build', 'scikit-build-core', 'delvewheel', 'abi3audit']
 print(json.dumps({name: m.version(name) for name in names}, sort_keys=True))
 '@
+$packageVersionArguments = Get-ControlledPythonArguments $packageVersionProbe
+$packageVersions = & $BuilderPython @packageVersionArguments
 if ($LASTEXITCODE -ne 0) {
     throw 'Unable to read the controlled builder package versions'
 }
@@ -1106,9 +1139,9 @@ with zipfile.ZipFile(wheel) as archive:
 print(f"verified RECORD: {wheel.name}")
 '@
 $rawWheelSha256 = Get-Sha256 $rawWheels[0].FullName
-Invoke-Checked $BuilderPython @(
-    '-c', $wheelRecordProbe, $rawWheels[0].FullName, 'raw'
-)
+$rawWheelRecordArguments = Get-ControlledPythonArguments `
+    $wheelRecordProbe @($rawWheels[0].FullName, 'raw')
+Invoke-Checked $BuilderPython $rawWheelRecordArguments
 $rawDelvewheelArguments = @(
     'show', '--add-path', $MpirBin, '-vv', $rawWheels[0].FullName
 )
@@ -1135,9 +1168,9 @@ if ($wheels.Count -ne 1) {
 $wheel = $wheels[0]
 $repairedWheelSha256BeforeAudit = Get-Sha256 $wheel.FullName
 Invoke-Checked $BuilderPython @('-m', 'zipfile', '-t', $wheel.FullName)
-Invoke-Checked $BuilderPython @(
-    '-c', $wheelRecordProbe, $wheel.FullName, 'repaired'
-)
+$repairedWheelRecordArguments = Get-ControlledPythonArguments `
+    $wheelRecordProbe @($wheel.FullName, 'repaired')
+Invoke-Checked $BuilderPython $repairedWheelRecordArguments
 $abi3AuditArguments = @('--strict', '--report', '--verbose', $wheel.FullName)
 Invoke-CheckedLogged $Abi3Audit $abi3AuditArguments `
     (Join-Path $EvidenceLogs 'abi3audit.log')
@@ -1195,9 +1228,8 @@ with tempfile.TemporaryDirectory(prefix="pytetwild-wheel-audit-") as temporary:
         raise SystemExit(f"unvendored native dependencies: {external!r}")
 print(f"verified repaired native dependency closure: {len(binaries)} binaries")
 '@
-$nativeDependencyArguments = @(
-    '-c', $nativeDependencyProbe, $wheel.FullName, $Expected.DelvewheelVersion,
-    $repairedWheelSha256BeforeAudit
+$nativeDependencyArguments = Get-ControlledPythonArguments $nativeDependencyProbe @(
+    $wheel.FullName, $Expected.DelvewheelVersion, $repairedWheelSha256BeforeAudit
 )
 Invoke-CheckedLogged $BuilderPython $nativeDependencyArguments `
     (Join-Path $EvidenceLogs 'native-dependency-closure.log')
@@ -1290,7 +1322,8 @@ try {
     [Environment]::SetEnvironmentVariable('PYTHONHOME', $null, 'Process')
     Push-Location $HostileCwd
     try {
-        Invoke-CheckedLogged $NativePython @('-I', '-c', $nativeProbe) `
+        $nativeProbeArguments = Get-ControlledPythonArguments $nativeProbe
+        Invoke-CheckedLogged $NativePython $nativeProbeArguments `
             (Join-Path $EvidenceLogs 'native-normal-import.log')
     } finally {
         Pop-Location

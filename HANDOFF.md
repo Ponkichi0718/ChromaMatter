@@ -207,14 +207,27 @@ current bytes.
   active Japanese console code page. The recipe now scopes strict BOM-free
   UTF-8 decoding to that command, restores the previous decoder in `finally`,
   and rejects capture, exit-code, or JSON failures separately.
-- The UTF-8 recipe/static-closure follow-up passed 143 focused tests. The exact
-  changed source then passed 1,238 tests: 1,236 passed, two optional skips, and
-  zero failures. No rebuilt PyTetWild wheel or attestation exists yet; the next
-  step remains a new outbound-isolated run from the committed recipe bytes.
+- The UTF-8 recipe/static-closure follow-up passed 143 focused tests. A later
+  controlled run (`20260823-142413-edd113a24226`) received explicit UAC
+  approval, verified outbound deny-all, and verified firewall/task cleanup, but
+  failed closed before source export because Windows PowerShell 5.1 stripped
+  embedded double quotes from a multiline native `python -c` argument. Its
+  output root contains only the controlled `tmp` directory; it produced no
+  wheel, audit log set, or attestation.
+- Every multiline Python payload in the recipe now goes through
+  `Get-ControlledPythonArguments`: strict UTF-8 source bytes are Base64 encoded,
+  decoded by a fixed ASCII bootstrap, and executed with the original positional
+  `sys.argv` preserved. The runtime regression covers double quotes,
+  backslashes, non-ASCII source/arguments, and the exact temporary-directory
+  probe under Windows PowerShell 5.1. The Base64 transport/release/static-
+  closure follow-up passed 78/78. The exact changed source then passed 1,239
+  tests: 1,237 passed, two optional skips, and zero failures. No rebuilt
+  PyTetWild wheel or attestation exists yet; the next step remains a new
+  outbound-isolated run from the committed recipe bytes.
 
 ## Current state
 
-- Latest pushed checkpoint `195bf66cb6918326f77c4c668e600bcf1d617ec6` is already on
+- Entry checkpoint `435895d451ae2b3875249fd789aee92dc30a44bb` is already on
   `origin/codex/r32-full-spectrum-workflow` and Draft PR #1. At entry the branch
   was ahead 4 / behind 0 relative to `main` and ahead 0 / behind 0 relative to
   its upstream.
@@ -326,6 +339,14 @@ one command through a scoped strict BOM-free UTF-8 native-output capture and
 restores the prior `[Console]::OutputEncoding` in `finally`; a runtime
 regression emits and parses non-ASCII UTF-8 JSON and verifies restoration.
 
+The next UAC-approved isolated run exposed a second Windows PowerShell 5.1
+native-argument defect: direct multiline `python -c` transport removed embedded
+double quotes before Python parsed the source. The fix is intentionally shared
+by the temporary-directory, safe-tar, package-version, raw/repaired RECORD,
+native-dependency, and isolated-import probes. Each source string is strict
+UTF-8/Base64 and only a fixed ASCII bootstrap is transported directly through
+`-c`; a negative static contract rejects the old direct multiline forms.
+
 For that future verified-lock stage, the `-PyTetWildAuditLogs` directory must
 contain exactly these eight direct files and nothing else:
 `visual-studio-layout-verification.log`, `build-wheel.log`,
@@ -362,12 +383,20 @@ Primary continuation paths in the source-publication checkpoint:
 - `BOOTSTRAP_WINDOWS.ps1`
 - `HANDOFF.md`
 - `CURRENT_STATE.json`
+- `README.md`
+- `README_EN.md`
+- `README_JA.md`
+- `README_PUBLIC_EN.md`
+- `README_PUBLIC_JA.md`
 - `licenses/BUILD_ENVIRONMENT_EN.md`
 - `licenses/BUILD_ENVIRONMENT_JA.md`
 - `publication/BINARY_RELEASE_HANDOFF_JA.md`
+- `source/fixed_app/README_fixed_en.md`
+- `source/fixed_app/README_fixed_ja.md`
 - `source/fixed_app/TripoSpectrumMapper_fixed.spec`
 - `source/fixed_app/test_corresponding_source_tooling.py`
 - `source/fixed_app/test_decal_image.py`
+- `source/fixed_app/test_release_identity.py`
 - `source/fixed_app/test_release_tooling.py`
 - `tooling/corresponding_source_components.json`
 - `tooling/BUILD_PYTETWILD_WINDOWS.ps1`
@@ -523,8 +552,10 @@ Current compliance-integration validation on exact Python 3.13.14
   1,236 tests, 1,234 passed, two optional skips, zero failures. The preceding
   1,234-test result remains the pre-toolchain-contract checkpoint.
 - Windows PowerShell 5.1 UTF-8 native-capture/static-closure/release follow-up:
-  143 focused tests passed. The final changed source regression ran 1,238
-  tests: 1,236 passed, two optional skips, and zero failures.
+  143 focused tests passed. The later Base64 native Python-probe transport,
+  release-tooling, and static-closure follow-up passed 78/78. The final changed
+  source regression ran 1,239 tests: 1,237 passed, two optional skips, and zero
+  failures.
 - Production corresponding-source manifest validation: PASS with intended
   status `candidate-only-not-release-approved`.
 - Public-source stage: 395 files including `SOURCE_MANIFEST_SHA256.txt`, 394

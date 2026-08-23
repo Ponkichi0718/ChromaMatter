@@ -51,21 +51,22 @@ Draft PR: <https://github.com/Ponkichi0718/ChromaMatter/pull/1>
   archive内の署名なし`premake5.exe`は保存のみ、実行禁止として扱う。
 - 対応ソースのZIP/TAR展開は、NUL、非正規／Windows危険path、暗号化、特殊entry、
   Unicode・大文字小文字衝突、file/ancestor衝突をfail-closedで拒否する。
-- 現在の作業treeから公開ソースpreviewを実生成し、privacy監査と全266 manifest
+- 現在の作業treeから公開ソースpreviewを実生成し、privacy監査と全394 manifest
   entryの独立SHA-256再検証に成功した。ただしこれは最終対応ソースbundleではない。
 
 ## 残っている公開ブロッカー
 
-2026-08-23時点で、最新sourceはfull regression 1,179件（1 optional skip）、
-現在の公開source stageは395 files／394 manifest records、privacy audit、独立
-SHA-256 parityまでPASSした。Python 3.13.14のfull regressionは1,234 tests中
-1,232 PASS／2 optional SKIP／0 FAIL、release／compliance集中テスト178件も
+2026-08-23時点で、現在の公開source stageは395 files／394 manifest records、
+privacy audit、独立SHA-256 parityまでPASSした。Python 3.13.14のfull regressionは
+1,239 tests中1,237 PASS／2 optional SKIP／0 FAIL、release／compliance集中テスト178件も
 1 optional SKIP以外PASSしている。これはsource-only branch更新の証拠であり、
-Windows binaryの公開GOではない。前回273／272 stageは変更前のprevious evidenceである。
+Windows binaryの公開GOではない。1,179-test checkpointと前回273／272 stageは
+変更前のprevious evidenceである。
 
 1. **controlled PyTetWild再build証拠**
-   prospective build入力とrecipeは固定済みだが、管理者権限が必要なVisual Studio
-   Build Toolsのoffline installと、OSレベルで通信を遮断した実buildは未実施。
+   Visual Studio Build Toolsのoffline installと正確なtoolchain identity固定は完了し、
+   OSレベルの通信遮断も実測済み。ただしWindows PowerShell 5.1のnative引数quote消失を
+   修正したrecipeによる成功wheel／attestationはまだ未生成。
 2. **application lock更新**
    新wheelのSHA-256へapplication requirements lockを更新する。clean bootstrapには
    `-PyTetWildWheel`または`-PyTetWildWheelhouse`でそのwheelを明示し、通常indexの
@@ -137,6 +138,9 @@ redistributableのversionなのでVCTools directoryとして使用しない。SD
 Windows PowerShell 5.1でlocalized `vswhere.exe -utf8` JSONを壊さないよう、recipeは
 そのnative呼出中だけconsole output decoderを厳密なBOMなしUTF-8へ固定し、`finally`で
 以前のencodingへ戻す。この復元契約を外さない。
+また、multiline Python sourceをnative `python -c`へ直接渡すと埋込みquoteが失われるため、
+全multiline probeを`Get-ControlledPythonArguments`で厳密なUTF-8 bytesからBase64化し、
+固定ASCII bootstrapと元argvを別々に渡す。このtransportも直接`-c`へ戻さない。
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass `

@@ -163,7 +163,7 @@ project-folder/
 
 ## Validation and release gates
 
-The current working tree passed the full Python `3.13.14` regression after the Qt/PyMeshLab identity manifests, PyTetWild static-closure contract, resvg frozen-runtime exclusion, and added fail-closed package tests: `Ran 1234 tests: OK (skipped=2)`, 1232 passed / 2 optional skips / 0 failed. The focused release/compliance set passed 178 tests with 1 optional skip. A fresh public-source stage passed at 395 files / 394 manifest records with privacy audit and independent SHA-256 parity.
+The current working tree passed the full Python `3.13.14` regression after the Qt/PyMeshLab identity manifests, PyTetWild static-closure contract, corrected controlled-toolchain identity, and Windows PowerShell 5.1-safe native Python-probe transport: `Ran 1239 tests: OK (skipped=2)`, 1237 passed / 2 optional skips / 0 failed. The focused release/compliance set passed 178 tests with 1 optional skip. A fresh public-source stage passed at 395 files / 394 manifest records with privacy audit and independent SHA-256 parity.
 
 Component-specific licence texts and static-linked component coverage are implemented and covered by fail-closed inventory tests. The old r32 EXE/ZIP does not match this source and will not be published. A new Windows ZIP requires: controlled PyTetWild rebuild evidence; the application lock updated to that wheel; a `release-approved` complete corresponding-source bundle; a current clean binary build with packaged self-test and Japanese/English UI smoke; fresh-extract manifest/privacy/archive/checksum parity; and immutable HTTPS Release URLs with all assets published simultaneously. `binary publication eligibility` is currently **false**.
 

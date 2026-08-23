@@ -561,13 +561,21 @@ class ControlledPyTetWildBuildRecipeTests(unittest.TestCase):
     def test_recipe_pins_python_temp_to_the_controlled_output(self) -> None:
         text = PYTETWILD_BUILD_RECIPE.read_text(encoding="utf-8")
         expected_fragments = (
+            "function Get-ControlledPythonArguments(",
             "$BuildTemp = Join-Path $OutputRoot 'tmp'",
             "$env:TEMP = $BuildTempFullPath",
             "$env:TMP = $BuildTempFullPath",
             "$env:TMPDIR = $BuildTempFullPath",
             "pathlib.Path(value).resolve(strict=True)",
             "real_full_path(tempfile.gettempdir())",
-            "$tempDirectoryProbeOutput = @(& $Python -I -c",
+            "$tempDirectoryProbeArguments = Get-ControlledPythonArguments",
+            "$tempDirectoryProbeOutput = @(& $Python @tempDirectoryProbeArguments)",
+            "$extractArguments = Get-ControlledPythonArguments",
+            "$packageVersionArguments = Get-ControlledPythonArguments",
+            "$rawWheelRecordArguments = Get-ControlledPythonArguments",
+            "$repairedWheelRecordArguments = Get-ControlledPythonArguments",
+            "$nativeDependencyArguments = Get-ControlledPythonArguments",
+            "$nativeProbeArguments = Get-ControlledPythonArguments",
             "[System.StringComparison]::OrdinalIgnoreCase",
             "Fixed Python temporary directory escaped the controlled-build root",
         )
@@ -582,7 +590,9 @@ class ControlledPyTetWildBuildRecipeTests(unittest.TestCase):
             "$createdBuildTemp = New-Item -ItemType Directory -Path $BuildTemp"
         )
         temp_environment = text.index("$env:TEMP = $BuildTempFullPath")
-        temp_probe = text.index("$tempDirectoryProbeOutput = @(& $Python -I -c")
+        temp_probe = text.index(
+            "$tempDirectoryProbeArguments = Get-ControlledPythonArguments"
+        )
         first_build_export = text.index("$PyTetWildArchive = Join-Path")
         build_wheel = text.index(
             "Invoke-CheckedLogged $BuilderPython $buildWheelArguments"
@@ -596,6 +606,96 @@ class ControlledPyTetWildBuildRecipeTests(unittest.TestCase):
         self.assertLess(temp_probe, first_build_export)
         self.assertLess(temp_probe, build_wheel)
         self.assertLess(temp_probe, first_audit)
+        for unsafe_transport in (
+            "@('-c', $extractScript",
+            "-I -c $tempDirectoryProbe",
+            "$BuilderPython -c @'",
+            "'-c', $wheelRecordProbe",
+            "'-c', $nativeDependencyProbe",
+            "@('-I', '-c', $nativeProbe)",
+        ):
+            with self.subTest(unsafe_transport=unsafe_transport):
+                self.assertNotIn(unsafe_transport, text)
+
+    def test_temp_directory_probe_survives_windows_powershell_native_quoting(
+        self,
+    ) -> None:
+        if POWERSHELL is None:
+            self.skipTest("Windows PowerShell is unavailable")
+        text = PYTETWILD_BUILD_RECIPE.read_text(encoding="utf-8")
+        marker = "$tempDirectoryProbe = @'\n"
+        start = text.index(marker) + len(marker)
+        end = text.index("\n'@", start)
+        probe = text[start:end]
+
+        with tempfile.TemporaryDirectory() as temporary:
+            recipe = str(PYTETWILD_BUILD_RECIPE).replace("'", "''")
+            python = sys.executable.replace("'", "''")
+            controlled_temp = str(Path(temporary).resolve()).replace("'", "''")
+            command = f"""
+$ErrorActionPreference = 'Stop'
+$tokens=$null
+$errors=$null
+$ast=[System.Management.Automation.Language.Parser]::ParseFile(
+    '{recipe}', [ref]$tokens, [ref]$errors
+)
+if ($errors.Count) {{ throw ($errors -join [Environment]::NewLine) }}
+$definitions = @($ast.FindAll({{
+    param($node)
+    $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and
+        $node.Name -eq 'Get-ControlledPythonArguments'
+}}, $true))
+if ($definitions.Count -ne 1) {{
+    throw 'Expected exactly one Get-ControlledPythonArguments definition'
+}}
+Invoke-Expression $definitions[0].Extent.Text
+$env:TEMP = '{controlled_temp}'
+$env:TMP = '{controlled_temp}'
+$env:TMPDIR = '{controlled_temp}'
+$probe = @'
+{probe}
+'@
+$arguments = Get-ControlledPythonArguments $probe @('{controlled_temp}')
+$output = @(& '{python}' @arguments)
+if ($LASTEXITCODE -ne 0) {{ exit $LASTEXITCODE }}
+if ($output.Count -ne 1) {{ throw 'Temporary-directory probe output was not singular' }}
+[Console]::Out.WriteLine($output[0])
+$roundTripProbe = @'
+import json
+import sys
+
+print(json.dumps({{
+    "quoted": '"double"',
+    "slash": r"C:\\controlled\\path",
+    "unicode": "検証",
+    "argv": sys.argv[1:],
+}}, sort_keys=True))
+'@
+$roundTripArguments = Get-ControlledPythonArguments `
+    $roundTripProbe @('引数', 'C:\\arg\\path')
+$roundTripOutput = @(& '{python}' @roundTripArguments)
+if ($LASTEXITCODE -ne 0) {{ exit $LASTEXITCODE }}
+if ($roundTripOutput.Count -ne 1) {{ throw 'Round-trip probe output was not singular' }}
+[Console]::Out.WriteLine($roundTripOutput[0])
+"""
+            result = subprocess.run(
+                [POWERSHELL, "-NoProfile", "-Command", command],
+                check=False,
+                capture_output=True,
+                text=True,
+                errors="replace",
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            output_lines = result.stdout.splitlines()
+            self.assertEqual(len(output_lines), 2, result.stdout + result.stderr)
+            evidence = json.loads(output_lines[0])
+            self.assertEqual(evidence["expected"], str(Path(temporary).resolve()))
+            self.assertEqual(evidence["actual"], str(Path(temporary).resolve()))
+            round_trip = json.loads(output_lines[1])
+            self.assertEqual(round_trip["quoted"], '"double"')
+            self.assertEqual(round_trip["slash"], r"C:\controlled\path")
+            self.assertEqual(round_trip["unicode"], "検証")
+            self.assertEqual(round_trip["argv"], ["引数", r"C:\arg\path"])
 
     def test_logged_native_commands_capture_stderr_before_exit_evaluation(self) -> None:
         if POWERSHELL is None:
@@ -914,14 +1014,14 @@ try {{
             "entry.flag_bits & 0x41",
             "csv.reader(",
             're.fullmatch(r"(?:0|[1-9][0-9]*)"',
-            "'-c', $wheelRecordProbe, $rawWheels[0].FullName, 'raw'",
-            "'-c', $wheelRecordProbe, $wheel.FullName, 'repaired'",
+            "$rawWheelRecordArguments = Get-ControlledPythonArguments",
+            "$repairedWheelRecordArguments = Get-ControlledPythonArguments",
             "Invoke-CheckedLogged $Abi3Audit $abi3AuditArguments",
             "native_extension_load = 'passed'",
             "normal_isolated_package_import = 'passed'",
             "from pytetwild import PyfTetWildWrapper as native",
             "kernel32.GetModuleHandleW",
-            "Invoke-CheckedLogged $NativePython @('-I', '-c', $nativeProbe)",
+            "Invoke-CheckedLogged $NativePython $nativeProbeArguments",
             "--require-hashes', '--only-binary=:all:'",
             "runner_image = 'self-hosted-windows-controlled-offline'",
             "numpy_version = $Expected.NumpyVersion",
