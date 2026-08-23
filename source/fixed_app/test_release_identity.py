@@ -1,3 +1,4 @@
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -148,18 +149,69 @@ class ReleaseIdentityTests(unittest.TestCase):
             with self.subTest(passed_gate=passed_gate):
                 self.assertTrue(validation[passed_gate].startswith("passed"))
         self.assertIn(
-            "Ran 1241 tests: OK (skipped=2)",
+            "Ran 1244 tests in 185.852s: OK (skipped=2)",
             validation["current_full_regression"],
         )
-        self.assertIn("1239 passed", validation["current_full_regression"])
+        self.assertIn("1242 passed", validation["current_full_regression"])
         self.assertIn("0 failed", validation["current_full_regression"])
         self.assertIn(
             "VCTools directory 14.44.35207",
             validation["controlled_toolchain_install_and_contract"],
         )
         self.assertIn(
-            "controlled outbound-isolated PyTetWild rebuild remains pending",
+            "20260823-174626-089357844d4b",
             validation["controlled_toolchain_install_and_contract"],
+        )
+        self.assertIn(
+            "zero residual firewall rules or scheduled tasks",
+            validation["controlled_toolchain_install_and_contract"],
+        )
+        controlled_run = validation["latest_controlled_pytetwild_run"]
+        self.assertEqual(
+            "20260823-174626-089357844d4b",
+            controlled_run["run_id"],
+        )
+        self.assertEqual(
+            "verified-controlled-rebuild-adopted-by-current-source-contract",
+            controlled_run["status"],
+        )
+        self.assertEqual(
+            "5feb198eef3432cdec19a0367d53e1b52bd4a363",
+            controlled_run["repository_commit"],
+        )
+        self.assertEqual(8, controlled_run["direct_audit_logs_present"])
+        self.assertEqual(8, controlled_run["direct_audit_logs_required"])
+        self.assertTrue(controlled_run["attestation_generated"])
+        self.assertEqual(
+            "e3b11ac058266d277b0f83448c6023d5da98e731d0d016e461dbce4ebdfd613d",
+            controlled_run["repaired_wheel"]["sha256"],
+        )
+        self.assertEqual(1_637_633, controlled_run["repaired_wheel"]["bytes"])
+        self.assertEqual(
+            "9fbedacd1286a7e792a1503490669916d8a449cf9948ccc0f2899fdcda7c8089",
+            controlled_run["raw_wheel"]["sha256"],
+        )
+        self.assertEqual(
+            "26a091b53279407014899c046691958c9df07e22703576da6a45d68a9be22430",
+            controlled_run["extension_pyd"]["sha256"],
+        )
+        self.assertEqual(
+            "3989fd1debe8b6c984938c4a64ee5fb3bcce1b612cf83524ea309b1fae3cde9f",
+            controlled_run["attestation"]["sha256"],
+        )
+        self.assertEqual(
+            "verified-controlled-rebuild",
+            controlled_run["attestation"]["status"],
+        )
+        self.assertEqual("release-approved", controlled_run["static_closure_status"])
+        application_lock = FIXED_APP / "requirements-build.lock"
+        self.assertEqual(
+            hashlib.sha256(application_lock.read_bytes()).hexdigest(),
+            controlled_run["application_requirements_lock_sha256"],
+        )
+        self.assertEqual(
+            controlled_run["repaired_wheel"]["sha256"],
+            controlled_run["application_locked_wheel_sha256"],
         )
         self.assertTrue(
             validation["current_clean_build_and_packaged_smoke"].startswith(
@@ -168,7 +220,7 @@ class ReleaseIdentityTests(unittest.TestCase):
         )
         self.assertTrue(
             validation["current_stage_archive_privacy_and_checksum_audit"].startswith(
-                "current public-source stage passed"
+                "the pre-adoption public-source checkpoint passed"
             )
         )
         self.assertTrue(
@@ -247,28 +299,26 @@ class ReleaseIdentityTests(unittest.TestCase):
             "source-branch-validated-for-draft-pr-update",
             latest["status"],
         )
-        self.assertIn("Ran 1241 tests", latest["source_full_regression"])
+        self.assertIn("Ran 1244 tests", latest["source_full_regression"])
+        self.assertFalse(latest["source_publication_eligible"])
         self.assertEqual(
             395,
             latest["public_source_stage"]["total_files_including_manifest"],
         )
         self.assertEqual(394, latest["public_source_stage"]["manifest_records"])
-        self.assertTrue(latest["source_publication_eligible"])
         self.assertFalse(latest["binary_publication_eligible"])
         self.assertEqual(
             latest["binary_publication_blockers"],
             [
-                "controlled-pytetwild-rebuild-evidence-incomplete",
-                "application-lock-not-updated-to-controlled-pytetwild-wheel",
                 "release-approved-complete-corresponding-source-not-generated",
                 "current-clean-binary-build-packaged-self-test-and-ja-en-smoke-pending",
                 "fresh-extract-manifest-privacy-archive-checksum-parity-pending",
                 "immutable-https-release-url-and-simultaneous-assets-pending",
             ],
         )
-        current = release["current_r32_candidate_validation"]
+        current = release["previous_r32_pre_compliance_candidate_validation"]
         self.assertEqual(
-            "preflight-artifacts-audited-final-publication-pending",
+            "previous evidence only: pre-compliance artifacts audited",
             current["status"],
         )
         self.assertIn(
@@ -286,7 +336,7 @@ class ReleaseIdentityTests(unittest.TestCase):
             "packaged_ui_smoke_en",
         ):
             with self.subTest(release_passed_gate=gate):
-                self.assertTrue(current[gate].startswith("passed"))
+                self.assertTrue(current[gate].startswith("previous evidence only:"))
         self.assertIn("C:\\OBJAdjR32CM3", current["clean_build"])
         self.assertIn("PyInstaller 6.20.0", current["clean_build"])
         for gate in (
@@ -296,7 +346,7 @@ class ReleaseIdentityTests(unittest.TestCase):
             "source_and_software_archive_audit",
         ):
             with self.subTest(release_preflight_gate=gate):
-                self.assertTrue(current[gate].startswith("passed"))
+                self.assertTrue(current[gate].startswith("previous evidence only:"))
         executable = current["preflight_executable"]
         self.assertEqual(
             "C:\\OBJAdjR32CM3\\dist\\ChromaMatter\\ChromaMatter.exe",
@@ -315,11 +365,19 @@ class ReleaseIdentityTests(unittest.TestCase):
             "ChromaMatter — AI Model Print Studio",
             executable["product_name"],
         )
-        self.assertEqual("passed", executable["version_and_product_identity"])
-        self.assertTrue(current["external_checksum_record"].startswith("preflight"))
+        self.assertEqual(
+            "previous evidence only: passed",
+            executable["version_and_product_identity"],
+        )
+        self.assertIn("not current r32 release evidence", executable["scope"])
+        self.assertTrue(
+            current["external_checksum_record"].startswith(
+                "previous evidence only:"
+            )
+        )
         public_stage = current["public_source_stage"]
         self.assertEqual(
-            "preflight-passed-final-restage-pending",
+            "previous evidence only: preflight passed before adoption",
             public_stage["status"],
         )
         self.assertEqual(
@@ -329,12 +387,18 @@ class ReleaseIdentityTests(unittest.TestCase):
         self.assertEqual(230, public_stage["total_files_including_manifest"])
         self.assertEqual(229, public_stage["manifest_records"])
         self.assertTrue(public_stage["fresh_archive_exact"])
-        self.assertTrue(public_stage["privacy_audit"].startswith("passed"))
-        self.assertTrue(public_stage["folder_archive_crc_parity"].startswith("passed"))
+        self.assertTrue(
+            public_stage["privacy_audit"].startswith("previous evidence only:")
+        )
+        self.assertTrue(
+            public_stage["folder_archive_crc_parity"].startswith(
+                "previous evidence only:"
+            )
+        )
         self.assertIn("33 tests", public_stage["staged_identity_icon_tooling"])
         software_stage = current["software_package_stage"]
         self.assertEqual(
-            "preflight-passed-local-validation-only-final-restage-pending",
+            "previous evidence only: preflight passed before compliance/adoption changes",
             software_stage["status"],
         )
         self.assertEqual(
@@ -343,7 +407,9 @@ class ReleaseIdentityTests(unittest.TestCase):
         )
         self.assertEqual(1404, software_stage["total_files_including_manifest"])
         self.assertEqual(1403, software_stage["manifest_records"])
-        self.assertTrue(software_stage["privacy_audit"].startswith("passed"))
+        self.assertTrue(
+            software_stage["privacy_audit"].startswith("previous evidence only:")
+        )
         for hash_field in (
             "final_zip_sha256",
             "public_source_zip_sha256",
@@ -353,7 +419,10 @@ class ReleaseIdentityTests(unittest.TestCase):
         self.assertFalse(current["zip_hashes_and_sizes_embedded_in_canonical_documents"])
         self.assertFalse(current["downloads_placement_claimed"])
         self.assertFalse(current["source_publication_eligible"])
-        self.assertIn("r32 preflight passed", current["source_publication_status"])
+        self.assertIn(
+            "previous pre-compliance evidence only",
+            current["source_publication_status"],
+        )
         self.assertEqual(
             "https://github.com/Ponkichi0718/ChromaMatter",
             current["public_repository_url"],
@@ -362,7 +431,8 @@ class ReleaseIdentityTests(unittest.TestCase):
         self.assertEqual("public", current["public_repository_visibility"])
         self.assertEqual("main", current["public_repository_default_branch"])
         self.assertFalse(current["binary_publication_eligible"])
-        self.assertIn("controlled PyTetWild rebuild evidence", current["binary_publication_blocker"])
+        self.assertIn("controlled PyTetWild wheel/PYD", current["binary_publication_blocker"])
+        self.assertIn("are approved", current["binary_publication_blocker"])
         self.assertIn("application lock", current["binary_publication_blocker"])
         self.assertIn("immutable HTTPS Release URLs", current["binary_publication_blocker"])
         self.assertFalse(current["innovation_fund_submission_ready"])
@@ -370,7 +440,11 @@ class ReleaseIdentityTests(unittest.TestCase):
             "public repository URL and handle",
             current["innovation_fund_submission_blockers"],
         )
-        self.assertTrue(current["publication_decision"].startswith("approved"))
+        self.assertTrue(
+            current["publication_decision"].startswith(
+                "previous preflight approval only"
+            )
+        )
         self.assertIn("previous r31 creator declaration", current["icon_publication_rights"])
         previous_r31 = release["previous_r31_candidate_validation"]
         self.assertTrue(previous_r31["status"].startswith("previous evidence only"))
@@ -442,9 +516,10 @@ class ReleaseIdentityTests(unittest.TestCase):
                     "Orca",
                     "manual",
                     "adaptive",
-                    "1241",
-                    "1239",
+                    "1244",
+                    "1242",
                     "178",
+                    "108",
                     "395",
                     "394",
                     "r31",
@@ -466,6 +541,10 @@ class ReleaseIdentityTests(unittest.TestCase):
                     "binary publication eligibility",
                     "application lock",
                     "release-approved",
+                    "20260823-174626-089357844d4b",
+                    "e3b11ac058266d277b0f83448c6023d5da98e731d0d016e461dbce4ebdfd613d",
+                    "26a091b53279407014899c046691958c9df07e22703576da6a45d68a9be22430",
+                    "3989fd1debe8b6c984938c4a64ee5fb3bcce1b612cf83524ea309b1fae3cde9f",
                     "immutable HTTPS",
                     "ChromaMatter-0.8beta-r32-source-public-20260823",
                     "ChromaMatter-0.8beta-r32-win64",
@@ -497,6 +576,37 @@ class ReleaseIdentityTests(unittest.TestCase):
                 )
                 self.assertNotIn("decal beta", folded)
                 self.assertNotIn("デカール β", text)
+
+        public_build_docs = (
+            REPO_ROOT / "licenses" / "BUILD_ENVIRONMENT_EN.md",
+            REPO_ROOT / "licenses" / "BUILD_ENVIRONMENT_JA.md",
+            REPO_ROOT / "publication" / "GITHUB_PUBLICATION_GUIDE_JA.md",
+        )
+        for path in public_build_docs:
+            with self.subTest(public_build_doc=path):
+                lines = read_text(path).splitlines()
+                bootstrap_lines = [
+                    index
+                    for index, line in enumerate(lines)
+                    if "BOOTSTRAP_WINDOWS.ps1" in line
+                ]
+                self.assertTrue(bootstrap_lines)
+                for index in bootstrap_lines:
+                    line = lines[index]
+                    if (
+                        "-PyTetWildWheel" in line
+                        or "-PyTetWildWheelhouse" in line
+                    ):
+                        continue
+                    self.assertTrue(
+                        line.rstrip().endswith("`")
+                        and index + 1 < len(lines)
+                        and (
+                            "-PyTetWildWheel" in lines[index + 1]
+                            or "-PyTetWildWheelhouse" in lines[index + 1]
+                        ),
+                        f"Bare bootstrap example is not allowed in {path}: {line}",
+                    )
 
     def test_github_readme_defaults_to_english_with_exact_japanese_alias(self):
         english = read_text(REPO_ROOT / "README_PUBLIC_EN.md")

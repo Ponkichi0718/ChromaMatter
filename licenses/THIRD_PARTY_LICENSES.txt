@@ -139,9 +139,11 @@ the applicable terms and the explicitly copied texts.
 
 - Controlled PyTetWild 0.3.0 static/header closure for
   `PyfTetWildWrapper.pyd`
-  Current release state: `release_gate.status=blocked` and
-  `release_eligible=false`. The exact controlled wheel SHA-256, extension PYD
-  SHA-256, and matching application-lock identity have not yet been approved.
+  Current closure state: `release_gate.status=release-approved` and
+  `release_eligible=true`. The exact controlled wheel SHA-256 and extension
+  PYD SHA-256 are bound by `tooling/pytetwild_static_closure.json`; the runtime
+  validator separately requires the canonical application lock to pin that
+  same wheel SHA-256.
   The previously audited upstream PyPI wheel/PYD remains historical audit
   evidence only and is excluded from release approval.
 
@@ -166,9 +168,9 @@ the applicable terms and the explicitly copied texts.
 
   The exact component, version, dependency, source-archive, asset-path, byte
   count, and SHA-256 records are in
-  `tooling/pytetwild_static_closure.json`. This closure inventory documents the
-  intended controlled build; it does not make any current Windows binary
-  eligible for publication.
+  `tooling/pytetwild_static_closure.json`. This approval is limited to the
+  controlled PyTetWild closure and does not by itself approve a frozen
+  application or software archive for publication.
   Source: https://github.com/pyvista/pytetwild
   Upstream fTetWild source: https://github.com/wildmeshing/fTetWild
 
@@ -448,7 +450,7 @@ the applicable terms and the explicitly copied texts.
 
 - Microsoft Visual C++ Runtime files
   File versions present in the audited build: 14.40.33810, 14.42.34438,
-  14.44.35208, 14.44.35215, and 14.50.35719. The release-specific
+  14.44.35211, 14.44.35215, and 14.50.35719. The release-specific
   BINARY_COMPONENT_MAP.json binds each DLL to its exact component version.
   License: Microsoft Visual Studio 2022 redistributable-code terms
   Redistribution reference:

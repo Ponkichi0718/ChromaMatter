@@ -14,7 +14,9 @@
 ## ビルドとテスト
 
 ```powershell
-powershell.exe -ExecutionPolicy Bypass -File .\BOOTSTRAP_WINDOWS.ps1
+$pyTetWildWheel = 'C:\release-inputs\wheel\pytetwild-0.3.0-cp312-abi3-win_amd64.whl'
+powershell.exe -ExecutionPolicy Bypass -File .\BOOTSTRAP_WINDOWS.ps1 `
+  -PyTetWildWheel $pyTetWildWheel
 powershell.exe -ExecutionPolicy Bypass -File .\BUILD_AND_TEST.ps1 `
   -RuntimeRoot .\.venv `
   -Build `
@@ -57,16 +59,22 @@ multiline `-c`引数へ戻さないでください。
 firewallを設定したという意味ではありません。
 
 ```powershell
+$newControlledRoot = Join-Path 'C:\ChromaMatterToolchain' `
+  ('pytetwild-controlled-build-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
 powershell.exe -NoProfile -ExecutionPolicy Bypass `
   -File .\tooling\BUILD_PYTETWILD_WINDOWS.ps1 `
   -OsNetworkIsolationConfirmed `
-  -OutputRoot C:\ChromaMatterToolchain\pytetwild-controlled-build-001
+  -OutputRoot $newControlledRoot
 ```
 
-将来buildが成功した場合は、repaired release wheelとpre-repairのraw wheelが
-同名でも上書きせず、別々に保存します。両wheel、attestation、recipe、
-requirements lock、source patch、および次のexact 8 direct audit logsを一組の
-release evidenceとして保存します。
+採用済みcontrolled run `20260823-174626-089357844d4b`はproject commit
+`5feb198eef3432cdec19a0367d53e1b52bd4a363`で成功しました。repaired wheelの
+SHA-256は`e3b11ac058266d277b0f83448c6023d5da98e731d0d016e461dbce4ebdfd613d`、
+attestationのSHA-256は
+`3989fd1debe8b6c984938c4a64ee5fb3bcce1b612cf83524ea309b1fae3cde9f`です。
+repaired release wheelとpre-repairのraw wheelは、同名でも上書きしないよう別々に
+保存しています。両wheel、attestation、recipe、requirements lock、source patch、
+および次のexact 8 direct audit logsを一組のrelease evidenceとして保存します。
 
 - `visual-studio-layout-verification.log`
 - `build-wheel.log`
@@ -80,10 +88,10 @@ release evidenceとして保存します。
 監査log用directoryには、この8個のdirect fileだけを置きます。extra file、
 nested entry、symlinkを含めてはいけません。
 
-controlled rebuildしたPyTetWild wheelを使う場合は、先に
-`requirements-build.lock`のPyTetWild SHA-256をそのwheelへ更新し、新しい
-virtual environmentで次のように明示します。wheel、version、ABI tag、hashが
-一致しない場合はbootstrapが停止します。
+application lockはすでに採用済みrepaired wheelを固定しています。新しいvirtual
+environmentでそのwheelを明示してください。version、ABI tag、SHA-256が一致しない
+場合はbootstrapが停止します。将来別wheelへ置き換える場合は、使用前にreview済みの
+application lockとstatic-closure contract更新が必要です。
 
 ```powershell
 powershell.exe -ExecutionPolicy Bypass -File .\BOOTSTRAP_WINDOWS.ps1 `

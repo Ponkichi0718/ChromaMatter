@@ -240,8 +240,7 @@ class PyTetWildStaticClosureTests(unittest.TestCase):
 
         self._assert_release_gate_is_consistent(self.manifest)
         unsafe = copy.deepcopy(self.manifest)
-        unsafe["release_gate"]["status"] = "release-approved"
-        unsafe["release_gate"]["release_eligible"] = True
+        unsafe["release_gate"]["blockers"][0]["resolved"] = False
         with self.assertRaises(AssertionError):
             self._assert_release_gate_is_consistent(unsafe)
 

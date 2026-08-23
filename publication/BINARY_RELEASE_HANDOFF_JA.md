@@ -51,36 +51,37 @@ Draft PR: <https://github.com/Ponkichi0718/ChromaMatter/pull/1>
   archive内の署名なし`premake5.exe`は保存のみ、実行禁止として扱う。
 - 対応ソースのZIP/TAR展開は、NUL、非正規／Windows危険path、暗号化、特殊entry、
   Unicode・大文字小文字衝突、file/ancestor衝突をfail-closedで拒否する。
-- 現在の作業treeから公開ソースpreviewを実生成し、privacy監査と全394 manifest
-  entryの独立SHA-256再検証に成功した。ただしこれは最終対応ソースbundleではない。
+- 採用前の作業treeから公開ソースpreviewを実生成し、privacy監査と全394 manifest
+  entryの独立SHA-256再検証に成功した。採用後にsource bytesが変わったため、これは
+  previous evidenceであり、最終対応ソースbundleは再生成する。
 
 ## 残っている公開ブロッカー
 
-2026-08-23時点で、現在の公開source stageは395 files／394 manifest records、
-privacy audit、独立SHA-256 parityまでPASSした。Python 3.13.14のfull regressionは
-1,241 tests中1,239 PASS／2 optional SKIP／0 FAIL、release／compliance集中テスト178件も
-1 optional SKIP以外PASSしている。これはsource-only branch更新の証拠であり、
-Windows binaryの公開GOではない。1,179-test checkpointと前回273／272 stageは
-変更前のprevious evidenceである。
+2026-08-23時点で、採用後のworking treeはPython 3.13.14のfull regressionで
+1,244 tests中1,242 PASS／2 optional SKIP／0 FAIL。release／compliance集中テスト178件も
+1 optional SKIP以外PASSしている。採用前の公開source stageは395 files／394 manifest
+records、privacy audit、独立SHA-256 parityまでPASSしたが、採用後にsource bytesが
+変わったため最終stageは再生成が必要である。これはWindows binaryの公開GOではない。
 
-1. **controlled PyTetWild再build証拠**
-   Visual Studio Build Toolsのoffline installと正確なtoolchain identity固定は完了し、
-   OSレベルの通信遮断も実測済み。ただしWindows PowerShell 5.1のnative引数quote消失を
-   修正したrecipeによる成功wheel／attestationはまだ未生成。
-2. **application lock更新**
-   新wheelのSHA-256へapplication requirements lockを更新する。clean bootstrapには
-   `-PyTetWildWheel`または`-PyTetWildWheelhouse`でそのwheelを明示し、通常indexの
-   歴史wheelへ戻らないようにする。
-3. **release-approved完全対応ソースbundle**
+controlled PyTetWild run `20260823-174626-089357844d4b`はcommit
+`5feb198eef3432cdec19a0367d53e1b52bd4a363`で成功し、outbound deny-allとcleanup、
+raw／repaired wheel、exact 8 logs、12 source archives、通常import、attestationを独立監査
+済みである。application lockはrepaired wheel SHA-256
+`e3b11ac058266d277b0f83448c6023d5da98e731d0d016e461dbce4ebdfd613d`を採用済みで、
+static-closure contractもwheelとPYDを固定している。現在のcandidateに同じUAC付きbuildを
+再実行する必要はない。固定入力またはtoolchainを変更した場合だけ、新しいcontrolled runを
+別rootで行う。
+
+1. **release-approved完全対応ソースbundle**
    MeshLab外部archive lockとPyTetWild証拠を使って実際のbundleを生成し、
    `known_gaps=[]`と`release-approved`を確認する。
-4. **現行sourceからのclean binary build**
+2. **現行sourceからのclean binary build**
    旧r32 build証拠は今回の変更後sourceを検証しない。新しい空build rootで作り直し、
    packaged self-testと隔離profileのJA/EN UI smokeを通す。
-5. **fresh-extract実成果物監査**
+3. **fresh-extract実成果物監査**
    manifest、privacy、ZIP CRC、folder／ZIP／fresh-extract byte parity、checksum、
    Qt／GEOS差替えsmokeを実施する。
-6. **immutable HTTPS GitHub Release**
+4. **immutable HTTPS GitHub Release**
    source offerへ最終Release URLを固定し、Windows ZIP、完全対応ソース、SBOM、
    component map、SHA256SUMSを同じtag／Releaseへ同時掲載する。
 
@@ -143,15 +144,18 @@ Windows PowerShell 5.1でlocalized `vswhere.exe -utf8` JSONを壊さないよう
 固定ASCII bootstrapと元argvを別々に渡す。このtransportも直接`-c`へ戻さない。
 
 ```powershell
+$newControlledRoot = Join-Path 'C:\ChromaMatterToolchain' `
+  ('pytetwild-controlled-build-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
 powershell.exe -NoProfile -ExecutionPolicy Bypass `
   -File .\tooling\BUILD_PYTETWILD_WINDOWS.ps1 `
   -OsNetworkIsolationConfirmed `
-  -OutputRoot C:\ChromaMatterToolchain\pytetwild-controlled-build-001
+  -OutputRoot $newControlledRoot
 ```
 
-将来buildが成功した場合は、repaired wheelと同名でもpre-repairのraw wheelを
-上書きせず別fileとして保存する。さらにattestation、recipe、39-package lock、
-source patch、次のexact 8 direct audit logsを同じrelease evidenceとして保存する。
+上記は固定入力が変わった場合の再現用であり、現在の採用済みrunを上書きしない。
+採用済みrunのrepaired wheelと同名のpre-repair raw wheelは別directoryに保存済みで、
+attestation、recipe、39-package lock、source patch、次のexact 8 direct audit logsも
+同じrelease evidenceとして保存済みである。
 
 - `visual-studio-layout-verification.log`
 - `build-wheel.log`
@@ -163,7 +167,7 @@ source patch、次のexact 8 direct audit logsを同じrelease evidenceとして
 - `native-normal-import.log`
 
 監査log用directoryにはこの8個のdirect fileだけを置く。extra file、nested entry、
-symlinkを含めない。その後にapplication lockを新しいrepaired wheelへ更新する。
+symlinkを含めない。application lockは採用済みwheelへ更新済みである。
 
 ```powershell
 powershell.exe -ExecutionPolicy Bypass -File .\BOOTSTRAP_WINDOWS.ps1 `
@@ -222,7 +226,7 @@ $buildRecipe = Join-Path $releaseInputs 'BUILD_PYTETWILD_WINDOWS.ps1'
 $buildRequirements = Join-Path $releaseInputs 'requirements-pytetwild-build.lock'
 $sourcePatch = Join-Path $releaseInputs 'pytetwild-0.3.0-optional-pyvista.patch'
 $applicationLock = Join-Path $releaseInputs 'requirements-build.lock'
-$controlledRoot = 'C:\ChromaMatterToolchain\pytetwild-controlled-build-001'
+$controlledRoot = 'C:\ChromaMatterToolchain\pytetwild-controlled-build-20260823-174626-089357844d4b'
 $repairedWheels = @(Get-ChildItem -LiteralPath (Join-Path $controlledRoot 'wheel') `
   -Filter 'pytetwild-0.3.0-cp312-abi3-win_amd64.whl' -File)
 $rawWheels = @(Get-ChildItem -LiteralPath (Join-Path $controlledRoot 'raw-wheel') `

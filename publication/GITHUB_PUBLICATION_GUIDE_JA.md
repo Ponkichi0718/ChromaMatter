@@ -217,7 +217,8 @@ GitHub DesktopでPrivateリポジトリを別の空フォルダーへcloneし直
 
 ```powershell
 .\tooling\audit_public_tree.ps1 -Root .
-.\BOOTSTRAP_WINDOWS.ps1
+$pyTetWildWheel = 'C:\release-inputs\wheel\pytetwild-0.3.0-cp312-abi3-win_amd64.whl'
+.\BOOTSTRAP_WINDOWS.ps1 -PyTetWildWheel $pyTetWildWheel
 ```
 
 必要に応じてテスト、日英UI起動、ソースビルドを確認します。ただし生成された`.venv`や`build_output`は`.gitignore`対象であり、commitしません。

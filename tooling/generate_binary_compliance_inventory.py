@@ -324,9 +324,9 @@ STATIC_COMPONENTS = {
             license_assets=("_internal/licenses/msvc-runtime/LICENSE",),
         ),
         _component(
-            "msvc-14.44.35208",
+            "msvc-14.44.35211",
             "Microsoft Visual C++ Runtime",
-            "14.44.35208",
+            "14.44.35211",
             "LicenseRef-Microsoft-Visual-Cpp-Redistributable",
             "https://learn.microsoft.com/cpp/windows/latest-supported-vc-redist",
             license_assets=("_internal/licenses/msvc-runtime/LICENSE",),
@@ -1740,12 +1740,12 @@ def explicit_native_mapping(item: ScannedFile) -> tuple[list[str], str, str]:
         "_internal/vcruntime140_1.dll",
     }:
         return ["msvc-14.42.34438"], "msvc-file-version", ""
-    if "msvcp140-a4c2229bdc2a2a630acdc095b4d86008.dll" in lower:
-        return ["msvc-14.40.33810"], "msvc-file-version", ""
     if lower.startswith("_internal/pytetwild.libs/") and (
         base.startswith("msvcp140-") or base.startswith("concrt140-")
     ):
-        return ["pytetwild", "msvc-14.44.35208"], "wheel-repair-runtime", ""
+        return ["pytetwild", "msvc-14.44.35211"], "wheel-repair-runtime", ""
+    if "msvcp140-a4c2229bdc2a2a630acdc095b4d86008.dll" in lower:
+        return ["msvc-14.40.33810"], "msvc-file-version", ""
     if lower.startswith("_internal/shapely.libs/") and base.startswith("msvcp140-"):
         return ["shapely", "msvc-14.44.35215"], "wheel-repair-runtime", ""
 

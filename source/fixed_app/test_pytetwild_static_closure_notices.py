@@ -46,7 +46,7 @@ class PyTetWildStaticClosureNoticeTests(unittest.TestCase):
             for name, path in NOTICE_PATHS.items()
         }
 
-    def test_notices_match_manifest_counts_paths_and_blocked_gate(self) -> None:
+    def test_notices_match_manifest_counts_paths_and_approved_gate(self) -> None:
         components = self.manifest["components"]
         assets = self.manifest["license_assets"]
         gate = self.manifest["release_gate"]
@@ -54,10 +54,10 @@ class PyTetWildStaticClosureNoticeTests(unittest.TestCase):
 
         self.assertEqual(len(components), 20)
         self.assertEqual(len(assets), 29)
-        self.assertEqual(gate["status"], "blocked")
-        self.assertFalse(gate["release_eligible"])
-        self.assertIsNone(controlled["wheel_sha256"])
-        self.assertIsNone(controlled["pyd_sha256"])
+        self.assertEqual(gate["status"], "release-approved")
+        self.assertTrue(gate["release_eligible"])
+        self.assertRegex(controlled["wheel_sha256"], r"^[0-9a-f]{64}$")
+        self.assertRegex(controlled["pyd_sha256"], r"^[0-9a-f]{64}$")
 
         packaged_paths = {
             asset_id: asset["path"].replace(
@@ -79,8 +79,8 @@ class PyTetWildStaticClosureNoticeTests(unittest.TestCase):
         }
         for name, notice in self.notices.items():
             with self.subTest(notice=name):
-                self.assertIn("release_gate.status=blocked", notice)
-                self.assertIn("release_eligible=false", notice)
+                self.assertIn("release_gate.status=release-approved", notice)
+                self.assertIn("release_eligible=true", notice)
                 self.assertIn(PACKAGED_ASSET_ROOT, notice)
                 for phrase in exact_count_phrases[name]:
                     self.assertIn(phrase, notice)
@@ -99,17 +99,17 @@ class PyTetWildStaticClosureNoticeTests(unittest.TestCase):
                 for expression in license_expressions:
                     self.assertIn(expression, notice)
 
-    def test_notices_do_not_approve_historical_or_current_binary(self) -> None:
+    def test_notices_exclude_historical_bytes_and_limit_approval_scope(self) -> None:
         index = " ".join(self.notices["index"].split())
         english = " ".join(self.notices["en"].split())
         japanese = "".join(self.notices["ja"].split())
 
         self.assertIn("historical audit evidence only", index)
-        self.assertIn("does not make any current Windows binary", index)
+        self.assertIn("does not by itself approve a frozen", index)
         self.assertIn("audit-only and excluded from release", english)
-        self.assertIn("does not declare any current Windows", english)
+        self.assertIn("does not by itself approve a frozen", english)
         self.assertIn("監査専用で、公開承認", japanese)
-        self.assertIn("現時点のWindowsバイナリを公開", japanese)
+        self.assertIn("閉包承認だけでは", japanese)
 
     def test_source_only_resvg_wording_is_preserved(self) -> None:
         index = self.notices["index"]

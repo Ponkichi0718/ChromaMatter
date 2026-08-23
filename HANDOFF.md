@@ -14,10 +14,10 @@ single complete corresponding-source bundle containing both the matching
 application source and all required third-party source, plus the SBOM,
 component map, notices, relinking instructions, and checksums.
 
-This continuation resumed from GitHub on the home PC. The latest pushed source
-checkpoint before the current toolchain-contract correction is
-`195bf66cb6918326f77c4c668e600bcf1d617ec6`; local `HEAD`, the upstream feature
-branch, and Draft PR #1 all pointed to it at the start of this correction. The
+This continuation resumed from GitHub on the home PC. The controlled build was
+bound to pushed source commit
+`5feb198eef3432cdec19a0367d53e1b52bd4a363`; local `HEAD`, the upstream feature
+branch, and Draft PR #1 pointed to it before adopting the resulting wheel. The
 owner authorized updating the feature branch and Draft PR with the current
 source checkpoint. `main`, tags, and public Releases remain untouched.
 
@@ -148,12 +148,13 @@ current bytes.
   extension dependencies, Qt/Mesa/LLVM, U3D and lib3mf subcomponents,
   PyInstaller, and the Embree-carried oneTBB runtime. The next clean binary must
   still regenerate and validate those outputs.
-- Binary publication remains NO-GO. Remaining gates are controlled PyTetWild
-  rebuild evidence; updating the application lock to that wheel; a
-  `release-approved` complete corresponding-source bundle; a current clean
-  binary build with packaged self-test and Japanese/English UI smoke;
-  fresh-extract manifest/privacy/archive/checksum parity; and immutable HTTPS
-  Release URLs with every required asset published simultaneously.
+- Binary publication remains NO-GO. The controlled PyTetWild wheel/PYD,
+  matching application lock, and static closure are now approved. Remaining
+  gates are a `release-approved` complete corresponding-source bundle; a
+  current clean binary build with regenerated inventory, packaged self-test,
+  and Japanese/English UI smoke; fresh-extract manifest/privacy/archive/
+  checksum parity; and immutable HTTPS Release URLs with every required asset
+  published simultaneously.
 
 ## 2026-08-23 binary-publication compliance continuation (current)
 
@@ -164,15 +165,16 @@ current bytes.
   byte-exact licence assets. The PyInstaller spec, component-map/SBOM generator,
   and software stage all consume it fail closed.
 - Added a PyTetWild static/header closure contract covering 20 components, 29
-  byte-exact licence assets, and 15 source archives. It is intentionally
-  `release_gate.status=blocked`: the historical PyPI wheel/PYD is audit-only,
-  and a controlled rebuilt wheel/PYD plus matching application lock do not yet
-  exist.
+  byte-exact licence assets, and 15 source archives. After the successful
+  controlled rebuild it now records `release_gate.status=release-approved` and
+  binds the rebuilt wheel/PYD plus matching application lock. The historical
+  PyPI wheel/PYD remains audit-only and excluded from release approval.
 - The component map now records PyTetWild closure validation violations and the
   SBOM carries the matching validation count. The software stage independently
-  enforces the wrapper identity, sorted 20-component mapping, 29 assets, and
-  blocked release gate whenever a PyTetWild runtime is present. Packages that
-  genuinely do not contain PyTetWild remain stageable.
+  enforces the approved wrapper identity, sorted 20-component mapping, 29
+  assets, and matching application-lock wheel whenever a PyTetWild runtime is
+  present. Historical or mismatched PyTetWild bytes still fail closed. Packages
+  that genuinely do not contain PyTetWild remain stageable.
 - The hidden Decal beta remains in source for development tests, but `resvg`
   and `resvg._resvg` are deliberately excluded from the public frozen runtime.
   Source attribution remains public; unused resvg runtime metadata and native
@@ -189,11 +191,13 @@ current bytes.
   binary-inventory/release-identity set passed 137/137. The complete Python
   3.13.14 regression then passed 1,236 tests: 1,234 passed, two optional skips,
   and zero failures.
-- A fresh public-source stage passes at 395 files including the manifest and
+- A pre-adoption public-source stage passed at 395 files including the manifest and
   394 manifest records. Both the staged privacy audit and an independent
   path/SHA-256 parity check report zero missing, extra, or mismatched files.
-  Source publication eligibility is true for this validated source-only scope;
-  binary publication eligibility remains false.
+  Source publication eligibility was true for that earlier validated source-only
+  scope. Adoption changed source bytes, so current r32 source and binary
+  publication eligibility are false until exact restaging and the remaining
+  release gates pass.
 - A current generator probe against the old audit-only package failed closed as
   designed. It reported the historical PyTetWild wheel/application-lock
   mismatch and blocked closure gate; that old package is not release evidence.
@@ -231,8 +235,25 @@ current bytes.
   `pytetwild-0.3.0.dist-info/licenses/`. Only four of the required eight direct
   audit logs were produced and no attestation exists. The partial wheels,
   source archives, and logs are not verified release evidence and must not be
-  adopted; the next step is a new outbound-isolated run with a unique unused
-  output directory after the directory-entry contract is corrected and tested.
+  adopted. This failed run is retained only as historical diagnostic evidence.
+- The corrected recipe then completed controlled outbound-isolated run
+  `20260823-174626-089357844d4b` at exact repository commit
+  `5feb198eef3432cdec19a0367d53e1b52bd4a363`. UAC approval and outbound
+  deny-all were verified; all 227 targets compiled; the distinct raw and
+  repaired wheels, all eight direct audit logs, 12 source archives, and a
+  `verified-controlled-rebuild` attestation were produced. Cleanup left zero
+  persistent or active firewall rules and no scheduled task.
+- Adopted controlled identities in the current source contract: repaired wheel
+  `e3b11ac058266d277b0f83448c6023d5da98e731d0d016e461dbce4ebdfd613d`
+  (1,637,633 bytes), raw wheel
+  `9fbedacd1286a7e792a1503490669916d8a449cf9948ccc0f2899fdcda7c8089`
+  (1,088,024 bytes), `PyfTetWildWrapper.pyd`
+  `26a091b53279407014899c046691958c9df07e22703576da6a45d68a9be22430`
+  (3,927,552 bytes), and attestation
+  `3989fd1debe8b6c984938c4a64ee5fb3bcce1b612cf83524ea309b1fae3cde9f`
+  (12,445 bytes). The application lock and PyTetWild static closure now bind
+  the repaired-wheel identity. This component closure approval does not make
+  any Windows application archive publishable.
 
 ## Current state
 
@@ -252,30 +273,33 @@ current bytes.
   export-space 3MF validation changes above. A clean rebuild, packaged self-test,
   Japanese/English UI smoke, restaging, privacy/archive audit, and fresh detached
   checksums are required before any new binary claim.
-- The new internal multipart test ZIP validates the current application bytes
-  for owner testing only. It deliberately bypasses the public software stage
-  because the approved corresponding-source and controlled PyTetWild rebuild
-  evidence do not yet exist; it does not change binary publication NO-GO.
+- The existing internal multipart test ZIP validates the pre-adoption
+  application bytes for owner testing only. It deliberately bypassed the
+  public software stage and does not contain the adopted controlled wheel; it
+  is not evidence for the current source and does not change binary
+  publication NO-GO.
 - `CURRENT_STATE.json` now records the latest source regression and public-source
   stage separately from the historical pre-multipart binary preflight. Do not
   treat the old executable hash or file counts as evidence for this worktree.
 - Source publication and binary publication are separate. Existing public
   source history remains available; the new Windows binary remains NO-GO.
 - The corresponding-source manifest deliberately remains candidate-only until
-  the new PyTetWild repaired wheel, distinct raw wheel, exact eight direct audit
-  logs, attestation, rebuild lock, and final source stage exist. The MeshLab
-  acquisition lock is complete, but its final staged bundle has not yet been
-  produced. The verified public-source preview above is a source-tree
-  completeness check, not that final corresponding-source bundle.
+  the successful run's repaired wheel, distinct raw wheel, exact eight direct
+  audit logs, attestation, and a commit-bound generated rebuild lock are staged
+  into the final complete bundle. The MeshLab acquisition lock is complete,
+  but its final staged bundle has not yet been produced. The verified
+  public-source preview above predates adoption and is a source-tree
+  completeness checkpoint, not that final corresponding-source bundle.
 - All prospective native inputs are present and fixed. The verified offline
   Visual Studio Build Tools 17.14.39 layout was installed successfully on
   2026-08-23 at `C:\ChromaMatterToolchain\VS2022BuildTools`. The installed
   instance is complete and launchable, selects VCTools 14.44.35207 and Windows
   SDK 10.0.26100.0, and matches the fixed layout evidence. No reinstall or
-  redownload is required. The latest run produced partial raw and repaired
-  wheels, but stopped before the remaining four logs and attestation; neither
-  wheel is accepted evidence. The next blocker is a new controlled
-  outbound-isolated build in a unique unused output directory.
+  redownload is required. The controlled rebuild is complete and adopted by
+  the application lock/static-closure contract. The remaining blockers are the
+  commit-bound rebuild lock, complete corresponding-source stage, clean Windows
+  application build, software stage, fresh-extract smoke/audits, and final
+  checksum/immutable-URL parity.
 - The root `SOURCE_MANIFEST_SHA256.txt` is historical and stale for this changed
   tree. Regenerate it only through final source staging after release inputs are
   frozen; do not edit it manually as present evidence.
@@ -284,21 +308,16 @@ current bytes.
 
 1. Review Draft PR #1 from `codex/r32-full-spectrum-workflow`; keep `main`, tags,
    and public Releases unchanged until the binary publication gates below pass.
-2. Keep the successful verified offline VS installation at
-   `C:\ChromaMatterToolchain\VS2022BuildTools`; do not reinstall, redownload, or
-   substitute a newer channel, MSVC toolset, or SDK. Commit and push the
-   corrected toolchain identity contract before producing rebuild evidence.
-3. Enforce an OS/hypervisor outbound deny-all policy (or physically disconnect
-   the builder), then run `tooling/BUILD_PYTETWILD_WINDOWS.ps1` with
-   `-OsNetworkIsolationConfirmed` and a new, unused output directory. Preserve
-   the repaired wheel, distinct raw wheel, exact eight direct audit logs, build
-   recipe, 39-package lock, source patch, and attestation together. Do not reuse
-   or adopt any partial artifact from run `20260823-160956-6e2612066766`.
-4. Replace the historical PyTetWild hash in the application
-   `requirements-build.lock`, then use `BOOTSTRAP_WINDOWS.ps1 -PyTetWildWheel`
-   from a new clone/venv. Preserve the wheel, application lock, rebuild lock,
-   hashed build requirements, recipe, and attestation.
-5. Stage full corresponding source with the complete MeshLab archive lock and
+2. Preserve controlled run `20260823-174626-089357844d4b` as one inseparable
+   evidence set. Do not substitute the earlier partial wheels or any later
+   unbound rebuild. Use `BOOTSTRAP_WINDOWS.ps1 -PyTetWildWheel` with the adopted
+   repaired wheel in the release build environment and require its SHA-256 to
+   match `source/fixed_app/requirements-build.lock`.
+3. Commit the adopted application lock, approved PyTetWild static closure,
+   notices, inventory mapping, tests, and state documents. Export the canonical
+   recipe, build requirements, source patch, and application lock as exact blobs
+   from that commit, then generate the commit-bound PyTetWild rebuild lock.
+4. Stage full corresponding source with the complete MeshLab archive lock and
    every PyTetWild bound evidence input. When passing a verified rebuild lock,
    pass the repaired release wheel with `-PyTetWildWheel`, the distinct
    pre-repair wheel with `-PyTetWildRawWheel`, and the directory containing the
@@ -307,21 +326,21 @@ current bytes.
    the recipe, hashed requirements, source patch, and application lock to
    byte-match their canonical paths at the exact project commit. Require output
    `COMPONENT_SOURCES.json` status `release-approved`.
-6. Freeze artifact names and immutable HTTPS source-offer URLs. From a new clean
+5. Freeze artifact names and immutable HTTPS source-offer URLs. From a new clean
    build root run the full regression and PyInstaller build, then run
    `tooling/generate_binary_compliance_inventory.py` with its required
    `--package-root`, `--sbom-output`, and `--component-map-output` arguments.
-7. Stage and fresh-extract the software and source archives; run packaged
+6. Stage and fresh-extract the software and source archives; run packaged
    self-test, Japanese/English UI smoke, manifest, privacy, CRC, byte-parity,
    relinking, and checksum audits.
-8. Publish the Windows ZIP, complete corresponding source, SBOM, component map,
+7. Publish the Windows ZIP, complete corresponding source, SBOM, component map,
    and detached checksum simultaneously at the exact immutable HTTPS Release
    URLs already embedded in the source offers. Backpatch `CURRENT_STATE.json`
    and public status documents only with those exact results. Keep
    `binary_publication_eligible=false` until every gate passes.
 
-Controlled prospective matrix (inputs acquired and hashed, but not yet a
-completed build): CPython 3.12.10 x64 builder; Visual Studio Build
+Controlled completed matrix for run `20260823-174626-089357844d4b`: CPython
+3.12.10 x64 builder; Visual Studio Build
 Tools 2022 17.14.39; VCTools directory 14.44.35207; `cl.exe` file version
 19.44.35228.0 and product version 14.44.35228.0; `link.exe` file and product
 version 14.44.35228.0; Windows SDK 10.0.26100; CMake
@@ -331,8 +350,8 @@ scikit-build-core 0.12.2; delvewheel 1.12.1; abi3audit 0.0.26; build 1.5.0;
 MPIR 3.0.0 `he025d50_1002`; NumPy 2.5.1 for the isolated normal-import smoke.
 The VS layout is fixed at 714 files, 2,651,377,645 bytes, tree SHA-256
 `2b6a89bb69aa7de013fc055828258a3a91c7c333f0c6be831a750990922fed3a`.
-This is a new prospective rebuild, not a claim about the expired historical CI
-environment.
+This is the verified controlled rebuild environment, not a claim about the
+expired historical CI environment or a completed Windows application build.
 
 The installed-toolchain audit confirmed that 14.44.35211 is the CRT
 redistributable version, not `Microsoft.VCToolsVersion.default.txt`. The build
@@ -367,9 +386,18 @@ directory members `pytetwild/`, `pytetwild.libs/`, and
 `pytetwild-0.3.0.dist-info/licenses/`. Post-run inspection identified those
 three entries as benign directory metadata, but the stopped run has only four
 of eight required direct logs and no attestation. Its outputs remain partial,
-unadoptable evidence; the retry must use a new unique output directory.
+unadoptable evidence.
 
-For that future verified-lock stage, the `-PyTetWildAuditLogs` directory must
+The corrected retry `20260823-174626-089357844d4b` completed successfully at
+commit `5feb198eef3432cdec19a0367d53e1b52bd4a363` with recipe SHA-256
+`d00cc6cdbc61abeaa040dfc81a3dfe7086ac0027685d798ac70f46e14e4360c8`.
+It produced the attested raw/repaired wheel pair, all eight audit logs, and all
+12 source archives; normal isolated import and vendored-DLL runtime loading
+passed. The repaired wheel, extension PYD, and attestation identities are
+recorded above and in `CURRENT_STATE.json`. Firewall/task cleanup passed with
+zero residual state.
+
+For the pending verified-lock/source stage, the `-PyTetWildAuditLogs` directory must
 contain exactly these eight direct files and nothing else:
 `visual-studio-layout-verification.log`, `build-wheel.log`,
 `delvewheel-show-raw.log`, `delvewheel-repair.log`,
@@ -379,8 +407,9 @@ rejected. Staging verifies the separate raw and repaired wheel identities and
 all eight log SHA-256 values against the build attestation, then copies them to
 `build-evidence/pytetwild/raw-wheel/`,
 `build-evidence/pytetwild/repaired-wheel/`, and
-`build-evidence/pytetwild/logs/`, respectively. None of those staged evidence
-outputs exists yet.
+`build-evidence/pytetwild/logs/`, respectively. The local controlled evidence
+exists, but no final `release-approved` corresponding-source stage has yet
+copied it into a distributable source bundle.
 
 Focused command:
 
@@ -576,13 +605,24 @@ Current compliance-integration validation on exact Python 3.13.14
 - Windows PowerShell 5.1 UTF-8 native-capture/static-closure/release follow-up:
   143 focused tests passed. The later Base64 native Python-probe transport,
   release-tooling, and static-closure follow-up passed 78/78. The final changed
-  source regression ran 1,241 tests: 1,239 passed, two optional skips, and zero
-  failures.
+  source regression before adoption ran 1,241 tests: 1,239 passed, two optional
+  skips, and zero failures. The post-adoption working tree then ran 1,244 tests
+  in 185.852 seconds: 1,242 passed, two optional skips, and zero failures.
 - Production corresponding-source manifest validation: PASS with intended
   status `candidate-only-not-release-approved`.
 - Public-source stage: 395 files including `SOURCE_MANIFEST_SHA256.txt`, 394
   manifest records, privacy audit PASS, independent exact path/SHA-256 parity
-  PASS with zero missing, extra, or mismatched files.
+  PASS with zero missing, extra, or mismatched files. This stage matches the
+  controlled-build source checkpoint and predates wheel-adoption source edits;
+  it must be regenerated for final publication evidence.
+- Controlled PyTetWild run `20260823-174626-089357844d4b`: PASS at exact
+  commit `5feb198eef3432cdec19a0367d53e1b52bd4a363`; outbound deny-all and
+  cleanup verified; 227 targets compiled; distinct raw/repaired wheels, all 8
+  direct logs, 12 source archives, strict ABI/native/import checks, and the
+  `verified-controlled-rebuild` attestation all completed. The application
+  lock binds the approved repaired wheel; the static-closure contract binds
+  that wheel and its PYD. The attestation remains recorded evidence to be
+  machine-bound by the final commit-specific rebuild lock.
 - PyTetWild-containing old audit-package probes: FAIL-CLOSED as intended; no
   publication destination/archive was retained and no old package became
   release evidence.
@@ -591,6 +631,12 @@ Current compliance-integration validation on exact Python 3.13.14
   `qt_attribution.json` assets contain upstream control characters and are not
   treated as application JSON; their exact bytes are validated by the Qt
   manifest/hash tests.
+- Controlled-identity state/document follow-up: release identity plus
+  PyTetWild static-closure manifest, contract, and notice tests passed 29/29;
+  `CURRENT_STATE.json` parsed successfully and `git diff --check` passed. The
+  later post-adoption full regression passed 1,244 tests with two optional
+  skips. These source-test results do not replace the pending clean binary
+  build, corresponding-source restage, or packaged verification.
 
 ## Do not do
 
@@ -633,3 +679,7 @@ Keep these outside Git and do not copy them to the public release by default:
   launchers and failed-run logs are operational evidence only. Preserve failed
   runs, never treat them as release evidence, and do not copy them into Git or
   a public package.
+- `C:\ChromaMatterToolchain\pytetwild-controlled-build-20260823-174626-089357844d4b\`
+  and its orchestration-run controls. Preserve them as the successful local
+  controlled evidence source, but copy only the exact allowlisted evidence
+  through corresponding-source staging; do not commit the local directories.

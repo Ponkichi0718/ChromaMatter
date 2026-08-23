@@ -1,7 +1,7 @@
 # ChromaMatter — Snapmaker U1 Innovation Fund 応募準備状況
 
-更新日: 2026-08-21  
-対象: `ChromaMatter — AI Model Print Studio 0.8beta` r32 candidate（以下「r32候補」）。r32は、3MF出力時の安全な自動閉立体化、手動変更したF1～F4を`現在の4色をプレビュー・3MFへ反映`で明示適用する経路、安定したFull Spectrum layer-cycle／prime-tower baselineを追加します。public version `0.8beta`、schema、アイコン、既存設定互換性は維持します。r32 exact full regression、clean build、packaged smoke、source/software stage、checksum、GitHub updateはすべてpendingで、件数・時間・EXE path／size／hashを推測しません。r31 source-only repositoryはowner handle `Ponkichi0718`により[GitHub](https://github.com/Ponkichi0718/ChromaMatter)で公開済みですが、r31の実測値はr32へ流用しないprevious evidenceです。binary publication eligibilityは第三者binary再配布監査完了までfalse、Innovation Fund submission readyも権利処理済みsample、Orca／U1 evidence、cover／video／community postまでfalseです。
+更新日: 2026-08-23
+対象: `ChromaMatter — AI Model Print Studio 0.8beta` r32 candidate（以下「r32候補」）。r32は、3MF出力時の安全な自動閉立体化、手動変更したF1～F4を`現在の4色をプレビュー・3MFへ反映`で明示適用する経路、安定したFull Spectrum layer-cycle／prime-tower baselineを追加します。public version `0.8beta`、schema、アイコン、既存設定互換性は維持します。採用後r32 exact sourceはPython 3.13.14で1,244 tests中1,242 PASS／2 optional SKIP／0 FAILです。現行sourceからのclean build、packaged smoke、source/software stage、checksum、GitHub updateはpendingで、EXE path／size／hashを推測しません。r31 source-only repositoryはowner handle `Ponkichi0718`により[GitHub](https://github.com/Ponkichi0718/ChromaMatter)で公開済みですが、r31の実測値はr32へ流用しないprevious evidenceです。binary publication eligibilityは最終binary gate完了までfalse、Innovation Fund submission readyも権利処理済みsample、Orca／U1 evidence、cover／video／community postまでfalseです。
 
 ## 結論
 
@@ -75,10 +75,10 @@ ChromaMatterは、Full Spectrumそのものを作り直すのではなく、**AI
 - ChromaMatter r31 exact source **previous evidence**: Python 3.13.14、`Ran 1024 tests in 100.656s: OK (skipped=1)`、1023 PASS／任意1 SKIP。`C:\OBJAdjR31CM1`でのPyInstaller `6.20.0` clean build、built package self-test、1920×1080の隔離profile日英UI smoke: PASS。preflight `ChromaMatter.exe`は13,986,866 bytes、SHA-256 `208167A225A37BAAAA473B574B2F746E46427FD0CA63FC5B7201BF3394243743`
 - r31 final source-only stage **previous evidence** `ChromaMatter_0.8beta-r31-source-public-20260820`: 227 files／226 manifest records、folder／archive parity、CRC、privacy、staged identity／icon／tooling 32 tests、Downloads配置、外部detached `SHA256SUMS-r31.txt`照合: PASS
 - r31 software preflight **previous evidence**: 1,404 files／1,403 manifest records、fresh-extracted self-test／日英UI smoke: exit 0。ただし第三者binary再配布監査未完了のため公開対象外
-- ChromaMatter r32 candidate: exact full regression、clean build、packaged smoke、1920×1080日英UI smoke、final stage／archive／privacy／identity、Downloads配置、外部detached `SHA256SUMS-r32.txt`、GitHub updateはすべてpending。1280×720は対応対象外の既知制約
+- ChromaMatter r32 candidate: 採用後exact source full regressionは1,244 tests中1,242 PASS／2 optional SKIP／0 FAIL。現行sourceからのclean build、packaged smoke、1920×1080日英UI smoke、final stage／archive／privacy／identity、Downloads配置、外部detached `SHA256SUMS-r32.txt`、GitHub updateはpending。1280×720は対応対象外の既知制約
 - 非公開の大規模GLBはread-only検証だけに使い、実modelをcopy、hash記録、manifest登録、配布しない
 
-r31以前のevidenceはr32へ適用しない。r31のsource regression／clean build／built package smoke／final source-only stage／archive／privacy／identityとpublication decisionはprevious evidenceで、公開先は[https://github.com/Ponkichi0718/ChromaMatter](https://github.com/Ponkichi0718/ChromaMatter)、owner handleは`Ponkichi0718`である。変更していないiconのcreator-declarationだけはasset provenanceとして保持するが、r32 release state、source publication eligibility、checksum、GitHub updateはpendingである。binary publication eligibilityとInnovation Fund submission readyもfalseである。
+r31以前のevidenceはr32へ適用しない。r31のsource regression／clean build／built package smoke／final source-only stage／archive／privacy／identityとpublication decisionはprevious evidenceで、公開先は[https://github.com/Ponkichi0718/ChromaMatter](https://github.com/Ponkichi0718/ChromaMatter)、owner handleは`Ponkichi0718`である。変更していないiconのcreator-declarationだけはasset provenanceとして保持する。r32のsource regressionはcurrent PASSだが、release state、source publication eligibility、checksum、GitHub updateはpendingである。binary publication eligibilityとInnovation Fund submission readyもfalseである。
 
 ### Development and physical evidence on note
 
@@ -159,13 +159,13 @@ r31以前のevidenceはr32へ適用しない。r31のsource regression／clean b
 | 審査軸 | 現在の強み | 応募直前に足す証拠 |
 |---|---|---|
 | Innovation & Technical Depth | 頂点色／UV baseColor GLB→canonical Full Spectrum state、part palette、3D manual correction、色保持3MF、adaptive paint性能、安全なUV seam閉立体化、実機黒補正 | r32 architecture図、GLB texture bake／1:1 seam proof／strict type=model検証とpalette／chart順序test、自動提案の素材分離／色域回帰test、実入力から3MFまでのstate追跡例、処理時間・memory計測 |
-| Openness & Quality | GPL source方針、public GitHub、fail-closed seam契約、r31の公開済みprevious evidence | r32 exact regression／clean build／package smoke／日英UI smoke／final stage／archive／privacy／identity、CI結果、signed provenance、SBOM方針、issue template |
+| Openness & Quality | GPL source方針、public GitHub、fail-closed seam契約、採用後r32 exact source regression PASS、r31の公開済みprevious evidence | r32 clean build／package smoke／日英UI smoke／final stage／archive／privacy／identity、CI結果、signed provenance、SBOM方針、issue template |
 | Practicality & Adaptability | noteに実際の失敗、再出力、U1 calibration、完成全身造形がある | 公開sampleでOrca open→slice→save→reopen→U1 printを一続きに記録。4色／16・24・32色とpart output matrix |
 | Community 20% | 継続的なnote記事と制作物がある | GitHub README、英語字幕付き短編、Snapmaker Forum投稿を同日に公開し、質問・再現報告を受け付ける |
 
 ## 未解決リスク
 
-- r31のsource regression／clean build／built package smokeとfinal source-only stage／archive／privacy／identity、owner publication decision、public GitHubと公開URLからのclone／32 testsはprevious evidenceとしてGO。r32 exact gate、CI、第三者binary再配布監査、権利処理済みsample一式の公開は未完了。
+- r31のsource regression／clean build／built package smokeとfinal source-only stage／archive／privacy／identity、owner publication decision、public GitHubと公開URLからのclone／32 testsはprevious evidenceとしてGO。r32 exact source regressionはPASSしたが、clean build以降のrelease gate、CI、第三者binary再配布監査、権利処理済みsample一式の公開は未完了。
 - ABS／PETG混色はβであり、素材別ライブラリと3MF profileの整合までは検証しているが、U1実機での同素材4本による色再現matrixは未完了。ABSは色数・色域が狭く、Top Coverを含む造形条件も別途検証が必要である。
 - 実機黒補正とcalibration chartを、複数black／white、16／24／32色で定量比較したmatrixがない。
 - 大規模OBJ／GLBの読込、準備、閉立体化は時間とmemoryを要し、200万面級のManual Editingはβ境界である。
@@ -214,7 +214,8 @@ r31以前のevidenceはr32へ適用しない。r31のsource regression／clean b
 - [x] r31 preflight source／software stage、fresh extract、manifest／privacy auditを完了した
 - [x] r31 final source-only restage、Downloads配置、detached checksum、archive／CRC／privacy／identity契約を完了した
 - [x] Public GitHubをclean cloneし、source公開範囲の32 testsを再実行した
-- [ ] r32 exact full regression、clean build、packaged self-test、1920×1080の日英UI smokeを完了した
+- [x] r32採用後exact source full regression（1,242 PASS＋2 optional SKIP）を完了した
+- [ ] r32現行sourceからのclean build、packaged self-test、1920×1080の日英UI smokeを完了した
 - [ ] r32 final source／software stage、fresh extract、manifest／archive／privacy／identityを完了した
 - [ ] r32 source-only artifactのDownloads配置と外部detached `SHA256SUMS-r32.txt`照合を完了した
 - [ ] r32 source-only updateをGitHubへ反映し、公開treeとfinal stageの一致を確認した
@@ -245,7 +246,7 @@ r31以前のevidenceはr32へ適用しない。r31のsource regression／clean b
 | prototypeの技術深度 | 強い |
 | 実機で可能性を示した証拠 | あり。ただしrevision追跡を要整理 |
 | 競合との差別化 | 可能。ただし応募文と動画で明文化必須 |
-| source quality | r31以前はprevious evidence。r32 exact full regression、clean build、built package smoke、1920×1080日英UI smoke、final stage、archive／CRC／privacy／identity、Downloads配置、detached checksumはpending |
+| source quality | r31以前はprevious evidence。r32採用後exact source full regressionは1,244 tests中1,242 PASS／2 optional SKIP。clean build、built package smoke、1920×1080日英UI smoke、final stage、archive／CRC／privacy／identity、Downloads配置、detached checksumはpending |
 | public release／legal | r31は`source-published`、r32 updateはpending。公開先は[GitHub](https://github.com/Ponkichi0718/ChromaMatter)。変更していないicon asset scopeはcreator declarationでowner accepted。binaryは第三者再配布監査待ち |
 | 応募asset | 作成途中 |
 

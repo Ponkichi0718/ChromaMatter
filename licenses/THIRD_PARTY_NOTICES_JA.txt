@@ -59,14 +59,15 @@ wheel由来の通知は、このファイルと同じ場所および各コンポ
 一覧を収録します。
 
 PyTetWildの公開状態：`tooling/pytetwild_static_closure.json`は現在
-`release_gate.status=blocked`および`release_eligible=false`を記録しています。
+`release_gate.status=release-approved`および`release_eligible=true`を記録しています。
 管理対象の静的/ヘッダー閉包は20コンポーネントで構成され、パッケージ契約は
 29個すべてのバイト単位で固定されたライセンス原文・通知を
-`_internal/licenses/pytetwild-closure/`以下へ収録することを要求します。ただし、
-管理対象wheelのSHA-256、PYDのSHA-256、および一致するアプリケーションロックの
-識別情報は未確定です。過去に監査した上流PyPI wheel/PYDは監査専用で、公開承認
-から除外されています。したがって、この一覧は現時点のWindowsバイナリを公開
-可能と宣言するものではありません。
+`_internal/licenses/pytetwild-closure/`以下へ収録することを要求し、管理対象wheelの
+SHA-256とPYDのSHA-256を同契約に固定しています。runtime validatorはこれとは別に、
+canonical application lockが同じwheel SHA-256を固定していることを要求します。
+過去に監査した上流PyPI wheel/PYDは監査専用で、公開承認
+から除外されています。この閉包承認だけでは、凍結アプリケーションまたは
+software archive全体の公開を承認しません。
 
 CPythonランタイムの完全なライセンスは`cpython/LICENSE.txt`、PyInstallerの
 適用条件は`pyinstaller/COPYING.txt`に収録します。Qt、Mesa/LLVM、U3D、

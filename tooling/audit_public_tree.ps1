@@ -98,7 +98,7 @@ function Get-AuditRelativePath {
 
 function Find-InsensitiveToken {
     param(
-        [Parameter(Mandatory = $true)][string]$Value,
+        [Parameter(Mandatory = $true)][AllowEmptyString()][string]$Value,
         [Parameter(Mandatory = $true)][string[]]$Tokens
     )
 

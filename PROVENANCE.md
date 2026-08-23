@@ -86,9 +86,9 @@ r30は、Hi3D AI等から出力されるstatic GLB／glTF 2.0 meshを直接読�
 
 ## 4. r32検証状態
 
-r32のP2後exact-source full regressionはPython `3.13.14`で`Ran 1048 tests in 90.160s: OK (skipped=1)`、1047 PASS／1 optional SKIP／0 FAILです。`C:\OBJAdjR32CM3`でPyInstaller `6.20.0` clean build、BUILD_AND_TEST内のpackaged self-test exit 0、隔離profileの日英UI smokeがPASSしました。preflight `C:\OBJAdjR32CM3\dist\ChromaMatter\ChromaMatter.exe`は13,997,622 bytes、FileVersion／ProductVersion `0.8beta`、ProductName `ChromaMatter — AI Model Print Studio`、SHA-256 `8BBABEACCF9B47AC2750C86B7C38966E46F00A624C648036D600C9601CF86EBB`です。
+r32の採用後current exact-source full regressionはPython `3.13.14`で`Ran 1244 tests in 185.852s: OK (skipped=2)`、1242 PASS／2 optional SKIP／0 FAILです。controlled PyTetWild run `20260823-174626-089357844d4b`、application lock、release-approved static-closure contractも採用済みです。以前の1048-test結果、`C:\OBJAdjR32CM3`のPyInstaller build／packaged self-test／日英UI smoke、およびSHA-256 `8BBABEACCF9B47AC2750C86B7C38966E46F00A624C648036D600C9601CF86EBB`のEXEは、現在のcompliance／adoption変更より前の**previous evidence**であり、現行r32 binaryを検証しません。
 
-r32 preflight source stageは230 files／229 manifest records、software stageは1,404 files／1,403 manifest recordsです。独立監査でmanifest全SHA、privacy、ZIP CRC／folder parity、fresh extract、fresh source identity／icon／tooling 33 tests、fresh software self-test／日英UI smokeがPASSしました。最終Downloads restage、final detached `SHA256SUMS-r32.txt`、Git-tree parity、GitHub更新は**pending**です。preflight ZIP hashはfinal artifactと異なるためcanonical文書へ埋め込みません。
+採用前のr32 public-source stageは395 files／394 manifest recordsで、manifest全SHA、privacy、独立path／SHA-256 parityがPASSしました。採用によってsource bytesが変わったため、final corresponding-source stageは再生成が必要です。以前のsoftware stage 1,404 files／1,403 manifest recordsとfresh software self-test／日英UI smokeも**previous evidence**です。現行sourceからのclean build、final source／software stage、fresh extract、detached `SHA256SUMS-r32.txt`、Git-tree parity、GitHub更新は**pending**です。
 
 以下のr31結果は公開済みrevisionだけに適用する**previous evidence**であり、r32を検証しません。
 
@@ -115,7 +115,7 @@ r31 preflight public sourceは227 files（manifest含む）／226 manifest recor
 
 この証拠はr27 artifactだけに適用し、r32 source、binary、package、checksumの検証には流用しません。preflight ZIP hashはcanonical文書へ埋め込みません。
 
-r31以前のregression／build／artifact evidenceはr32 sourceへ流用しません。上記r32 regression／build／smokeは現行exact evidenceですが、stage以降のgateはまだpendingです。project ownerは2026-08-20にr31公開GOを出し、icon publication rightsはcreator declarationによりpass、当該asset scopeのlegal gateはowner acceptanceとして完了しました。これは独立した法務clearanceではありません。最終r31 source-only stage `ChromaMatter_0.8beta-r31-source-public-20260820`は227 files／226 manifest recordsで、folder／archive parity、CRC、privacy、staged identity／icon／tooling 32 testsを全て通過しました。Downloads配置と外部detached `SHA256SUMS-r31.txt`の照合もr31 source-only distributionについて完了しています。source-only repositoryはpublic owner handle `Ponkichi0718`により[https://github.com/Ponkichi0718/ChromaMatter](https://github.com/Ponkichi0718/ChromaMatter)で公開されています。r32更新はまだ公開済みと主張しません。EXE／software ZIPの`binary_publication_eligible`は第三者binary再配布監査が終わるまでfalseです。
+r31以前のregression／build／artifact evidenceはr32 sourceへ流用しません。上記1244-test r32 source regressionだけが現行exact evidenceで、r32の旧build／smoke／stageはprevious evidenceです。project ownerは2026-08-20にr31公開GOを出し、icon publication rightsはcreator declarationによりpass、当該asset scopeのlegal gateはowner acceptanceとして完了しました。これは独立した法務clearanceではありません。最終r31 source-only stage `ChromaMatter_0.8beta-r31-source-public-20260820`は227 files／226 manifest recordsで、folder／archive parity、CRC、privacy、staged identity／icon／tooling 32 testsを全て通過しました。Downloads配置と外部detached `SHA256SUMS-r31.txt`の照合もr31 source-only distributionについて完了しています。source-only repositoryはpublic owner handle `Ponkichi0718`により[https://github.com/Ponkichi0718/ChromaMatter](https://github.com/Ponkichi0718/ChromaMatter)で公開されています。r32更新はまだ公開済みと主張しません。現行sourceからのclean buildと全package gateが完了するまで`binary_publication_eligible`はfalseです。
 
 ## 5. Previous evidence
 

@@ -15,6 +15,20 @@ $venvPython = Join-Path $venvRoot "Scripts\python.exe"
 $requirementsLock = Join-Path $repoRoot `
     "source\fixed_app\requirements-build.lock"
 
+if (
+    -not $SkipInstall -and
+    -not $PyTetWildWheel -and
+    -not $PyTetWildWheelhouse
+) {
+    throw (
+        "This r32 application lock pins the controlled PyTetWild wheel, " +
+        "which is not available from the public Python package index. " +
+        "Pass its exact local path with -PyTetWildWheel or the directory " +
+        "containing exactly that wheel with -PyTetWildWheelhouse. Use " +
+        "-SkipInstall only with an already verified environment."
+    )
+}
+
 function Resolve-LockedPyTetWildWheel {
     param(
         [Parameter(Mandatory = $true)]

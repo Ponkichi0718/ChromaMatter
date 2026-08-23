@@ -1204,12 +1204,36 @@ foreach ($relative in $requiredRuntimeFiles) {
 }
 
 function Test-IncompleteReleaseValue {
-    param([Parameter(Mandatory = $true)][AllowEmptyString()][string]$Value)
+    param(
+        [Parameter(Mandatory = $true)][AllowEmptyString()][string]$Value,
+        [switch]$ReleaseUrl
+    )
+    $releaseUrlHasPlaceholder = $false
+    if ($ReleaseUrl) {
+        $placeholderUri = $null
+        $releaseUrlHasPlaceholder = (
+            $Value -match '\\' -or
+            $Value -match '(?i)%[0-9a-f]{2}'
+        )
+        if (
+            -not $releaseUrlHasPlaceholder -and
+            [Uri]::TryCreate($Value, [UriKind]::Absolute, [ref]$placeholderUri)
+        ) {
+            $canonicalReleaseLocation = (
+                $placeholderUri.Host + $placeholderUri.AbsolutePath
+            )
+            $releaseUrlHasPlaceholder = (
+                $canonicalReleaseLocation -match
+                    '(?i)(?:^|/)(?:OWNER|REPO|TAG)(?:/|$)'
+            )
+        }
+    }
     return (
         [string]::IsNullOrWhiteSpace($Value) -or
         $Value -match "@@[^@\r\n]+@@" -or
         $Value -match "__[A-Z0-9_]+__" -or
-        $Value -match "(?i)\b(?:TODO|TBD|CHANGEME)\b"
+        $Value -match "(?i)\b(?:TODO|TBD|CHANGEME)\b" -or
+        $releaseUrlHasPlaceholder
     )
 }
 
@@ -1389,7 +1413,7 @@ function Assert-SbomComponentMatchesMap {
     }
 }
 
-if (Test-IncompleteReleaseValue -Value $CorrespondingSourceUrl) {
+if (Test-IncompleteReleaseValue -Value $CorrespondingSourceUrl -ReleaseUrl) {
     throw "CorrespondingSourceUrl is required and must not contain a placeholder."
 }
 $sourceUri = $null

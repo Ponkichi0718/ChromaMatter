@@ -60,14 +60,15 @@ and owning components for the particular binary release; SBOM.cdx.json
 provides the matching CycloneDX inventory.
 
 PyTetWild release status: `tooling/pytetwild_static_closure.json` currently
-records `release_gate.status=blocked` and `release_eligible=false`. Its
+records `release_gate.status=release-approved` and `release_eligible=true`. Its
 controlled static/header closure contains 20 components. The package contract
 requires all 29 byte-exact licence/notice assets below
-`_internal/licenses/pytetwild-closure/`, but the controlled wheel SHA-256, PYD
-SHA-256, and matching application-lock identity are still pending. The
-historical upstream PyPI wheel/PYD is audit-only and excluded from release
-approval. This inventory therefore does not declare any current Windows
-binary eligible for publication.
+`_internal/licenses/pytetwild-closure/`; the controlled wheel SHA-256, PYD
+SHA-256 are bound by that contract, and the runtime validator separately
+requires the canonical application lock to pin the same wheel SHA-256.
+The historical upstream PyPI wheel/PYD is audit-only and excluded from release
+approval. This closure approval does not by itself approve a frozen
+application or software archive for publication.
 
 The complete CPython runtime license is stored at
 `cpython/LICENSE.txt`. PyInstaller's governing notice is stored at

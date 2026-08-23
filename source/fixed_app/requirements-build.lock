@@ -1,9 +1,11 @@
 # ChromaMatter Windows x64 / CPython 3.13.14 build lock.
 #
-# Every hash below is the SHA-256 published by the official PyPI JSON API for
-# the one CPython 3.13 win_amd64 (or compatible abi3/pure-Python) wheel used by
-# the build.  BOOTSTRAP_WINDOWS.ps1 installs this file with both
-# --require-hashes and --only-binary=:all:.  Do not add an sdist hash here.
+# Every hash below except PyTetWild is the SHA-256 published by the official
+# PyPI JSON API for the one CPython 3.13 win_amd64 (or compatible
+# abi3/pure-Python) wheel used by the build. PyTetWild is the controlled repaired
+# wheel from run 20260823-174626-089357844d4b and is bound by the release-approved
+# static-closure contract. BOOTSTRAP_WINDOWS.ps1 installs this file with both
+# --require-hashes and --only-binary=:all:. Do not add an sdist hash here.
 
 altgraph==0.17.5 \
     --hash=sha256:f3a22400bce1b0c701683820ac4f3b159cd301acab067c51c653e06961600597
@@ -36,7 +38,7 @@ pyinstaller-hooks-contrib==2026.6 \
 pymeshlab==2025.7.post1 \
     --hash=sha256:25eb2578dd6c4d1b2e0253fb3b4f8f7895e8bb4f3f1236832db0ab58e6a44998
 pytetwild==0.3.0 \
-    --hash=sha256:11964e295a54cf9e2f6920a920aeeba27668c9b14e369a86f72ec5baa4f46060
+    --hash=sha256:e3b11ac058266d277b0f83448c6023d5da98e731d0d016e461dbce4ebdfd613d
 resvg==0.2.0 \
     --hash=sha256:a0e9b233cbda14f4bac9f093c83f7ca46045738131450a45416fa6b50b55bc83
 pywin32-ctypes==0.2.3 \

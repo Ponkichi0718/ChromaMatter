@@ -109,9 +109,9 @@ project-folder/
 
 ## 検証とrelease gate
 
-現在の作業treeはQt／PyMeshLab identity manifest、PyTetWild static-closure contract、修正済みcontrolled-toolchain identity、Windows PowerShell 5.1で安全なnative Python probe transportを含め、Python `3.13.14`のfull regressionで`Ran 1241 tests: OK (skipped=2)`、1239 PASS／2 optional SKIP／0 FAILです。release／compliance集中テスト178件も1 optional SKIP以外PASSしました。public-source再stageは395 files／394 manifest recordsでprivacy auditと独立SHA-256 parityがPASSしました。
+採用後の現在の作業treeは、Qt／PyMeshLab identity manifest、PyTetWild static-closure contract、修正済みcontrolled-toolchain identity、Windows PowerShell 5.1で安全なnative Python probe transport、release URLのplaceholder防止を含め、Python `3.13.14`のfull regressionで`Ran 1244 tests: OK (skipped=2)`、1242 PASS／2 optional SKIP／0 FAILです。以前のrelease／compliance集中テスト178件は1 optional SKIP以外PASSし、採用後の集中テスト108件も全件PASSしました。採用前のpublic-source stageは395 files／394 manifest recordsでprivacy auditと独立SHA-256 parityがPASSしましたが、採用後にsource bytesが変わったため最終stageは再生成が必要です。
 
-component固有license原文と静的link componentのcoverageは実装済みで、fail-closedなinventory testもPASSしています。旧r32 EXE／ZIPは今回のsourceと一致しないため公開しません。新しいWindows実行ZIPには、controlled PyTetWild再build証拠、そのwheelへ更新したapplication lock、`release-approved`完全対応ソースbundle、現行sourceからのclean binary buildとpackaged self-test／日英UI smoke、fresh-extractのmanifest／privacy／archive／checksum parity、全assetを同時掲載するimmutable HTTPS Release URLが必要です。現時点の`binary publication eligibility`は**false**です。
+outboundを隔離したcontrolled run `20260823-174626-089357844d4b`は成功しました。application lockは修復wheel SHA-256 `e3b11ac058266d277b0f83448c6023d5da98e731d0d016e461dbce4ebdfd613d`を固定し、`release-approved` PyTetWild static closureはそのwheelと拡張PYD SHA-256 `26a091b53279407014899c046691958c9df07e22703576da6a45d68a9be22430`を固定しています。attestation SHA-256 `3989fd1debe8b6c984938c4a64ee5fb3bcce1b612cf83524ea309b1fae3cde9f`はcontrolled-build証拠として記録され、最終のcommit固有rebuild lockで結び付ける必要があります。この承認対象はcontrolled PyTetWild closureだけで、Windows application archive全体ではありません。旧r32 EXE／ZIPは今回のsourceと一致しないため公開しません。新しいWindows実行ZIPには、`release-approved`完全対応ソースbundle、現行sourceからのclean binary buildと再生成inventory、packaged self-test／日英UI smoke、fresh-extractのmanifest／privacy／archive／checksum parity、全assetを同時掲載するimmutable HTTPS Release URLが引き続き必要です。現時点の`binary publication eligibility`は**false**です。
 
 以下のr31およびCreator Studio r30の結果は各revisionだけに適用する**previous evidence**で、r32へ流用しません。
 
@@ -138,8 +138,11 @@ Icon publication-rights status: `passed-by-creator-declaration`（2026-08-20）�
 WindowsとPython 3.13で次を実行します。
 
 ```powershell
-.\BOOTSTRAP_WINDOWS.ps1
+$pyTetWildWheel = "C:\path\to\pytetwild-0.3.0-cp312-abi3-win_amd64.whl"
+.\BOOTSTRAP_WINDOWS.ps1 -PyTetWildWheel $pyTetWildWheel
 ```
+
+r32はcontrolled PyTetWild wheelをSHA-256で固定しているため、引数なしのbootstrapは異なる過去のPyPI wheelへ戻らず、明示的に停止します。同じ公式releaseの完全対応ソースasset内にある`build-evidence/pytetwild/repaired-wheel/`の修復wheel、またはcontrolled recipeで再現したwheelのローカルpathを渡してください。`-PyTetWildWheelhouse`も使用できます。`-SkipInstall`は検証済み環境の再テスト専用です。
 
 `-Build`は全回帰後にPyInstaller one-folder buildを作成します。r32の予定stage名は次のとおりで、検証完了までは配布しません。
 

@@ -52,9 +52,12 @@ ChromaMatter currently ships as source code. On Windows with Python 3.13 install
 ```powershell
 git clone https://github.com/Ponkichi0718/ChromaMatter.git
 cd ChromaMatter
-.\BOOTSTRAP_WINDOWS.ps1
+$pyTetWildWheel = "C:\path\to\pytetwild-0.3.0-cp312-abi3-win_amd64.whl"
+.\BOOTSTRAP_WINDOWS.ps1 -PyTetWildWheel $pyTetWildWheel
 .\.venv\Scripts\python.exe .\source\fixed_app\TripoSpectrumMapper_fixed.py
 ```
+
+r32 pins the controlled PyTetWild wheel by SHA-256, so a bare bootstrap intentionally fails instead of downloading the different historical PyPI wheel. Use the repaired wheel from the matching official complete corresponding-source release asset at `build-evidence/pytetwild/repaired-wheel/`, or reproduce it with the controlled recipe before passing its local path. `-PyTetWildWheelhouse` is also supported; `-SkipInstall` is only for an already verified environment.
 
 Then:
 
@@ -163,9 +166,9 @@ project-folder/
 
 ## Validation and release gates
 
-The current working tree passed the full Python `3.13.14` regression after the Qt/PyMeshLab identity manifests, PyTetWild static-closure contract, corrected controlled-toolchain identity, and Windows PowerShell 5.1-safe native Python-probe transport: `Ran 1241 tests: OK (skipped=2)`, 1239 passed / 2 optional skips / 0 failed. The focused release/compliance set passed 178 tests with 1 optional skip. A fresh public-source stage passed at 395 files / 394 manifest records with privacy audit and independent SHA-256 parity.
+The current post-adoption working tree passed the full Python `3.13.14` regression after the Qt/PyMeshLab identity manifests, PyTetWild static-closure contract, corrected controlled-toolchain identity, Windows PowerShell 5.1-safe native Python-probe transport, and final release-URL placeholder hardening: `Ran 1244 tests: OK (skipped=2)`, 1242 passed / 2 optional skips / 0 failed. The earlier focused release/compliance set passed 178 tests with 1 optional skip, and the post-adoption focused follow-up passed 108/108. The pre-adoption public-source stage passed at 395 files / 394 manifest records with privacy audit and independent SHA-256 parity; adoption changed source bytes, so the final source stage must be regenerated.
 
-Component-specific licence texts and static-linked component coverage are implemented and covered by fail-closed inventory tests. The old r32 EXE/ZIP does not match this source and will not be published. A new Windows ZIP requires: controlled PyTetWild rebuild evidence; the application lock updated to that wheel; a `release-approved` complete corresponding-source bundle; a current clean binary build with packaged self-test and Japanese/English UI smoke; fresh-extract manifest/privacy/archive/checksum parity; and immutable HTTPS Release URLs with all assets published simultaneously. `binary publication eligibility` is currently **false**.
+Controlled outbound-isolated run `20260823-174626-089357844d4b` succeeded. The application lock binds repaired wheel SHA-256 `e3b11ac058266d277b0f83448c6023d5da98e731d0d016e461dbce4ebdfd613d`; the `release-approved` PyTetWild static closure binds that wheel and extension PYD SHA-256 `26a091b53279407014899c046691958c9df07e22703576da6a45d68a9be22430`. Attestation SHA-256 `3989fd1debe8b6c984938c4a64ee5fb3bcce1b612cf83524ea309b1fae3cde9f` is recorded as controlled-build evidence and must be bound into the final commit-specific rebuild lock. This approves only the controlled PyTetWild closure, not a Windows application archive. The old r32 EXE/ZIP does not match this source and will not be published. A new Windows ZIP still requires a `release-approved` complete corresponding-source bundle; a current clean binary build with regenerated inventory, packaged self-test, and Japanese/English UI smoke; fresh-extract manifest/privacy/archive/checksum parity; and immutable HTTPS Release URLs with all assets published simultaneously. `binary publication eligibility` is currently **false**.
 
 The following r31 and Creator Studio r30 results are **previous evidence** for their own revisions and do not validate r32.
 
@@ -192,7 +195,8 @@ See [CURRENT_STATE.json](CURRENT_STATE.json) and [PROVENANCE.md](PROVENANCE.md) 
 On Windows with Python 3.13, run:
 
 ```powershell
-.\BOOTSTRAP_WINDOWS.ps1
+$pyTetWildWheel = "C:\path\to\pytetwild-0.3.0-cp312-abi3-win_amd64.whl"
+.\BOOTSTRAP_WINDOWS.ps1 -PyTetWildWheel $pyTetWildWheel
 ```
 
 `-Build` creates a PyInstaller one-folder build after the full regression. The planned r32 stage names remain non-distributable until validation completes:

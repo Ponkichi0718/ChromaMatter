@@ -3,13 +3,13 @@
   "manifest_id": "chromamatter-pytetwild-static-closure",
   "scope": "Static and header-only native-code closure expected inside the controlled Windows PyTetWild PyfTetWildWrapper.pyd build. Dynamically bundled MPIR and platform runtimes are intentionally outside this manifest and must remain covered by the binary/runtime manifest.",
   "release_gate": {
-    "status": "blocked",
-    "release_eligible": false,
+    "status": "release-approved",
+    "release_eligible": true,
     "blockers": [
       {
         "id": "controlled-rebuild-binary-identities",
-        "resolved": false,
-        "reason": "The controlled rebuild has not yet produced an approved wheel and PyfTetWildWrapper.pyd identity. Historical PyPI bytes are audit evidence only and are excluded from release approval."
+        "resolved": true,
+        "reason": "Controlled outbound-isolated run 20260823-174626-089357844d4b produced an attested repaired wheel and PyfTetWildWrapper.pyd identity. Historical PyPI bytes remain audit evidence only and are excluded from release approval."
       }
     ]
   },
@@ -43,13 +43,13 @@
       "reason": "This extension came from the previous upstream PyPI wheel, not the controlled rebuild."
     },
     "controlled_rebuild": {
-      "status": "blocked-awaiting-build",
+      "status": "approved",
       "package": "pytetwild",
       "version": "0.3.0",
       "wheel_tag": "cp312-abi3-win_amd64",
-      "wheel_sha256": null,
+      "wheel_sha256": "e3b11ac058266d277b0f83448c6023d5da98e731d0d016e461dbce4ebdfd613d",
       "pyd_relative_path": "pytetwild/PyfTetWildWrapper.pyd",
-      "pyd_sha256": null,
+      "pyd_sha256": "26a091b53279407014899c046691958c9df07e22703576da6a45d68a9be22430",
       "approval_requires": [
         "wheel_sha256",
         "pyd_sha256",

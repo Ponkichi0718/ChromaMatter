@@ -14,7 +14,9 @@ substitute a newer checkout as the source for an older binary.
 ## Build and test
 
 ```powershell
-powershell.exe -ExecutionPolicy Bypass -File .\BOOTSTRAP_WINDOWS.ps1
+$pyTetWildWheel = 'C:\release-inputs\wheel\pytetwild-0.3.0-cp312-abi3-win_amd64.whl'
+powershell.exe -ExecutionPolicy Bypass -File .\BOOTSTRAP_WINDOWS.ps1 `
+  -PyTetWildWheel $pyTetWildWheel
 powershell.exe -ExecutionPolicy Bypass -File .\BUILD_AND_TEST.ps1 `
   -RuntimeRoot .\.venv `
   -Build `
@@ -59,17 +61,23 @@ physically disconnect the builder. The switch below records the operator's
 confirmation; it does not claim that the script configured the OS firewall.
 
 ```powershell
+$newControlledRoot = Join-Path 'C:\ChromaMatterToolchain' `
+  ('pytetwild-controlled-build-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
 powershell.exe -NoProfile -ExecutionPolicy Bypass `
   -File .\tooling\BUILD_PYTETWILD_WINDOWS.ps1 `
   -OsNetworkIsolationConfirmed `
-  -OutputRoot C:\ChromaMatterToolchain\pytetwild-controlled-build-001
+  -OutputRoot $newControlledRoot
 ```
 
-After a future successful rebuild, preserve the repaired release wheel and the
-distinct pre-repair raw wheel without allowing their identical filenames to
-overwrite each other. Preserve both wheels together with the attestation,
-recipe, requirements lock, source patch, and exactly these eight direct audit
-log files:
+The adopted controlled run `20260823-174626-089357844d4b` succeeded at project
+commit `5feb198eef3432cdec19a0367d53e1b52bd4a363`. Its repaired wheel SHA-256 is
+`e3b11ac058266d277b0f83448c6023d5da98e731d0d016e461dbce4ebdfd613d` and its
+attestation SHA-256 is
+`3989fd1debe8b6c984938c4a64ee5fb3bcce1b612cf83524ea309b1fae3cde9f`.
+The repaired release wheel and distinct pre-repair raw wheel are preserved
+separately so their identical filenames cannot overwrite each other. Preserve
+both wheels together with the attestation, recipe, requirements lock, source
+patch, and exactly these eight direct audit log files:
 
 - `visual-studio-layout-verification.log`
 - `build-wheel.log`
@@ -83,10 +91,10 @@ log files:
 The audit-log directory must contain only those eight direct files: no extra
 file, nested entry, or symlink is permitted.
 
-To use a controlled-rebuild PyTetWild wheel, first update the PyTetWild
-SHA-256 in `requirements-build.lock` to that wheel and use a new virtual
-environment with an explicit input. Bootstrap stops if the wheel, version,
-ABI tag, or hash differs.
+The application lock already binds the adopted repaired wheel. Use a new
+virtual environment and provide that wheel explicitly. Bootstrap stops if its
+version, ABI tag, or SHA-256 differs. A future replacement wheel requires a
+reviewed lock and static-closure update before it may be used.
 
 ```powershell
 powershell.exe -ExecutionPolicy Bypass -File .\BOOTSTRAP_WINDOWS.ps1 `

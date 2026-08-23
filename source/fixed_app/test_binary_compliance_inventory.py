@@ -347,90 +347,64 @@ class BinaryComplianceInventoryTests(unittest.TestCase):
                 ["_internal/mystery.dll"],
             )
 
-    def test_historical_pytetwild_wrapper_fails_static_closure_gate(self) -> None:
+    def test_historical_pytetwild_wrapper_fails_approved_closure_gate(self) -> None:
+        from tooling import generate_binary_compliance_inventory as inventory
+
+        contract = inventory.PYTETWILD_STATIC_CLOSURE_CONTRACT
+        item = inventory.ScannedFile(
+            path=contract.packaged_pyd_path,
+            size=5_897_728,
+            sha256=inventory.HISTORICAL_PYTETWILD_PYD_SHA256,
+            file_type="python-extension",
+        )
+
+        violations = inventory._pytetwild_static_closure_violations([item])
+        components, basis, system_provenance = inventory.explicit_native_mapping(
+            item
+        )
+
+        self.assertEqual(
+            violations,
+            ["historical-wrapper-forbidden", "wrapper-sha256-mismatch"],
+        )
+        self.assertEqual(components, ["pytetwild"])
+        self.assertEqual(basis, "unapproved-pytetwild-static-closure")
+        self.assertEqual(system_provenance, "")
+
         with tempfile.TemporaryDirectory() as temporary:
             base = Path(temporary)
             package = base / "package"
             package.mkdir()
             self._fixture(package)
             self._install_component_license_assets(package)
-
-            wrapper = package / "_internal" / "pytetwild" / "PyfTetWildWrapper.pyd"
-            wrapper.parent.mkdir(parents=True)
-            wrapper.write_bytes(
-                self._distribution_file(
-                    "pytetwild", "pytetwild/PyfTetWildWrapper.pyd"
-                ).read_bytes()
+            for record in PYTETWILD_STATIC_CLOSURE["license_assets"].values():
+                source = REPO_ROOT / record["path"]
+                relative = Path(record["path"]).relative_to("source/fixed_app")
+                target = package / relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(source.read_bytes())
+            packaged_wrapper = package / Path(contract.packaged_pyd_path)
+            packaged_wrapper.parent.mkdir(parents=True, exist_ok=True)
+            packaged_wrapper.write_bytes(
+                b"MZ\x00synthetic-unapproved-pytetwild-wrapper"
             )
-            closure_asset = PYTETWILD_STATIC_CLOSURE["license_assets"][
-                "pytetwild-license"
-            ]
-            packaged_asset = (
-                package
-                / "_internal"
-                / "licenses"
-                / "pytetwild-closure"
-                / "pytetwild"
-                / "LICENSE"
-            )
-            packaged_asset.parent.mkdir(parents=True)
-            packaged_asset.write_bytes(
-                (REPO_ROOT / closure_asset["path"]).read_bytes()
-            )
-
             destination = base / "report"
             result = self._run(package, destination)
 
             self.assertEqual(result.returncode, 2, result.stderr)
-            self.assertIn("PyTetWild static-closure violations", result.stderr)
             component_map = json.loads(
                 (destination / "BINARY_COMPONENT_MAP.json").read_text(
                     encoding="utf-8"
                 )
             )
-            expected_violations = {
-                "application-lock-historical-wheel-forbidden",
-                "application-lock-wheel-identity-mismatch",
-                "historical-wrapper-forbidden",
-                "manifest-release-blocked",
-            }
-            self.assertEqual(
-                set(
-                    component_map["validation"][
-                        "pytetwild_static_closure_violations"
-                    ]
-                ),
-                expected_violations,
-            )
-            self.assertEqual(
-                component_map["validation"]["missing_component_license_assets"],
-                [],
-            )
-            wrapper_row = next(
-                row
-                for row in component_map["files"]
-                if row["path"]
-                == "_internal/pytetwild/PyfTetWildWrapper.pyd"
-            )
-            self.assertEqual(wrapper_row["components"], ["pytetwild"])
-            self.assertEqual(
-                wrapper_row["mapping_basis"],
-                "unapproved-pytetwild-static-closure",
-            )
-            sbom = json.loads(
-                (destination / "SBOM.cdx.json").read_text(encoding="utf-8")
-            )
-            sbom_properties = {
-                item["name"]: item["value"]
-                for item in sbom["metadata"]["properties"]
-            }
-            self.assertEqual(
-                sbom_properties[
-                    "chromamatter:validation:"
-                    "pytetwild-static-closure-violation-count"
+            self.assertFalse(component_map["validation"]["passed"])
+            self.assertIn(
+                "wrapper-sha256-mismatch",
+                component_map["validation"][
+                    "pytetwild_static_closure_violations"
                 ],
-                str(len(expected_violations)),
             )
+            self.assertTrue((destination / "SBOM.cdx.json").is_file())
 
     def test_approved_exact_wrapper_maps_the_complete_static_closure(self) -> None:
         from tooling import generate_binary_compliance_inventory as inventory
@@ -464,6 +438,26 @@ class BinaryComplianceInventoryTests(unittest.TestCase):
         self.assertEqual(
             rejected_basis, "unapproved-pytetwild-static-closure"
         )
+        for filename in (
+            "msvcp140-a4c2229bdc2a2a630acdc095b4d86008.dll",
+            "concrt140-a4c2229bdc2a2a630acdc095b4d86008.dll",
+        ):
+            with self.subTest(controlled_runtime=filename):
+                runtime_item = inventory.ScannedFile(
+                    path=f"_internal/pytetwild.libs/{filename}",
+                    size=1,
+                    sha256="5" * 64,
+                    file_type="native-library",
+                )
+                runtime_components, runtime_basis, runtime_provenance = (
+                    inventory.explicit_native_mapping(runtime_item)
+                )
+                self.assertEqual(
+                    runtime_components,
+                    ["pytetwild", "msvc-14.44.35211"],
+                )
+                self.assertEqual(runtime_basis, "wheel-repair-runtime")
+                self.assertEqual(runtime_provenance, "")
 
     def test_frozen_entry_point_and_high_impact_native_licenses_are_exact(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

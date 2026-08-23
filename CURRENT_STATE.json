@@ -73,38 +73,54 @@
     "implementation_focused_source": "passed within the exact P2-frozen r32 full regression on Python 3.13.14",
     "release_focused_identity_regression_tooling_gui_layout": "passed within the exact P2-frozen r32 full regression on Python 3.13.14",
     "current_public_ui_focused_regression": "passed within the exact P2-frozen r32 full regression; packaged isolated-profile Japanese and English UI smoke also passed",
-    "current_full_regression": "passed on Python 3.13.14 after the corrected controlled-toolchain identity, Windows PowerShell 5.1 UTF-8 vswhere contract, and Base64 transport for every multiline native Python probe: Ran 1241 tests: OK (skipped=2); 1239 passed, 2 optional skips, and 0 failed",
-    "changed_worktree_full_regression": "passed after the Qt/PyMeshLab identity manifests, PyTetWild static-closure contract, resvg frozen-runtime exclusion, added fail-closed package tests, corrected VCTools/compiler/linker/SDK contract, scoped strict UTF-8 vswhere capture, and Windows PowerShell 5.1-safe Base64 Python-probe transport: Ran 1241 tests: OK (skipped=2); 1239 passed, 2 optional skips, and 0 failed",
+    "current_full_regression": "passed on the post-adoption working tree with Python 3.13.14 after the controlled PyTetWild wheel/lock adoption, release-approved static closure, exact identity documentation, and final release-URL placeholder hardening: Ran 1244 tests in 185.852s: OK (skipped=2); 1242 passed, 2 optional skips, and 0 failed",
+    "changed_worktree_full_regression": "passed after the Qt/PyMeshLab identity manifests, PyTetWild static-closure contract, controlled wheel/application-lock adoption, resvg frozen-runtime exclusion, fail-closed package tests, corrected VCTools/compiler/linker/SDK contract, Windows PowerShell 5.1-safe Base64 Python-probe transport, and release-URL placeholder hardening: Ran 1244 tests in 185.852s: OK (skipped=2); 1242 passed, 2 optional skips, and 0 failed",
     "changed_worktree_multipart_e2e": "passed on a non-public six-part full-resolution validation asset with face-count reduction disabled: 2016940 output faces, 6 watertight consistently wound positive-volume single bodies, categorical identification colours suppressed, combined exact 3MF validation passed, and all 6 individual 3MF files plus their manifest passed strict archive-reload topology and projected-provenance validation; generated repair caps were not accepted as source faces or source self-intersections, and no private asset identity or derived output is retained",
     "changed_worktree_full_resolution_policy": "the inherited-source warning is not a repair or a trust in saved metadata: exact-coordinate triangle ancestry, externally anchored source prefixes, complete source-only intersection IDs, count <= max(100, ceil(source_faces / 100)), area fraction <= 0.002, and every mandatory solid check are required; individual output additionally requires exact part and boundary-vertex rebasing, complete direct parent proof, and distinct local-cap or shared-interface provenance; QEM, joints, moved coordinates, incomplete proof, stale layouts, and generated-face intersections remain fail-closed",
     "changed_worktree_build_evidence": "the current owner-only internal build passed 1168 source tests with 1 optional skip, packaged and fresh-extracted self-tests, isolated Japanese and English UI smokes, binary inventory, deterministic component-map/SBOM regeneration, ZIP CRC/encryption/security/path/privacy checks, and 1355-file fresh-archive path/size/SHA-256 parity; archive ChromaMatter_0.8beta-r32-FullResMultipart-INTERNAL-TEST-20260822c.zip is 118851316 bytes with SHA-256 748E3C7962DB21AFB9DDFBABF9082E2E49DECBA4BAF2078EE99A737910E40C19, is unsigned and non-public, and is not public release evidence",
-    "controlled_toolchain_install_and_contract": "verified offline Visual Studio Build Tools 17.14.39 installation completed on 2026-08-23; the complete launchable instance selects VCTools directory 14.44.35207, cl.exe file version 19.44.35228.0 and product version 14.44.35228.0, link.exe file/product version 14.44.35228.0, and Windows SDK 10.0.26100.0. The corrected recipe, corresponding-source validator, static-closure recipe binding, documentation, fail-closed tests, and scoped strict UTF-8 decoding for localized vswhere output match those identities. Controlled run 20260823-142413-edd113a24226 verified outbound deny-all and cleanup, then failed closed before source export because Windows PowerShell 5.1 stripped embedded quotes from a direct multiline native python -c argument. Every multiline Python probe now uses strict UTF-8 Base64 source transport through a fixed ASCII bootstrap with positional argv preserved. Latest controlled run 20260823-160956-6e2612066766 received UAC approval, verified outbound deny-all, completed cleanup with zero residual firewall rules or scheduled tasks, compiled all 227 targets, and produced distinct raw and repaired wheels plus 12 source archives. It failed closed during the repaired-wheel RECORD audit because of the benign explicit directory members pytetwild/, pytetwild.libs/, and pytetwild-0.3.0.dist-info/licenses/. Only 4 of 8 required direct audit logs exist and no attestation was produced. All outputs from that run are partial and must not be adopted as release evidence; a new controlled outbound-isolated PyTetWild rebuild remains pending in a unique unused output directory.",
+    "controlled_toolchain_install_and_contract": "verified offline Visual Studio Build Tools 17.14.39 installation completed on 2026-08-23; the complete launchable instance selects VCTools directory 14.44.35207, cl.exe file version 19.44.35228.0 and product version 14.44.35228.0, link.exe file/product version 14.44.35228.0, and Windows SDK 10.0.26100.0. Controlled outbound-isolated run 20260823-174626-089357844d4b at repository commit 5feb198eef3432cdec19a0367d53e1b52bd4a363 completed successfully with UAC approval, verified outbound deny-all, all 227 targets compiled, all 8 direct audit logs, 12 source archives, a verified-controlled-rebuild attestation, and fail-closed cleanup with zero residual firewall rules or scheduled tasks. Its repaired wheel, distinct raw wheel, extension PYD, attestation, recipe, application lock, and approved static/header closure identities are recorded below. Earlier failed runs remain historical diagnostics only and are not adopted.",
     "latest_controlled_pytetwild_run": {
-      "run_id": "20260823-160956-6e2612066766",
-      "status": "failed-closed-partial-evidence-not-adoptable",
+      "run_id": "20260823-174626-089357844d4b",
+      "status": "verified-controlled-rebuild-adopted-by-current-source-contract",
+      "repository_commit": "5feb198eef3432cdec19a0367d53e1b52bd4a363",
+      "build_recipe_sha256": "d00cc6cdbc61abeaa040dfc81a3dfe7086ac0027685d798ac70f46e14e4360c8",
       "uac_approved": true,
       "outbound_deny_all_verified": true,
       "cleanup": "passed with zero residual firewall rules or scheduled tasks",
       "compiled_targets": 227,
-      "raw_wheel_generated": true,
-      "repaired_wheel_generated": true,
+      "raw_wheel": {
+        "filename": "pytetwild-0.3.0-cp312-abi3-win_amd64.whl",
+        "bytes": 1088024,
+        "sha256": "9fbedacd1286a7e792a1503490669916d8a449cf9948ccc0f2899fdcda7c8089"
+      },
+      "repaired_wheel": {
+        "filename": "pytetwild-0.3.0-cp312-abi3-win_amd64.whl",
+        "bytes": 1637633,
+        "sha256": "e3b11ac058266d277b0f83448c6023d5da98e731d0d016e461dbce4ebdfd613d"
+      },
+      "extension_pyd": {
+        "relative_path": "pytetwild/PyfTetWildWrapper.pyd",
+        "bytes": 3927552,
+        "sha256": "26a091b53279407014899c046691958c9df07e22703576da6a45d68a9be22430"
+      },
+      "attestation": {
+        "filename": "pytetwild-build-attestation.json",
+        "bytes": 12445,
+        "sha256": "3989fd1debe8b6c984938c4a64ee5fb3bcce1b612cf83524ea309b1fae3cde9f",
+        "status": "verified-controlled-rebuild"
+      },
       "source_archives_generated": 12,
-      "direct_audit_logs_present": 4,
+      "direct_audit_logs_present": 8,
       "direct_audit_logs_required": 8,
-      "attestation_generated": false,
-      "failed_at": "repaired-wheel RECORD audit",
-      "repaired_wheel_explicit_directory_members": [
-        "pytetwild/",
-        "pytetwild.libs/",
-        "pytetwild-0.3.0.dist-info/licenses/"
-      ],
-      "directory_member_assessment": "benign explicit directory metadata; the stopped run remains invalid because its required evidence set is incomplete",
-      "artifact_policy": "do not adopt the partial wheels, source archives, or logs as release evidence",
-      "next_run_policy": "use a new unique unused output directory"
+      "attestation_generated": true,
+      "application_requirements_lock_sha256": "d96fcb2939ec03669b5aba54f50ea1246fe661fb148e09f32aaa4a4b6585f373",
+      "application_locked_wheel_sha256": "e3b11ac058266d277b0f83448c6023d5da98e731d0d016e461dbce4ebdfd613d",
+      "static_closure_status": "release-approved",
+      "artifact_policy": "adopt only this repaired wheel together with its distinct raw wheel, exact 8 logs, 12 source archives, attestation, canonical recipe and locks; the closure approval does not approve the Windows application archive"
     },
     "current_clean_build_and_packaged_smoke": "previous pre-compliance/spec evidence only; the next clean release build, packaged self-test, and isolated-profile Japanese and English UI smoke are pending",
-    "binary_component_licence_and_static_link_coverage": "current source contracts cover 19 non-Qt PyMeshLab DLL identities plus 7 Qt DLL identities, 50 Qt static components with 51 exact Qt licence assets, and a 20-component/29-asset PyTetWild static/header closure. PyTetWild remains release-blocked because the controlled wheel/PYD and matching application-lock identities do not exist; no current binary has regenerated and passed these inventories",
-    "current_stage_archive_privacy_and_checksum_audit": "current public-source stage passed: 395 files/394 manifest records with public-tree privacy audit and independent full SHA-256 parity; the current release binary build, software archive, fresh extraction, packaged smoke, detached checksum, and simultaneous immutable-URL Release remain pending",
+    "binary_component_licence_and_static_link_coverage": "current source contracts cover 19 non-Qt PyMeshLab DLL identities plus 7 Qt DLL identities, 50 Qt static components with 51 exact Qt licence assets, and a release-approved 20-component/29-asset PyTetWild static/header closure bound to the controlled wheel, PYD, and matching application-lock identity. No current Windows application binary has yet regenerated and passed the complete inventory",
+    "current_stage_archive_privacy_and_checksum_audit": "the pre-adoption public-source checkpoint passed at 395 files/394 manifest records with public-tree privacy audit and independent full SHA-256 parity; adoption changed source bytes, so final corresponding-source/software stages, fresh extraction, packaged smoke, privacy/archive parity, detached checksum, and simultaneous immutable-URL Release remain pending",
     "source_runtime": {
       "python": "3.13.14",
       "pyinstaller": "6.20.0"
@@ -128,25 +144,24 @@
   "release": {
     "state": "source-branch-validated-binary-publication-blocked",
     "target_revision": "r32-ai-model-print-studio",
-    "revision": "AI Model Print Studio r32 adds conservative multipart GLB closure, narrow identification-colour suppression, strict combined and individual 3MF provenance validation, explicit application of manually edited F1-F4 colours, and hardened public package/compliance gates. Component-specific licence and static-linked component coverage is implemented. A new Windows binary remains blocked until controlled PyTetWild rebuild evidence and the matching application lock exist, a release-approved complete corresponding-source bundle is generated, a current clean binary build plus packaged self-test and Japanese/English smoke passes, fresh-extract manifest/privacy/archive/checksum parity passes, and every asset is simultaneously available from its immutable HTTPS Release URL.",
+    "revision": "AI Model Print Studio r32 adds conservative multipart GLB closure, narrow identification-colour suppression, strict combined and individual 3MF provenance validation, explicit application of manually edited F1-F4 colours, and hardened public package/compliance gates. Component-specific licence and static-linked component coverage is implemented, and the controlled PyTetWild wheel/PYD plus matching application lock and static closure are approved. A new Windows binary remains blocked until a release-approved complete corresponding-source bundle is generated, a current clean binary build plus packaged self-test and Japanese/English smoke passes, fresh-extract manifest/privacy/archive/checksum parity passes, and every asset is simultaneously available from its immutable HTTPS Release URL.",
     "public_source_default": "ChromaMatter-0.8beta-r32-source-public-20260823",
     "software_package_default": "ChromaMatter-0.8beta-r32-win64",
     "latest_source_branch_validation": {
       "status": "source-branch-validated-for-draft-pr-update",
-      "source_full_regression": "passed on Python 3.13.14 after the corrected controlled-toolchain identity, Windows PowerShell 5.1 UTF-8 vswhere contract, and Base64 transport for every multiline native Python probe: Ran 1241 tests: OK (skipped=2); 1239 passed, 2 optional skips, and 0 failed",
-      "focused_release_tooling": "baseline passed: Qt/PyMeshLab/PyTetWild, binary compliance, corresponding-source, release tooling, notices, release identity, CLI, and Decal packaging policy; 178 tests, 177 passed, 1 optional skip, and 0 failed. Corrected toolchain follow-up passed 137/137. The UTF-8 recipe/static-closure/release follow-up passed 143/143. The later Base64 native Python-probe transport, release-tooling, and static-closure follow-up passed 78/78.",
+      "source_full_regression": "the post-adoption working tree passed on Python 3.13.14 after the controlled wheel/application-lock adoption and final release-URL placeholder hardening: Ran 1244 tests in 185.852s: OK (skipped=2); 1242 passed, 2 optional skips, and 0 failed; final source restaging is still required",
+      "focused_release_tooling": "baseline passed: Qt/PyMeshLab/PyTetWild, binary compliance, corresponding-source, release tooling, notices, release identity, CLI, and Decal packaging policy; 178 tests, 177 passed, 1 optional skip, and 0 failed. Corrected toolchain follow-up passed 137/137. The UTF-8 recipe/static-closure/release follow-up passed 143/143. The later Base64 native Python-probe transport, release-tooling, and static-closure follow-up passed 78/78. Post-adoption release-tooling, identity, closure, notices, and inventory follow-up passed 108/108.",
       "public_source_stage": {
         "expected_root": "ChromaMatter-0.8beta-r32-source-public-20260823",
         "total_files_including_manifest": 395,
         "manifest_records": 394,
-        "privacy_audit": "passed on current restage",
-        "independent_manifest_sha256_parity": "passed with zero missing, extra, or mismatched files"
+        "privacy_audit": "passed on the pre-adoption restage only",
+        "independent_manifest_sha256_parity": "passed with zero missing, extra, or mismatched files on the pre-adoption restage",
+        "scope": "historical checkpoint only; current post-adoption source bytes require a new exact restage"
       },
-      "source_publication_eligible": true,
+      "source_publication_eligible": false,
       "binary_publication_eligible": false,
       "binary_publication_blockers": [
-        "controlled-pytetwild-rebuild-evidence-incomplete",
-        "application-lock-not-updated-to-controlled-pytetwild-wheel",
         "release-approved-complete-corresponding-source-not-generated",
         "current-clean-binary-build-packaged-self-test-and-ja-en-smoke-pending",
         "fresh-extract-manifest-privacy-archive-checksum-parity-pending",
@@ -155,15 +170,15 @@
       "branch": "codex/r32-full-spectrum-workflow",
       "draft_pull_request": "https://github.com/Ponkichi0718/ChromaMatter/pull/1"
     },
-    "current_r32_candidate_validation": {
-      "status": "preflight-artifacts-audited-final-publication-pending",
-      "source_full_regression": "passed on Python 3.13.14: Ran 1048 tests in 90.160s: OK (skipped=1); 1047 passed, 1 optional skip, and 0 failed",
-      "current_focused_release_identity_regression": "passed as part of the exact P2-frozen r32 full regression",
-      "current_focused_ui_regression": "passed as part of the exact P2-frozen r32 full regression",
-      "clean_build": "passed at C:\\OBJAdjR32CM3 using Python 3.13.14 and PyInstaller 6.20.0",
-      "packaged_self_test": "passed: exit 0 inside BUILD_AND_TEST",
-      "packaged_ui_smoke_ja": "passed at 1920x1080 with an isolated temporary profile",
-      "packaged_ui_smoke_en": "passed at 1920x1080 with an isolated temporary profile",
+    "previous_r32_pre_compliance_candidate_validation": {
+      "status": "previous evidence only: pre-compliance artifacts audited",
+      "source_full_regression": "previous evidence only: passed on Python 3.13.14 before current compliance/adoption changes: Ran 1048 tests in 90.160s: OK (skipped=1); 1047 passed, 1 optional skip, and 0 failed",
+      "current_focused_release_identity_regression": "previous evidence only: passed as part of the P2-frozen r32 regression",
+      "current_focused_ui_regression": "previous evidence only: passed as part of the P2-frozen r32 regression",
+      "clean_build": "previous evidence only: passed at C:\\OBJAdjR32CM3 using Python 3.13.14 and PyInstaller 6.20.0 before current compliance/adoption changes",
+      "packaged_self_test": "previous evidence only: passed with exit 0 inside the earlier BUILD_AND_TEST run",
+      "packaged_ui_smoke_ja": "previous evidence only: passed at 1920x1080 with an isolated temporary profile",
+      "packaged_ui_smoke_en": "previous evidence only: passed at 1920x1080 with an isolated temporary profile",
       "preflight_executable": {
         "path": "C:\\OBJAdjR32CM3\\dist\\ChromaMatter\\ChromaMatter.exe",
         "bytes": 13997622,
@@ -173,33 +188,34 @@
         "internal_name": "ChromaMatter",
         "original_filename": "ChromaMatter.exe",
         "product_name": "ChromaMatter — AI Model Print Studio",
-        "version_and_product_identity": "passed"
+        "version_and_product_identity": "previous evidence only: passed",
+        "scope": "pre-compliance artifact; not current r32 release evidence"
       },
       "public_source_stage": {
-        "status": "preflight-passed-final-restage-pending",
+        "status": "previous evidence only: preflight passed before adoption",
         "expected_root": "ChromaMatter_0.8beta-r32-source-public-20260821",
         "total_files_including_manifest": 230,
         "manifest_records": 229,
         "fresh_archive_exact": true,
-        "privacy_audit": "passed in independent preflight audit",
-        "folder_archive_crc_parity": "passed in independent preflight audit",
-        "staged_identity_icon_tooling": "passed: 33 tests on fresh-extracted source"
+        "privacy_audit": "previous evidence only: passed in independent preflight audit",
+        "folder_archive_crc_parity": "previous evidence only: passed in independent preflight audit",
+        "staged_identity_icon_tooling": "previous evidence only: passed 33 tests on fresh-extracted source"
       },
       "software_package_stage": {
-        "status": "preflight-passed-local-validation-only-final-restage-pending",
+        "status": "previous evidence only: preflight passed before compliance/adoption changes",
         "expected_root": "ChromaMatter_0.8beta-r32-ai-model-print-studio",
         "total_files_including_manifest": 1404,
         "manifest_records": 1403,
-        "privacy_audit": "passed in independent preflight audit"
+        "privacy_audit": "previous evidence only: passed in independent preflight audit"
       },
-      "fresh_extracted_self_test": "passed in independent preflight audit",
-      "fresh_extracted_ui_smoke_ja": "passed in independent preflight audit",
-      "fresh_extracted_ui_smoke_en": "passed in independent preflight audit",
-      "source_and_software_archive_audit": "passed for the preflight artifacts; final Downloads restage remains pending",
-      "external_checksum_record": "preflight two-row SHA256SUMS-r32.txt passed; final detached checksum must be regenerated after final Downloads restage",
+      "fresh_extracted_self_test": "previous evidence only: passed in independent preflight audit",
+      "fresh_extracted_ui_smoke_ja": "previous evidence only: passed in independent preflight audit",
+      "fresh_extracted_ui_smoke_en": "previous evidence only: passed in independent preflight audit",
+      "source_and_software_archive_audit": "previous evidence only: passed for the pre-compliance preflight artifacts; current exact restage remains pending",
+      "external_checksum_record": "previous evidence only: preflight two-row SHA256SUMS-r32.txt passed; current detached checksum must be regenerated after final restage",
       "legal_review": "inherits only the r31 creator declaration for the unchanged icon asset; this is not independent legal clearance",
       "icon_publication_rights": "unchanged asset; previous r31 creator declaration retained",
-      "publication_decision": "approved by the project owner; exact final artifact and GitHub update gates remain pending",
+      "publication_decision": "previous preflight approval only; current exact final artifact and GitHub update gates remain pending",
       "physical_xp_pen": "pending",
       "physical_print": "pending",
       "final_zip_sha256": null,
@@ -212,9 +228,9 @@
       "public_repository_visibility": "public",
       "public_repository_default_branch": "main",
       "source_publication_eligible": false,
-      "source_publication_status": "r31 is published; the r32 preflight passed and the update is pending final Downloads restage, detached checksum, Git-tree parity, and GitHub pull request",
+      "source_publication_status": "r31 is published; this r32 record is previous pre-compliance evidence only, and the current update is pending exact restage, detached checksum, Git-tree parity, and GitHub pull request",
       "binary_publication_eligible": false,
-      "binary_publication_blocker": "component-specific licence and static-linked component coverage is implemented; publication remains blocked by missing controlled PyTetWild rebuild evidence, the matching application lock update, a release-approved complete corresponding-source bundle, a current clean binary build with packaged self-test and Japanese/English smoke, fresh-extract manifest/privacy/archive/checksum parity, and immutable HTTPS Release URLs with simultaneous assets",
+      "binary_publication_blocker": "the controlled PyTetWild wheel/PYD, matching application lock, and static/header closure are approved; publication remains blocked by a release-approved complete corresponding-source bundle, a current clean binary build with packaged self-test and Japanese/English smoke, fresh-extract manifest/privacy/archive/checksum parity, and immutable HTTPS Release URLs with simultaneous assets",
       "innovation_fund_submission_ready": false,
       "innovation_fund_submission_blockers": "rights-cleared public sample, Orca/U1 evidence, cover, video, community post, and submitted form remain pending",
       "failure_contract": "Do not distribute or claim r32 publication when any exact-source regression, build, smoke, stage, archive, privacy, identity, layout, or checksum gate is pending or failed."
@@ -324,7 +340,7 @@
       "downloads_placement_claimed": false,
       "legal_review": "owner-accepted for the declared ChromaMatter icon asset scope on 2026-08-20; no independent legal clearance claimed",
       "source_publication_policy": "the repository already contains the published r31 source; publish the r32 source-only update only after exact final restage, manifest, privacy, archive, and Git-tree parity checks",
-      "binary_publication_policy": "withhold the software ZIP and executable until controlled PyTetWild evidence and the matching application lock, a release-approved complete corresponding-source bundle, current clean-build/package smoke, fresh-extract manifest/privacy/archive/checksum parity, and immutable HTTPS simultaneous Release assets all pass",
+      "binary_publication_policy": "the controlled PyTetWild evidence, matching application lock, and static closure are approved; withhold the software ZIP and executable until a release-approved complete corresponding-source bundle, current clean-build/package smoke, fresh-extract manifest/privacy/archive/checksum parity, and immutable HTTPS simultaneous Release assets all pass",
       "final_failure_contract": "Do not distribute or claim publication while any r32 final gate is pending or failed."
     }
   },

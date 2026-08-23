@@ -133,6 +133,7 @@ class PublicManifestAuditTests(unittest.TestCase):
         (root / "first.txt").write_bytes(first)
         (root / "nested").mkdir()
         (root / "nested" / "second.txt").write_bytes(second)
+        (root / "empty.txt").write_bytes(b"")
         return first, second
 
     def test_valid_manifest_passes(self) -> None:
@@ -329,6 +330,18 @@ class BootstrapWindowsPyTetWildTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertIn("PowerShell parser passed", result.stdout)
 
+    def test_bootstrap_requires_controlled_wheel_for_install(self) -> None:
+        result = _run_powershell(BOOTSTRAP_SCRIPT)
+        output = result.stdout + result.stderr
+        self.assertNotEqual(result.returncode, 0, output)
+        self.assertIn(
+            "This r32 application lock pins the controlled PyTetWild wheel",
+            output,
+        )
+        self.assertIn("-PyTetWildWheel", output)
+        self.assertIn("-PyTetWildWheelhouse", output)
+        self.assertIn("-SkipInstall", output)
+
     def test_locked_wheel_resolves_from_file_and_wheelhouse(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -441,6 +454,10 @@ class BootstrapWindowsPyTetWildTests(unittest.TestCase):
         bootstrap = BOOTSTRAP_SCRIPT.read_text(encoding="utf-8")
         self.assertIn('[string]$PyTetWildWheel = ""', bootstrap)
         self.assertIn('[string]$PyTetWildWheelhouse = ""', bootstrap)
+        self.assertIn(
+            "This r32 application lock pins the controlled PyTetWild wheel",
+            bootstrap,
+        )
         self.assertIn("pytetwild @ $wheelUri", bootstrap)
         for option in (
             "--require-hashes",
@@ -1589,18 +1606,73 @@ class SoftwarePackageStageTests(unittest.TestCase):
             with self.subTest(required_contract=required_contract):
                 self.assertIn(required_contract, stage_script)
 
-    def test_blocked_pytetwild_runtime_never_reaches_package_staging(self) -> None:
-        self.assertFalse(
-            PYTETWILD_STATIC_CLOSURE["release_gate"]["release_eligible"]
+    def test_approved_pytetwild_gate_binds_application_wheel_and_pyd(self) -> None:
+        gate = PYTETWILD_STATIC_CLOSURE["release_gate"]
+        controlled = PYTETWILD_STATIC_CLOSURE["build_binding"][
+            "controlled_rebuild"
+        ]
+        application_lock = (
+            REPO_ROOT / "source" / "fixed_app" / "requirements-build.lock"
+        ).read_text(encoding="utf-8")
+
+        self.assertEqual(gate["status"], "release-approved")
+        self.assertTrue(gate["release_eligible"])
+        self.assertTrue(all(item["resolved"] for item in gate["blockers"]))
+        self.assertEqual(controlled["status"], "approved")
+        self.assertRegex(controlled["wheel_sha256"], r"^[0-9a-f]{64}$")
+        self.assertRegex(controlled["pyd_sha256"], r"^[0-9a-f]{64}$")
+        self.assertIn(
+            f"--hash=sha256:{controlled['wheel_sha256']}",
+            application_lock,
         )
+
+    def test_mismatched_pytetwild_runtime_fails_full_stage_closed(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             built = self._fake_build(root)
+            for record in PYTETWILD_STATIC_CLOSURE["license_assets"].values():
+                source = REPO_ROOT / record["path"]
+                relative = Path(record["path"]).relative_to("source/fixed_app")
+                target = built / "_internal" / relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(source, target)
             wrapper = built / "_internal" / "pytetwild" / "PyfTetWildWrapper.pyd"
             wrapper.parent.mkdir(parents=True, exist_ok=True)
-            wrapper.write_bytes(b"MZ\x00synthetic-unapproved-pytetwild-wrapper")
-            destination = root / "blocked-pytetwild-package"
+            wrapper.write_bytes(b"MZ\x00synthetic-mismatched-pytetwild-wrapper")
+            destination = root / "mismatched-pytetwild-package"
             archive = Path(f"{destination}.zip")
+            compliance_arguments = self._compliance_arguments(
+                root,
+                built,
+                destination,
+            )
+            component_map_path = Path(
+                self._argument_value(
+                    compliance_arguments,
+                    "-BinaryComponentMapPath",
+                )
+            )
+            component_map = json.loads(component_map_path.read_text(encoding="utf-8"))
+            wrapper_row = next(
+                row
+                for row in component_map["files"]
+                if row["path"] == "_internal/pytetwild/PyfTetWildWrapper.pyd"
+            )
+            expected_components = sorted(PYTETWILD_STATIC_CLOSURE["components"])
+            wrapper_row["components"] = expected_components
+            wrapper_row["mapping_basis"] = "controlled-pytetwild-static-closure"
+            expected_pyd_sha256 = PYTETWILD_STATIC_CLOSURE["build_binding"][
+                "controlled_rebuild"
+            ]["pyd_sha256"]
+            self.assertEqual(
+                hashlib.sha256(wrapper.read_bytes()).hexdigest(),
+                wrapper_row["sha256"],
+            )
+            self.assertNotEqual(expected_pyd_sha256, wrapper_row["sha256"])
+            component_map_path.write_text(
+                json.dumps(component_map, ensure_ascii=False),
+                encoding="utf-8",
+            )
 
             result = _run_powershell(
                 SOFTWARE_STAGE_SCRIPT,
@@ -1608,18 +1680,14 @@ class SoftwarePackageStageTests(unittest.TestCase):
                 str(built),
                 "-Destination",
                 str(destination),
+                *compliance_arguments,
             )
 
             output = result.stdout + result.stderr
             self.assertNotEqual(result.returncode, 0, output)
             self.assertIn(
-                "PyTetWild static-closure release gate is blocked",
-                output,
-            )
-            self.assertIn("manifest-release-blocked", output)
-            self.assertIn("controlled-rebuild-not-approved", output)
-            self.assertIn(
-                "application-lock-historical-wheel-forbidden",
+                "Controlled PyTetWild wrapper mapping does not match "
+                "the approved closure.",
                 output,
             )
             self.assertFalse(destination.exists())
@@ -2748,6 +2816,63 @@ class SoftwarePackageStageTests(unittest.TestCase):
             self.assertIn("CorrespondingSourceUrl is required", output)
             self.assertFalse(destination.exists())
             self.assertFalse(Path(f"{destination}.zip").exists())
+
+    def test_source_offer_url_path_placeholders_fail_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            built = self._fake_build(root)
+
+            cases = {
+                "owner": (
+                    "https://github.com/OWNER/ChromaMatter/releases/"
+                    f"download/v1/{self.CORRESPONDING_SOURCE_ASSET}"
+                ),
+                "repo": (
+                    "https://github.com/Ponkichi0718/REPO/releases/"
+                    f"download/v1/{self.CORRESPONDING_SOURCE_ASSET}"
+                ),
+                "tag": (
+                    "https://github.com/Ponkichi0718/ChromaMatter/releases/"
+                    f"download/TAG/{self.CORRESPONDING_SOURCE_ASSET}"
+                ),
+                "encoded-owner": (
+                    "https://github.com/%4fWNER/ChromaMatter/releases/"
+                    f"download/v1/{self.CORRESPONDING_SOURCE_ASSET}"
+                ),
+                "double-encoded-owner": (
+                    "https://github.com/%254fWNER/ChromaMatter/releases/"
+                    f"download/v1/{self.CORRESPONDING_SOURCE_ASSET}"
+                ),
+                "backslash-owner": (
+                    "https://github.com/OWNER\\ChromaMatter/releases/"
+                    f"download/v1/{self.CORRESPONDING_SOURCE_ASSET}"
+                ),
+            }
+            for name, source_url in cases.items():
+                with self.subTest(name=name):
+                    destination = root / f"placeholder-{name}"
+                    arguments = list(
+                        self._compliance_arguments(root, built, destination)
+                    )
+                    url_index = arguments.index("-CorrespondingSourceUrl") + 1
+                    arguments[url_index] = source_url
+                    result = _run_powershell(
+                        SOFTWARE_STAGE_SCRIPT,
+                        "-BuiltAppRoot",
+                        str(built),
+                        "-Destination",
+                        str(destination),
+                        *arguments,
+                    )
+                    output = result.stdout + result.stderr
+                    self.assertNotEqual(result.returncode, 0, output)
+                    self.assertIn(
+                        "CorrespondingSourceUrl is required and must not "
+                        "contain a placeholder.",
+                        output,
+                    )
+                    self.assertFalse(destination.exists())
+                    self.assertFalse(Path(f"{destination}.zip").exists())
 
     def test_spec_drops_upstream_pymeshlab_test_meshes(self) -> None:
         spec = SPEC_FILE.read_text(encoding="utf-8")

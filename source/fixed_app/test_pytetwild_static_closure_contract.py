@@ -72,17 +72,18 @@ class PyTetWildStaticClosureContractTests(unittest.TestCase):
             encoding="utf-8",
         )
 
-    def test_current_blocked_manifest_loads_with_release_issues(self) -> None:
+    def test_current_approved_manifest_binds_controlled_identities(self) -> None:
         contract = load_pytetwild_static_closure_contract()
-        self.assertFalse(contract.manifest_claims_release_eligible)
-        self.assertFalse(contract.release_eligible)
-        self.assertTrue(contract.release_issues)
-        self.assertIn(
-            "controlled-rebuild-not-approved", contract.release_issue_codes
+        self.assertTrue(contract.manifest_claims_release_eligible)
+        self.assertTrue(contract.release_eligible)
+        self.assertFalse(contract.release_issues)
+        self.assertEqual(
+            contract.controlled_wheel_sha256,
+            "e3b11ac058266d277b0f83448c6023d5da98e731d0d016e461dbce4ebdfd613d",
         )
-        self.assertIn(
-            "application-lock-uses-excluded-historical-wheel",
-            contract.release_issue_codes,
+        self.assertEqual(
+            contract.controlled_pyd_sha256,
+            "26a091b53279407014899c046691958c9df07e22703576da6a45d68a9be22430",
         )
         self.assertEqual(len(contract.components), 20)
         self.assertEqual(len(contract.source_archives), 15)
@@ -194,8 +195,7 @@ class PyTetWildStaticClosureContractTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = self._fixture(temporary)
             manifest = copy.deepcopy(self.manifest)
-            manifest["release_gate"]["release_eligible"] = True
-            manifest["release_gate"]["status"] = "release-approved"
+            manifest["release_gate"]["blockers"][0]["resolved"] = False
             self._write_manifest(root, manifest)
             with self.assertRaisesRegex(ContractError, "all-resolved"):
                 load_pytetwild_static_closure_contract(repository_root=root)
