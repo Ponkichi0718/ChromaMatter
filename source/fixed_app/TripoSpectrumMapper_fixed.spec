@@ -440,6 +440,15 @@ def is_private_install_origin_metadata(entry):
     return ".dist-info/" in destination and destination.endswith("/direct_url.json")
 
 
+def is_source_only_resvg_metadata(entry):
+    """True for metadata auto-collected for the excluded SVG renderer."""
+
+    destination = str(entry[0]).replace("\\", "/").casefold()
+    return destination == "resvg-0.2.0.dist-info" or destination.startswith(
+        "resvg-0.2.0.dist-info/"
+    )
+
+
 a.datas = [
     entry
     for entry in a.datas
@@ -449,6 +458,7 @@ a.datas = [
         .casefold()
         .startswith("pymeshlab/tests/")
         and not is_private_install_origin_metadata(entry)
+        and not is_source_only_resvg_metadata(entry)
         and not is_windows_import_library(entry)
     )
 ]
