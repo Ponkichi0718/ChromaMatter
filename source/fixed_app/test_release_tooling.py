@@ -12,13 +12,16 @@ from pathlib import Path
 import re
 import shutil
 import stat
+import struct
 import subprocess
 import sys
 import tempfile
+import threading
+import time
 import types
 import unittest
 from unittest import mock
-from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
+from zipfile import ZIP_DEFLATED, ZIP_STORED, ZipFile, ZipInfo
 
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -1565,7 +1568,7 @@ class PackagedLanguageSmokeTests(unittest.TestCase):
 
 class SoftwarePackageStageTests(unittest.TestCase):
     CORRESPONDING_SOURCE_ASSET = (
-        "ChromaMatter-0.8beta-r32.1-complete-corresponding-source.zip"
+        "ChromaMatter-0.8beta-r32.2-complete-corresponding-source.zip"
     )
     CORRESPONDING_SOURCE_COMMIT = "1" * 40
     DEMO_DOCUMENT_NAMES = (
@@ -1578,6 +1581,47 @@ class SoftwarePackageStageTests(unittest.TestCase):
     DEMO_PAYLOAD_NAMES = (
         "Original AI model Color.glb",
         "Reference.jpg",
+        "3MF/Original AI model Color_FullSpectrum.3mf",
+        (
+            "3MF/Original AI model Color_FullSpectrum_parts_2/"
+            "01_RightArm_FullSpectrum.3mf"
+        ),
+        (
+            "3MF/Original AI model Color_FullSpectrum_parts_2/"
+            "02_LeftLeg_FullSpectrum.3mf"
+        ),
+        (
+            "3MF/Original AI model Color_FullSpectrum_parts_2/"
+            "03_Head_FullSpectrum.3mf"
+        ),
+        (
+            "3MF/Original AI model Color_FullSpectrum_parts_2/"
+            "04_LeftArm_FullSpectrum.3mf"
+        ),
+        (
+            "3MF/Original AI model Color_FullSpectrum_parts_2/"
+            "05_Torso_FullSpectrum.3mf"
+        ),
+        (
+            "3MF/Original AI model Color_FullSpectrum_parts_2/"
+            "06_RightLeg_FullSpectrum.3mf"
+        ),
+        (
+            "3MF/Original AI model Color_FullSpectrum_parts_2/"
+            "パーツ別3MF_manifest.json"
+        ),
+    )
+    DEMO_THREE_MF_MEMBER_NAMES = (
+        "[Content_Types].xml",
+        "_rels/.rels",
+        "3D/3dmodel.model",
+        "3D/_rels/3dmodel.model.rels",
+        "3D/Objects/object_1.model",
+        "Metadata/model_settings.config",
+        "Metadata/project_settings.config",
+        "Metadata/full_spectrum_palette.json",
+        "Metadata/tripo_part_palettes.json",
+        "Metadata/tripo_assembly.json",
     )
     QT_LICENSE_RUNTIME_FILES = tuple(
         "_internal/" + source.removeprefix("source/fixed_app/")
@@ -1666,7 +1710,12 @@ class SoftwarePackageStageTests(unittest.TestCase):
         for index, relative in enumerate(self.REQUIRED_RUNTIME_FILES):
             path = built / Path(relative)
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_bytes(f"runtime fixture {index}\n".encode("utf-8"))
+            content = (
+                b'{"fixture":true}'
+                if path.suffix.casefold() == ".json"
+                else f"runtime fixture {index}\n".encode("utf-8")
+            )
+            path.write_bytes(content)
         for source_relative in QT_STATIC_COMPONENTS["license_assets"]:
             packaged_relative = "_internal/" + source_relative.removeprefix(
                 "source/fixed_app/"
@@ -1904,7 +1953,7 @@ class SoftwarePackageStageTests(unittest.TestCase):
         if source_hash_override is not None:
             source_archive_sha256 = source_hash_override
         versions = {
-            "chromamatter": ("0.8beta-r32.1", "GPL-3.0-or-later"),
+            "chromamatter": ("0.8beta-r32.2", "GPL-3.0-or-later"),
             "cpython": ("3.13.14", "Python-2.0"),
             "cpython-bzip2": ("1.0.8", "bzip2-1.0.6"),
             "cpython-liblzma": (
@@ -2120,7 +2169,7 @@ class SoftwarePackageStageTests(unittest.TestCase):
             "generator": {"name": "fixture", "version": "1"},
             "package": {
                 "name": "ChromaMatter",
-                "version": "0.8beta-r32.1",
+                "version": "0.8beta-r32.2",
                 "root": ".",
                 "content_sha256": package_digest,
             },
@@ -2302,6 +2351,21 @@ class SoftwarePackageStageTests(unittest.TestCase):
         index = arguments.index(name)
         return arguments[index + 1]
 
+    @staticmethod
+    def _demo_glb_bytes(document: dict, bin_chunk: bytes | None = None) -> bytes:
+        json_chunk = json.dumps(
+            document,
+            ensure_ascii=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+        json_chunk += b" " * ((-len(json_chunk)) % 4)
+        body = struct.pack("<II", len(json_chunk), 0x4E4F534A) + json_chunk
+        if bin_chunk is not None:
+            bin_chunk += b"\x00" * ((-len(bin_chunk)) % 4)
+            body += struct.pack("<II", len(bin_chunk), 0x004E4942) + bin_chunk
+        total_length = 12 + len(body)
+        return struct.pack("<4sII", b"glTF", 2, total_length) + body
+
     def _demo_data_fixture(
         self,
         root: Path,
@@ -2310,18 +2374,35 @@ class SoftwarePackageStageTests(unittest.TestCase):
     ) -> tuple[Path, Path, dict[str, bytes]]:
         payload_root = root / payload_root_name
         payload_root.mkdir()
+        three_mf_bytes = self._demo_three_mf_bytes()
         payload_bytes = {
-            "Original AI model Color.glb": (
-                b"glTF\x02\x00\x00\x00synthetic-multipart-demo\x00"
+            "Original AI model Color.glb": self._demo_glb_bytes(
+                {
+                    "asset": {"version": "2.0"},
+                    "extras": {"label": "synthetic-multipart-demo"},
+                }
             ),
             "Reference.jpg": b"\xff\xd8synthetic-reference-image\xff\xd9",
+            "3MF/Original AI model Color_FullSpectrum.3mf": three_mf_bytes,
+            **{
+                name: three_mf_bytes
+                for name in self.DEMO_PAYLOAD_NAMES
+                if name.lower().endswith(".3mf")
+                and name != "3MF/Original AI model Color_FullSpectrum.3mf"
+            },
+            (
+                "3MF/Original AI model Color_FullSpectrum_parts_2/"
+                "パーツ別3MF_manifest.json"
+            ): b'{"schema_version":1,"parts":[]}',
         }
         for name, content in payload_bytes.items():
-            (payload_root / name).write_bytes(content)
+            path = payload_root / Path(name)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(content)
 
         manifest = {
-            "schema_version": 1,
-            "document_id": "chromamatter.demo-data.r32.1",
+            "schema_version": 2,
+            "document_id": "chromamatter.demo-data.r32.2",
             "release_status": "approved-for-publication",
             "expected_documents": [
                 "README_EN.md",
@@ -2344,12 +2425,31 @@ class SoftwarePackageStageTests(unittest.TestCase):
                         "multipart-glb-demo",
                     ),
                     ("Reference.jpg", "image/jpeg", "reference-image"),
+                    (
+                        "3MF/Original AI model Color_FullSpectrum.3mf",
+                        "model/3mf",
+                        "combined-full-spectrum-3mf-demo",
+                    ),
+                    *(
+                        (name, "model/3mf", "individual-part-3mf-demo")
+                        for name in self.DEMO_PAYLOAD_NAMES
+                        if name.lower().endswith(".3mf")
+                        and name
+                        != "3MF/Original AI model Color_FullSpectrum.3mf"
+                    ),
+                    (
+                        "3MF/Original AI model Color_FullSpectrum_parts_2/"
+                        "パーツ別3MF_manifest.json",
+                        "application/json",
+                        "individual-part-3mf-manifest",
+                    ),
                 )
             ],
             "publication_gate": {
                 "status": "approved-for-publication",
                 "raw_glb_redistribution_confirmed": True,
                 "reference_image_redistribution_confirmed": True,
+                "derived_3mf_redistribution_confirmed": True,
                 "hi3d_plan_terms_confirmed": True,
             },
         }
@@ -2359,6 +2459,208 @@ class SoftwarePackageStageTests(unittest.TestCase):
             encoding="utf-8",
         )
         return payload_root, manifest_path, payload_bytes
+
+    @classmethod
+    def _demo_three_mf_bytes(
+        cls,
+        *,
+        overrides: dict[str, bytes] | None = None,
+        extra_members: tuple[tuple[str, bytes], ...] = (),
+        compression: int = ZIP_DEFLATED,
+        archive_comment: bytes = b"",
+        first_member_comment: bytes = b"",
+        first_member_extra: bytes = b"",
+        preamble: bytes = b"",
+    ) -> bytes:
+        overrides = overrides or {}
+        core = "http://schemas.microsoft.com/3dmanufacturing/core/2015/02"
+        production = (
+            "http://schemas.microsoft.com/3dmanufacturing/production/2015/06"
+        )
+        valid_content = {
+            "[Content_Types].xml": (
+                '<?xml version="1.0" encoding="UTF-8"?>'
+                '<Types xmlns="http://schemas.openxmlformats.org/package/'
+                '2006/content-types">'
+                '<Default Extension="rels" ContentType="application/vnd.'
+                'openxmlformats-package.relationships+xml"/>'
+                '<Default Extension="model" ContentType="application/vnd.'
+                'ms-package.3dmanufacturing-3dmodel+xml"/>'
+                '<Default Extension="config" ContentType="application/'
+                'octet-stream"/>'
+                '<Default Extension="json" ContentType="application/json"/>'
+                '</Types>'
+            ).encode(),
+            "_rels/.rels": (
+                '<?xml version="1.0" encoding="UTF-8"?>'
+                '<Relationships xmlns="http://schemas.openxmlformats.org/'
+                'package/2006/relationships">'
+                '<Relationship Target="/3D/3dmodel.model" Id="rel-1" '
+                'Type="http://schemas.microsoft.com/3dmanufacturing/'
+                '2013/01/3dmodel"/>'
+                '</Relationships>'
+            ).encode(),
+            "3D/3dmodel.model": (
+                f'<model unit="millimeter" xmlns="{core}" '
+                f'xmlns:p="{production}" requiredextensions="p">'
+                '<resources><object id="7" type="model"><components>'
+                '<component p:path="/3D/Objects/object_1.model" '
+                'objectid="1"/>'
+                '</components></object></resources>'
+                '<build><item objectid="7"/></build></model>'
+            ).encode(),
+            "3D/_rels/3dmodel.model.rels": (
+                '<?xml version="1.0" encoding="UTF-8"?>'
+                '<Relationships xmlns="http://schemas.openxmlformats.org/'
+                'package/2006/relationships">'
+                '<Relationship Target="/3D/Objects/object_1.model" '
+                'Id="rel-1" Type="http://schemas.microsoft.com/'
+                '3dmanufacturing/2013/01/3dmodel"/>'
+                '</Relationships>'
+            ).encode(),
+            "3D/Objects/object_1.model": (
+                f'<model unit="millimeter" xmlns="{core}" '
+                f'xmlns:p="{production}"><resources>'
+                '<basematerials id="2"><base name="F1" '
+                'displaycolor="#111111FF"/></basematerials>'
+                '<object id="1" type="model"><mesh><vertices>'
+                '<vertex x="0" y="0" z="0"/>'
+                '<vertex x="1" y="0" z="0"/>'
+                '<vertex x="0" y="1" z="0"/>'
+                '</vertices><triangles>'
+                '<triangle v1="0" v2="1" v3="2" pid="2" p1="0"/>'
+                '</triangles></mesh></object></resources></model>'
+            ).encode(),
+            "Metadata/model_settings.config": b"<config/>",
+            "Metadata/project_settings.config": b"{}",
+            "Metadata/full_spectrum_palette.json": b"{}",
+            "Metadata/tripo_part_palettes.json": b"{}",
+            "Metadata/tripo_assembly.json": b"{}",
+        }
+        buffer = io.BytesIO()
+        if preamble:
+            buffer.write(preamble)
+        with ZipFile(buffer, "w", compression=compression) as package:
+            package.comment = archive_comment
+            for index, name in enumerate(cls.DEMO_THREE_MF_MEMBER_NAMES):
+                content = overrides.get(name, valid_content[name])
+                info = ZipInfo(name)
+                info.compress_type = compression
+                info.create_system = 3
+                info.external_attr = (stat.S_IFREG | 0o644) << 16
+                if index == 0:
+                    info.comment = first_member_comment
+                    info.extra = first_member_extra
+                package.writestr(info, content)
+            for name, content in extra_members:
+                info = ZipInfo(name)
+                info.compress_type = compression
+                info.create_system = 3
+                info.external_attr = (stat.S_IFREG | 0o644) << 16
+                package.writestr(info, content)
+        return buffer.getvalue()
+
+    @staticmethod
+    def _insert_zip_gap_before_second_member(content: bytes) -> bytes:
+        with ZipFile(io.BytesIO(content)) as package:
+            infos = package.infolist()
+            if len(infos) < 2:
+                raise AssertionError("ZIP gap mutation needs two members")
+            insertion_offset = infos[1].header_offset
+            central_offset = package.start_dir
+
+        mutated = bytearray(content)
+        mutated[insertion_offset:insertion_offset] = b"G"
+        shifted_central_offset = central_offset + 1
+        cursor = shifted_central_offset
+        while cursor + 46 <= len(mutated):
+            if mutated[cursor : cursor + 4] != b"PK\x01\x02":
+                break
+            name_length, extra_length, comment_length = struct.unpack_from(
+                "<HHH", mutated, cursor + 28
+            )
+            local_offset = struct.unpack_from("<I", mutated, cursor + 42)[0]
+            if local_offset >= insertion_offset:
+                struct.pack_into("<I", mutated, cursor + 42, local_offset + 1)
+            cursor += 46 + name_length + extra_length + comment_length
+
+        if mutated[cursor : cursor + 4] != b"PK\x05\x06":
+            raise AssertionError("ZIP gap mutation did not reach the end record")
+        struct.pack_into("<I", mutated, cursor + 16, shifted_central_offset)
+        return bytes(mutated)
+
+    @staticmethod
+    def _corrupt_stored_member_without_updating_crc(
+        content: bytes,
+        member_name: str,
+        original: bytes,
+        replacement: bytes,
+    ) -> bytes:
+        if len(original) != len(replacement):
+            raise AssertionError("CRC mutation must preserve the member length")
+        with ZipFile(io.BytesIO(content)) as package:
+            info = package.getinfo(member_name)
+            if info.compress_type != ZIP_STORED:
+                raise AssertionError("CRC mutation requires a stored member")
+            header_offset = info.header_offset
+        mutated = bytearray(content)
+        local_header = mutated[header_offset : header_offset + 30]
+        name_length, extra_length = struct.unpack_from("<HH", local_header, 26)
+        payload_offset = header_offset + 30 + name_length + extra_length
+        payload_end = payload_offset + len(original)
+        if bytes(mutated[payload_offset:payload_end]) != original:
+            raise AssertionError("unexpected stored member payload")
+        mutated[payload_offset:payload_end] = replacement
+        return bytes(mutated)
+
+    @staticmethod
+    def _rewrite_member_declared_uncompressed_size(
+        content: bytes,
+        member_name: str,
+        declared_size: int,
+    ) -> bytes:
+        with ZipFile(io.BytesIO(content)) as package:
+            info = package.getinfo(member_name)
+            local_offset = info.header_offset
+            central_offset = package.start_dir
+        encoded_name = member_name.encode("utf-8")
+        mutated = bytearray(content)
+        struct.pack_into("<I", mutated, local_offset + 22, declared_size)
+        while central_offset + 46 <= len(mutated):
+            if mutated[central_offset : central_offset + 4] != b"PK\x01\x02":
+                raise AssertionError("unexpected central-directory record")
+            name_length, extra_length, comment_length = struct.unpack_from(
+                "<HHH", mutated, central_offset + 28
+            )
+            name_offset = central_offset + 46
+            name = bytes(mutated[name_offset : name_offset + name_length])
+            if name == encoded_name:
+                struct.pack_into("<I", mutated, central_offset + 24, declared_size)
+                return bytes(mutated)
+            central_offset = (
+                name_offset + name_length + extra_length + comment_length
+            )
+        raise AssertionError("member central-directory record was not found")
+
+    @staticmethod
+    def _replace_demo_payload_and_refresh_manifest(
+        payload_root: Path,
+        manifest_path: Path,
+        relative: str,
+        content: bytes,
+    ) -> None:
+        payload_path = payload_root / Path(relative)
+        payload_path.write_bytes(content)
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        record = next(
+            item for item in manifest["payloads"] if item["path"] == relative
+        )
+        record["bytes"] = len(content)
+        record["sha256"] = hashlib.sha256(content).hexdigest()
+        manifest_path.write_text(
+            json.dumps(manifest, ensure_ascii=False),
+            encoding="utf-8",
+        )
 
     def _run_demo_validation_failure(
         self,
@@ -2384,11 +2686,35 @@ class SoftwarePackageStageTests(unittest.TestCase):
         )
         return result, destination
 
+    def _run_demo_inner_validation_failure(
+        self,
+        root: Path,
+        payload_root: Path,
+        manifest_path: Path,
+        *,
+        destination_name: str,
+    ) -> tuple[subprocess.CompletedProcess[str], Path]:
+        built = self._fake_build(root)
+        destination = root / destination_name
+        result = _run_powershell(
+            SOFTWARE_STAGE_SCRIPT,
+            "-BuiltAppRoot",
+            str(built),
+            "-Destination",
+            str(destination),
+            "-DemoDataRoot",
+            str(payload_root),
+            "-DemoDataManifestPath",
+            str(manifest_path),
+            *self._compliance_arguments(root, built, destination),
+        )
+        return result, destination
+
     def test_stage_manifest_zip_and_extracted_verification(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             built = self._fake_build(root)
-            destination = root / "ChromaMatter_0.8beta-r32.1-ai-model-print-studio"
+            destination = root / "ChromaMatter_0.8beta-r32.2-ai-model-print-studio"
             archive = Path(f"{destination}.zip")
             compliance_arguments = self._compliance_arguments(
                 root,
@@ -2520,7 +2846,7 @@ class SoftwarePackageStageTests(unittest.TestCase):
             payload_root, manifest_path, payload_bytes = self._demo_data_fixture(
                 root
             )
-            destination = root / "ChromaMatter-0.8beta-r32.1-demo-package"
+            destination = root / "ChromaMatter-0.8beta-r32.2-demo-package"
             archive = Path(f"{destination}.zip")
             compliance_arguments = self._compliance_arguments(
                 root,
@@ -2545,7 +2871,11 @@ class SoftwarePackageStageTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, output)
             demo_destination = destination / "DemoData"
             self.assertEqual(
-                {path.name for path in demo_destination.iterdir()},
+                {
+                    path.relative_to(demo_destination).as_posix()
+                    for path in demo_destination.rglob("*")
+                    if path.is_file()
+                },
                 set(self.DEMO_DOCUMENT_NAMES + self.DEMO_PAYLOAD_NAMES),
             )
             for name, expected in payload_bytes.items():
@@ -2561,7 +2891,7 @@ class SoftwarePackageStageTests(unittest.TestCase):
             )
             self.assertEqual(
                 staged_manifest["document_id"],
-                "chromamatter.demo-data.r32.1",
+                "chromamatter.demo-data.r32.2",
             )
             _assert_relative_manifest(
                 self,
@@ -2593,34 +2923,301 @@ class SoftwarePackageStageTests(unittest.TestCase):
                 }.issubset(zip_paths)
             )
 
+    def test_demo_data_rejects_private_user_paths_in_binary_payloads(self) -> None:
+        private_backslash_path = (
+            "c:" + "\\" + "us" + "ers\\private-user\\model.glb"
+        )
+        private_utf16_path = (
+            "c:" + "\\" + "us" + "ers\\private-user\\reference.jpg"
+        )
+        private_slash_path = (
+            "c:" + "/" + "uS" + "eRs/private-user/reference.jpg"
+        )
+        cases = (
+            (
+                "glb-json-escaped-backslash",
+                "Original AI model Color.glb",
+                self._demo_glb_bytes(
+                    {
+                        "asset": {"version": "2.0"},
+                        "extras": {"source": private_backslash_path},
+                    }
+                ),
+            ),
+            (
+                "glb-bin-utf16le-backslash",
+                "Original AI model Color.glb",
+                self._demo_glb_bytes(
+                    {"asset": {"version": "2.0"}},
+                    private_utf16_path.encode("utf-16le"),
+                ),
+            ),
+            (
+                "jpg-utf8-slash",
+                "Reference.jpg",
+                b"\xff\xd8metadata:"
+                + private_slash_path.encode("utf-8")
+                + b"\xff\xd9",
+            ),
+            (
+                "jpg-utf16le-backslash",
+                "Reference.jpg",
+                (
+                    b"\xff\xd8metadata:"
+                    + private_utf16_path.encode("utf-16le")
+                    + b"\xff\xd9"
+                ),
+            ),
+            (
+                "jpg-utf16be-slash",
+                "Reference.jpg",
+                (
+                    b"\xff\xd8metadata:"
+                    + private_slash_path.encode("utf-16be")
+                    + b"\xff\xd9"
+                ),
+            ),
+        )
+        for case, relative, content in cases:
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                payload_root, manifest_path, _ = self._demo_data_fixture(root)
+                self._replace_demo_payload_and_refresh_manifest(
+                    payload_root,
+                    manifest_path,
+                    relative,
+                    content,
+                )
+
+                result, destination = self._run_demo_inner_validation_failure(
+                    root,
+                    payload_root,
+                    manifest_path,
+                    destination_name=f"rejected-demo-private-binary-{case}",
+                )
+
+                output = result.stdout + result.stderr
+                self.assertNotEqual(result.returncode, 0, output)
+                self.assertIn("forbidden binary token", output)
+                self.assertIn(f"DemoData/{relative}", output)
+                self.assertFalse(destination.exists())
+                self.assertFalse(Path(f"{destination}.zip").exists())
+                self._assert_no_stage_debris(root, destination)
+
+    def test_demo_data_rejects_duplicate_key_in_canonical_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            payload_root, manifest_path, _ = self._demo_data_fixture(root)
+            document_id = '"document_id": "chromamatter.demo-data.r32.2"'
+            manifest_text = manifest_path.read_text(encoding="utf-8")
+            self.assertEqual(manifest_text.count(document_id), 1)
+            manifest_path.write_text(
+                manifest_text.replace(
+                    document_id,
+                    f"{document_id}, {document_id}",
+                    1,
+                ),
+                encoding="utf-8",
+            )
+
+            result, destination = self._run_demo_validation_failure(
+                root,
+                payload_root,
+                manifest_path,
+                destination_name="rejected-demo-duplicate-canonical-manifest",
+            )
+
+            output = result.stdout + result.stderr
+            self.assertNotEqual(result.returncode, 0, output)
+            self.assertIn("duplicate object key", output)
+            self.assertFalse(destination.exists())
+            self.assertFalse(Path(f"{destination}.zip").exists())
+            self._assert_no_stage_debris(root, destination)
+
+    def test_demo_data_manifest_requires_exact_types_and_order(self) -> None:
+        cases = (
+            ("schema-string", "unsupported identity or schema version"),
+            ("document-order", "exact canonical order"),
+            ("documents-scalar", "must be a JSON array"),
+            ("payloads-object", "payloads must be a JSON array"),
+            ("payload-sha-number", "SHA-256 must be lowercase hexadecimal"),
+            ("release-status-bool", "publication is not approved"),
+        )
+        for case, expected in cases:
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                payload_root, manifest_path, _ = self._demo_data_fixture(root)
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                if case == "schema-string":
+                    manifest["schema_version"] = "2"
+                elif case == "document-order":
+                    manifest["expected_documents"] = list(
+                        reversed(manifest["expected_documents"])
+                    )
+                elif case == "documents-scalar":
+                    manifest["expected_documents"] = "README_EN.md"
+                elif case == "payloads-object":
+                    manifest["payloads"] = manifest["payloads"][0]
+                elif case == "payload-sha-number":
+                    manifest["payloads"][0]["sha256"] = 1
+                elif case == "release-status-bool":
+                    manifest["release_status"] = True
+                manifest_path.write_text(
+                    json.dumps(manifest, ensure_ascii=False),
+                    encoding="utf-8",
+                )
+
+                result, destination = self._run_demo_validation_failure(
+                    root,
+                    payload_root,
+                    manifest_path,
+                    destination_name=f"rejected-demo-manifest-contract-{case}",
+                )
+
+                output = result.stdout + result.stderr
+                self.assertNotEqual(result.returncode, 0, output)
+                self.assertIn(expected, output)
+                self.assertFalse(destination.exists())
+                self.assertFalse(Path(f"{destination}.zip").exists())
+                self._assert_no_stage_debris(root, destination)
+
+    def test_generic_dependency_binary_keeps_relaxed_user_path_scan(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            built = self._fake_build(root)
+            (built / "_internal" / "synthetic_dependency.bin").write_bytes(
+                b"builder metadata:C:"
+                + b"\\Users\\upstream-builder\\source\x00"
+            )
+            destination = root / "accepted-generic-builder-path"
+
+            result = _run_powershell(
+                SOFTWARE_STAGE_SCRIPT,
+                "-BuiltAppRoot",
+                str(built),
+                "-Destination",
+                str(destination),
+                *self._compliance_arguments(root, built, destination),
+            )
+
+            output = result.stdout + result.stderr
+            self.assertEqual(result.returncode, 0, output)
+            self.assertTrue(
+                (destination / "_internal" / "synthetic_dependency.bin").is_file()
+            )
+
+    def test_demo_data_rejects_payload_changed_after_validation(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            built = self._fake_build(root)
+            payload_root, manifest_path, _ = self._demo_data_fixture(root)
+            self._replace_demo_payload_and_refresh_manifest(
+                payload_root,
+                manifest_path,
+                "Original AI model Color.glb",
+                self._demo_glb_bytes(
+                    {
+                        "asset": {"version": "2.0"},
+                        "extras": {"padding": "x" * (32 * 1024 * 1024)},
+                    }
+                ),
+            )
+            target_relative = (
+                "3MF/Original AI model Color_FullSpectrum_parts_2/"
+                "パーツ別3MF_manifest.json"
+            )
+            target = payload_root / Path(target_relative)
+            destination = root / "rejected-post-copy-demo-mutation"
+            mutation_complete = threading.Event()
+            stop_watcher = threading.Event()
+            watcher_errors: list[str] = []
+
+            def mutate_after_staging_manifest_appears() -> None:
+                deadline = time.monotonic() + 60.0
+                pattern = (
+                    f".{destination.name}.software-staging-*/"
+                    f"{destination.name}/DemoData/DEMO_DATA_MANIFEST.json"
+                )
+                while not stop_watcher.is_set() and time.monotonic() < deadline:
+                    if next(root.glob(pattern), None) is not None:
+                        try:
+                            target.write_bytes(b'{"schema_version":2,"parts":[]}')
+                        except OSError as exc:
+                            watcher_errors.append(str(exc))
+                        else:
+                            mutation_complete.set()
+                        return
+                    time.sleep(0.001)
+                watcher_errors.append("staged DemoData manifest was not observed")
+
+            watcher = threading.Thread(
+                target=mutate_after_staging_manifest_appears,
+                daemon=True,
+            )
+            watcher.start()
+            try:
+                result = _run_powershell(
+                    SOFTWARE_STAGE_SCRIPT,
+                    "-BuiltAppRoot",
+                    str(built),
+                    "-Destination",
+                    str(destination),
+                    "-DemoDataRoot",
+                    str(payload_root),
+                    "-DemoDataManifestPath",
+                    str(manifest_path),
+                    *self._compliance_arguments(root, built, destination),
+                )
+            finally:
+                stop_watcher.set()
+                watcher.join(timeout=5.0)
+
+            output = result.stdout + result.stderr
+            self.assertTrue(mutation_complete.is_set(), watcher_errors)
+            self.assertNotEqual(result.returncode, 0, output)
+            self.assertRegex(
+                output,
+                r"Staged DemoData payload (?:size|SHA-256) mismatch",
+            )
+            self.assertFalse(destination.exists())
+            self.assertFalse(Path(f"{destination}.zip").exists())
+            self._assert_no_stage_debris(root, destination)
+
     def test_demo_data_rejects_missing_modified_and_extra_payloads(self) -> None:
-        cases = ("missing", "modified-size", "modified-hash", "extra")
+        cases = (
+            "missing",
+            "modified-size",
+            "modified-hash",
+            "extra-3mf",
+            "extra-directory",
+        )
         for case in cases:
             with self.subTest(case=case), tempfile.TemporaryDirectory() as temporary:
                 root = Path(temporary)
                 payload_root, manifest_path, _ = self._demo_data_fixture(root)
+                relative = "3MF/Original AI model Color_FullSpectrum.3mf"
+                target = payload_root / Path(relative)
                 if case == "missing":
-                    (payload_root / "Reference.jpg").unlink()
-                    expected = "exactly two regular payload files"
+                    target.unlink()
+                    expected = "exactly 10 regular payload files"
                 elif case == "modified-size":
-                    (payload_root / "Reference.jpg").write_bytes(
-                        b"modified-reference-image"
-                    )
-                    expected = "payload size mismatch: Reference.jpg"
+                    target.write_bytes(target.read_bytes() + b"x")
+                    expected = f"payload size mismatch: {relative}"
                 elif case == "modified-hash":
-                    reference = payload_root / "Reference.jpg"
-                    original = reference.read_bytes()
-                    reference.write_bytes(
+                    original = target.read_bytes()
+                    target.write_bytes(
                         original[:-1] + bytes((original[-1] ^ 1,))
                     )
-                    self.assertEqual(reference.stat().st_size, len(original))
-                    expected = "payload SHA-256 mismatch: Reference.jpg"
-                else:
-                    (payload_root / "unexpected.txt").write_text(
-                        "must not ship\n",
-                        encoding="utf-8",
+                    self.assertEqual(target.stat().st_size, len(original))
+                    expected = f"payload SHA-256 mismatch: {relative}"
+                elif case == "extra-3mf":
+                    (payload_root / "3MF" / "unexpected.3mf").write_bytes(
+                        self._demo_three_mf_bytes()
                     )
-                    expected = "exactly two regular payload files"
+                    expected = "exactly 10 regular payload files"
+                else:
+                    (payload_root / "unexpected-directory").mkdir()
+                    expected = "contains an unexpected directory"
 
                 result, destination = self._run_demo_validation_failure(
                     root,
@@ -2641,7 +3238,7 @@ class SoftwarePackageStageTests(unittest.TestCase):
             payload_root, manifest_path, _ = self._demo_data_fixture(root)
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
             manifest["publication_gate"][
-                "raw_glb_redistribution_confirmed"
+                "derived_3mf_redistribution_confirmed"
             ] = False
             manifest_path.write_text(
                 json.dumps(manifest, ensure_ascii=False),
@@ -2657,6 +3254,654 @@ class SoftwarePackageStageTests(unittest.TestCase):
             output = result.stdout + result.stderr
             self.assertNotEqual(result.returncode, 0, output)
             self.assertIn("DemoData publication is not approved", output)
+            self.assertFalse(destination.exists())
+            self.assertFalse(Path(f"{destination}.zip").exists())
+            self._assert_no_stage_debris(root, destination)
+
+    def test_demo_data_rejects_corrupt_three_mf_after_outer_hash_match(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            payload_root, manifest_path, _ = self._demo_data_fixture(root)
+            relative = "3MF/Original AI model Color_FullSpectrum.3mf"
+            self._replace_demo_payload_and_refresh_manifest(
+                payload_root,
+                manifest_path,
+                relative,
+                b"not-a-zip",
+            )
+
+            result, destination = self._run_demo_inner_validation_failure(
+                root,
+                payload_root,
+                manifest_path,
+                destination_name="rejected-demo-corrupt-3mf",
+            )
+            output = result.stdout + result.stderr
+            self.assertNotEqual(result.returncode, 0, output)
+            self.assertIn("Software ZIP is too short", output)
+            self.assertNotIn("payload SHA-256 mismatch", output)
+            self.assertFalse(destination.exists())
+            self.assertFalse(Path(f"{destination}.zip").exists())
+            self._assert_no_stage_debris(root, destination)
+
+    def test_demo_data_rejects_stale_inner_three_mf_crc(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            payload_root, manifest_path, _ = self._demo_data_fixture(root)
+            relative = "3MF/Original AI model Color_FullSpectrum.3mf"
+            valid = self._demo_three_mf_bytes(
+                compression=ZIP_STORED,
+                overrides={"Metadata/tripo_assembly.json": b'{"value":1}'},
+            )
+            corrupt = self._corrupt_stored_member_without_updating_crc(
+                valid,
+                "Metadata/tripo_assembly.json",
+                b'{"value":1}',
+                b'{"value":2}',
+            )
+            self._replace_demo_payload_and_refresh_manifest(
+                payload_root,
+                manifest_path,
+                relative,
+                corrupt,
+            )
+
+            result, destination = self._run_demo_inner_validation_failure(
+                root,
+                payload_root,
+                manifest_path,
+                destination_name="rejected-demo-stale-crc-3mf",
+            )
+            output = result.stdout + result.stderr
+            self.assertNotEqual(result.returncode, 0, output)
+            self.assertIn("CRC-32 mismatch", output)
+            self.assertNotIn("payload SHA-256 mismatch", output)
+            self.assertFalse(destination.exists())
+            self.assertFalse(Path(f"{destination}.zip").exists())
+            self._assert_no_stage_debris(root, destination)
+
+    def test_demo_data_rejects_invalid_three_mf_structure(self) -> None:
+        cases = (
+            (
+                "content-types",
+                "[Content_Types].xml",
+                (
+                    b'<Types xmlns="http://schemas.openxmlformats.org/package/'
+                    b'2006/content-types"><Default Extension="rels" '
+                    b'ContentType="application/vnd.openxmlformats-package.'
+                    b'relationships+xml"/></Types>'
+                ),
+                "required content-type",
+            ),
+            (
+                "relationship-target",
+                "_rels/.rels",
+                (
+                    b'<Relationships xmlns="http://schemas.openxmlformats.org/'
+                    b'package/2006/relationships"><Relationship Id="rel-1" '
+                    b'Target="/3D/missing.model" Type="http://schemas.microsoft.'
+                    b'com/3dmanufacturing/2013/01/3dmodel"/></Relationships>'
+                ),
+                "exact required internal model target",
+            ),
+            (
+                "build-reference",
+                "3D/3dmodel.model",
+                (
+                    b'<model unit="millimeter" xmlns="http://schemas.microsoft.'
+                    b'com/3dmanufacturing/core/2015/02" xmlns:p="http://schemas.'
+                    b'microsoft.com/3dmanufacturing/production/2015/06">'
+                    b'<resources><object id="7" type="model"><components>'
+                    b'<component p:path="/3D/Objects/object_1.model" '
+                    b'objectid="1"/></components></object></resources>'
+                    b'<build><item objectid="999"/></build></model>'
+                ),
+                "unresolved build-item object reference",
+            ),
+            (
+                "component-reference",
+                "3D/3dmodel.model",
+                (
+                    b'<model unit="millimeter" xmlns="http://schemas.microsoft.'
+                    b'com/3dmanufacturing/core/2015/02" xmlns:p="http://schemas.'
+                    b'microsoft.com/3dmanufacturing/production/2015/06">'
+                    b'<resources><object id="7" type="model"><components>'
+                    b'<component p:path="/3D/Objects/object_1.model" '
+                    b'objectid="999"/></components></object></resources>'
+                    b'<build><item objectid="7"/></build></model>'
+                ),
+                "unresolved object-model component",
+            ),
+            (
+                "misplaced-component",
+                "3D/3dmodel.model",
+                (
+                    b'<model unit="millimeter" xmlns="http://schemas.microsoft.'
+                    b'com/3dmanufacturing/core/2015/02" xmlns:p="http://schemas.'
+                    b'microsoft.com/3dmanufacturing/production/2015/06">'
+                    b'<resources><object id="7" type="model"/></resources>'
+                    b'<metadata name="fake"><component '
+                    b'p:path="/3D/Objects/object_1.model" objectid="1"/>'
+                    b'</metadata><build><item objectid="7"/></build></model>'
+                ),
+                "empty or invalid components container",
+            ),
+            (
+                "empty-mesh",
+                "3D/Objects/object_1.model",
+                (
+                    b'<model unit="millimeter" xmlns="http://schemas.microsoft.'
+                    b'com/3dmanufacturing/core/2015/02"><resources>'
+                    b'<object id="1" type="model"><mesh/></object>'
+                    b'</resources></model>'
+                ),
+                "empty, duplicate, or misplaced mesh",
+            ),
+            (
+                "triangle-index",
+                "3D/Objects/object_1.model",
+                (
+                    b'<model unit="millimeter" xmlns="http://schemas.microsoft.'
+                    b'com/3dmanufacturing/core/2015/02"><resources>'
+                    b'<object id="1" type="model"><mesh><vertices>'
+                    b'<vertex x="0" y="0" z="0"/>'
+                    b'<vertex x="1" y="0" z="0"/>'
+                    b'<vertex x="0" y="1" z="0"/>'
+                    b'</vertices><triangles>'
+                    b'<triangle v1="0" v2="1" v3="3"/>'
+                    b'</triangles></mesh></object></resources></model>'
+                ),
+                "out-of-range vertex index",
+            ),
+            (
+                "misplaced-object",
+                "3D/Objects/object_1.model",
+                (
+                    b'<model unit="millimeter" xmlns="http://schemas.microsoft.'
+                    b'com/3dmanufacturing/core/2015/02"><metadata name="x">'
+                    b'<object id="1" type="model"><mesh><vertices>'
+                    b'<vertex x="0" y="0" z="0"/>'
+                    b'<vertex x="1" y="0" z="0"/>'
+                    b'<vertex x="0" y="1" z="0"/>'
+                    b'</vertices><triangles><triangle v1="0" v2="1" v3="2"/>'
+                    b'</triangles></mesh></object></metadata></model>'
+                ),
+                "empty, nested, or misplaced object",
+            ),
+            (
+                "invalid-coordinate",
+                "3D/Objects/object_1.model",
+                (
+                    b'<model unit="millimeter" xmlns="http://schemas.microsoft.'
+                    b'com/3dmanufacturing/core/2015/02"><resources>'
+                    b'<object id="1" type="model"><mesh><vertices>'
+                    b'<vertex x="NaN" y="0" z="0"/>'
+                    b'<vertex x="1" y="0" z="0"/>'
+                    b'<vertex x="0" y="1" z="0"/>'
+                    b'</vertices><triangles><triangle v1="0" v2="1" v3="2"/>'
+                    b'</triangles></mesh></object></resources></model>'
+                ),
+                "vertex with an invalid coordinate",
+            ),
+            (
+                "missing-triangles",
+                "3D/Objects/object_1.model",
+                (
+                    b'<model unit="millimeter" xmlns="http://schemas.microsoft.'
+                    b'com/3dmanufacturing/core/2015/02"><resources>'
+                    b'<object id="1" type="model"><mesh><vertices>'
+                    b'<vertex x="0" y="0" z="0"/>'
+                    b'<vertex x="1" y="0" z="0"/>'
+                    b'<vertex x="0" y="1" z="0"/>'
+                    b'</vertices><triangles></triangles></mesh></object>'
+                    b'</resources></model>'
+                ),
+                "mesh without printable vertices and triangles",
+            ),
+            (
+                "mesh-and-components",
+                "3D/Objects/object_1.model",
+                (
+                    b'<model unit="millimeter" xmlns="http://schemas.microsoft.'
+                    b'com/3dmanufacturing/core/2015/02"><resources>'
+                    b'<object id="1" type="model"><mesh><vertices>'
+                    b'<vertex x="0" y="0" z="0"/>'
+                    b'<vertex x="1" y="0" z="0"/>'
+                    b'<vertex x="0" y="1" z="0"/>'
+                    b'</vertices><triangles><triangle v1="0" v2="1" v3="2"/>'
+                    b'</triangles></mesh><components><component objectid="1"/>'
+                    b'</components></object></resources></model>'
+                ),
+                "unsupported element directly under object",
+            ),
+            (
+                "unsupported-mesh-child",
+                "3D/Objects/object_1.model",
+                (
+                    b'<model unit="millimeter" xmlns="http://schemas.microsoft.'
+                    b'com/3dmanufacturing/core/2015/02"><resources>'
+                    b'<object id="1" type="model"><mesh><vertices>'
+                    b'<vertex x="0" y="0" z="0"/>'
+                    b'<vertex x="1" y="0" z="0"/>'
+                    b'<vertex x="0" y="1" z="0"/>'
+                    b'</vertices><unknown/><triangles>'
+                    b'<triangle v1="0" v2="1" v3="2"/>'
+                    b'</triangles></mesh></object></resources></model>'
+                ),
+                "unsupported element directly under mesh",
+            ),
+            (
+                "unsupported-vertices-child",
+                "3D/Objects/object_1.model",
+                (
+                    b'<model unit="millimeter" xmlns="http://schemas.microsoft.'
+                    b'com/3dmanufacturing/core/2015/02"><resources>'
+                    b'<object id="1" type="model"><mesh><vertices>'
+                    b'<vertex x="0" y="0" z="0"/><unknown/>'
+                    b'<vertex x="1" y="0" z="0"/>'
+                    b'<vertex x="0" y="1" z="0"/>'
+                    b'</vertices><triangles><triangle v1="0" v2="1" v3="2"/>'
+                    b'</triangles></mesh></object></resources></model>'
+                ),
+                "unsupported element directly under vertices",
+            ),
+            (
+                "unsupported-triangles-child",
+                "3D/Objects/object_1.model",
+                (
+                    b'<model unit="millimeter" xmlns="http://schemas.microsoft.'
+                    b'com/3dmanufacturing/core/2015/02"><resources>'
+                    b'<object id="1" type="model"><mesh><vertices>'
+                    b'<vertex x="0" y="0" z="0"/>'
+                    b'<vertex x="1" y="0" z="0"/>'
+                    b'<vertex x="0" y="1" z="0"/>'
+                    b'</vertices><triangles><triangle v1="0" v2="1" v3="2"/>'
+                    b'<unknown/></triangles></mesh></object>'
+                    b'</resources></model>'
+                ),
+                "unsupported element directly under triangles",
+            ),
+        )
+        for case, member, replacement, expected in cases:
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                payload_root, manifest_path, _ = self._demo_data_fixture(root)
+                relative = "3MF/Original AI model Color_FullSpectrum.3mf"
+                invalid = self._demo_three_mf_bytes(
+                    overrides={member: replacement}
+                )
+                self._replace_demo_payload_and_refresh_manifest(
+                    payload_root,
+                    manifest_path,
+                    relative,
+                    invalid,
+                )
+
+                result, destination = self._run_demo_inner_validation_failure(
+                    root,
+                    payload_root,
+                    manifest_path,
+                    destination_name=f"rejected-demo-structure-{case}",
+                )
+                output = result.stdout + result.stderr
+                self.assertNotEqual(result.returncode, 0, output)
+                self.assertIn(expected, output)
+                self.assertNotIn("payload SHA-256 mismatch", output)
+                self.assertFalse(destination.exists())
+                self.assertFalse(Path(f"{destination}.zip").exists())
+                self._assert_no_stage_debris(root, destination)
+
+    def test_demo_data_rejects_noncanonical_zip_metadata_and_gaps(self) -> None:
+        extra_field = struct.pack("<HH", 0x5455, 1) + b"x"
+        ordinary = self._demo_three_mf_bytes()
+        cases = (
+            (
+                "archive-comment",
+                self._demo_three_mf_bytes(archive_comment=b"release-comment"),
+                "archive comments are forbidden",
+            ),
+            (
+                "member-comment",
+                self._demo_three_mf_bytes(
+                    first_member_comment=b"member-comment"
+                ),
+                "member comments are forbidden",
+            ),
+            (
+                "extra-field",
+                self._demo_three_mf_bytes(first_member_extra=extra_field),
+                "extra fields are forbidden",
+            ),
+            (
+                "preamble",
+                self._demo_three_mf_bytes(preamble=b"PREAMBLE"),
+                "preamble, gap, or overlapping local member",
+            ),
+            (
+                "gap",
+                self._insert_zip_gap_before_second_member(ordinary),
+                "preamble, gap, or overlapping local member",
+            ),
+        )
+        for case, content, expected in cases:
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                payload_root, manifest_path, _ = self._demo_data_fixture(root)
+                relative = "3MF/Original AI model Color_FullSpectrum.3mf"
+                self._replace_demo_payload_and_refresh_manifest(
+                    payload_root,
+                    manifest_path,
+                    relative,
+                    content,
+                )
+
+                result, destination = self._run_demo_inner_validation_failure(
+                    root,
+                    payload_root,
+                    manifest_path,
+                    destination_name=f"rejected-demo-zip-metadata-{case}",
+                )
+                output = result.stdout + result.stderr
+                self.assertNotEqual(result.returncode, 0, output)
+                self.assertIn(expected, output)
+                self.assertNotIn("payload SHA-256 mismatch", output)
+                self.assertFalse(destination.exists())
+                self.assertFalse(Path(f"{destination}.zip").exists())
+                self._assert_no_stage_debris(root, destination)
+
+    def test_demo_data_rejects_three_mf_expansion_limit(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            payload_root, manifest_path, _ = self._demo_data_fixture(root)
+            relative = "3MF/Original AI model Color_FullSpectrum.3mf"
+            oversized = self._demo_three_mf_bytes(
+                overrides={
+                    "Metadata/tripo_assembly.json": (
+                        b'{"padding":"' + b"x" * (16 * 1024 * 1024) + b'"}'
+                    )
+                }
+            )
+            self._replace_demo_payload_and_refresh_manifest(
+                payload_root,
+                manifest_path,
+                relative,
+                oversized,
+            )
+
+            result, destination = self._run_demo_inner_validation_failure(
+                root,
+                payload_root,
+                manifest_path,
+                destination_name="rejected-demo-expansion-limit-3mf",
+            )
+            output = result.stdout + result.stderr
+            self.assertNotEqual(result.returncode, 0, output)
+            self.assertIn("expansion limit", output)
+            self.assertNotIn("payload SHA-256 mismatch", output)
+            self.assertFalse(destination.exists())
+            self.assertFalse(Path(f"{destination}.zip").exists())
+            self._assert_no_stage_debris(root, destination)
+
+    def test_demo_data_enforces_expansion_limit_while_reading(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            payload_root, manifest_path, _ = self._demo_data_fixture(root)
+            relative = "3MF/Original AI model Color_FullSpectrum.3mf"
+            oversized = self._demo_three_mf_bytes(
+                overrides={
+                    "Metadata/tripo_assembly.json": (
+                        b'{"padding":"' + b"x" * (16 * 1024 * 1024) + b'"}'
+                    )
+                }
+            )
+            forged = self._rewrite_member_declared_uncompressed_size(
+                oversized,
+                "Metadata/tripo_assembly.json",
+                1,
+            )
+            self._replace_demo_payload_and_refresh_manifest(
+                payload_root,
+                manifest_path,
+                relative,
+                forged,
+            )
+
+            result, destination = self._run_demo_inner_validation_failure(
+                root,
+                payload_root,
+                manifest_path,
+                destination_name="rejected-demo-runtime-expansion-limit-3mf",
+            )
+            output = result.stdout + result.stderr
+            self.assertNotEqual(result.returncode, 0, output)
+            self.assertIn("expansion limit", output)
+            self.assertNotIn("payload SHA-256 mismatch", output)
+            self.assertFalse(destination.exists())
+            self.assertFalse(Path(f"{destination}.zip").exists())
+            self._assert_no_stage_debris(root, destination)
+
+    def test_demo_data_rejects_private_path_inside_three_mf(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            payload_root, manifest_path, _ = self._demo_data_fixture(root)
+            relative = "3MF/Original AI model Color_FullSpectrum.3mf"
+            private_path = "C:" + "/" + "Users" + "/private/Downloads/model.glb"
+            content = self._demo_three_mf_bytes(
+                overrides={
+                    "Metadata/tripo_assembly.json": json.dumps(
+                        {"source": private_path}
+                    ).encode()
+                }
+            )
+            self._replace_demo_payload_and_refresh_manifest(
+                payload_root,
+                manifest_path,
+                relative,
+                content,
+            )
+
+            result, destination = self._run_demo_inner_validation_failure(
+                root,
+                payload_root,
+                manifest_path,
+                destination_name="rejected-demo-private-3mf",
+            )
+            output = result.stdout + result.stderr
+            self.assertNotEqual(result.returncode, 0, output)
+            self.assertIn("forbidden workstation/private token", output)
+            self.assertNotIn("payload SHA-256 mismatch", output)
+            self.assertFalse(destination.exists())
+            self.assertFalse(Path(f"{destination}.zip").exists())
+            self._assert_no_stage_debris(root, destination)
+
+    def test_demo_data_rejects_decoded_private_tokens_inside_three_mf(self) -> None:
+        private_path = "C:" + "\\" + "Users" + "\\private\\model.glb"
+        cases = (
+            (
+                "json-escaped-path",
+                "Metadata/tripo_assembly.json",
+                json.dumps({"source": private_path}).encode(),
+            ),
+            (
+                "xml-character-reference",
+                "Metadata/model_settings.config",
+                (
+                    '<config><source>C:'
+                    '&#92;Users&#92;private&#92;model.glb'
+                    '</source></config>'
+                ).encode(),
+            ),
+            (
+                "object-mesh-xml-character-reference",
+                "3D/Objects/object_1.model",
+                (
+                    '<model unit="millimeter" xmlns="http://schemas.microsoft.'
+                    'com/3dmanufacturing/core/2015/02"><resources>'
+                    '<object id="1" type="model"><mesh><vertices>'
+                    '<vertex x="0" y="0" z="0" note="C:'
+                    '&#92;Users&#92;private&#92;model.glb"/>'
+                    '<vertex x="1" y="0" z="0"/>'
+                    '<vertex x="0" y="1" z="0"/>'
+                    '</vertices><triangles><triangle v1="0" v2="1" v3="2"/>'
+                    '</triangles></mesh></object></resources></model>'
+                ).encode(),
+            ),
+        )
+        for case, member, replacement in cases:
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                payload_root, manifest_path, _ = self._demo_data_fixture(root)
+                relative = "3MF/Original AI model Color_FullSpectrum.3mf"
+                content = self._demo_three_mf_bytes(
+                    overrides={member: replacement}
+                )
+                self._replace_demo_payload_and_refresh_manifest(
+                    payload_root,
+                    manifest_path,
+                    relative,
+                    content,
+                )
+
+                result, destination = self._run_demo_inner_validation_failure(
+                    root,
+                    payload_root,
+                    manifest_path,
+                    destination_name=f"rejected-demo-decoded-private-{case}",
+                )
+                output = result.stdout + result.stderr
+                self.assertNotEqual(result.returncode, 0, output)
+                self.assertIn("forbidden workstation/private token", output)
+                self.assertNotIn("payload SHA-256 mismatch", output)
+                self.assertFalse(destination.exists())
+                self.assertFalse(Path(f"{destination}.zip").exists())
+                self._assert_no_stage_debris(root, destination)
+
+    def test_demo_data_rejects_decoded_private_path_in_part_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            payload_root, manifest_path, _ = self._demo_data_fixture(root)
+            relative = (
+                "3MF/Original AI model Color_FullSpectrum_parts_2/"
+                "パーツ別3MF_manifest.json"
+            )
+            private_path = "C:" + "\\" + "Users" + "\\private\\model.glb"
+            content = json.dumps({"source": private_path}).encode()
+            self._replace_demo_payload_and_refresh_manifest(
+                payload_root,
+                manifest_path,
+                relative,
+                content,
+            )
+
+            result, destination = self._run_demo_inner_validation_failure(
+                root,
+                payload_root,
+                manifest_path,
+                destination_name="rejected-demo-private-part-manifest",
+            )
+            output = result.stdout + result.stderr
+            self.assertNotEqual(result.returncode, 0, output)
+            self.assertIn("forbidden workstation/private token", output)
+            self.assertNotIn("payload SHA-256 mismatch", output)
+            self.assertFalse(destination.exists())
+            self.assertFalse(Path(f"{destination}.zip").exists())
+            self._assert_no_stage_debris(root, destination)
+
+    def test_demo_data_rejects_duplicate_keys_in_controlled_json(self) -> None:
+        duplicate_json = b'{"source":"first","source":"second"}'
+        cases = ("nested-3mf", "part-manifest")
+        for case in cases:
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                payload_root, manifest_path, _ = self._demo_data_fixture(root)
+                if case == "nested-3mf":
+                    relative = "3MF/Original AI model Color_FullSpectrum.3mf"
+                    content = self._demo_three_mf_bytes(
+                        overrides={
+                            "Metadata/tripo_assembly.json": duplicate_json,
+                        }
+                    )
+                else:
+                    relative = (
+                        "3MF/Original AI model Color_FullSpectrum_parts_2/"
+                        "パーツ別3MF_manifest.json"
+                    )
+                    content = duplicate_json
+                self._replace_demo_payload_and_refresh_manifest(
+                    payload_root,
+                    manifest_path,
+                    relative,
+                    content,
+                )
+
+                result, destination = self._run_demo_inner_validation_failure(
+                    root,
+                    payload_root,
+                    manifest_path,
+                    destination_name=f"rejected-demo-duplicate-json-{case}",
+                )
+                output = result.stdout + result.stderr
+                self.assertNotEqual(result.returncode, 0, output)
+                self.assertIn("duplicate object key", output)
+                self.assertNotIn("payload SHA-256 mismatch", output)
+                self.assertFalse(destination.exists())
+                self.assertFalse(Path(f"{destination}.zip").exists())
+                self._assert_no_stage_debris(root, destination)
+
+    def test_demo_data_rejects_case_collision_inside_three_mf(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            payload_root, manifest_path, _ = self._demo_data_fixture(root)
+            relative = "3MF/Original AI model Color_FullSpectrum.3mf"
+            content = self._demo_three_mf_bytes(
+                extra_members=(("metadata/tripo_assembly.json", b"{}"),)
+            )
+            self._replace_demo_payload_and_refresh_manifest(
+                payload_root,
+                manifest_path,
+                relative,
+                content,
+            )
+
+            result, destination = self._run_demo_inner_validation_failure(
+                root,
+                payload_root,
+                manifest_path,
+                destination_name="rejected-demo-collision-3mf",
+            )
+            output = result.stdout + result.stderr
+            self.assertNotEqual(result.returncode, 0, output)
+            self.assertIn("Duplicate casefold-equivalent", output)
+            self.assertNotIn("payload SHA-256 mismatch", output)
+            self.assertFalse(destination.exists())
+            self.assertFalse(Path(f"{destination}.zip").exists())
+            self._assert_no_stage_debris(root, destination)
+
+    def test_demo_data_rejects_traversal_inside_three_mf(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            payload_root, manifest_path, _ = self._demo_data_fixture(root)
+            relative = "3MF/Original AI model Color_FullSpectrum.3mf"
+            content = self._demo_three_mf_bytes(
+                extra_members=(("../escaped.xml", b"<root/>"),)
+            )
+            self._replace_demo_payload_and_refresh_manifest(
+                payload_root,
+                manifest_path,
+                relative,
+                content,
+            )
+
+            result, destination = self._run_demo_inner_validation_failure(
+                root,
+                payload_root,
+                manifest_path,
+                destination_name="rejected-demo-traversal-3mf",
+            )
+            output = result.stdout + result.stderr
+            self.assertNotEqual(result.returncode, 0, output)
+            self.assertIn("unsafe Windows path segment", output)
+            self.assertNotIn("payload SHA-256 mismatch", output)
             self.assertFalse(destination.exists())
             self.assertFalse(Path(f"{destination}.zip").exists())
             self._assert_no_stage_debris(root, destination)
@@ -3169,14 +4414,14 @@ class SoftwarePackageStageTests(unittest.TestCase):
     def test_software_stage_uses_public_win64_default_name(self) -> None:
         stage = SOFTWARE_STAGE_SCRIPT.read_text(encoding="utf-8")
         self.assertIn(
-            '"artifacts\\ChromaMatter-0.8beta-r32.1-win64"',
+            '"artifacts\\ChromaMatter-0.8beta-r32.2-win64"',
             stage,
         )
         policy = (
             REPO_ROOT / "source" / "fixed_app" / "VERSION_POLICY.md"
         ).read_text(encoding="utf-8")
         self.assertIn(
-            "Public software artifact: `ChromaMatter-0.8beta-r32.1-win64`",
+            "Planned public software artifact: `ChromaMatter-0.8beta-r32.2-win64`",
             policy,
         )
 
@@ -3597,11 +4842,20 @@ class SoftwarePackageStageTests(unittest.TestCase):
         self.assertIn('"HANDOFF.md"', stage)
         self.assertIn('"publication/BINARY_RELEASE_HANDOFF_JA.md"', stage)
         self.assertIn('"publication/RELEASE_NOTES_r32.1.md"', stage)
+        self.assertIn('"publication/RELEASE_NOTES_r32.2.md"', stage)
         for relative in (
             "source/fixed_app/public_binary/README_JA.md",
             "source/fixed_app/public_binary/README_EN.md",
             "source/fixed_app/public_binary/PRIVACY.md",
             "source/fixed_app/public_binary/START_CHROMAMATTER.cmd",
+            "source/fixed_app/public_binary/DemoData/README_EN.md",
+            "source/fixed_app/public_binary/DemoData/README_JA.md",
+            "source/fixed_app/public_binary/DemoData/NOTICE_EN.md",
+            "source/fixed_app/public_binary/DemoData/NOTICE_JA.md",
+            (
+                "source/fixed_app/public_binary/DemoData/"
+                "DEMO_DATA_MANIFEST.json"
+            ),
         ):
             with self.subTest(public_binary_file=relative):
                 self.assertIn(f'"{relative}"', stage)
@@ -3689,6 +4943,7 @@ class SoftwarePackageStageTests(unittest.TestCase):
             "!publication/INNOVATION_FUND_STATUS_JA.md",
             "!publication/BINARY_RELEASE_HANDOFF_JA.md",
             "!publication/RELEASE_NOTES_r32.1.md",
+            "!publication/RELEASE_NOTES_r32.2.md",
             "!tooling/generate_binary_compliance_inventory.py",
             "!tooling/generate_pytetwild_rebuild_lock.py",
             "!tooling/pymeshlab_audited_native_identities.json",
@@ -3744,6 +4999,7 @@ class PublicSourceStageRollbackTests(unittest.TestCase):
         "publication/INNOVATION_FUND_STATUS_JA.md",
         "publication/BINARY_RELEASE_HANDOFF_JA.md",
         "publication/RELEASE_NOTES_r32.1.md",
+        "publication/RELEASE_NOTES_r32.2.md",
     )
     REQUIRED_FIXED_APP_FILES = (
         "source/fixed_app/TripoSpectrumMapper_fixed.py",
@@ -3780,6 +5036,16 @@ class PublicSourceStageRollbackTests(unittest.TestCase):
         "source/fixed_app/public_binary/PRIVACY.md",
         "source/fixed_app/public_binary/START_CHROMAMATTER.cmd",
     )
+    REQUIRED_DEMO_DATA_DOCUMENT_FILES = (
+        "source/fixed_app/public_binary/DemoData/README_EN.md",
+        "source/fixed_app/public_binary/DemoData/README_JA.md",
+        "source/fixed_app/public_binary/DemoData/NOTICE_EN.md",
+        "source/fixed_app/public_binary/DemoData/NOTICE_JA.md",
+        (
+            "source/fixed_app/public_binary/DemoData/"
+            "DEMO_DATA_MANIFEST.json"
+        ),
+    )
 
     def _source_fixture(self, root: Path) -> Path:
         fixture = root / "fixture-repository"
@@ -3789,10 +5055,29 @@ class PublicSourceStageRollbackTests(unittest.TestCase):
             + self.REQUIRED_PUBLICATION_FILES
             + self.REQUIRED_FIXED_APP_FILES
             + self.REQUIRED_PUBLIC_BINARY_FILES
+            + self.REQUIRED_DEMO_DATA_DOCUMENT_FILES
         ):
             path = fixture / Path(relative)
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(b"synthetic public source fixture\n")
+
+        # The source-stage contract validates the canonical release identity,
+        # payload allowlist, and redistribution approvals even though the
+        # payload binaries themselves are intentionally absent from Git.
+        shutil.copy2(
+            REPO_ROOT
+            / "source"
+            / "fixed_app"
+            / "public_binary"
+            / "DemoData"
+            / "DEMO_DATA_MANIFEST.json",
+            fixture
+            / "source"
+            / "fixed_app"
+            / "public_binary"
+            / "DemoData"
+            / "DEMO_DATA_MANIFEST.json",
+        )
 
         required_directories = (
             "licenses",
@@ -3801,6 +5086,7 @@ class PublicSourceStageRollbackTests(unittest.TestCase):
             "source/fixed_app/spectrum_mapper",
             "source/fixed_app/resources/filament_db",
             "source/fixed_app/public_binary",
+            "source/fixed_app/public_binary/DemoData",
             "source/fixed_app/tests",
         )
         for relative in required_directories:
@@ -3908,13 +5194,19 @@ class PublicSourceStageRollbackTests(unittest.TestCase):
 
             output = result.stdout + result.stderr
             self.assertEqual(result.returncode, 0, output)
-            for relative in self.REQUIRED_PUBLIC_BINARY_FILES:
+            for relative in (
+                self.REQUIRED_PUBLIC_BINARY_FILES
+                + self.REQUIRED_DEMO_DATA_DOCUMENT_FILES
+            ):
                 with self.subTest(relative=relative):
                     self.assertTrue((destination / relative).is_file())
             manifest = (destination / "SOURCE_MANIFEST_SHA256.txt").read_text(
                 encoding="utf-8"
             )
-            for relative in self.REQUIRED_PUBLIC_BINARY_FILES:
+            for relative in (
+                self.REQUIRED_PUBLIC_BINARY_FILES
+                + self.REQUIRED_DEMO_DATA_DOCUMENT_FILES
+            ):
                 with self.subTest(manifest_entry=relative):
                     self.assertIn(relative, manifest)
 
@@ -3938,6 +5230,223 @@ class PublicSourceStageRollbackTests(unittest.TestCase):
             self.assertIn("Unexpected public-binary entry is not allowlisted", output)
             self.assertFalse(destination.exists())
             self.assertFalse(output_root.exists())
+
+    def test_unknown_public_demo_data_entry_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = self._source_fixture(root)
+            extra = (
+                fixture
+                / "source"
+                / "fixed_app"
+                / "public_binary"
+                / "DemoData"
+                / "unreviewed.3mf"
+            )
+            extra.write_bytes(b"must not enter source stage")
+            output_root = root / "release-output"
+            destination = output_root / "public-source-stage"
+
+            result = _run_powershell(
+                fixture / "tooling" / SOURCE_STAGE_SCRIPT.name,
+                "-Destination",
+                str(destination),
+            )
+
+            output = result.stdout + result.stderr
+            self.assertNotEqual(result.returncode, 0, output)
+            self.assertIn("Unexpected public DemoData document entry", output)
+            self.assertFalse(destination.exists())
+            self.assertFalse(output_root.exists())
+
+    def test_malformed_demo_manifest_is_rejected_without_stage_debris(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = self._source_fixture(root)
+            manifest = (
+                fixture
+                / "source"
+                / "fixed_app"
+                / "public_binary"
+                / "DemoData"
+                / "DEMO_DATA_MANIFEST.json"
+            )
+            manifest.write_text("{not valid json\n", encoding="utf-8")
+            output_root = root / "release-output"
+            destination = output_root / "public-source-stage"
+
+            result = _run_powershell(
+                fixture / "tooling" / SOURCE_STAGE_SCRIPT.name,
+                "-Destination",
+                str(destination),
+            )
+
+            output = result.stdout + result.stderr
+            self.assertNotEqual(result.returncode, 0, output)
+            self.assertRegex(
+                output,
+                r"object property without a J\s*SON string name",
+            )
+            self.assertFalse(destination.exists())
+            self.assertFalse(output_root.exists())
+
+    def test_stale_demo_manifest_identity_is_rejected_without_stage_debris(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = self._source_fixture(root)
+            manifest = (
+                fixture
+                / "source"
+                / "fixed_app"
+                / "public_binary"
+                / "DemoData"
+                / "DEMO_DATA_MANIFEST.json"
+            )
+            document = json.loads(manifest.read_text(encoding="utf-8"))
+            document["document_id"] = "chromamatter.demo-data.stale"
+            manifest.write_text(
+                json.dumps(document, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            output_root = root / "release-output"
+            destination = output_root / "public-source-stage"
+
+            result = _run_powershell(
+                fixture / "tooling" / SOURCE_STAGE_SCRIPT.name,
+                "-Destination",
+                str(destination),
+            )
+
+            output = result.stdout + result.stderr
+            self.assertNotEqual(result.returncode, 0, output)
+            self.assertIn(
+                "Canonical DemoData manifest has the wrong r32.2 identity",
+                output,
+            )
+            self.assertFalse(destination.exists())
+            self.assertFalse(output_root.exists())
+
+    def test_public_source_rejects_noncanonical_demo_manifest_values(self) -> None:
+        private_path = "C:" + "\\" + "Us" + "ers\\private\\model.glb"
+
+        def duplicate_key(path: Path) -> None:
+            document_id = '"document_id": "chromamatter.demo-data.r32.2"'
+            text = path.read_text(encoding="utf-8")
+            self.assertEqual(text.count(document_id), 1)
+            path.write_text(
+                text.replace(document_id, f"{document_id}, {document_id}", 1),
+                encoding="utf-8",
+            )
+
+        def mutate_json(path: Path, mutation) -> None:
+            document = json.loads(path.read_text(encoding="utf-8"))
+            mutation(document)
+            path.write_text(
+                json.dumps(document, ensure_ascii=True, indent=2) + "\n",
+                encoding="utf-8",
+            )
+
+        cases = (
+            (
+                "duplicate-key",
+                duplicate_key,
+                "duplicate JSON object property",
+            ),
+            (
+                "decoded-private",
+                lambda path: mutate_json(
+                    path,
+                    lambda document: document.__setitem__(
+                        "document_id", private_path
+                    ),
+                ),
+                "forbidden private token in decoded JSON text",
+            ),
+            (
+                "extra-field",
+                lambda path: mutate_json(
+                    path,
+                    lambda document: document.__setitem__("unexpected", True),
+                ),
+                "missing or unexpected fields",
+            ),
+            (
+                "schema-string",
+                lambda path: mutate_json(
+                    path,
+                    lambda document: document.__setitem__("schema_version", "2"),
+                ),
+                "wrong r32.2 identity or JSON value types",
+            ),
+            (
+                "document-order",
+                lambda path: mutate_json(
+                    path,
+                    lambda document: document["expected_documents"].reverse(),
+                ),
+                "wrong ordered document set",
+            ),
+            (
+                "payload-bytes-string",
+                lambda path: mutate_json(
+                    path,
+                    lambda document: document["payloads"][0].__setitem__(
+                        "bytes", str(document["payloads"][0]["bytes"])
+                    ),
+                ),
+                "positive JSON integer",
+            ),
+            (
+                "payload-media-value",
+                lambda path: mutate_json(
+                    path,
+                    lambda document: document["payloads"][0].__setitem__(
+                        "media_type", "application/octet-stream"
+                    ),
+                ),
+                "payload record 1 has the wrong identity",
+            ),
+            (
+                "gate-string",
+                lambda path: mutate_json(
+                    path,
+                    lambda document: document["publication_gate"].__setitem__(
+                        "raw_glb_redistribution_confirmed", "true"
+                    ),
+                ),
+                "publication gate is not strictly approved",
+            ),
+        )
+
+        for case, mutate, expected in cases:
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                fixture = self._source_fixture(root)
+                manifest = (
+                    fixture
+                    / "source"
+                    / "fixed_app"
+                    / "public_binary"
+                    / "DemoData"
+                    / "DEMO_DATA_MANIFEST.json"
+                )
+                mutate(manifest)
+                output_root = root / "release-output"
+                destination = output_root / "public-source-stage"
+
+                result = _run_powershell(
+                    fixture / "tooling" / SOURCE_STAGE_SCRIPT.name,
+                    "-Destination",
+                    str(destination),
+                )
+
+                output = result.stdout + result.stderr
+                self.assertNotEqual(result.returncode, 0, output)
+                self.assertIn(expected, output)
+                self.assertFalse(destination.exists())
+                self.assertFalse(output_root.exists())
 
     def _assert_no_source_stage_debris(
         self,

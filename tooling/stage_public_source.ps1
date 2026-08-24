@@ -12,7 +12,7 @@ $repoRoot = (Get-Item -LiteralPath (Split-Path -Parent $PSScriptRoot)).FullName
 if (-not $Destination) {
     $Destination = Join-Path `
         $repoRoot `
-        "artifacts\ChromaMatter-0.8beta-r32.1-source-public-20260824"
+        "artifacts\ChromaMatter-0.8beta-r32.2-source-public-20260824"
 }
 elseif (-not [System.IO.Path]::IsPathRooted($Destination)) {
     $Destination = Join-Path $repoRoot $Destination
@@ -57,7 +57,8 @@ $requiredPublicationFiles = @(
     "publication/INNOVATION_FUND_APPLICATION_DRAFT.md",
     "publication/INNOVATION_FUND_STATUS_JA.md",
     "publication/BINARY_RELEASE_HANDOFF_JA.md",
-    "publication/RELEASE_NOTES_r32.1.md"
+    "publication/RELEASE_NOTES_r32.1.md",
+    "publication/RELEASE_NOTES_r32.2.md"
 )
 $requiredFixedAppFiles = @(
     "source/fixed_app/TripoSpectrumMapper_fixed.py",
@@ -96,6 +97,13 @@ $requiredPublicBinaryFiles = @(
     "source/fixed_app/public_binary/README_EN.md",
     "source/fixed_app/public_binary/PRIVACY.md",
     "source/fixed_app/public_binary/START_CHROMAMATTER.cmd"
+)
+$requiredDemoDataDocumentFiles = @(
+    "source/fixed_app/public_binary/DemoData/README_EN.md",
+    "source/fixed_app/public_binary/DemoData/README_JA.md",
+    "source/fixed_app/public_binary/DemoData/NOTICE_EN.md",
+    "source/fixed_app/public_binary/DemoData/NOTICE_JA.md",
+    "source/fixed_app/public_binary/DemoData/DEMO_DATA_MANIFEST.json"
 )
 $requiredToolingFiles = @(
     "tooling/generate_public_icon.py",
@@ -136,6 +144,7 @@ foreach ($relative in (
     $requiredPublicationFiles +
     $requiredFixedAppFiles +
     $requiredPublicBinaryFiles +
+    $requiredDemoDataDocumentFiles +
     $requiredToolingFiles
 )) {
     $source = Join-Path $repoRoot $relative
@@ -157,19 +166,688 @@ if (-not (Test-Path -LiteralPath $publicBinaryDirectory -PathType Container)) {
 $allowedPublicBinaryNames = @(
     $requiredPublicBinaryFiles |
         ForEach-Object { Split-Path -Leaf $_ }
-)
+) + "DemoData"
 foreach ($entry in @(Get-ChildItem -LiteralPath $publicBinaryDirectory -Force)) {
     if (
-        $entry.PSIsContainer -or
         ($entry.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0 -or
-        $entry.Name -notin $allowedPublicBinaryNames
+        $entry.Name -notin $allowedPublicBinaryNames -or
+        ($entry.Name -ceq "DemoData" -and -not $entry.PSIsContainer) -or
+        ($entry.Name -cne "DemoData" -and $entry.PSIsContainer)
     ) {
         throw "Unexpected public-binary entry is not allowlisted: $($entry.Name)"
     }
 }
-if (@(Get-ChildItem -LiteralPath $publicBinaryDirectory -Force -File).Count -ne 4) {
-    throw "Public-binary directory must contain exactly four allowlisted files."
+if (@(Get-ChildItem -LiteralPath $publicBinaryDirectory -Force).Count -ne 5) {
+    throw "Public-binary directory must contain four files and DemoData."
 }
+
+$publicDemoDataDirectory = Join-Path $publicBinaryDirectory "DemoData"
+$expectedDemoDataDocumentNames = @(
+    $requiredDemoDataDocumentFiles |
+        ForEach-Object { Split-Path -Leaf $_ }
+)
+foreach ($entry in @(Get-ChildItem -LiteralPath $publicDemoDataDirectory -Force)) {
+    if (
+        $entry.PSIsContainer -or
+        ($entry.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0 -or
+        $entry.Name -notin $expectedDemoDataDocumentNames
+    ) {
+        throw "Unexpected public DemoData document entry: $($entry.Name)"
+    }
+}
+if (@(Get-ChildItem -LiteralPath $publicDemoDataDirectory -Force -File).Count -ne 5) {
+    throw "Public DemoData document directory must contain exactly five files."
+}
+
+# The corresponding-source preview carries the canonical allowlist used later
+# by the binary stage.  Refuse a malformed, privacy-unsafe, or stale document
+# here rather than publishing source that cannot reproduce the software
+# package.  ConvertFrom-Json alone is not sufficient for this gate because it
+# discards earlier duplicate properties and raw-text scanning misses escaped
+# path separators.  The small PS5.1-compatible scanner below validates JSON
+# syntax before object materialization, rejects duplicate properties in every
+# object, and scans every decoded JSON string for private tokens.
+$publicManifestScannerType = (
+    [System.Management.Automation.PSTypeName]::new(
+        "ChromaMatter.PublicManifestJsonScanner"
+    )
+).Type
+if (-not $publicManifestScannerType) {
+    $publicManifestScannerSource = @'
+using System;
+using System.Collections.Generic;
+using System.Text;
+
+namespace ChromaMatter
+{
+    public sealed class PublicManifestJsonScanner
+    {
+        private readonly string text;
+        private readonly string[] privateTokens;
+        private readonly string context;
+        private int index;
+
+        private PublicManifestJsonScanner(
+            string text,
+            string[] privateTokens,
+            string context)
+        {
+            if (text == null)
+            {
+                throw new ArgumentNullException("text");
+            }
+            this.text = text;
+            this.privateTokens = privateTokens ?? new string[0];
+            this.context = String.IsNullOrEmpty(context) ? "JSON" : context;
+        }
+
+        public static void Validate(
+            string text,
+            string[] privateTokens,
+            string context)
+        {
+            PublicManifestJsonScanner scanner =
+                new PublicManifestJsonScanner(text, privateTokens, context);
+            scanner.SkipWhitespace();
+            scanner.ParseValue();
+            scanner.SkipWhitespace();
+            if (scanner.index != scanner.text.Length)
+            {
+                scanner.Fail("contains data after the top-level JSON value");
+            }
+        }
+
+        private void ParseValue()
+        {
+            if (index >= text.Length)
+            {
+                Fail("ends before a JSON value is complete");
+            }
+
+            char current = text[index];
+            if (current == '{')
+            {
+                ParseObject();
+            }
+            else if (current == '[')
+            {
+                ParseArray();
+            }
+            else if (current == '"')
+            {
+                ParseString();
+            }
+            else if (current == 't')
+            {
+                ParseLiteral("true");
+            }
+            else if (current == 'f')
+            {
+                ParseLiteral("false");
+            }
+            else if (current == 'n')
+            {
+                ParseLiteral("null");
+            }
+            else if (current == '-' || (current >= '0' && current <= '9'))
+            {
+                ParseNumber();
+            }
+            else
+            {
+                Fail("contains an invalid JSON value");
+            }
+        }
+
+        private void ParseObject()
+        {
+            index++;
+            SkipWhitespace();
+            HashSet<string> names = new HashSet<string>(StringComparer.Ordinal);
+            if (TryConsume('}'))
+            {
+                return;
+            }
+
+            while (true)
+            {
+                if (index >= text.Length || text[index] != '"')
+                {
+                    Fail("contains an object property without a JSON string name");
+                }
+                string name = ParseString();
+                if (!names.Add(name))
+                {
+                    Fail("contains a duplicate JSON object property");
+                }
+                SkipWhitespace();
+                Require(':');
+                SkipWhitespace();
+                ParseValue();
+                SkipWhitespace();
+                if (TryConsume('}'))
+                {
+                    return;
+                }
+                Require(',');
+                SkipWhitespace();
+            }
+        }
+
+        private void ParseArray()
+        {
+            index++;
+            SkipWhitespace();
+            if (TryConsume(']'))
+            {
+                return;
+            }
+
+            while (true)
+            {
+                ParseValue();
+                SkipWhitespace();
+                if (TryConsume(']'))
+                {
+                    return;
+                }
+                Require(',');
+                SkipWhitespace();
+            }
+        }
+
+        private string ParseString()
+        {
+            Require('"');
+            StringBuilder decoded = new StringBuilder();
+            while (index < text.Length)
+            {
+                char current = text[index++];
+                if (current == '"')
+                {
+                    string value = decoded.ToString();
+                    AssertNoPrivateToken(value);
+                    return value;
+                }
+                if (current < 0x20)
+                {
+                    Fail("contains an unescaped control character in a JSON string");
+                }
+                if (current != '\\')
+                {
+                    decoded.Append(current);
+                    continue;
+                }
+                if (index >= text.Length)
+                {
+                    Fail("ends during a JSON string escape");
+                }
+                char escaped = text[index++];
+                switch (escaped)
+                {
+                    case '"': decoded.Append('"'); break;
+                    case '\\': decoded.Append('\\'); break;
+                    case '/': decoded.Append('/'); break;
+                    case 'b': decoded.Append('\b'); break;
+                    case 'f': decoded.Append('\f'); break;
+                    case 'n': decoded.Append('\n'); break;
+                    case 'r': decoded.Append('\r'); break;
+                    case 't': decoded.Append('\t'); break;
+                    case 'u': decoded.Append(ParseUnicodeEscape()); break;
+                    default:
+                        Fail("contains an invalid JSON string escape");
+                        break;
+                }
+            }
+            Fail("ends before a JSON string is closed");
+            return null;
+        }
+
+        private char ParseUnicodeEscape()
+        {
+            if (index + 4 > text.Length)
+            {
+                Fail("ends during a JSON Unicode escape");
+            }
+            int value = 0;
+            for (int offset = 0; offset < 4; offset++)
+            {
+                char current = text[index++];
+                int digit;
+                if (current >= '0' && current <= '9')
+                {
+                    digit = current - '0';
+                }
+                else if (current >= 'a' && current <= 'f')
+                {
+                    digit = current - 'a' + 10;
+                }
+                else if (current >= 'A' && current <= 'F')
+                {
+                    digit = current - 'A' + 10;
+                }
+                else
+                {
+                    Fail("contains an invalid JSON Unicode escape");
+                    return '\0';
+                }
+                value = (value * 16) + digit;
+            }
+            return (char)value;
+        }
+
+        private void ParseNumber()
+        {
+            if (TryConsume('-') && index >= text.Length)
+            {
+                Fail("ends during a JSON number");
+            }
+            if (TryConsume('0'))
+            {
+                if (index < text.Length && text[index] >= '0' && text[index] <= '9')
+                {
+                    Fail("contains a JSON number with a leading zero");
+                }
+            }
+            else
+            {
+                RequireDigitOneToNine();
+                while (index < text.Length && text[index] >= '0' && text[index] <= '9')
+                {
+                    index++;
+                }
+            }
+            if (TryConsume('.'))
+            {
+                RequireDigit();
+                while (index < text.Length && text[index] >= '0' && text[index] <= '9')
+                {
+                    index++;
+                }
+            }
+            if (index < text.Length && (text[index] == 'e' || text[index] == 'E'))
+            {
+                index++;
+                if (index < text.Length && (text[index] == '+' || text[index] == '-'))
+                {
+                    index++;
+                }
+                RequireDigit();
+                while (index < text.Length && text[index] >= '0' && text[index] <= '9')
+                {
+                    index++;
+                }
+            }
+        }
+
+        private void ParseLiteral(string literal)
+        {
+            if (index + literal.Length > text.Length ||
+                !String.Equals(
+                    text.Substring(index, literal.Length),
+                    literal,
+                    StringComparison.Ordinal))
+            {
+                Fail("contains an invalid JSON literal");
+            }
+            index += literal.Length;
+        }
+
+        private void AssertNoPrivateToken(string value)
+        {
+            foreach (string token in privateTokens)
+            {
+                if (!String.IsNullOrEmpty(token) &&
+                    value.IndexOf(token, StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    Fail("contains a forbidden private token in decoded JSON text");
+                }
+            }
+        }
+
+        private void Require(char expected)
+        {
+            if (index >= text.Length || text[index] != expected)
+            {
+                Fail("contains invalid JSON punctuation");
+            }
+            index++;
+        }
+
+        private void RequireDigit()
+        {
+            if (index >= text.Length || text[index] < '0' || text[index] > '9')
+            {
+                Fail("contains an incomplete JSON number");
+            }
+        }
+
+        private void RequireDigitOneToNine()
+        {
+            if (index >= text.Length || text[index] < '1' || text[index] > '9')
+            {
+                Fail("contains an invalid JSON number");
+            }
+            index++;
+        }
+
+        private bool TryConsume(char expected)
+        {
+            if (index < text.Length && text[index] == expected)
+            {
+                index++;
+                return true;
+            }
+            return false;
+        }
+
+        private void SkipWhitespace()
+        {
+            while (index < text.Length)
+            {
+                char current = text[index];
+                if (current != ' ' && current != '\t' &&
+                    current != '\r' && current != '\n')
+                {
+                    return;
+                }
+                index++;
+            }
+        }
+
+        private void Fail(string message)
+        {
+            throw new InvalidOperationException(context + " " + message + ".");
+        }
+    }
+}
+'@
+    Add-Type -TypeDefinition $publicManifestScannerSource -Language CSharp
+}
+
+function Get-PublicManifestPrivateAuditTokens {
+    $variableName = "CHROMAMATTER_PRIVATE_AUDIT_TOKENS"
+    $rawValue = [Environment]::GetEnvironmentVariable($variableName, "Process")
+    if ([string]::IsNullOrWhiteSpace($rawValue)) {
+        return [string[]]@()
+    }
+
+    $tokens = [System.Collections.Generic.List[string]]::new()
+    $seen = [System.Collections.Generic.HashSet[string]]::new(
+        [System.StringComparer]::OrdinalIgnoreCase
+    )
+    $segments = $rawValue.Split([char]";")
+    for ($index = 0; $index -lt $segments.Length; $index++) {
+        $token = $segments[$index].Trim()
+        if ($token.Length -eq 0) {
+            throw (
+                "$variableName contains an empty token at position " +
+                "$($index + 1). Remove duplicate or trailing separators."
+            )
+        }
+        if ($token.Length -lt 3 -or $token.Length -gt 512) {
+            throw "$variableName tokens must contain between 3 and 512 characters."
+        }
+        foreach ($character in $token.ToCharArray()) {
+            if ([char]::IsControl($character)) {
+                throw "$variableName tokens must not contain control characters."
+            }
+        }
+        if ($seen.Add($token)) {
+            $tokens.Add($token)
+        }
+    }
+    return [string[]]$tokens.ToArray()
+}
+
+$publicManifestUserDirectoryBackslash = "C:" + [char]92 + ("Us" + "ers")
+$publicManifestUserDirectorySlash = "C:/" + ("Us" + "ers")
+$publicManifestDocumentsWorkspaceBackslash = (
+    ("Docu" + "ments") + [char]92 + ("Co" + "dex")
+)
+$publicManifestDocumentsWorkspaceSlash = (
+    ("Docu" + "ments") + "/" + ("Co" + "dex")
+)
+$publicManifestPrivateTokens = [string[]]@(
+    $publicManifestUserDirectoryBackslash,
+    $publicManifestUserDirectorySlash,
+    $publicManifestDocumentsWorkspaceBackslash,
+    $publicManifestDocumentsWorkspaceSlash
+) + [string[]]@(Get-PublicManifestPrivateAuditTokens)
+
+function Assert-PublicManifestExactProperties {
+    param(
+        [Parameter(Mandatory = $true)][object]$Value,
+        [Parameter(Mandatory = $true)][string[]]$Expected,
+        [Parameter(Mandatory = $true)][string]$Context
+    )
+
+    if ($Value -isnot [System.Management.Automation.PSCustomObject]) {
+        throw "$Context must be a JSON object."
+    }
+    $actual = @($Value.PSObject.Properties.Name | Sort-Object -CaseSensitive)
+    $wanted = @($Expected | Sort-Object -CaseSensitive)
+    if (
+        $actual.Count -ne $wanted.Count -or
+        @(Compare-Object $wanted $actual -CaseSensitive).Count -ne 0
+    ) {
+        throw "$Context has missing or unexpected fields."
+    }
+}
+
+$partManifestLeaf = (
+    -join @(
+        [char]0x30D1,
+        [char]0x30FC,
+        [char]0x30C4,
+        [char]0x5225
+    )
+) + "3MF_manifest.json"
+$expectedDemoPayloadSpecs = @(
+    [pscustomobject]@{
+        Path = "Original AI model Color.glb"
+        MediaType = "model/gltf-binary"
+        Role = "multipart-glb-demo"
+    },
+    [pscustomobject]@{
+        Path = "Reference.jpg"
+        MediaType = "image/jpeg"
+        Role = "reference-image"
+    },
+    [pscustomobject]@{
+        Path = "3MF/Original AI model Color_FullSpectrum.3mf"
+        MediaType = "model/3mf"
+        Role = "combined-full-spectrum-3mf-demo"
+    },
+    [pscustomobject]@{
+        Path = "3MF/Original AI model Color_FullSpectrum_parts_2/01_RightArm_FullSpectrum.3mf"
+        MediaType = "model/3mf"
+        Role = "individual-part-3mf-demo"
+    },
+    [pscustomobject]@{
+        Path = "3MF/Original AI model Color_FullSpectrum_parts_2/02_LeftLeg_FullSpectrum.3mf"
+        MediaType = "model/3mf"
+        Role = "individual-part-3mf-demo"
+    },
+    [pscustomobject]@{
+        Path = "3MF/Original AI model Color_FullSpectrum_parts_2/03_Head_FullSpectrum.3mf"
+        MediaType = "model/3mf"
+        Role = "individual-part-3mf-demo"
+    },
+    [pscustomobject]@{
+        Path = "3MF/Original AI model Color_FullSpectrum_parts_2/04_LeftArm_FullSpectrum.3mf"
+        MediaType = "model/3mf"
+        Role = "individual-part-3mf-demo"
+    },
+    [pscustomobject]@{
+        Path = "3MF/Original AI model Color_FullSpectrum_parts_2/05_Torso_FullSpectrum.3mf"
+        MediaType = "model/3mf"
+        Role = "individual-part-3mf-demo"
+    },
+    [pscustomobject]@{
+        Path = "3MF/Original AI model Color_FullSpectrum_parts_2/06_RightLeg_FullSpectrum.3mf"
+        MediaType = "model/3mf"
+        Role = "individual-part-3mf-demo"
+    },
+    [pscustomobject]@{
+        Path = "3MF/Original AI model Color_FullSpectrum_parts_2/$partManifestLeaf"
+        MediaType = "application/json"
+        Role = "individual-part-3mf-manifest"
+    }
+)
+$expectedDemoDocuments = @("README_EN.md", "README_JA.md", "NOTICE_EN.md", "NOTICE_JA.md")
+
+function Read-ValidatedPublicDemoManifest {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$Context
+    )
+
+    $manifestItem = Get-Item -LiteralPath $Path -Force -ErrorAction Stop
+    if (
+        $manifestItem.PSIsContainer -or
+        ($manifestItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0
+    ) {
+        throw "$Context must be a regular file and not a reparse point."
+    }
+    try {
+        $manifestBytes = [System.IO.File]::ReadAllBytes($manifestItem.FullName)
+        $manifestText = [System.Text.UTF8Encoding]::new($false, $true).GetString(
+            $manifestBytes
+        )
+    }
+    catch {
+        throw "$Context is not strict UTF-8 text."
+    }
+    try {
+        [ChromaMatter.PublicManifestJsonScanner]::Validate(
+            $manifestText,
+            $publicManifestPrivateTokens,
+            $Context
+        )
+    }
+    catch {
+        throw $_.Exception.Message
+    }
+    try {
+        $manifest = $manifestText | ConvertFrom-Json -ErrorAction Stop
+    }
+    catch {
+        throw "$Context is not readable JSON."
+    }
+
+    Assert-PublicManifestExactProperties `
+        -Value $manifest `
+        -Expected @(
+            "schema_version", "document_id", "release_status",
+            "expected_documents", "payloads", "publication_gate"
+        ) `
+        -Context $Context
+    if (
+        $null -eq $manifest.schema_version -or
+        $manifest.schema_version.GetType().FullName -notin @(
+            "System.Int32", "System.Int64"
+        ) -or
+        [long]$manifest.schema_version -ne 2 -or
+        $manifest.document_id -isnot [string] -or
+        [string]$manifest.document_id -cne "chromamatter.demo-data.r32.2" -or
+        $manifest.release_status -isnot [string] -or
+        [string]$manifest.release_status -cne "approved-for-publication"
+    ) {
+        throw "$Context has the wrong r32.2 identity or JSON value types."
+    }
+
+    if ($manifest.expected_documents -isnot [System.Array]) {
+        throw "$Context expected_documents must be a JSON array."
+    }
+    $manifestDocuments = @($manifest.expected_documents)
+    if ($manifestDocuments.Count -ne $expectedDemoDocuments.Count) {
+        throw "Canonical DemoData manifest has the wrong document set."
+    }
+    for ($index = 0; $index -lt $expectedDemoDocuments.Count; $index++) {
+        if (
+            $manifestDocuments[$index] -isnot [string] -or
+            [string]$manifestDocuments[$index] -cne $expectedDemoDocuments[$index]
+        ) {
+            throw "$Context has the wrong ordered document set."
+        }
+    }
+
+    if ($manifest.payloads -isnot [System.Array]) {
+        throw "$Context payloads must be a JSON array."
+    }
+    $manifestPayloads = @($manifest.payloads)
+    if ($manifestPayloads.Count -ne $expectedDemoPayloadSpecs.Count) {
+        throw "$Context must contain exactly 10 payloads."
+    }
+    for ($index = 0; $index -lt $expectedDemoPayloadSpecs.Count; $index++) {
+        $payload = $manifestPayloads[$index]
+        $spec = $expectedDemoPayloadSpecs[$index]
+        Assert-PublicManifestExactProperties `
+            -Value $payload `
+            -Expected @("path", "bytes", "sha256", "media_type", "role") `
+            -Context "$Context payload record $($index + 1)"
+        if (
+            $payload.path -isnot [string] -or
+            [string]$payload.path -cne [string]$spec.Path -or
+            $payload.media_type -isnot [string] -or
+            [string]$payload.media_type -cne [string]$spec.MediaType -or
+            $payload.role -isnot [string] -or
+            [string]$payload.role -cne [string]$spec.Role
+        ) {
+            throw "$Context payload record $($index + 1) has the wrong identity."
+        }
+        if (
+            $null -eq $payload.bytes -or
+            $payload.bytes.GetType().FullName -notin @(
+                "System.Int32", "System.Int64"
+            ) -or
+            [long]$payload.bytes -le 0
+        ) {
+            throw "$Context payload byte size must be a positive JSON integer."
+        }
+        if (
+            $payload.sha256 -isnot [string] -or
+            [string]$payload.sha256 -cnotmatch "^[0-9a-f]{64}$"
+        ) {
+            throw "$Context payload SHA-256 must be lowercase hexadecimal."
+        }
+    }
+
+    $demoGate = $manifest.publication_gate
+    Assert-PublicManifestExactProperties `
+        -Value $demoGate `
+        -Expected @(
+            "status", "raw_glb_redistribution_confirmed",
+            "reference_image_redistribution_confirmed",
+            "derived_3mf_redistribution_confirmed",
+            "hi3d_plan_terms_confirmed"
+        ) `
+        -Context "$Context publication gate"
+    if (
+        $demoGate.status -isnot [string] -or
+        [string]$demoGate.status -cne "approved-for-publication" -or
+        $demoGate.raw_glb_redistribution_confirmed -isnot [bool] -or
+        $demoGate.raw_glb_redistribution_confirmed -ne $true -or
+        $demoGate.reference_image_redistribution_confirmed -isnot [bool] -or
+        $demoGate.reference_image_redistribution_confirmed -ne $true -or
+        $demoGate.derived_3mf_redistribution_confirmed -isnot [bool] -or
+        $demoGate.derived_3mf_redistribution_confirmed -ne $true -or
+        $demoGate.hi3d_plan_terms_confirmed -isnot [bool] -or
+        $demoGate.hi3d_plan_terms_confirmed -ne $true
+    ) {
+        throw "$Context publication gate is not strictly approved."
+    }
+    return $manifest
+}
+
+$demoManifestPath = Join-Path $publicDemoDataDirectory "DEMO_DATA_MANIFEST.json"
+$demoManifest = Read-ValidatedPublicDemoManifest `
+    -Path $demoManifestPath `
+    -Context "Canonical DemoData manifest"
+$validatedDemoManifestSha256 = (
+    Get-FileHash -LiteralPath $demoManifestPath -Algorithm SHA256
+).Hash
 
 $destinationParent = Split-Path -Parent $destinationPath
 $destinationLeaf = Split-Path -Leaf $destinationPath
@@ -347,6 +1025,24 @@ Copy-PublicDirectory -RelativePath "source/fixed_app/resources/filament_db"
 Copy-PublicDirectory -RelativePath "source/fixed_app/licenses"
 foreach ($relative in $requiredPublicBinaryFiles) {
     Copy-PublicFile -RelativePath $relative
+}
+foreach ($relative in $requiredDemoDataDocumentFiles) {
+    Copy-PublicFile -RelativePath $relative
+}
+$stagedDemoManifestPath = Join-Path `
+    $temporaryPath `
+    "source/fixed_app/public_binary/DemoData/DEMO_DATA_MANIFEST.json"
+$stagedDemoManifest = Read-ValidatedPublicDemoManifest `
+    -Path $stagedDemoManifestPath `
+    -Context "Staged DemoData manifest"
+$stagedDemoManifestSha256 = (
+    Get-FileHash -LiteralPath $stagedDemoManifestPath -Algorithm SHA256
+).Hash
+if ($stagedDemoManifestSha256 -cne $validatedDemoManifestSha256) {
+    throw (
+        "Canonical DemoData manifest changed after validation; " +
+        "refusing the public-source stage."
+    )
 }
 foreach ($file in @(
     Get-ChildItem -LiteralPath (Join-Path $repoRoot "source/fixed_app/spectrum_mapper") `

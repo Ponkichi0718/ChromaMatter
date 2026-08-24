@@ -1,19 +1,21 @@
 # ChromaMatter cross-PC handoff
 
 Updated: 2026-08-24
-Branch: `main` for post-release documentation; the frozen release source remains
-`v0.8beta-r32.1` / `b575b93d973ed67e7ada986469b10b4490eef4e5`
-Release: `v0.8beta-r32.1` is published as a GitHub prerelease from frozen
+Branch: `codex/r32-2-demo-3mf` for the local r32.2 candidate; the frozen
+published release source remains `v0.8beta-r32.1` /
+`b575b93d973ed67e7ada986469b10b4490eef4e5`
+Previous release: `v0.8beta-r32.1` is published as a GitHub prerelease from frozen
 commit `b575b93d973ed67e7ada986469b10b4490eef4e5`
 Public version: `0.8beta` (do not change without an explicit owner request)
-Current release revision: `r32.1`; Windows numeric version remains `0.8.0.0`
+Current local candidate revision: `r32.2`; Windows numeric version remains `0.8.0.0`
 
 ## Current objective
 
-Maintain the published r32.1 prerelease and its documentation while retaining
-TetGen under its AGPL route. Keep the ChromaMatter application under
+Prepare a separate r32.2 candidate that adds the manifest-locked derived 3MF
+demo outputs without changing the immutable r32.1 prerelease. Retain TetGen
+under its AGPL route. Keep the ChromaMatter application under
 `GPL-3.0-or-later`, preserve each third-party license, and keep the Windows ZIP
-paired with the published complete corresponding-source bundle, SBOM,
+paired with a newly generated complete corresponding-source bundle, SBOM,
 component map, notices, relinking instructions, and checksums.
 
 Published `v0.8beta-r32` at commit
@@ -864,3 +866,58 @@ Keep these outside Git and do not copy them to the public release by default:
   the 90-second hero/cover/community post, and the Innovation Fund submission
   remain future work. Keep all private models, credentials, build roots, and
   controlled toolchain evidence local-only as listed above.
+
+## 2026-08-24 r32.2 demo-output release-candidate checkpoint (in progress)
+
+### Candidate scope
+
+- The working edition/artifact revision is `AI Model Print Studio r32.2` /
+  `r32.2-ai-model-print-studio`. Public display and package version stay
+  `0.8beta`; Windows numeric version stays `0.8.0.0`.
+- r32.2 is a separate local packaging/demo-output candidate. The immutable
+  `v0.8beta-r32.1` tag, six Release assets, hashes, regression, build, and
+  publication results remain previous evidence only and must not be changed or
+  promoted as current r32.2 evidence.
+- The planned Windows package adds exactly seven owner-approved outputs below
+  `DemoData/3MF/`: one combined Full Spectrum project plus six part-specific
+  projects derived from `Original AI model Color.glb`.
+- Hi3D-derived part labels can disagree with visible geometry. Users must
+  inspect each project instead of trusting the part filename. Regenerating the
+  demo requires selecting the physical black F slot and applying **Weak Black
+  5–25% before 3MF export**.
+- Multipart solidification remains unstable beta compatibility. The bundled
+  demo is a successful case, but other multipart OBJ/GLB files may fail to
+  solidify or export as 3MF.
+
+### Release gates still pending
+
+- Freeze the exact r32.2 source commit, preserve the preflight-passed canonical
+  10-payload DemoData set byte-for-byte, and continue excluding every local
+  validation sidecar and absolute user path. Repeat the clean-build gate from
+  that exact commit; the changed working tree has already passed the focused
+  and complete source suites recorded below.
+- Produce the clean Windows build, packaged self-test, isolated Japanese and
+  English UI smokes, software/source stages, and complete corresponding source.
+- Independently fresh-extract and reverify manifest parity and all seven derived
+  3MF hashes from the final staged ZIP, plus privacy, archive paths/security,
+  binary compliance, SBOM/component
+  map, executable identity, detached checksums, and final public asset bytes.
+- Do not tag, upload, publish, or advertise an r32.2 download until every gate
+  passes. Continue linking the frozen r32.1 prerelease in public download copy
+  until r32.2 is separately approved and published.
+
+### Local edit checks at this in-progress checkpoint
+
+- `test_gui_layout` plus `test_release_regression`: 17/17 passed in the pinned
+  Python 3.13.14 dependency environment.
+- `CURRENT_STATE.json` and the canonical DemoData manifest parse as JSON;
+  README English/Japanese alias byte parity and `git diff --check` passed.
+- The focused packaging, public-source, release-identity, GUI-layout, and
+  release-regression run passed 92/92 tests after the final DemoData ZIP/3MF
+  hardening. The strict public-source preview staged 403 files and passed its
+  manifest and privacy audits.
+- The complete changed-working-tree regression passed on Python 3.13.14: 1,298
+  tests in 384.281 seconds, 1,295 passed, three optional skips, and zero
+  failures. This is not a completed r32.2 release gate; the exact-commit clean
+  build, packaged/fresh-extracted smoke, complete corresponding-source stage,
+  final archive, and checksum gates remain pending.

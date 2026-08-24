@@ -42,11 +42,11 @@ class MainGuiLayoutTests(unittest.TestCase):
             "ChromaMatter — AI Model Print Studio",
         )
         self.assertEqual(__version__, "0.8beta")
-        self.assertEqual(RELEASE_REVISION, "r32.1")
-        self.assertEqual(EDITION_LABEL, "AI Model Print Studio r32.1")
+        self.assertEqual(RELEASE_REVISION, "r32.2")
+        self.assertEqual(EDITION_LABEL, "AI Model Print Studio r32.2")
         self.assertEqual(
             APP_TITLE,
-            "ChromaMatter — AI Model Print Studio 0.8beta (r32.1)",
+            "ChromaMatter — AI Model Print Studio 0.8beta (r32.2)",
         )
         self.assertTrue(VERSION_PINNED_UNTIL_USER_REQUEST)
 

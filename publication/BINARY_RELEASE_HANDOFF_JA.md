@@ -1,8 +1,8 @@
-# r32.1 Windows バイナリ公開 引継ぎ
+# r32.1公開済み／r32.2候補 Windows バイナリ公開 引継ぎ
 
 更新日: 2026-08-24
 対象リポジトリ: <https://github.com/Ponkichi0718/ChromaMatter>
-作業ブランチ: `codex/demo-data-ui-label-update`
+作業ブランチ: `codex/r32-2-demo-3mf`
 
 `v0.8beta-r32.1`はcommit `b575b93d973ed67e7ada986469b10b4490eef4e5`に
 固定したGitHub prereleaseとして公開済みです。Windows ZIP、完全対応ソース、SBOM、
@@ -14,12 +14,34 @@ Release: <https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32
 
 Windows ZIP: <https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.1/ChromaMatter-0.8beta-r32.1-win64.zip>
 
+## r32.2ローカル候補（未公開）
+
+r32.1の公開assetは変更せず、新しい`v0.8beta-r32.2`候補としてWindows ZIPと完全対応
+ソースを作り直す。表示versionは`0.8beta`、Windows数値versionは`0.8.0.0`のままに
+する。r32.2候補は全release gateが完了するまで公開済みとは記載しない。
+
+manifestに固定する`DemoData`入力・派生出力は次のとおり。公開payload rootには、この
+一覧とcanonical manifestに記載したfile以外を置かない。
+
+- `Original AI model Color.glb`
+- `Reference.jpg`
+- `3MF/Original AI model Color_FullSpectrum.3mf`
+- `3MF/Original AI model Color_FullSpectrum_parts_2/`内の個別3MF 6件
+- `3MF/Original AI model Color_FullSpectrum_parts_2/パーツ別3MF_manifest.json`
+
+manifest外のローカル検証sidecarやその他の生成物は公開payloadに含めない。
+`$demoDataPayloadRoot`と`$demoDataManifest`を指定して
+stageし、manifest外file、hash不一致、危険な3MF member、private path tokenが1件でも
+あればfail closedとする。r32.2の対応ソースURL・SBOM・component map・checksumは、
+exact candidate commitで再生成した値へ差し替える。前記r32.1の公開結果とhashは
+previous evidenceであり、r32.2を検証しない。
+
 > **0.8betaの重要な制約:** パーツ化modelの閉立体化はまだ不安定です。同梱
 > `DemoData`では成功していますが、他のmultipart OBJ／GLBでは閉立体化または
 > 3MF出力に失敗することがあります。この互換性の未完成が0.8betaである理由の一つです。
 
-以下は公開前に使った工程と停止条件の履歴です。再配布や次版のreleaseでは同じ
-fail-closed gateを再実行します。
+以下の工程と停止条件を、r32.2のexact candidate commitと新しい空の出力rootで
+再実行します。記載済みのr32.1結果はprevious evidenceであり、r32.2の代用にしません。
 
 ## 最重要の停止条件
 
@@ -111,7 +133,7 @@ component固有license assetと静的link subcomponent coverageは実装済み�
 git clone https://github.com/Ponkichi0718/ChromaMatter.git
 Set-Location .\ChromaMatter
 git fetch origin
-git switch codex/demo-data-ui-label-update
+git switch codex/r32-2-demo-3mf
 git status --short
 ```
 
@@ -186,17 +208,41 @@ attestation、recipe、39-package lock、source patch、次のexact 8 direct aud
 symlinkを含めない。application lockは採用済みwheelへ更新済みである。
 
 ```powershell
+$releaseRunRoot = Join-Path 'C:\ChromaMatterToolchain' `
+  ('r322-release-candidate-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
+if (Test-Path -LiteralPath $releaseRunRoot) {
+  throw "Release run root already exists; choose a new empty root: $releaseRunRoot"
+}
+$releaseInputs = Join-Path $releaseRunRoot 'inputs'
+$buildRoot = Join-Path $releaseRunRoot 'build'
+$releaseAssetRoot = Join-Path $releaseRunRoot 'assets'
+New-Item -ItemType Directory -Path $releaseRunRoot | Out-Null
+New-Item -ItemType Directory -Path $releaseInputs | Out-Null
+New-Item -ItemType Directory -Path $releaseAssetRoot | Out-Null
+
+# 採用済みcontrolled runはread-only入力として再利用する。release出力先には使わない。
+$controlledRoot = 'C:\ChromaMatterToolchain\pytetwild-controlled-build-20260823-174626-089357844d4b'
+$repairedWheels = @(Get-ChildItem -LiteralPath (Join-Path $controlledRoot 'wheel') `
+  -Filter 'pytetwild-0.3.0-cp312-abi3-win_amd64.whl' -File)
+$rawWheels = @(Get-ChildItem -LiteralPath (Join-Path $controlledRoot 'raw-wheel') `
+  -Filter 'pytetwild-0.3.0-cp312-abi3-win_amd64.whl' -File)
+if ($repairedWheels.Count -ne 1 -or $rawWheels.Count -ne 1) {
+  throw 'Expected exactly one repaired wheel and one distinct raw wheel'
+}
+$repairedWheel = $repairedWheels[0].FullName
+$rawWheel = $rawWheels[0].FullName
+
 powershell.exe -ExecutionPolicy Bypass -File .\BOOTSTRAP_WINDOWS.ps1 `
-  -PyTetWildWheel C:\release-inputs\wheel\pytetwild-0.3.0-cp312-abi3-win_amd64.whl
+  -PyTetWildWheel $repairedWheel
 powershell.exe -ExecutionPolicy Bypass -File .\BUILD_AND_TEST.ps1 `
   -RuntimeRoot .\.venv `
   -Build `
-  -BuildOutputRoot C:\CMR32AGPL1
+  -BuildOutputRoot $buildRoot
 
-$complianceRoot = 'C:\CMR32AGPL1\compliance'
+$complianceRoot = Join-Path $buildRoot 'compliance'
 New-Item -ItemType Directory -Force -Path $complianceRoot | Out-Null
 & .\.venv\Scripts\python.exe -B .\tooling\generate_binary_compliance_inventory.py `
-  --package-root C:\CMR32AGPL1\dist\ChromaMatter `
+  --package-root (Join-Path $buildRoot 'dist\ChromaMatter') `
   --sbom-output (Join-Path $complianceRoot 'SBOM.cdx.json') `
   --component-map-output (Join-Path $complianceRoot 'BINARY_COMPONENT_MAP.json')
 if ($LASTEXITCODE -ne 0) { throw 'Binary compliance inventory failed' }
@@ -214,7 +260,6 @@ byte-for-byteで書き出したものを使う。4入力とも最終stage前にc
 ```powershell
 $python = '.\.venv\Scripts\python.exe'
 $projectCommit = (git rev-parse HEAD).Trim()
-$releaseInputs = 'C:\release-inputs'
 @'
 from pathlib import Path
 import subprocess
@@ -242,16 +287,6 @@ $buildRecipe = Join-Path $releaseInputs 'BUILD_PYTETWILD_WINDOWS.ps1'
 $buildRequirements = Join-Path $releaseInputs 'requirements-pytetwild-build.lock'
 $sourcePatch = Join-Path $releaseInputs 'pytetwild-0.3.0-optional-pyvista.patch'
 $applicationLock = Join-Path $releaseInputs 'requirements-build.lock'
-$controlledRoot = 'C:\ChromaMatterToolchain\pytetwild-controlled-build-20260823-174626-089357844d4b'
-$repairedWheels = @(Get-ChildItem -LiteralPath (Join-Path $controlledRoot 'wheel') `
-  -Filter 'pytetwild-0.3.0-cp312-abi3-win_amd64.whl' -File)
-$rawWheels = @(Get-ChildItem -LiteralPath (Join-Path $controlledRoot 'raw-wheel') `
-  -Filter 'pytetwild-0.3.0-cp312-abi3-win_amd64.whl' -File)
-if ($repairedWheels.Count -ne 1 -or $rawWheels.Count -ne 1) {
-  throw 'Expected exactly one repaired wheel and one distinct raw wheel'
-}
-$repairedWheel = $repairedWheels[0].FullName
-$rawWheel = $rawWheels[0].FullName
 $auditLogs = Join-Path $controlledRoot 'logs'
 $buildAttestation = Join-Path $controlledRoot 'pytetwild-build-attestation.json'
 $rebuildLock = Join-Path $releaseInputs 'pytetwild-rebuild-lock.json'
@@ -271,7 +306,8 @@ $rebuildLock = Join-Path $releaseInputs 'pytetwild-rebuild-lock.json'
   --application-requirements-lock $applicationLock
 if ($LASTEXITCODE -ne 0) { throw 'PyTetWild rebuild lock generation failed' }
 
-$sourceStage = 'C:\release\ChromaMatter-0.8beta-r32.1-complete-corresponding-source'
+$sourceStage = Join-Path $releaseAssetRoot `
+  'ChromaMatter-0.8beta-r32.2-complete-corresponding-source'
 $sourceArchive = "$sourceStage.zip"
 
 Get-PSDrive C
@@ -294,34 +330,43 @@ powershell.exe -ExecutionPolicy Bypass -File .\tooling\stage_corresponding_sourc
 
 $sourceManifest = Join-Path $sourceStage 'COMPONENT_SOURCES.json'
 $sourceSha256 = (Get-FileHash -LiteralPath $sourceArchive -Algorithm SHA256).Hash
-$softwareStage = 'C:\release\ChromaMatter-0.8beta-r32.1-win64'
-$demoDataPayloadRoot = 'C:\release-inputs\ChromaMatter-r32.1-DemoData-payloads'
+$softwareStage = Join-Path $releaseAssetRoot 'ChromaMatter-0.8beta-r32.2-win64'
+$demoDataPayloadRoot = Join-Path $releaseInputs 'ChromaMatter-r32.2-DemoData-payloads'
 $demoDataManifest = Join-Path `
   (Get-Location).Path `
   'source\fixed_app\public_binary\DemoData\DEMO_DATA_MANIFEST.json'
 
-# $demoDataPayloadRootにはmanifest記載の次の2 payloadだけを置く。
+# $demoDataPayloadRootにはmanifest記載の次の10 payloadだけを置く。
 #   Original AI model Color.glb
 #   Reference.jpg
+#   3MF\Original AI model Color_FullSpectrum.3mf
+#   3MF\Original AI model Color_FullSpectrum_parts_2\01_RightArm_FullSpectrum.3mf
+#   3MF\Original AI model Color_FullSpectrum_parts_2\02_LeftLeg_FullSpectrum.3mf
+#   3MF\Original AI model Color_FullSpectrum_parts_2\03_Head_FullSpectrum.3mf
+#   3MF\Original AI model Color_FullSpectrum_parts_2\04_LeftArm_FullSpectrum.3mf
+#   3MF\Original AI model Color_FullSpectrum_parts_2\05_Torso_FullSpectrum.3mf
+#   3MF\Original AI model Color_FullSpectrum_parts_2\06_RightLeg_FullSpectrum.3mf
+#   3MF\Original AI model Color_FullSpectrum_parts_2\パーツ別3MF_manifest.json
 # canonical README／NOTICE／manifestはrepositoryからstage scriptが同梱する。
 powershell.exe -ExecutionPolicy Bypass -File .\tooling\stage_software_package.ps1 `
-  -BuiltAppRoot C:\CMR32AGPL1\dist\ChromaMatter `
+  -BuiltAppRoot (Join-Path $buildRoot 'dist\ChromaMatter') `
   -Destination $softwareStage `
-  -BinaryComponentMapPath C:\CMR32AGPL1\compliance\BINARY_COMPONENT_MAP.json `
-  -SbomPath C:\CMR32AGPL1\compliance\SBOM.cdx.json `
+  -BinaryComponentMapPath (Join-Path $complianceRoot 'BINARY_COMPONENT_MAP.json') `
+  -SbomPath (Join-Path $complianceRoot 'SBOM.cdx.json') `
   -CorrespondingSourceArchivePath $sourceArchive `
   -CorrespondingSourceManifestPath $sourceManifest `
   -CorrespondingSourceArchiveSha256 $sourceSha256 `
   -CorrespondingSourceProjectCommit $projectCommit `
-  -CorrespondingSourceUrl https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.1/ChromaMatter-0.8beta-r32.1-complete-corresponding-source.zip `
+  -CorrespondingSourceUrl https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2/ChromaMatter-0.8beta-r32.2-complete-corresponding-source.zip `
   -DemoDataRoot $demoDataPayloadRoot `
   -DemoDataManifestPath $demoDataManifest
 
 # Buildで生成したJSON bytesを再serializeせず、固定したRelease asset名へcopyする。
-$sbomInput = 'C:\CMR32AGPL1\compliance\SBOM.cdx.json'
-$componentMapInput = 'C:\CMR32AGPL1\compliance\BINARY_COMPONENT_MAP.json'
-$sbomAsset = 'C:\release\ChromaMatter-0.8beta-r32.1-SBOM.cdx.json'
-$componentMapAsset = 'C:\release\ChromaMatter-0.8beta-r32.1-BINARY_COMPONENT_MAP.json'
+$sbomInput = Join-Path $complianceRoot 'SBOM.cdx.json'
+$componentMapInput = Join-Path $complianceRoot 'BINARY_COMPONENT_MAP.json'
+$sbomAsset = Join-Path $releaseAssetRoot 'ChromaMatter-0.8beta-r32.2-SBOM.cdx.json'
+$componentMapAsset = Join-Path $releaseAssetRoot `
+  'ChromaMatter-0.8beta-r32.2-BINARY_COMPONENT_MAP.json'
 foreach ($target in @($sbomAsset, $componentMapAsset)) {
   if (Test-Path -LiteralPath $target) {
     throw "Release asset already exists; use a new empty release root: $target"
@@ -358,22 +403,22 @@ attestationの`output.audit_logs`と照合してから
 
 ## 想定する同時公開asset
 
-- `ChromaMatter-0.8beta-r32.1-win64.zip`
-- `ChromaMatter-0.8beta-r32.1-complete-corresponding-source.zip`
+- `ChromaMatter-0.8beta-r32.2-win64.zip`
+- `ChromaMatter-0.8beta-r32.2-complete-corresponding-source.zip`
   （ChromaMatter本体と第三者対応ソースを含む。大きすぎる場合だけ番号付きで分割し、
   `SOURCE_OFFER`にも全partの取得方法を明記する）
-- `ChromaMatter-0.8beta-r32.1-SBOM.cdx.json`
-- `ChromaMatter-0.8beta-r32.1-BINARY_COMPONENT_MAP.json`
+- `ChromaMatter-0.8beta-r32.2-SBOM.cdx.json`
+- `ChromaMatter-0.8beta-r32.2-BINARY_COMPONENT_MAP.json`
 - `ChromaMatter-simple-workflow-demo.mp4`
   （約2分の補助動画。OBJ／GLB読込から3MF出力、Snapmaker Orcaでのslice、
   U1造形までの基本workflowを示す。software ZIPには同梱しない）
-- `SHA256SUMS-r32.1.txt`
+- `SHA256SUMS-r32.2.txt`
 
-公開tagは `v0.8beta-r32.1`、上記asset名は大文字小文字を含めて固定する。
-`SHA256SUMS-r32.1.txt` は補助動画を含む手動添付payload assetをすべて記録する。
+公開候補tagは `v0.8beta-r32.2`、上記asset名は大文字小文字を含めて固定する。
+`SHA256SUMS-r32.2.txt` は補助動画を含む手動添付payload assetをすべて記録する。
 最低でもsoftware ZIP、完全対応ソースZIP、version付きSBOM、version付きcomponent map、
 補助動画の5件を含め、対応ソースを分割した場合は全partも含める。
-`SHA256SUMS-r32.1.txt` 自身はchecksum行の対象に含めない。
+`SHA256SUMS-r32.2.txt` 自身はchecksum行の対象に含めない。
 
 GitHubが自動生成する `Source code (zip)` はsubmoduleを含まないため、第三者対応ソースの
 代用にしない。完全な対応ソースbundleのimmutable HTTPS最終Release URLを
@@ -383,7 +428,8 @@ GitHubが自動生成する `Source code (zip)` はsubmoduleを含まないた�
 
 project ownerは、同梱候補の分割GLBが有料Hi3D planで生成されたこと、owner自身が作成した
 reference画像とともに公開・再配布してよいことを確認した。canonical
-`DEMO_DATA_MANIFEST.json`は2 payloadの固定名、size、SHA-256とこの権利gateを記録する。
+`DEMO_DATA_MANIFEST.json`は10 payload（GLB、参照画像、結合3MF、個別3MF 6件、
+part manifest）の固定path、size、SHA-256とこの権利gateを記録する。
 software stageはmanifestと実bytesが完全一致しない限り失敗する。この確認はowner declaration
 であり、第三者IPの独立した法務clearanceやHi3Dとの提携・承認を意味しない。
 

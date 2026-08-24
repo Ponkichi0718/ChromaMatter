@@ -1,4 +1,4 @@
-# ChromaMatter — AI Model Print Studio 0.8beta (r32.1 source app)
+# ChromaMatter — AI Model Print Studio 0.8beta (r32.2 source candidate)
 
 <p align="center">
   <img src="assets/obj_adjuster_icon.png" width="160" alt="ChromaMatter icon">
@@ -6,7 +6,10 @@
 
 [Japanese](README_fixed_ja.md)
 
-This directory contains the fixed ChromaMatter — AI Model Print Studio source application. The display version is `0.8beta`, the edition is `AI Model Print Studio r32.1`, and the artifact revision is `r32.1-ai-model-print-studio`; the Windows numeric version remains `0.8.0.0`.
+This directory contains the fixed ChromaMatter — AI Model Print Studio source
+application. The display version is `0.8beta`, the current local candidate
+edition is `AI Model Print Studio r32.2`, and the artifact revision is
+`r32.2-ai-model-print-studio`; the Windows numeric version remains `0.8.0.0`.
 
 > **Windows download:** [Download ChromaMatter 0.8beta r32.1 for Windows](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.1/ChromaMatter-0.8beta-r32.1-win64.zip)
 >
@@ -18,9 +21,22 @@ This directory contains the fixed ChromaMatter — AI Model Print Studio source 
 
 See the [visual feature overview and production flow](../../FEATURES_EN.md) and the [development journal, including experiments, failures, and hardware calibration](https://note.com/ponkichi0718).
 
-## r32.1 release update
+## r32.2 release candidate
 
-r32.1 preserves the r32 modelling and 3MF contracts, changes the public preview heading to `AI Model Color`, and packages a rights-cleared Hi3D multipart GLB plus reference image under `DemoData/`. For that demo, verify parts in the preview instead of trusting imported part names and apply the `Weak Black 5–25%` preset before 3MF export. The r32.1 prerelease is published; r32 remains immutable previous evidence.
+r32.2 keeps the r32.1 application and fail-closed 3MF contracts and prepares
+seven derived demo outputs under `DemoData/3MF/`: one combined six-mesh project
+and six part-specific projects. Hi3D-derived part labels can disagree with visible
+geometry, so inspect every part rather than trusting its filename. When
+regenerating the demo, **always apply the Weak Black 5–25% preset before 3MF
+export**. Multipart solidification remains unstable beta compatibility. Exact
+r32.2 build, source, package, fresh-extract, and publication gates are pending.
+
+## r32.1 published previous evidence
+
+r32.1 preserves the r32 modelling and 3MF contracts, changes the public preview
+heading to `AI Model Color`, and packages a rights-cleared Hi3D multipart GLB
+plus reference image under `DemoData/`. Its prerelease is immutable published
+previous evidence and does not validate r32.2.
 
 ## r32 output workflow
 
@@ -96,7 +112,12 @@ python .\TripoSpectrumMapper_fixed.py --self-test
 
 Repository-root `BOOTSTRAP_WINDOWS.ps1` is the standard setup and test entry point. r32.1 requires `-PyTetWildWheel C:\path\to\pytetwild-0.3.0-cp312-abi3-win_amd64.whl` (or `-PyTetWildWheelhouse`) because the application lock pins the controlled repaired wheel, not the historical PyPI wheel. The matching official complete corresponding-source release asset stores it under `build-evidence/pytetwild/repaired-wheel/`; `-SkipInstall` is only for an already verified environment.
 
-## r32.1 validation state
+## r32.2 candidate validation state
+
+- Changed-working-tree focused tests passed 92/92, the full regression passed 1,295 with three optional skips and zero failures, and the manifest-locked DemoData preflight passed.
+- Exact-commit clean build, packaged/fresh-extracted self-test, Japanese/English UI smoke, source/software stage, final archive/privacy/checksum verification, and publication: **pending**.
+- Source publication eligibility: **false**. Binary publication eligibility: **false** until every exact r32.2 gate passes.
+- The following r32.1 results are immutable previous evidence only.
 
 - Published r32.1 is frozen at commit `b575b93d973ed67e7ada986469b10b4490eef4e5`.
 - Focused r32.1 release tests: 113 passed / 0 failed.
@@ -106,8 +127,8 @@ Repository-root `BOOTSTRAP_WINDOWS.ps1` is the standard setup and test entry poi
 - The Windows package contains 1,518 files and has SHA-256 `1215CF77D8C8CB8AA5CE91DC7C84AE13404F3AA46221321807AD2E8A19F9064A`.
 - The complete corresponding-source bundle is `release-approved`, reports no known gaps, and has SHA-256 `D5A64F3022265BCE7C5C2DFA0358DFC2C94EEA541A5A4AC5671CE3BA829BE4CC`.
 - All six GitHub Release assets were independently downloaded without authentication and matched their published sizes and SHA-256 values.
-- Source publication eligibility: **true**. Binary publication eligibility: **true** for the exact tagged r32.1 assets above.
-- the r32 and r31 results below are **previous evidence** and do not validate r32.1
+- r32.1 source publication eligibility: **true**. r32.1 binary publication eligibility: **true** only for the exact tagged assets above.
+- the r32.1, r32, and r31 results below are **previous evidence** and do not validate r32.2
 
 - previous evidence for the post-GLB r28 candidate immediately before the public-UI change: Python `3.13.14`, PyInstaller `6.20.0`, `Ran 992 tests in 87.406s: OK (skipped=1)`, 991 passed / 1 optional skip
 - that candidate's clean one-folder build in a new short path: passed
@@ -130,18 +151,25 @@ Repository-root `BOOTSTRAP_WINDOWS.ps1` is the standard setup and test entry poi
 - r27 previous-evidence final ZIP SHA-256: `null`
 - icon publication rights: `passed-by-creator-declaration` (2026-08-20); the project owner accepted publication for that asset scope, without claiming independent legal clearance
 - r31 previous-evidence publication eligibility: true only for its validated `publication_scope=source-only`
-- current r32.1 source publication eligibility: true for the exact tagged corresponding-source asset
-- current r32.1 binary publication eligibility: true for the exact tagged Windows asset
+- current r32.2 source publication eligibility: false; exact stage is pending
+- current r32.2 binary publication eligibility: false; exact build/package gates are pending
 - public repository: [https://github.com/Ponkichi0718/ChromaMatter](https://github.com/Ponkichi0718/ChromaMatter) (owner handle `Ponkichi0718`)
 - Innovation Fund distribution package: published; physical evidence and submission presentation can continue to evolve without changing the frozen r32.1 artifacts
 - physical XP-PEN validation and physical print: pending disclosed limitations, not source-publication blockers
 
-The published r32 Release and the r31, r30, r29, r28, and r27 results above are **previous evidence** for their respective revisions only. The r32.1 validation and hashes listed first apply only to the exact tagged commit and published assets. The unchanged icon, including its robot and fictional `ZENITH DYNAMICS CORP.` wording, retains the 2026-08-20 creator declaration and owner acceptance without claiming independent legal clearance. Multipart solidification remains a disclosed beta limitation even though the bundled demo and release gates passed.
+The published r32.1 and r32 Releases and the r31, r30, r29, r28, and r27
+results above are **previous evidence** for their respective revisions only and
+do not validate r32.2. The unchanged icon, including its robot and fictional
+`ZENITH DYNAMICS CORP.` wording, retains the 2026-08-20 creator declaration and
+owner acceptance without claiming independent legal clearance. Multipart
+solidification remains a disclosed beta limitation.
 
 Creator Studio r26 results are previous evidence as well and do not validate ChromaMatter r31.
 
 ## Package identity
 
+- planned candidate corresponding source: `ChromaMatter-0.8beta-r32.2-complete-corresponding-source.zip`
+- planned candidate Windows package: `ChromaMatter-0.8beta-r32.2-win64.zip`
 - published complete corresponding source: `ChromaMatter-0.8beta-r32.1-complete-corresponding-source.zip`
 - published Windows package: `ChromaMatter-0.8beta-r32.1-win64.zip`
 

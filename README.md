@@ -1,4 +1,4 @@
-# ChromaMatter — AI Model Print Studio 0.8beta (r32.1)
+# ChromaMatter — AI Model Print Studio 0.8beta (r32.2 candidate)
 
 <p align="center">
   <img src="source/fixed_app/assets/obj_adjuster_icon.png" width="160" alt="ChromaMatter icon">
@@ -11,6 +11,10 @@
 **[Download ChromaMatter 0.8beta r32.1 for Windows (ZIP)](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.1/ChromaMatter-0.8beta-r32.1-win64.zip)**
 
 Extract the entire ZIP before starting. If the direct download does not open, use the [v0.8beta-r32.1 Release page](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.1) and select the `win64.zip` file under **Assets**.
+
+The default-branch source is now the **local r32.2 release candidate**. It is
+not a published download yet; the link above deliberately remains the frozen
+r32.1 package until every r32.2 build, source, archive, and checksum gate passes.
 
 **Important 0.8 beta limitation:** Solidification of multipart models is still unstable. The bundled `DemoData` is a confirmed successful case, but other multipart files may fail to solidify or export as 3MF. This incomplete compatibility is one reason ChromaMatter remains `0.8beta`.
 
@@ -43,10 +47,12 @@ ChromaMatter is an independent Windows desktop project. It is not an official or
 
 ## Current status
 
+- **Current local candidate:** `AI Model Print Studio r32.2`; not built, tagged, or published yet
 - **Published release:** [`v0.8beta-r32.1`](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.1)
 - **Frozen release source:** tag `v0.8beta-r32.1`, commit [`b575b93d973ed67e7ada986469b10b4490eef4e5`](https://github.com/Ponkichi0718/ChromaMatter/commit/b575b93d973ed67e7ada986469b10b4490eef4e5)
 - **Published asset set:** Windows ZIP, complete corresponding source, SBOM, component map, workflow video, and detached checksums
-- **Public test model:** Rights-cleared Hi3D multipart GLB and reference image are included under `DemoData/` in the Windows package
+- **Published r32.1 test data:** Rights-cleared Hi3D multipart GLB and reference image are included under `DemoData/`
+- **Planned r32.2 addition:** Seven derived 3MF reference outputs under `DemoData/3MF/`; one combined project and six part-specific projects
 - **Physical U1 validation:** The linked public print completed; it does not prove compatibility with every model or production setup
 - **Version:** `0.8beta`
 
@@ -86,11 +92,30 @@ The bootstrap installs pinned build dependencies and runs the test suite. See [B
 
 ## Technical details
 
-The public display version remains pinned to `0.8beta`. This edition is `AI Model Print Studio r32.1`, with artifact slug `r32.1-ai-model-print-studio`; the Windows numeric version remains `0.8.0.0`.
+The public display version remains pinned to `0.8beta`. The current local
+candidate edition is `AI Model Print Studio r32.2`, with artifact slug
+`r32.2-ai-model-print-studio`; the Windows numeric version remains `0.8.0.0`.
+
+## AI Model Print Studio r32.2 candidate
+
+r32.2 keeps the r32.1 application and fail-closed 3MF contracts and adds seven
+derived demo outputs: one combined six-mesh project plus six part-specific
+projects. Hi3D-derived part labels do not match the visible geometry, so inspect
+each project instead of trusting its filename. When regenerating the demo,
+select the F slot that physically holds black and **always apply the Weak Black
+5–25% preset before 3MF export**. Multipart solidification remains unstable;
+the bundled demo is a successful case, not a compatibility guarantee. All r32.2
+build, corresponding-source, package, fresh-extract, and publication gates are
+still pending.
 
 ## AI Model Print Studio r32.1
 
-r32.1 is a published post-r32 update that keeps the r32 modelling and 3MF contracts while renaming the preview heading to `AI Model Color` and adding a rights-cleared Hi3D multipart GLB plus its reference image under `DemoData/`. For this demo, verify parts by preview rather than trusting imported part names, select the actual darkest filament, and apply the `Weak Black 5–25%` preset before 3MF export. The r32.1 binaries and source assets are frozen at commit `b575b93d973ed67e7ada986469b10b4490eef4e5`; later documentation-only commits on the default branch do not change those release files.
+r32.1 is immutable published previous evidence. It keeps the r32 modelling and
+3MF contracts while renaming the preview heading to `AI Model Color` and adding
+a rights-cleared Hi3D multipart GLB plus its reference image under `DemoData/`.
+Its binaries and source assets are frozen at commit
+`b575b93d973ed67e7ada986469b10b4490eef4e5`; later candidate work does not
+change or validate those release files.
 
 ## AI Model Print Studio r32
 
@@ -186,11 +211,16 @@ project-folder/
 
 ## Published validation
 
+No r32.2 build, source-stage, software-stage, archive, checksum, or publication
+result has passed yet. The results below are immutable **r32.1 previous
+evidence** and do not validate the current candidate.
+
 The exact r32.1 release build was produced from commit `b575b93d973ed67e7ada986469b10b4490eef4e5`. Its focused suite passed 113 tests. Its full regression recorded 1,277 tests: 1,274 passed, 3 optional skips, and 0 failures. Packaged self-test and isolated-profile Japanese and English UI smoke tests passed.
 
 The release compliance inventory passed with 1,455 files and 256 native files. The Windows package contains 1,518 files; its packaged and independently fresh-extracted self-tests and UI smokes passed. The complete corresponding-source bundle is `release-approved` with no known source-closure gaps. All six public assets were downloaded without authentication after publication and matched their expected sizes and SHA-256 checksums. The Windows ZIP SHA-256 is `1215CF77D8C8CB8AA5CE91DC7C84AE13404F3AA46221321807AD2E8A19F9064A`; the complete corresponding-source ZIP SHA-256 is `D5A64F3022265BCE7C5C2DFA0358DFC2C94EEA541A5A4AC5671CE3BA829BE4CC`.
 
-The published r32 Release and the following r31 and Creator Studio r30 results are **previous evidence** for their own revisions and do not validate r32.1.
+The published r32 Release and the following r31 and Creator Studio r30 results
+are **previous evidence** for their own revisions and do not validate r32.2.
 
 - r30 full regression: Python `3.13.14`, `Ran 1019 tests in 86.932s: OK (skipped=1)`, 1018 passed / 1 optional skip
 - PyInstaller `6.20.0` clean build at `C:\OBJAdjR30FIX1`, packaged self-test, and isolated-profile Japanese/English UI smoke: passed
@@ -206,7 +236,11 @@ Icon publication-rights status: `passed-by-creator-declaration` (2026-08-20).
 - software stage: 1,340 files / 1,339 manifest records
 - source and software ZIP structure, manifest equality, path safety, CRC, and privacy: passed
 
-The published r32 Release and the r31, r30, and r27 evidence above apply only to those older artifacts. The r32.1 publication gate passed for the simultaneous asset set linked above. This does not remove the documented beta limitations: multipart solidification can still fail outside the bundled demo, and physical XP-PEN validation remains pending. Icon publication rights and owner legal acceptance for the declared asset scope are recorded.
+The published r32.1 Release and the r32, r31, r30, and r27 evidence above apply
+only to those older artifacts. They do not approve r32.2. Multipart
+solidification can still fail outside the bundled demo, and physical XP-PEN
+validation remains pending. Icon publication rights and owner legal acceptance
+for the declared asset scope remain recorded.
 
 See [CURRENT_STATE.json](CURRENT_STATE.json) and [PROVENANCE.md](PROVENANCE.md) for the canonical boundary.
 
