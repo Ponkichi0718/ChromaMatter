@@ -1,4 +1,4 @@
-# ChromaMatter — AI Model Print Studio 0.8beta (r32.1)
+# ChromaMatter — AI Model Print Studio 0.8beta（r32.2）
 
 <p align="center">
   <img src="source/fixed_app/assets/obj_adjuster_icon.png" width="180" alt="ChromaMatter icon">
@@ -8,9 +8,13 @@
 
 ## Windows版をダウンロード
 
-**[ChromaMatter 0.8beta r32.1 Windows版（ZIP）をダウンロード](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.1/ChromaMatter-0.8beta-r32.1-win64.zip)**
+**[ChromaMatter 0.8beta r32.2 Windows版（ZIP）をダウンロード](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2/ChromaMatter-0.8beta-r32.2-win64.zip)**
 
-ダウンロード後は、ZIPをすべて展開してから起動してください。直リンクで始まらない場合は、[v0.8beta-r32.1のReleaseページ](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.1)を開き、**Assets**内の`win64.zip`を選んでください。
+ダウンロード後は、ZIPをすべて展開してから起動してください。直リンクで始まらない場合は、[v0.8beta-r32.2のReleaseページ](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2)を開き、**Assets**内の`ChromaMatter-0.8beta-r32.2-win64.zip`を選んでください。
+
+`v0.8beta-r32.2`はInnovation Fund向けpreviewのGitHub prereleaseとして公開済みです。
+Windows package、完全対応source、SBOM、component map、操作動画、detached checksumの
+6 assetを公開後に未認証で再downloadし、sizeとSHA-256を再確認しています。
 
 **0.8 betaの重要な制限:** パーツ化モデルの閉立体化はまだ不安定です。同梱の`DemoData`は閉立体化・3MF出力の成功を確認していますが、他の分割ファイルでは閉立体化または3MF出力に失敗することがあります。この互換性が未完成であることが、ChromaMatterを`0.8beta`としている理由の一つです。
 
@@ -25,17 +29,34 @@ ChromaMatter — AI Model Print Studioは、AI生成された頂点カラー付�
 
 全身一体の公開sampleは、Snapmaker U1で**48時間**、prime tower込み**約220 g**で完走しました。意図したグラフィック調の陰影は、通常の鑑賞距離では形と奥行きとして読み取れます。一方で、背面のsupport跡、台座の緩さ、近くで見たときに色境界が整って見えにくい箇所が残りました。結果と動画は[ChromaMatter サンプルキャラ出力編](https://note.com/ponkichi0718/n/nf6c77165127c)で公開しています。
 
-privacy確認済み・字幕付きの[`v0.8beta-r32.1`「シンプルな使い方」（約2分）](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.1/ChromaMatter-simple-workflow-demo.mp4)は、公開済みReleaseの独立動画assetです。対応OBJ／GLBの読込、サイズ・形状準備、Full Spectrum 3MFの出力・検証、Snapmaker Orcaでprojectとして開いてsliceする手順、U1での造形までを一続きで確認できます。公開用copyは125.33秒、1920×1080、H.264、音声なしです。
+privacy確認済み・字幕付きの[`v0.8beta-r32.2`「シンプルな使い方」（約2分）](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2/ChromaMatter-simple-workflow-demo.mp4)は、公開済みReleaseの独立動画assetです。対応OBJ／GLBの読込、サイズ・形状準備、Full Spectrum 3MFの出力・検証、Snapmaker Orcaでprojectとして開いてsliceする手順、U1での造形までを一続きで確認できます。公開用copyは125.33秒、1920×1080、H.264、音声なしです。
 
 これは実機で確認した観測結果であり、すべてのmodel、filament構成、slicer profile、printerで同じ結果になることを保証するものではありません。印刷前に生成projectとslice previewを確認してください。
 
-公開表示versionは利用者指定どおり`0.8beta`に固定し、editionを`AI Model Print Studio r32.1`、artifact slugを`r32.1-ai-model-print-studio`とします。Windowsの数値versionも`0.8.0.0`のままです。
+公開表示versionは利用者指定どおり`0.8beta`に固定し、公開済みeditionを
+`AI Model Print Studio r32.2`、artifact slugを
+`r32.2-ai-model-print-studio`とします。Windowsの数値versionも`0.8.0.0`のままです。
 
-[`v0.8beta-r32.1` Release](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.1)は、Windows ZIP、完全対応ソース、SBOM、component map、動画、detached checksumを一組として公開済みです。Releaseの正確なsourceはtag `v0.8beta-r32.1`、commit [`b575b93d973ed67e7ada986469b10b4490eef4e5`](https://github.com/Ponkichi0718/ChromaMatter/commit/b575b93d973ed67e7ada986469b10b4490eef4e5)に固定しています。default branchの文書だけが公開後に更新される場合がありますが、Releaseのbinaryとsource assetは変わりません。
+[`v0.8beta-r32.2` Release](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2)は、Windows ZIP、完全対応ソース、SBOM、component map、動画、detached checksumを一組として公開済みです。Releaseの正確なsourceはtag `v0.8beta-r32.2`、commit [`aba20685d2fd6987621b2e1e6624f46ea84912a3`](https://github.com/Ponkichi0718/ChromaMatter/commit/aba20685d2fd6987621b2e1e6624f46ea84912a3)に固定しています。default branchの文書だけが公開後に更新される場合がありますが、Releaseのbinaryとsource assetは変わりません。
 
-## AI Model Print Studio r32.1
+## AI Model Print Studio r32.2
 
-r32.1はr32のmodel処理／3MF契約を維持した公開済み更新版です。preview表記を「AIモデル色」へ改め、権利確認済みのHi3D分割GLBと元画像をWindows packageの`DemoData/`へ同梱しています。このdemoでは、読み込んだpart名をそのまま信用せずpreviewで対象を確認し、実際の最暗filamentを選んで3MF出力前に必ず「黒弱め 5〜25%」presetを適用してください。r32.1のbinaryとsource assetはcommit `b575b93d973ed67e7ada986469b10b4490eef4e5`に固定され、default branch上の後続する文書修正はこれらの配布fileを変更しません。
+r32.2はr32.1のapplicationとfail-closed 3MF契約を維持し、`DemoData/3MF/`へ結合6 mesh project
+1件とpart別project 6件、計7件の派生demo 3MFを収録しています。Hi3D由来のpart
+labelは見た目の形状と一致しないため、filenameを信用せず各projectのgeometryを
+確認してください。demoを再出力するときは、実際に黒を入れるF slotを選び、3MF
+出力前に**必ず「黒弱め 5〜25%」presetを適用**します。パーツ化modelの閉立体化は
+まだ不安定で、同梱demoは成功例であって互換性保証ではありません。r32.2のexact
+build、完全対応source、package、fresh extract、checksum、公開後の再download検証は
+すべてPASSしています。
+
+## AI Model Print Studio r32.1（公開済みprevious evidence）
+
+r32.1はimmutableな公開済みprevious evidenceです。r32のmodel処理／3MF契約を
+維持し、preview表記を「AIモデル色」へ改め、権利確認済みのHi3D分割GLBと元画像を
+Windows packageの`DemoData/`へ同梱しました。binaryとsource assetはcommit
+`b575b93d973ed67e7ada986469b10b4490eef4e5`に固定され、r32.2の作業はこれらの
+配布fileを変更せず、r32.2を検証する証拠としても流用しません。
 
 ## AI Model Print Studio r32
 
@@ -131,11 +152,27 @@ project-folder/
 
 ## 公開済み検証結果
 
+exact r32.2 release buildはcommit
+`aba20685d2fd6987621b2e1e6624f46ea84912a3`から生成しました。full regressionは
+1,298 test中1,296 PASS／2 optional SKIP／0 FAILです。package内と独立fresh extract後の
+self-test／日英UI smokeがPASSし、Windows packageは1,527 file、manifest固定の
+DemoData 10 payloadと7件の3MFを収録しています。
+
+release compliance inventoryは1,455 fileでPASSしました。完全対応source archiveは
+`release-approved`、42,806 file、既知のsource closure gapは0件です。公開後にr32.2の
+6 assetを未認証で再downloadし、sizeとSHA-256の一致を確認しました。Windows ZIPの
+SHA-256は`2CEADA98661BAC5D49B759542151C4C484FFF4269D6B5D142EC32FEC544F06D0`、
+完全対応source ZIPは
+`DCC7EC1AE74F4B790CCAC6B9B18286C7BDAB2829E779F0532E01708727680500`です。
+
+以下はimmutableな**r32.1 previous evidence**であり、r32.2の検証には流用しません。
+
 exact r32.1 release buildはcommit `b575b93d973ed67e7ada986469b10b4490eef4e5`から生成しました。focused suiteは113 test PASS、full regressionは1,277 test中1,274 PASS／3 optional SKIP／0 FAILです。packaged self-testと隔離profileの日英UI smokeもPASSしました。
 
 release compliance inventoryは1,455 file／native 256 fileでPASSしました。Windows packageは1,518 fileで、package内と独立fresh extract後のself-test／日英UI smokeがPASSしています。完全対応ソースbundleは`release-approved`で、既知のsource closure gapはありません。公開後に6 assetを未認証で再downloadし、sizeとSHA-256の一致を確認しました。Windows ZIPのSHA-256は`1215CF77D8C8CB8AA5CE91DC7C84AE13404F3AA46221321807AD2E8A19F9064A`、完全対応ソースZIPは`D5A64F3022265BCE7C5C2DFA0358DFC2C94EEA541A5A4AC5671CE3BA829BE4CC`です。
 
-公開済みr32 Releaseと以下のr31およびCreator Studio r30の結果は各revisionだけに適用する**previous evidence**で、r32.1へ流用しません。
+公開済みr32 Releaseと以下のr31およびCreator Studio r30の結果は各revisionだけに
+適用する**previous evidence**で、r32.2へ流用しません。
 
 - r30 full regression: Python `3.13.14`、`Ran 1019 tests in 86.932s: OK (skipped=1)`、1018 PASS／1 optional SKIP
 - `C:\OBJAdjR30FIX1`でのPyInstaller `6.20.0` clean build、packaged self-test、隔離profileの日英UI smoke: PASS
@@ -151,7 +188,11 @@ Icon publication-rights status: `passed-by-creator-declaration`（2026-08-20）�
 - software stage: 1,340 files／1,339 manifest records
 - source／software ZIP、manifest equality、path safety、CRC、privacy: PASS
 
-公開済みr32 Releaseと上記r31、r30、r27の証拠は、それぞれの旧artifactだけに適用します。r32.1は上記の同時asset一式でpublication gateをPASSしました。ただしβ制限は残ります。同梱demo以外ではパーツ化モデルの閉立体化に失敗することがあり、physical XP-PEN validationもpendingです。icon publication rightsと当該asset scopeのowner legal acceptanceはcreator declarationにより記録済みです。
+公開済みr32.1 Releaseと上記r32、r31、r30、r27の証拠は、それぞれの旧artifact
+だけに適用します。r32.2同梱demo以外ではパーツ化modelの閉立体化に失敗することが
+あり、physical XP-PEN validationもpendingです。icon publication
+rightsと当該asset scopeのowner legal acceptanceはcreator declarationにより
+記録済みです。
 
 正本は[CURRENT_STATE.json](CURRENT_STATE.json)と[PROVENANCE.md](PROVENANCE.md)です。
 
@@ -164,9 +205,9 @@ $pyTetWildWheel = "C:\path\to\pytetwild-0.3.0-cp312-abi3-win_amd64.whl"
 .\BOOTSTRAP_WINDOWS.ps1 -PyTetWildWheel $pyTetWildWheel
 ```
 
-r32.1はcontrolled PyTetWild wheelをSHA-256で固定しているため、引数なしのbootstrapは異なる過去のPyPI wheelへ戻らず、明示的に停止します。公開済みの[完全対応ソースZIP](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.1/ChromaMatter-0.8beta-r32.1-complete-corresponding-source.zip)内の`build-evidence/pytetwild/repaired-wheel/`にある修復wheel、またはcontrolled recipeで再現したwheelのローカルpathを渡してください。`-PyTetWildWheelhouse`も使用できます。`-SkipInstall`は検証済み環境の再テスト専用です。
+r32.2はcontrolled PyTetWild wheelをSHA-256で固定しているため、引数なしのbootstrapは異なる過去のPyPI wheelへ戻らず、明示的に停止します。公開済みの[完全対応ソースZIP](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2/ChromaMatter-0.8beta-r32.2-complete-corresponding-source.zip)内の`build-evidence/pytetwild/repaired-wheel/`にある修復wheel、またはcontrolled recipeで再現したwheelのローカルpathを渡してください。`-PyTetWildWheelhouse`も使用できます。`-SkipInstall`は検証済み環境の再テスト専用です。
 
-`-Build`は全回帰後にPyInstaller one-folder buildを作成します。配布対象のr32.1 fileは[`v0.8beta-r32.1` Releaseページ](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.1)にあるimmutable assetです。ローカルのbuild／stage folderはRelease assetではありません。
+`-Build`は全回帰後にPyInstaller one-folder buildを作成します。配布対象のr32.2 fileは[`v0.8beta-r32.2` Releaseページ](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2)にあるimmutable assetです。ローカルのbuild／stage folderはRelease assetではありません。
 
 ## プライバシーとライセンス
 

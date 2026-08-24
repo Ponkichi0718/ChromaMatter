@@ -1,4 +1,4 @@
-# ChromaMatter 0.8beta (r32.1)
+# ChromaMatter 0.8beta (r32.2)
 
 [日本語](README_JA.md)
 
@@ -11,7 +11,11 @@ ChromaMatter is a Windows desktop application that maps the colours of a vertex-
 3. Open an OBJ or GLB, review F1-F4, mixed-state count, size, and geometry, then export 3MF.
 4. Open the 3MF **as a project** in Snapmaker Orca and inspect tool order, materials, and the slice preview before printing.
 
-To try the shortest workflow with the bundled Hi3D multipart GLB, see [DemoData/README_EN.md](DemoData/README_EN.md).
+To try the shortest workflow with the bundled Hi3D multipart GLB, or inspect
+the combined and six part-specific derived 3MF reference projects, see
+[DemoData/README_EN.md](DemoData/README_EN.md). Imported part labels may not
+match visible geometry. When regenerating the demo, always apply the **Weak
+Black 5–25%** preset before 3MF export.
 
 **Important 0.8 beta limitation:** Solidification of multipart models is still unstable. The bundled `DemoData` is a confirmed successful case, but other multipart files may fail to solidify or export as 3MF. This incomplete compatibility is one reason ChromaMatter remains `0.8beta`.
 
@@ -38,4 +42,7 @@ Do not attach a private model to an issue. Report the ChromaMatter version, Wind
 
 ChromaMatter is licensed under `GPL-3.0-or-later`. See [LICENSE.txt](LICENSE.txt) for the licence text and [licenses](licenses/) for third-party terms and notices. The location of the complete corresponding source for this binary is recorded in [licenses/SOURCE_OFFER_EN.txt](licenses/SOURCE_OFFER_EN.txt).
 
-`SOFTWARE_PACKAGE_SHA256.txt` covers files inside this package. `SHA256SUMS-r32.1.txt`, published alongside the Release assets, is the checksum authority for the complete Release.
+`SOFTWARE_PACKAGE_SHA256.txt` covers files inside this package.
+`SHA256SUMS-r32.2.txt`, when published alongside the matching Release assets,
+is the checksum authority for the complete r32.2 Release. Until that release
+gate passes, use the immutable r32.1 package and its `SHA256SUMS-r32.1.txt`.

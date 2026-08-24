@@ -1,4 +1,4 @@
-# ChromaMatter 0.8beta (r32.1)
+# ChromaMatter 0.8beta (r32.2)
 
 [English](README_EN.md)
 
@@ -11,7 +11,10 @@ ChromaMatterは、頂点カラー付きOBJまたは対応GLBの色を4本のフ�
 3. OBJ／GLBを開き、F1～F4、混色数、サイズ、形状を確認して3MFを書き出します。
 4. 3MFをSnapmaker Orcaで**プロジェクトとして開き**、ツール順、材料、スライスプレビューを確認してから印刷します。
 
-同梱のHi3D分割GLBで最短手順を試す場合は、[DemoData/README_JA.md](DemoData/README_JA.md)を参照してください。
+同梱のHi3D分割GLBで最短手順を試す場合、または結合1件・part別6件の派生3MF
+参考projectを確認する場合は、[DemoData/README_JA.md](DemoData/README_JA.md)を
+参照してください。importしたpart labelは見た目の形状と一致しない場合があります。
+demoを再出力するときは、3MF出力前に**必ず「黒弱め 5〜25%」presetを適用**します。
 
 **0.8 betaの重要な制限:** パーツ化モデルの閉立体化はまだ不安定です。同梱の`DemoData`は閉立体化・3MF出力の成功を確認していますが、他の分割ファイルでは閉立体化または3MF出力に失敗することがあります。この互換性が未完成であることが、ChromaMatterを`0.8beta`としている理由の一つです。
 
@@ -38,4 +41,7 @@ Windowsが保護画面を表示した場合は、公式ReleaseのSHA-256と、�
 
 ChromaMatter本体は`GPL-3.0-or-later`です。本文は[LICENSE.txt](LICENSE.txt)、第三者の条件と通知は[licenses](licenses/)にあります。このバイナリに対応する完全なソースの取得先は[licenses/SOURCE_OFFER_JA.txt](licenses/SOURCE_OFFER_JA.txt)を確認してください。
 
-パッケージ内ファイルのSHA-256は`SOFTWARE_PACKAGE_SHA256.txt`、Release全体のSHA-256は同じReleaseに置かれる`SHA256SUMS-r32.1.txt`を正本とします。
+package内fileのSHA-256は`SOFTWARE_PACKAGE_SHA256.txt`、r32.2 Release全体の
+SHA-256は、同じReleaseに公開された時点の`SHA256SUMS-r32.2.txt`を正本とします。
+release gate完了までは、immutableなr32.1 packageと`SHA256SUMS-r32.1.txt`を
+使用してください。

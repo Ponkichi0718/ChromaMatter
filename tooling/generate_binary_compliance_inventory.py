@@ -184,7 +184,7 @@ STATIC_COMPONENTS = {
         _component(
             "chromamatter",
             "ChromaMatter",
-            "0.8beta-r32.1",
+            "0.8beta-r32.2",
             "GPL-3.0-or-later",
             "https://github.com/Ponkichi0718/ChromaMatter",
             license_assets=("_internal/licenses/LICENSE_APP.txt",),

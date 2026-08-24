@@ -33,7 +33,7 @@ if (-not (Test-Path -LiteralPath $builtRoot -PathType Container)) {
 if (-not $Destination) {
     $Destination = Join-Path `
         $repoRoot `
-        "artifacts\ChromaMatter-0.8beta-r32.1-win64"
+        "artifacts\ChromaMatter-0.8beta-r32.2-win64"
 }
 elseif (-not [System.IO.Path]::IsPathRooted($Destination)) {
     $Destination = Join-Path $repoRoot $Destination
@@ -98,7 +98,16 @@ function Read-CanonicalJsonObject {
         throw "Canonical $Label is missing: $Path"
     }
     try {
-        $value = [System.IO.File]::ReadAllText($Path) |
+        $text = [System.IO.File]::ReadAllText(
+            $Path,
+            [System.Text.UTF8Encoding]::new($false, $true)
+        )
+        [ChromaMatter.Release.StrictJsonScanner]::AssertNoPrivateTokens(
+            $text,
+            [string[]]@(),
+            $true
+        )
+        $value = $text |
             ConvertFrom-Json -ErrorAction Stop
     }
     catch {
@@ -175,6 +184,30 @@ function Assert-ExactStringSet {
     }
 }
 
+function Assert-ExactJsonStringArray {
+    param(
+        [Parameter(Mandatory = $true)][object]$Value,
+        [Parameter(Mandatory = $true)][string[]]$Expected,
+        [Parameter(Mandatory = $true)][string]$Context
+    )
+
+    if ($Value -isnot [System.Array]) {
+        throw "$Context must be a JSON array."
+    }
+    $actual = @($Value)
+    if ($actual.Count -ne $Expected.Count) {
+        throw "$Context does not match the exact canonical order."
+    }
+    for ($index = 0; $index -lt $Expected.Count; $index += 1) {
+        if (
+            $actual[$index] -isnot [string] -or
+            $actual[$index] -cne $Expected[$index]
+        ) {
+            throw "$Context does not match the exact canonical order."
+        }
+    }
+}
+
 $demoDataEnabled = -not [string]::IsNullOrWhiteSpace($DemoDataRoot)
 if (-not $demoDataEnabled -and -not [string]::IsNullOrWhiteSpace(
     $DemoDataManifestPath
@@ -184,6 +217,7 @@ if (-not $demoDataEnabled -and -not [string]::IsNullOrWhiteSpace(
 
 $demoDataDocumentFiles = @()
 $demoDataPayloadFiles = @()
+$validatedDemoDataManifestSha256 = $null
 if ($demoDataEnabled) {
     $demoDataRootFullPath = if ([System.IO.Path]::IsPathRooted($DemoDataRoot)) {
         [System.IO.Path]::GetFullPath($DemoDataRoot)
@@ -244,6 +278,11 @@ if ($demoDataEnabled) {
         throw "DemoData manifest must not be a reparse point."
     }
 
+    $validatedDemoDataManifestSha256 = (
+        Get-FileHash `
+            -LiteralPath $demoDataManifestFullPath `
+            -Algorithm SHA256
+    ).Hash.ToLowerInvariant()
     $demoDataManifest = Read-CanonicalJsonObject `
         -Path $demoDataManifestFullPath `
         -Label "DemoData manifest"
@@ -252,12 +291,17 @@ if ($demoDataEnabled) {
         -Expected @(
             "schema_version", "document_id", "release_status",
             "expected_documents", "payloads", "publication_gate"
-        ) `
+    ) `
         -Context "DemoData manifest"
     if (
-        [int]$demoDataManifest.schema_version -ne 1 -or
-        [string]$demoDataManifest.document_id -cne
-            "chromamatter.demo-data.r32.1"
+        $null -eq $demoDataManifest.schema_version -or
+        $demoDataManifest.schema_version.GetType().FullName -notin @(
+            "System.Int32", "System.Int64"
+        ) -or
+        [long]$demoDataManifest.schema_version -ne 2 -or
+        $demoDataManifest.document_id -isnot [string] -or
+        $demoDataManifest.document_id -cne
+            "chromamatter.demo-data.r32.2"
     ) {
         throw "DemoData manifest has an unsupported identity or schema version."
     }
@@ -268,8 +312,8 @@ if ($demoDataEnabled) {
         "NOTICE_EN.md",
         "NOTICE_JA.md"
     )
-    Assert-ExactStringSet `
-        -Actual @($demoDataManifest.expected_documents) `
+    Assert-ExactJsonStringArray `
+        -Value $demoDataManifest.expected_documents `
         -Expected $expectedDemoDataDocuments `
         -Context "DemoData manifest expected_documents"
 
@@ -279,17 +323,22 @@ if ($demoDataEnabled) {
         -Expected @(
             "status", "raw_glb_redistribution_confirmed",
             "reference_image_redistribution_confirmed",
+            "derived_3mf_redistribution_confirmed",
             "hi3d_plan_terms_confirmed"
         ) `
         -Context "DemoData publication gate"
     if (
-        [string]$demoDataManifest.release_status -cne
+        $demoDataManifest.release_status -isnot [string] -or
+        $demoDataManifest.release_status -cne
             "approved-for-publication" -or
-        [string]$publicationGate.status -cne "approved-for-publication" -or
+        $publicationGate.status -isnot [string] -or
+        $publicationGate.status -cne "approved-for-publication" -or
         $publicationGate.raw_glb_redistribution_confirmed -isnot [bool] -or
         $publicationGate.raw_glb_redistribution_confirmed -ne $true -or
         $publicationGate.reference_image_redistribution_confirmed -isnot [bool] -or
         $publicationGate.reference_image_redistribution_confirmed -ne $true -or
+        $publicationGate.derived_3mf_redistribution_confirmed -isnot [bool] -or
+        $publicationGate.derived_3mf_redistribution_confirmed -ne $true -or
         $publicationGate.hi3d_plan_terms_confirmed -isnot [bool] -or
         $publicationGate.hi3d_plan_terms_confirmed -ne $true
     ) {
@@ -299,6 +348,16 @@ if ($demoDataEnabled) {
         )
     }
 
+    # Windows PowerShell 5.1 can decode UTF-8-without-BOM script literals via
+    # the active ANSI code page.  Build the one Japanese payload basename from
+    # code points so the manifest identity remains stable on every workstation.
+    $individualPartsManifestName = (
+        [string][char]0x30D1 +
+        [string][char]0x30FC +
+        [string][char]0x30C4 +
+        [string][char]0x5225 +
+        "3MF_manifest.json"
+    )
     $demoDataPayloadSpecs = @(
         [pscustomobject]@{
             Path = "Original AI model Color.glb"
@@ -309,39 +368,145 @@ if ($demoDataEnabled) {
             Path = "Reference.jpg"
             MediaType = "image/jpeg"
             Role = "reference-image"
+        },
+        [pscustomobject]@{
+            Path = "3MF/Original AI model Color_FullSpectrum.3mf"
+            MediaType = "model/3mf"
+            Role = "combined-full-spectrum-3mf-demo"
+        },
+        [pscustomobject]@{
+            Path = (
+                "3MF/Original AI model Color_FullSpectrum_parts_2/" +
+                "01_RightArm_FullSpectrum.3mf"
+            )
+            MediaType = "model/3mf"
+            Role = "individual-part-3mf-demo"
+        },
+        [pscustomobject]@{
+            Path = (
+                "3MF/Original AI model Color_FullSpectrum_parts_2/" +
+                "02_LeftLeg_FullSpectrum.3mf"
+            )
+            MediaType = "model/3mf"
+            Role = "individual-part-3mf-demo"
+        },
+        [pscustomobject]@{
+            Path = (
+                "3MF/Original AI model Color_FullSpectrum_parts_2/" +
+                "03_Head_FullSpectrum.3mf"
+            )
+            MediaType = "model/3mf"
+            Role = "individual-part-3mf-demo"
+        },
+        [pscustomobject]@{
+            Path = (
+                "3MF/Original AI model Color_FullSpectrum_parts_2/" +
+                "04_LeftArm_FullSpectrum.3mf"
+            )
+            MediaType = "model/3mf"
+            Role = "individual-part-3mf-demo"
+        },
+        [pscustomobject]@{
+            Path = (
+                "3MF/Original AI model Color_FullSpectrum_parts_2/" +
+                "05_Torso_FullSpectrum.3mf"
+            )
+            MediaType = "model/3mf"
+            Role = "individual-part-3mf-demo"
+        },
+        [pscustomobject]@{
+            Path = (
+                "3MF/Original AI model Color_FullSpectrum_parts_2/" +
+                "06_RightLeg_FullSpectrum.3mf"
+            )
+            MediaType = "model/3mf"
+            Role = "individual-part-3mf-demo"
+        },
+        [pscustomobject]@{
+            Path = (
+                "3MF/Original AI model Color_FullSpectrum_parts_2/" +
+                $individualPartsManifestName
+            )
+            MediaType = "application/json"
+            Role = "individual-part-3mf-manifest"
         }
     )
+    if ($demoDataManifest.payloads -isnot [System.Array]) {
+        throw "DemoData manifest payloads must be a JSON array."
+    }
     $manifestPayloads = @($demoDataManifest.payloads)
     if ($manifestPayloads.Count -ne $demoDataPayloadSpecs.Count) {
-        throw "DemoData manifest must declare exactly two payloads."
+        throw (
+            "DemoData manifest must declare exactly " +
+            "$($demoDataPayloadSpecs.Count) payloads."
+        )
     }
 
-    $rootEntries = @(
-        Get-ChildItem -LiteralPath $demoDataRootFullPath -Force |
-            Sort-Object Name -CaseSensitive
+    $expectedDemoDataDirectories = [System.Collections.Generic.HashSet[string]]::new(
+        [System.StringComparer]::Ordinal
     )
-    foreach ($entry in $rootEntries) {
+    foreach ($spec in $demoDataPayloadSpecs) {
+        $segments = @(([string]$spec.Path).Split("/"))
+        for ($depth = 1; $depth -lt $segments.Count; $depth += 1) {
+            [void]$expectedDemoDataDirectories.Add(
+                [string]::Join("/", $segments[0..($depth - 1)])
+            )
+        }
+    }
+
+    $demoDataRootPrefix = (
+        $demoDataRootFullPath.TrimEnd([char[]]"\/") +
+        [System.IO.Path]::DirectorySeparatorChar
+    )
+    $rootEntriesByPath = [System.Collections.Generic.Dictionary[string, object]]::new(
+        [System.StringComparer]::Ordinal
+    )
+    $rootPathKeys = [System.Collections.Generic.HashSet[string]]::new(
+        [System.StringComparer]::Ordinal
+    )
+    $rootFileCount = 0
+    foreach ($entry in @(
+        Get-ChildItem -LiteralPath $demoDataRootFullPath -Recurse -Force |
+            Sort-Object FullName
+    )) {
+        if (-not $entry.FullName.StartsWith(
+            $demoDataRootPrefix,
+            [System.StringComparison]::OrdinalIgnoreCase
+        )) {
+            throw "DemoDataRoot entry escaped its root."
+        }
+        $relative = $entry.FullName.Substring(
+            $demoDataRootPrefix.Length
+        ).Replace("\", "/")
         if (
             ($entry.Attributes -band
                 [System.IO.FileAttributes]::ReparsePoint) -ne 0
         ) {
-            throw "DemoDataRoot contains a reparse point: $($entry.Name)"
+            throw "DemoDataRoot contains a reparse point: $relative"
+        }
+        $pathKey = $relative.Normalize(
+            [System.Text.NormalizationForm]::FormC
+        ).ToUpperInvariant()
+        if (-not $rootPathKeys.Add($pathKey)) {
+            throw "DemoDataRoot contains a case or Unicode path collision: $relative"
         }
         if ($entry.PSIsContainer) {
-            throw "DemoDataRoot contains a non-file entry: $($entry.Name)"
+            if (-not $expectedDemoDataDirectories.Contains($relative)) {
+                throw "DemoDataRoot contains an unexpected directory: $relative"
+            }
+            continue
         }
-    }
-    if ($rootEntries.Count -ne $demoDataPayloadSpecs.Count) {
-        throw "DemoDataRoot must contain exactly two regular payload files."
-    }
-    $rootEntriesByName = [System.Collections.Generic.Dictionary[string, object]]::new(
-        [System.StringComparer]::Ordinal
-    )
-    foreach ($entry in $rootEntries) {
-        if ($rootEntriesByName.ContainsKey([string]$entry.Name)) {
-            throw "DemoDataRoot contains a duplicate payload name."
+        if ($rootEntriesByPath.ContainsKey($relative)) {
+            throw "DemoDataRoot contains a duplicate payload path: $relative"
         }
-        $rootEntriesByName.Add([string]$entry.Name, $entry)
+        $rootEntriesByPath.Add($relative, $entry)
+        $rootFileCount += 1
+    }
+    if ($rootFileCount -ne $demoDataPayloadSpecs.Count) {
+        throw (
+            "DemoDataRoot must contain exactly " +
+            "$($demoDataPayloadSpecs.Count) regular payload files."
+        )
     }
 
     for ($index = 0; $index -lt $demoDataPayloadSpecs.Count; $index += 1) {
@@ -352,9 +517,12 @@ if ($demoDataEnabled) {
             -Expected @("path", "bytes", "sha256", "media_type", "role") `
             -Context "DemoData payload record $($index + 1)"
         if (
-            [string]$record.path -cne [string]$spec.Path -or
-            [string]$record.media_type -cne [string]$spec.MediaType -or
-            [string]$record.role -cne [string]$spec.Role
+            $record.path -isnot [string] -or
+            $record.path -cne [string]$spec.Path -or
+            $record.media_type -isnot [string] -or
+            $record.media_type -cne [string]$spec.MediaType -or
+            $record.role -isnot [string] -or
+            $record.role -cne [string]$spec.Role
         ) {
             throw "DemoData payload record $($index + 1) has the wrong identity."
         }
@@ -367,13 +535,16 @@ if ($demoDataEnabled) {
         ) {
             throw "DemoData payload byte size must be a positive JSON integer."
         }
-        if ([string]$record.sha256 -cnotmatch "^[0-9a-f]{64}$") {
+        if (
+            $record.sha256 -isnot [string] -or
+            $record.sha256 -cnotmatch "^[0-9a-f]{64}$"
+        ) {
             throw "DemoData payload SHA-256 must be lowercase hexadecimal."
         }
-        if (-not $rootEntriesByName.ContainsKey([string]$spec.Path)) {
+        if (-not $rootEntriesByPath.ContainsKey([string]$spec.Path)) {
             throw "DemoDataRoot is missing the exact payload: $($spec.Path)"
         }
-        $payloadItem = $rootEntriesByName[[string]$spec.Path]
+        $payloadItem = $rootEntriesByPath[[string]$spec.Path]
         if ([long]$payloadItem.Length -ne [long]$record.bytes) {
             throw "DemoData payload size mismatch: $($spec.Path)"
         }
@@ -425,6 +596,17 @@ if ($demoDataEnabled) {
     $demoDataDocumentFiles += [pscustomobject]@{
         Source = $demoDataManifestFullPath
         Destination = "DemoData/DEMO_DATA_MANIFEST.json"
+    }
+    $currentDemoDataManifestSha256 = (
+        Get-FileHash `
+            -LiteralPath $demoDataManifestFullPath `
+            -Algorithm SHA256
+    ).Hash.ToLowerInvariant()
+    if (
+        $currentDemoDataManifestSha256 -cne
+            $validatedDemoDataManifestSha256
+    ) {
+        throw "DemoData manifest changed during validation."
     }
 }
 
@@ -1707,7 +1889,7 @@ if (-not (Test-Path -LiteralPath $correspondingSourceArchiveFullPath -PathType L
 }
 $correspondingSourceArchiveLeaf = Split-Path -Leaf $correspondingSourceArchiveFullPath
 if (-not $correspondingSourceArchiveLeaf.Equals(
-    "ChromaMatter-0.8beta-r32.1-complete-corresponding-source.zip",
+    "ChromaMatter-0.8beta-r32.2-complete-corresponding-source.zip",
     [System.StringComparison]::Ordinal
 )) {
     throw (
@@ -1895,7 +2077,7 @@ if (-not $generatedInventory) {
     }
     if (
         [string]$componentMap.package.name -ne "ChromaMatter" -or
-        [string]$componentMap.package.version -ne "0.8beta-r32.1"
+        [string]$componentMap.package.version -ne "0.8beta-r32.2"
     ) {
         throw "Generated binary component inventory has the wrong package identity."
     }
@@ -2474,7 +2656,7 @@ if (
     $null -eq $metadataComponent -or
     [string]$metadataComponent.'bom-ref' -ne "component:chromamatter" -or
     [string]$metadataComponent.name -ne "ChromaMatter" -or
-    [string]$metadataComponent.version -ne "0.8beta-r32.1"
+    [string]$metadataComponent.version -ne "0.8beta-r32.2"
 ) {
     throw "CycloneDX SBOM metadata has the wrong application identity."
 }
@@ -2664,12 +2846,17 @@ foreach ($extension in @(
 $allowedDemoPayloadPaths = [System.Collections.Generic.HashSet[string]]::new(
     [System.StringComparer]::Ordinal
 )
+$knownDemoPayloadPaths = [System.Collections.Generic.HashSet[string]]::new(
+    [System.StringComparer]::Ordinal
+)
 if ($demoDataEnabled) {
-    foreach ($relative in @(
-        "DemoData/Original AI model Color.glb",
-        "DemoData/Reference.jpg"
-    )) {
-        [void]$allowedDemoPayloadPaths.Add($relative)
+    foreach ($record in $demoDataPayloadFiles) {
+        $relative = [string]$record.Destination
+        [void]$knownDemoPayloadPaths.Add($relative)
+        $extension = [System.IO.Path]::GetExtension($relative)
+        if ($forbiddenPayloadExtensions.Contains($extension)) {
+            [void]$allowedDemoPayloadPaths.Add($relative)
+        }
     }
 }
 
@@ -2753,6 +2940,28 @@ $payloadPathOnlyTokens = @(
     ("real_model" + "_validation")
 )
 
+if ($demoDataEnabled) {
+    $demoThreeMfPrivateTokens = [string[]]@(
+        $payloadContentAndPathTokens +
+        $payloadPathOnlyTokens +
+        $configuredPrivateAuditTokens
+    )
+    foreach ($record in $demoDataPayloadFiles) {
+        if (
+            [System.IO.Path]::GetExtension(
+                [string]$record.Source
+            ).Equals(
+                ".3mf",
+                [System.StringComparison]::OrdinalIgnoreCase
+            )
+        ) {
+            [void](Test-ChromaMatterDemoThreeMf `
+                -ArchivePath ([string]$record.Source) `
+                -PrivateTokens $demoThreeMfPrivateTokens)
+        }
+    }
+}
+
 function Find-SoftwarePayloadToken {
     param(
         [Parameter(Mandatory = $true)][AllowEmptyString()][string]$Value,
@@ -2826,6 +3035,114 @@ function Find-SoftwarePayloadFileToken {
     return $null
 }
 
+function Find-SoftwarePayloadEncodedFileToken {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()][string[]]$Tokens
+    )
+
+    return [ChromaMatter.Release.Utf16TokenScanner]::Find($Path, $Tokens)
+}
+
+function Assert-DemoGlbJsonHasNoPrivateTokens {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()][string[]]$Tokens
+    )
+
+    $maximumJsonBytes = 64L * 1024L * 1024L
+    $stream = [System.IO.File]::Open(
+        $Path,
+        [System.IO.FileMode]::Open,
+        [System.IO.FileAccess]::Read,
+        [System.IO.FileShare]::Read
+    )
+    $reader = $null
+    try {
+        $reader = [System.IO.BinaryReader]::new(
+            $stream,
+            [System.Text.Encoding]::UTF8,
+            $true
+        )
+        if ($stream.Length -lt 20) {
+            throw "Demo GLB is shorter than its required header and JSON chunk."
+        }
+        if ($reader.ReadUInt32() -ne [uint32]0x46546C67) {
+            throw "Demo GLB has an invalid magic value."
+        }
+        if ($reader.ReadUInt32() -ne [uint32]2) {
+            throw "Demo GLB must use glTF binary version 2."
+        }
+        $declaredLength = [uint64]$reader.ReadUInt32()
+        if ($declaredLength -ne [uint64]$stream.Length) {
+            throw "Demo GLB declared length does not match its file length."
+        }
+
+        $chunkIndex = 0
+        $jsonSeen = $false
+        while ($stream.Position -lt $stream.Length) {
+            if ($stream.Length - $stream.Position -lt 8) {
+                throw "Demo GLB contains a truncated chunk header."
+            }
+            $chunkLength = [uint64]$reader.ReadUInt32()
+            $chunkType = [uint32]$reader.ReadUInt32()
+            if (
+                $chunkLength -eq 0 -or
+                $chunkLength % 4 -ne 0 -or
+                $chunkLength -gt [uint64]($stream.Length - $stream.Position)
+            ) {
+                throw "Demo GLB contains an invalid or truncated chunk."
+            }
+            if ($chunkIndex -eq 0) {
+                if ($chunkType -ne [uint32]0x4E4F534A) {
+                    throw "Demo GLB first chunk is not JSON."
+                }
+                if ($chunkLength -gt [uint64]$maximumJsonBytes) {
+                    throw "Demo GLB JSON chunk exceeds the supported audit limit."
+                }
+                $jsonBytes = $reader.ReadBytes([int]$chunkLength)
+                if ($jsonBytes.Length -ne [int]$chunkLength) {
+                    throw "Demo GLB JSON chunk is truncated."
+                }
+                $jsonText = [System.Text.UTF8Encoding]::new(
+                    $false,
+                    $true
+                ).GetString($jsonBytes).TrimEnd([char[]]@([char]0x20))
+                try {
+                    [ChromaMatter.Release.StrictJsonScanner]::AssertNoPrivateTokens(
+                        $jsonText,
+                        $Tokens,
+                        $false
+                    )
+                }
+                catch {
+                    if (
+                        $_.Exception.Message -like
+                            "*forbidden workstation/private token*"
+                    ) {
+                        throw "forbidden binary token in decoded GLB JSON."
+                    }
+                    throw
+                }
+                $jsonSeen = $true
+            }
+            else {
+                [void]$stream.Seek([long]$chunkLength, [System.IO.SeekOrigin]::Current)
+            }
+            $chunkIndex += 1
+        }
+        if (-not $jsonSeen -or $stream.Position -ne $stream.Length) {
+            throw "Demo GLB does not contain one complete JSON chunk."
+        }
+    }
+    finally {
+        if ($null -ne $reader) {
+            $reader.Dispose()
+        }
+        $stream.Dispose()
+    }
+}
+
 function Assert-SoftwarePayloadSafe {
     param([Parameter(Mandatory = $true)][string]$Root)
 
@@ -2891,7 +3208,10 @@ function Assert-SoftwarePayloadSafe {
             continue
         }
         $isTextPayload = $payloadTextExtensions.Contains($extension)
-        $tokensToCheck = if ($isTextPayload) {
+        $tokensToCheck = if (
+            $isTextPayload -or
+            $knownDemoPayloadPaths.Contains($relative)
+        ) {
             [string[]](
                 $payloadContentAndPathTokens + $configuredPrivateAuditTokens
             )
@@ -2907,12 +3227,61 @@ function Assert-SoftwarePayloadSafe {
         try {
             $contentToken = if ($isTextPayload) {
                 $content = [System.IO.File]::ReadAllText($item.FullName)
-                Find-SoftwarePayloadToken -Value $content -Tokens $tokensToCheck
+                $rawContentToken = Find-SoftwarePayloadToken `
+                    -Value $content `
+                    -Tokens $tokensToCheck
+                if (
+                    $extension.Equals(
+                        ".json",
+                        [System.StringComparison]::OrdinalIgnoreCase
+                    ) -and
+                    $relative.StartsWith(
+                        "DemoData/",
+                        [System.StringComparison]::Ordinal
+                    )
+                ) {
+                    Assert-ChromaMatterJsonFileNoPrivateTokens `
+                        -Path $item.FullName `
+                        -PrivateTokens $tokensToCheck `
+                        -Context "Software payload JSON $displayRelative" `
+                        -RejectDuplicateKeys $true
+                }
+                $rawContentToken
             }
             else {
-                Find-SoftwarePayloadFileToken `
+                if (
+                    $knownDemoPayloadPaths.Contains($relative) -and
+                    $extension.Equals(
+                        ".glb",
+                        [System.StringComparison]::OrdinalIgnoreCase
+                    )
+                ) {
+                    Assert-DemoGlbJsonHasNoPrivateTokens `
+                        -Path $item.FullName `
+                        -Tokens $tokensToCheck
+                }
+                $rawToken = Find-SoftwarePayloadFileToken `
                     -Path $item.FullName `
                     -Tokens $tokensToCheck
+                if (
+                    $null -eq $rawToken -and
+                    $knownDemoPayloadPaths.Contains($relative) -and
+                    (
+                        $extension.Equals(
+                            ".jpg",
+                            [System.StringComparison]::OrdinalIgnoreCase
+                        ) -or
+                        $extension.Equals(
+                            ".glb",
+                            [System.StringComparison]::OrdinalIgnoreCase
+                        )
+                    )
+                ) {
+                    $rawToken = Find-SoftwarePayloadEncodedFileToken `
+                        -Path $item.FullName `
+                        -Tokens $tokensToCheck
+                }
+                $rawToken
             }
         }
         catch {
@@ -3275,6 +3644,94 @@ try {
                 -Destination (
                     Join-Path $stagingRoot $record.Destination.Replace("/", "\")
                 )
+        }
+
+        $stagedDemoDataManifestPath = Join-Path `
+            $stagingRoot `
+            "DemoData\DEMO_DATA_MANIFEST.json"
+        $stagedDemoDataManifestItem = Get-Item `
+            -LiteralPath $stagedDemoDataManifestPath `
+            -ErrorAction Stop
+        if (
+            $stagedDemoDataManifestItem.PSIsContainer -or
+            ($stagedDemoDataManifestItem.Attributes -band
+                [System.IO.FileAttributes]::ReparsePoint) -ne 0
+        ) {
+            throw "Staged DemoData manifest is not a regular file."
+        }
+        $stagedDemoDataManifestSha256 = (
+            Get-FileHash `
+                -LiteralPath $stagedDemoDataManifestPath `
+                -Algorithm SHA256
+        ).Hash.ToLowerInvariant()
+        if (
+            $stagedDemoDataManifestSha256 -cne
+                $validatedDemoDataManifestSha256
+        ) {
+            throw (
+                "Staged DemoData manifest does not byte-match the " +
+                "validated canonical manifest."
+            )
+        }
+
+        for (
+            $index = 0
+            $index -lt $demoDataPayloadFiles.Count
+            $index += 1
+        ) {
+            $payloadRecord = $demoDataPayloadFiles[$index]
+            $manifestRecord = $manifestPayloads[$index]
+            $stagedPayloadPath = Join-Path `
+                $stagingRoot `
+                ([string]$payloadRecord.Destination).Replace("/", "\")
+            $stagedPayloadItem = Get-Item `
+                -LiteralPath $stagedPayloadPath `
+                -ErrorAction Stop
+            if (
+                $stagedPayloadItem.PSIsContainer -or
+                ($stagedPayloadItem.Attributes -band
+                    [System.IO.FileAttributes]::ReparsePoint) -ne 0
+            ) {
+                throw (
+                    "Staged DemoData payload is not a regular file: " +
+                    "$($manifestRecord.path)"
+                )
+            }
+            if (
+                [long]$stagedPayloadItem.Length -ne
+                    [long]$manifestRecord.bytes
+            ) {
+                throw (
+                    "Staged DemoData payload size mismatch: " +
+                    "$($manifestRecord.path)"
+                )
+            }
+            $stagedPayloadSha256 = (
+                Get-FileHash `
+                    -LiteralPath $stagedPayloadItem.FullName `
+                    -Algorithm SHA256
+            ).Hash.ToLowerInvariant()
+            if (
+                $stagedPayloadSha256 -cne
+                    [string]$manifestRecord.sha256
+            ) {
+                throw (
+                    "Staged DemoData payload SHA-256 mismatch: " +
+                    "$($manifestRecord.path)"
+                )
+            }
+            if (
+                [System.IO.Path]::GetExtension(
+                    $stagedPayloadItem.Name
+                ).Equals(
+                    ".3mf",
+                    [System.StringComparison]::OrdinalIgnoreCase
+                )
+            ) {
+                [void](Test-ChromaMatterDemoThreeMf `
+                    -ArchivePath $stagedPayloadItem.FullName `
+                    -PrivateTokens $demoThreeMfPrivateTokens)
+            }
         }
     }
     Copy-SoftwareFile -Source $componentMapFullPath -Destination (
