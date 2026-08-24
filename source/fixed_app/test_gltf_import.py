@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import io
 import json
 from pathlib import Path
@@ -8,6 +9,7 @@ import struct
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import numpy as np
 from PIL import Image
@@ -17,7 +19,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from spectrum_mapper.gltf_import import (
     GltfImportError,
+    GltfImportPlan,
     _sample_image_linear,
+    _sample_image_linear_chunk,
+    inspect_gltf_asset,
     load_gltf_asset,
 )
 
@@ -244,6 +249,194 @@ def _multipart_colour_document(
 
 
 class GltfImportTests(unittest.TestCase):
+    def test_json_preflight_counts_instanced_triangle_modes_without_bin(self) -> None:
+        document = _base_document()
+        document["scenes"] = [{"nodes": [0, 1]}]
+        document["nodes"] = [{"mesh": 0}, {"mesh": 0}]
+        document["accessors"] = [
+            {"componentType": 5126, "count": 3, "type": "VEC3"},
+            {"componentType": 5125, "count": 6, "type": "SCALAR"},
+            {"componentType": 5126, "count": 4, "type": "VEC3"},
+            {"componentType": 5125, "count": 5, "type": "SCALAR"},
+            {"componentType": 5126, "count": 5, "type": "VEC3"},
+            {"componentType": 5125, "count": 6, "type": "SCALAR"},
+        ]
+        document["meshes"] = [
+            {
+                "primitives": [
+                    {"attributes": {"POSITION": 0}, "indices": 1, "mode": 4},
+                    {"attributes": {"POSITION": 2}, "indices": 3, "mode": 5},
+                    {"attributes": {"POSITION": 4}, "indices": 5, "mode": 6},
+                ]
+            }
+        ]
+        with tempfile.TemporaryDirectory() as temporary:
+            path = _write_glb(Path(temporary), document, b"")
+            plan = inspect_gltf_asset(path)
+
+        self.assertEqual(plan.vertex_count_upper_bound, 24)
+        self.assertEqual(plan.triangle_count, 18)
+        self.assertEqual(plan.mesh_node_count, 2)
+        self.assertEqual(plan.primitive_instance_count, 6)
+        self.assertEqual(plan.primitive_modes, (4, 5, 6, 4, 5, 6))
+        self.assertFalse(plan.requires_reduced_mode)
+
+    def test_large_scene_rejects_before_bin_or_texture_decode(self) -> None:
+        document = _base_document()
+        document["accessors"] = [
+            {
+                "componentType": 5126,
+                "count": 1_500_000,
+                "type": "VEC3",
+            },
+            {
+                "componentType": 5125,
+                "count": 12_000_003,
+                "type": "SCALAR",
+            },
+        ]
+        document["meshes"] = [
+            {
+                "primitives": [
+                    {
+                        "attributes": {"POSITION": 0},
+                        "indices": 1,
+                        "mode": 4,
+                    }
+                ]
+            }
+        ]
+        with tempfile.TemporaryDirectory() as temporary:
+            path = _write_glb(Path(temporary), document, b"")
+            plan = inspect_gltf_asset(path)
+            self.assertEqual(plan.triangle_count, 4_000_001)
+            self.assertTrue(plan.requires_reduced_mode)
+            self.assertTrue(plan.supports_reduced_mode)
+            with (
+                patch(
+                    "spectrum_mapper.gltf_import._read_document",
+                    side_effect=AssertionError("BIN reader must not run"),
+                ),
+                self.assertRaisesRegex(GltfImportError, "大規模モデル"),
+            ):
+                load_gltf_asset(path)
+
+    def test_reduced_admission_is_inclusive_at_five_million_faces(self) -> None:
+        document = _base_document()
+        document["accessors"] = [
+            {
+                "componentType": 5126,
+                "count": 2_500_000,
+                "type": "VEC3",
+            },
+            {
+                "componentType": 5125,
+                "count": 15_000_000,
+                "type": "SCALAR",
+            },
+        ]
+        document["meshes"] = [
+            {
+                "primitives": [
+                    {
+                        "attributes": {"POSITION": 0},
+                        "indices": 1,
+                        "mode": 4,
+                    }
+                ]
+            }
+        ]
+        with tempfile.TemporaryDirectory() as temporary:
+            path = _write_glb(Path(temporary), document, b"")
+            plan = inspect_gltf_asset(path)
+        self.assertEqual(plan.triangle_count, 5_000_000)
+        self.assertTrue(plan.requires_reduced_mode)
+        self.assertTrue(plan.supports_reduced_mode)
+
+        document["accessors"][1]["count"] = 15_000_003
+        with tempfile.TemporaryDirectory() as temporary:
+            path = _write_glb(Path(temporary), document, b"")
+            above = inspect_gltf_asset(path)
+        self.assertEqual(above.triangle_count, 5_000_001)
+        self.assertFalse(above.supports_reduced_mode)
+
+    def test_chunked_texture_sampling_matches_single_chunk(self) -> None:
+        image = np.asarray(
+            [
+                [[0, 32, 64, 255], [96, 128, 160, 128]],
+                [[192, 224, 255, 64], [17, 51, 85, 0]],
+            ],
+            dtype=np.uint8,
+        )
+        uv = np.asarray(
+            [
+                [-0.25, 0.2],
+                [0.1, 0.9],
+                [0.5, 0.5],
+                [1.1, -0.2],
+                [2.4, 1.8],
+            ],
+            dtype=np.float64,
+        )
+        expected_rgb, expected_alpha = _sample_image_linear_chunk(
+            image, uv, 10497, 33648, False
+        )
+        with patch(
+            "spectrum_mapper.gltf_import._TEXTURE_SAMPLE_CHUNK_VERTICES", 2
+        ):
+            actual_rgb, actual_alpha = _sample_image_linear(
+                image, uv, 10497, 33648, False
+            )
+        np.testing.assert_array_equal(actual_rgb, expected_rgb)
+        np.testing.assert_array_equal(actual_alpha, expected_alpha)
+
+    def test_explicit_reduced_admission_loads_and_records_hard_ceiling(self) -> None:
+        document, binary, _texture_rgb = _multipart_colour_document(
+            categorical=False
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            path = _write_glb(Path(temporary), document, binary)
+            plan = inspect_gltf_asset(path)
+            self.assertGreater(plan.triangle_count, 1)
+            mismatched_plan = GltfImportPlan(
+                plan.vertex_count_upper_bound,
+                plan.triangle_count + 1,
+                plan.mesh_node_count,
+                plan.primitive_instance_count,
+                plan.primitive_modes,
+            )
+            with self.assertRaisesRegex(GltfImportError, "changed after"):
+                load_gltf_asset(path, expected_plan=mismatched_plan)
+            with (
+                patch(
+                    "spectrum_mapper.gltf_import._MAX_IMPORTED_FACES",
+                    plan.triangle_count - 1,
+                ),
+                patch(
+                    "spectrum_mapper.gltf_import._MAX_REDUCED_SOURCE_FACES",
+                    plan.triangle_count,
+                ),
+            ):
+                with self.assertRaisesRegex(GltfImportError, "大規模モデル"):
+                    load_gltf_asset(path)
+                asset = load_gltf_asset(
+                    path,
+                    allow_large_reduced_source=True,
+                    expected_plan=plan,
+                )
+                expected_source_sha256 = hashlib.sha256(path.read_bytes()).hexdigest().upper()
+
+        self.assertEqual(asset.faces.dtype, np.int32)
+        self.assertEqual(asset.sha256, expected_source_sha256)
+        self.assertIs(
+            asset.import_metadata["large_source_reduction_required"], True
+        )
+        self.assertEqual(
+            asset.import_metadata["source_triangle_workload"],
+            plan.triangle_count,
+        )
+        self.assertEqual(asset.import_metadata["maximum_final_faces"], 450_000)
+
     def test_auto_omits_segmentation_ids_and_policy_overrides_are_explicit(self) -> None:
         document, binary, texture_rgb = _multipart_colour_document(
             categorical=True

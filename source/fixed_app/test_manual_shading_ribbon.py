@@ -115,6 +115,12 @@ def _tone_editor(callback):
     editor.tone_smoothing_slack_var = _Variable(
         tone.smoothing_delta_e_slack
     )
+    editor.illustration_mode_var = _Variable(tone.illustration_mode)
+    editor.illustration_strength_var = _Variable(
+        tone.illustration_strength * 100.0
+    )
+    editor.illustration_bands_var = _Variable(tone.illustration_bands)
+    editor.illustration_light_var = _Variable(tone.illustration_light)
     return editor
 
 
@@ -135,6 +141,10 @@ class ManualShadingRibbonTests(unittest.TestCase):
         first = editor._tone_change_after
         editor.tone_gamma_var.set(1.42)
         editor.tone_saturation_var.set(0.76)
+        editor.illustration_mode_var.set("noir")
+        editor.illustration_strength_var.set(91.0)
+        editor.illustration_bands_var.set(3)
+        editor.illustration_light_var.set("front_right")
         editor._on_editor_tone_control_changed()
         second = editor._tone_change_after
 
@@ -146,7 +156,27 @@ class ManualShadingRibbonTests(unittest.TestCase):
         self.assertEqual(len(received), 1)
         self.assertAlmostEqual(received[0].gamma, 1.42)
         self.assertAlmostEqual(received[0].saturation, 0.76)
+        self.assertEqual(received[0].illustration_mode, "noir")
+        self.assertAlmostEqual(received[0].illustration_strength, 0.91)
+        self.assertEqual(received[0].illustration_bands, 3)
+        self.assertEqual(received[0].illustration_light, "front_right")
         self.assertIsNone(editor._tone_change_after)
+
+    def test_pending_illustration_change_is_flushed_before_close(self) -> None:
+        received: list[ToneSettings] = []
+        editor = _tone_editor(received.append)
+        editor.illustration_mode_var.set("cel")
+        editor.illustration_bands_var.set(2)
+        editor._on_editor_tone_control_changed()
+        pending = editor._tone_change_after
+
+        self.assertIsNotNone(pending)
+        self.assertTrue(editor._flush_pending_tone_change())
+        self.assertIn(pending, editor.window.cancelled)
+        self.assertIsNone(editor._tone_change_after)
+        self.assertEqual(len(received), 1)
+        self.assertEqual(received[0].illustration_mode, "cel")
+        self.assertEqual(received[0].illustration_bands, 2)
 
     def test_parent_approved_tone_and_part_palette_are_reapplied(self) -> None:
         editor = _tone_editor(None)
@@ -166,10 +196,18 @@ class ManualShadingRibbonTests(unittest.TestCase):
             smoothing=False,
             smoothing_max_area_mm2=0.09,
             smoothing_delta_e_slack=4.5,
+            illustration_mode="cel",
+            illustration_strength=0.66,
+            illustration_bands=5,
+            illustration_light="front",
         )
         editor.reapply_tone_settings(tone)
         self.assertEqual(editor.settings.tone, tone)
         self.assertAlmostEqual(editor.tone_gamma_var.get(), 1.24)
+        self.assertEqual(editor.illustration_mode_var.get(), "cel")
+        self.assertAlmostEqual(editor.illustration_strength_var.get(), 66.0)
+        self.assertEqual(editor.illustration_bands_var.get(), 5)
+        self.assertEqual(editor.illustration_light_var.get(), "front")
 
         palette = PaletteSettings(mix_ratios_b=[11, 22, 33, 44, 55, 66])
         editor.reapply_palette_settings("part-b", palette)
@@ -243,7 +281,7 @@ class ManualShadingRibbonTests(unittest.TestCase):
         self.assertTrue(snapshot["_suppress_override_notification"])
         self.assertTrue(snapshot["shading_reapplied"])
 
-    def test_shading_page_has_three_groups_and_keeps_public_host(self) -> None:
+    def test_shading_page_has_illustration_group_and_keeps_public_host(self) -> None:
         try:
             root = tk.Tk()
         except tk.TclError as exc:
@@ -281,6 +319,11 @@ class ManualShadingRibbonTests(unittest.TestCase):
 
             texts = descendant_texts(editor.ribbon_pages["shading"])
             self.assertIn("1  全体の陰影・色調", texts)
+            self.assertIn("試験  2D彩色フィルター", texts)
+            self.assertIn("セル彩色", texts)
+            self.assertIn("陰影モノクロ", texts)
+            self.assertIn("陰影強度", texts)
+            self.assertIn("階調", texts)
             self.assertIn("2  混色比率を陰影に合わせる", texts)
             self.assertIn("3  面内グラデーション補正", texts)
             self.assertTrue(editor.auto_shading_host.winfo_exists())
@@ -288,6 +331,10 @@ class ManualShadingRibbonTests(unittest.TestCase):
             self.assertEqual(
                 str(editor.mix_optimization_button.cget("state")), "normal"
             )
+            editor.set_language("en")
+            root.update_idletasks()
+            illustration_frame = editor.shading_illustration_title_label.master
+            self.assertLessEqual(illustration_frame.winfo_reqwidth(), 1080)
         finally:
             if editor is not None:
                 # This structure-only test mocks _submit(), so it cannot use

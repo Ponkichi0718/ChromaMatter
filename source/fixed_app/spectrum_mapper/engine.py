@@ -68,6 +68,7 @@ from .mixer import (
 )
 from .models import (
     AppSettings,
+    COLOR_MODE_FLAT_FOUR,
     ColorResult,
     GeometrySettings,
     MeshLevel,
@@ -97,6 +98,13 @@ from .volume_partition import (
     VolumePartitionError,
     solidify_complex_partitions,
 )
+
+
+# Defense-in-depth for imported/project-restored metadata.  The importer writes
+# the same ceiling into ObjAsset.import_metadata for reuse validation, but a
+# project snapshot is user-editable and therefore cannot widen this core limit.
+_HARD_LARGE_GLTF_FINAL_FACE_LIMIT = 450_000
+_HARD_GLTF_NORMAL_SOURCE_FACE_LIMIT = 3_000_000
 
 
 MULTIPART_SELF_INTERSECTION_SCHEMA = (
@@ -709,6 +717,9 @@ def load_vertex_color_obj(path: Path, progress: ProgressCallback | None = None) 
 def load_vertex_color_model(
     path: Path,
     progress: ProgressCallback | None = None,
+    *,
+    allow_large_reduced_source: bool = False,
+    expected_gltf_plan: object | None = None,
 ) -> ObjAsset:
     """Load a supported coloured model without making the caller dispatch it.
 
@@ -725,7 +736,12 @@ def load_vertex_color_model(
         from .gltf_import import GltfImportError, load_gltf_asset
 
         try:
-            return load_gltf_asset(path, progress)
+            return load_gltf_asset(
+                path,
+                progress,
+                allow_large_reduced_source=allow_large_reduced_source,
+                expected_plan=expected_gltf_plan,
+            )
         except GltfImportError as exc:
             raise EngineError(f"GLB/glTFを読み込めません: {exc}") from exc
     raise EngineError(
@@ -742,6 +758,66 @@ def triangle_areas(vertices: np.ndarray, faces: np.ndarray) -> np.ndarray:
 def signed_volume(vertices: np.ndarray, faces: np.ndarray) -> float:
     tri = vertices[faces]
     return float(np.einsum("ij,ij->i", tri[:, 0], np.cross(tri[:, 1], tri[:, 2])).sum() / 6.0)
+
+
+def _orient_watertight_bodies_positive(
+    vertices: np.ndarray,
+    faces: np.ndarray,
+) -> tuple[np.ndarray, dict[str, int | bool]]:
+    """Orient each disconnected closed body outward without changing geometry.
+
+    Coherent face orientation guarantees agreement across shared edges, but it
+    does not guarantee that every disconnected body points outward.  A global
+    signed-volume flip is insufficient when one GLB primitive contains a mix
+    of inward- and outward-wound bodies.  Trimesh's multibody normal repair is
+    limited here to swapping the last two indices of affected triangles; the
+    exact per-row vertex sets and all topology are verified before committing.
+    """
+
+    source_vertices = np.asarray(vertices, dtype=np.float64)
+    source_faces = np.asarray(faces, dtype=np.int32)
+    mesh = trimesh.Trimesh(
+        vertices=source_vertices,
+        faces=source_faces.copy(),
+        process=False,
+    )
+    if not mesh.is_watertight or not mesh.is_winding_consistent:
+        raise EngineError(
+            "閉立体ごとの面向き補正には、閉じた一貫性のあるメッシュが必要です"
+        )
+    mesh.fix_normals(multibody=True)
+    oriented_faces = np.asarray(mesh.faces, dtype=np.int32)
+    if oriented_faces.shape != source_faces.shape or not np.array_equal(
+        np.sort(oriented_faces, axis=1),
+        np.sort(source_faces, axis=1),
+    ):
+        raise EngineError(
+            "閉立体ごとの面向き補正が元の三角形を変更したため停止しました"
+        )
+    topology = edge_topology(oriented_faces, len(source_vertices))
+    oriented_mesh = trimesh.Trimesh(
+        vertices=source_vertices,
+        faces=oriented_faces,
+        process=False,
+    )
+    if (
+        not bool(topology["watertight"])
+        or int(topology["inconsistent_winding_edges"])
+        or not oriented_mesh.is_watertight
+        or not oriented_mesh.is_winding_consistent
+    ):
+        raise EngineError(
+            "閉立体ごとの面向き補正後にトポロジーが変化したため停止しました"
+        )
+    changed_faces = int(
+        np.count_nonzero(np.any(oriented_faces != source_faces, axis=1))
+    )
+    return oriented_faces.copy(), {
+        "multibody_orientation_applied": True,
+        "changed_face_winding_count": changed_faces,
+        "face_count_preserved": bool(len(oriented_faces) == len(source_faces)),
+        "triangle_geometry_preserved": True,
+    }
 
 
 def edge_topology(faces: np.ndarray, vertex_count: int) -> dict[str, int | bool]:
@@ -2819,6 +2895,53 @@ def prepare_geometry(
         raise EngineError("出力高さは0より大きくしてください")
     if bool(settings.adjust_face_count) and settings.target_faces < 1_000:
         raise EngineError("最終面数は1,000以上にしてください")
+    import_metadata = (
+        dict(asset.import_metadata)
+        if isinstance(asset.import_metadata, dict)
+        else {}
+    )
+    large_reduction_limit: int | None = None
+    metadata_requires_large_reduction = (
+        import_metadata.get("large_source_reduction_required") is True
+    )
+    live_large_source = bool(
+        len(asset.faces) > _HARD_GLTF_NORMAL_SOURCE_FACE_LIMIT
+    )
+    if metadata_requires_large_reduction or live_large_source:
+        raw_limit = import_metadata.get("maximum_final_faces")
+        if metadata_requires_large_reduction:
+            if (
+                isinstance(raw_limit, bool)
+                or not isinstance(raw_limit, int)
+                or raw_limit < 1_000
+            ):
+                raise EngineError("大規模モデルの面数制限メタデータが不正です")
+            declared_limit = int(raw_limit)
+        else:
+            # A restored snapshot may have missing or altered import metadata.
+            # The live face count independently re-derives large-source
+            # status so project data can never disable the hard reduction path.
+            declared_limit = _HARD_LARGE_GLTF_FINAL_FACE_LIMIT
+        large_reduction_limit = min(
+            declared_limit,
+            _HARD_LARGE_GLTF_FINAL_FACE_LIMIT,
+        )
+        if (
+            not bool(settings.adjust_face_count)
+            or int(settings.target_faces) > large_reduction_limit
+        ):
+            raw_workload = import_metadata.get("source_triangle_workload")
+            workload = (
+                int(raw_workload)
+                if isinstance(raw_workload, int)
+                and not isinstance(raw_workload, bool)
+                and raw_workload > 0
+                else int(len(asset.faces))
+            )
+            raise EngineError(
+                f"大規模モデル（入力 {workload:,} 面）は面数調整を有効にし、"
+                f"最終面数を {large_reduction_limit:,} 以下にしてください"
+            )
     # Only a source OBJ with two or more face-bearing ``o``/``g`` sections is
     # a real multipart asset. Markerless files and files with one decorative
     # marker must keep the established single-mesh path even when an older
@@ -2828,7 +2951,16 @@ def prepare_geometry(
         and len(asset.part_names) > 1
         and len(asset.face_part_ids) == len(asset.faces)
     ):
-        return _prepare_geometry_parts(asset, settings, progress)
+        prepared_parts = _prepare_geometry_parts(asset, settings, progress)
+        if (
+            large_reduction_limit is not None
+            and len(prepared_parts.final.faces) > large_reduction_limit
+        ):
+            raise EngineError(
+                "大規模モデルの面数調整結果が安全上限を超えたため停止しました: "
+                f"{len(prepared_parts.final.faces):,} / {large_reduction_limit:,}"
+            )
+        return prepared_parts
     warnings = list(asset.warnings)
     generic_repair_record: dict[str, object] | None = None
     working_vertices = asset.vertices.astype(np.float64)
@@ -2939,6 +3071,14 @@ def prepare_geometry(
     final_vertices, final_faces = _simplify_mesh(unit_vertices, clean_faces, clean_colors, target)
     final_colors, transfer_stats = _transfer_colors(unit_vertices, clean_colors, final_vertices)
     final_vertices = _center_and_floor(final_vertices)
+    if (
+        large_reduction_limit is not None
+        and len(final_faces) > large_reduction_limit
+    ):
+        raise EngineError(
+            "大規模モデルの面数調整結果が安全上限を超えたため停止しました: "
+            f"{len(final_faces):,} / {large_reduction_limit:,}"
+        )
     if signed_volume(final_vertices, final_faces) < 0.0:
         final_faces[:, [1, 2]] = final_faces[:, [2, 1]]
     if generic_repair_record is not None:
@@ -2947,6 +3087,12 @@ def prepare_geometry(
         # never turn an accepted repair into an open 3MF.  Watertight input is
         # an identity path here; no second colour merge is performed.
         try:
+            final_faces, final_orientation_record = (
+                _orient_watertight_bodies_positive(
+                    final_vertices,
+                    final_faces,
+                )
+            )
             (
                 final_vertices,
                 final_faces,
@@ -2957,11 +3103,12 @@ def prepare_geometry(
                 final_faces,
                 final_colors,
             )
-        except AssemblyError as exc:
+        except (AssemblyError, EngineError) as exc:
             raise EngineError(
                 "単一GLBの閉立体化後検証に失敗したため、元メッシュへ戻します。\n"
                 f"詳細: {exc}"
             ) from exc
+        generic_repair_record["final_orientation"] = final_orientation_record
         generic_repair_record["final_validation"] = final_validation_record
         simplification_applied = bool(int(target) < int(len(clean_faces)))
         generic_repair_record["simplification_applied"] = simplification_applied
@@ -3167,7 +3314,10 @@ def lab_to_srgb(lab: np.ndarray) -> np.ndarray:
     )
 
 
-def apply_tone(colors: np.ndarray, settings: ToneSettings) -> np.ndarray:
+def _apply_base_tone(
+    colors: np.ndarray,
+    settings: ToneSettings,
+) -> np.ndarray:
     if settings.white_point <= settings.black_point + 0.005:
         raise EngineError("白点は黒点より十分大きくしてください")
     rgb = np.clip(
@@ -3184,6 +3334,163 @@ def apply_tone(colors: np.ndarray, settings: ToneSettings) -> np.ndarray:
         lab[:, 1:3] *= float(settings.saturation)
         rgb = np.clip(lab_to_srgb(lab), 0.0, 1.0)
     return rgb
+
+
+def _tone_faces(
+    base_vertex_rgb: np.ndarray,
+    settings: ToneSettings,
+    *,
+    vertices_unit: np.ndarray | None,
+    faces: np.ndarray,
+) -> np.ndarray:
+    triangles = np.asarray(faces)
+    if triangles.ndim != 2 or triangles.shape[1] != 3:
+        raise EngineError("2D彩色フィルターの面情報が不正です")
+    if not np.issubdtype(triangles.dtype, np.integer):
+        raise EngineError("2D彩色フィルターの面番号が不正です")
+    if len(triangles) and (
+        int(triangles.min()) < 0
+        or int(triangles.max()) >= len(base_vertex_rgb)
+    ):
+        raise EngineError("2D彩色フィルターの面番号が頂点範囲外です")
+    # Avoid materialising an Fx3x3 float array for very large GLB meshes.
+    # A 100k-face batch keeps the temporary working set bounded while
+    # producing the exact same per-face averages as the vectorised form.
+    face_rgb = np.empty((len(triangles), 3), dtype=np.float64)
+    for start in range(0, len(triangles), 100_000):
+        stop = min(start + 100_000, len(triangles))
+        face_rgb[start:stop] = base_vertex_rgb[triangles[start:stop]].mean(
+            axis=1
+        )
+    illustration_mode = str(
+        getattr(settings, "illustration_mode", "off")
+    ).strip().lower()
+    if illustration_mode == "off":
+        return np.ascontiguousarray(face_rgb, dtype=np.float64)
+    if vertices_unit is None:
+        raise EngineError(
+            "2D彩色フィルターにはモデルの頂点・面情報が必要です"
+        )
+    from .illustration_filter import (
+        IllustrationFilterError,
+        apply_illustration_filter_faces,
+    )
+
+    try:
+        return apply_illustration_filter_faces(
+            vertices_unit,
+            triangles,
+            face_rgb,
+            mode=illustration_mode,
+            strength=float(
+                getattr(settings, "illustration_strength", 0.78)
+            ),
+            bands=int(getattr(settings, "illustration_bands", 4)),
+            light=str(
+                getattr(settings, "illustration_light", "front_left")
+            ),
+        )
+    except IllustrationFilterError as exc:
+        raise EngineError(f"2D彩色フィルターを適用できません: {exc}") from exc
+
+
+def _face_rgb_to_vertex_approximation(
+    base_vertex_rgb: np.ndarray,
+    faces: np.ndarray,
+    face_rgb: np.ndarray,
+) -> np.ndarray:
+    """Return an OBJ/reference-preview approximation of face-based shading.
+
+    Palette assignment uses ``face_rgb`` directly.  Shared OBJ vertices cannot
+    express a discontinuous cel edge, so their display/backup colour is the
+    average of incident printable faces while isolated vertices keep base tone.
+    """
+
+    output = np.asarray(base_vertex_rgb, dtype=np.float64).copy()
+    if not len(faces):
+        return np.ascontiguousarray(output)
+    sums = np.zeros_like(output)
+    counts = np.zeros(len(output), dtype=np.int32)
+    for corner in range(3):
+        vertex_ids = faces[:, corner]
+        np.add.at(sums, vertex_ids, face_rgb)
+        np.add.at(counts, vertex_ids, 1)
+    valid = counts > 0
+    output[valid] = sums[valid] / counts[valid, None]
+    return np.ascontiguousarray(output)
+
+
+def _apply_tone_with_faces(
+    colors: np.ndarray,
+    settings: ToneSettings,
+    *,
+    vertices_unit: np.ndarray | None,
+    faces: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    base_vertex_rgb = _apply_base_tone(colors, settings)
+    face_rgb = _tone_faces(
+        base_vertex_rgb,
+        settings,
+        vertices_unit=vertices_unit,
+        faces=faces,
+    )
+    illustration_mode = str(
+        getattr(settings, "illustration_mode", "off")
+    ).strip().lower()
+    if illustration_mode == "off":
+        return base_vertex_rgb, face_rgb
+    triangles = np.asarray(faces)
+    return (
+        _face_rgb_to_vertex_approximation(
+            base_vertex_rgb,
+            triangles,
+            face_rgb,
+        ),
+        face_rgb,
+    )
+
+
+def apply_tone(
+    colors: np.ndarray,
+    settings: ToneSettings,
+    *,
+    vertices_unit: np.ndarray | None = None,
+    faces: np.ndarray | None = None,
+) -> np.ndarray:
+    illustration_mode = str(
+        getattr(settings, "illustration_mode", "off")
+    ).strip().lower()
+    if illustration_mode == "off":
+        return _apply_base_tone(colors, settings)
+    if faces is None:
+        raise EngineError(
+            "2D彩色フィルターにはモデルの頂点・面情報が必要です"
+        )
+    tone_vertex_rgb, _face_rgb = _apply_tone_with_faces(
+        colors,
+        settings,
+        vertices_unit=vertices_unit,
+        faces=faces,
+    )
+    return tone_vertex_rgb
+
+
+def apply_tone_faces(
+    colors: np.ndarray,
+    settings: ToneSettings,
+    *,
+    vertices_unit: np.ndarray | None,
+    faces: np.ndarray,
+) -> np.ndarray:
+    """Return authoritative per-triangle tone for palette assignment."""
+
+    base_vertex_rgb = _apply_base_tone(colors, settings)
+    return _tone_faces(
+        base_vertex_rgb,
+        settings,
+        vertices_unit=vertices_unit,
+        faces=faces,
+    )
 
 
 def _smooth_labels(
@@ -3295,16 +3602,86 @@ def _apply_black_free_gradient(
     return result, int(len(selected))
 
 
+def _effective_enabled_states(palette: PaletteSettings) -> np.ndarray:
+    """Return the non-destructive automatic-assignment mask for one mode."""
+
+    enabled = np.asarray(palette.enabled_states, dtype=bool)
+    if enabled.shape != (PALETTE_STATE_COUNT,):
+        raise EngineError(
+            f"パレット有効状態は{PALETTE_STATE_COUNT}個必要です"
+        )
+    if getattr(palette, "color_mode", None) == COLOR_MODE_FLAT_FOUR:
+        enabled = enabled.copy()
+        enabled[4:] = False
+    return enabled
+
+
+def _effective_manual_state_count(palette: PaletteSettings) -> int:
+    if getattr(palette, "color_mode", None) == COLOR_MODE_FLAT_FOUR:
+        return 4
+    return int(palette.palette_state_count)
+
+
+def _project_indices_to_flat_four(
+    palette_indices: np.ndarray,
+    face_part_ids: np.ndarray,
+    resolved_palettes: Sequence[PaletteSettings],
+) -> tuple[np.ndarray, int]:
+    """Project mixed state IDs onto F1-F4 without changing stored paint data.
+
+    A project can legitimately retain Full Spectrum manual overrides while the
+    active output mode is Flat 4 Colors.  The writer therefore resolves each
+    mixed state's current display colour to the nearest physical filament in
+    CIE76, per part, and returns an export-only copy.  Physical IDs are kept
+    byte-for-byte and ties remain deterministic through ``numpy.argmin``'s
+    lowest-index rule.
+    """
+
+    source = np.asarray(palette_indices)
+    part_ids = np.asarray(face_part_ids)
+    if source.ndim != 1 or part_ids.shape != source.shape:
+        raise EngineError("Flat 4 Colorsの色状態と面パーツID数が一致しません")
+    if not np.issubdtype(source.dtype, np.integer):
+        raise EngineError("Flat 4 Colorsの色状態は整数である必要があります")
+    if len(source) and (
+        int(source.min()) < 0 or int(source.max()) >= PALETTE_STATE_COUNT
+    ):
+        raise EngineError("Flat 4 Colorsの色状態がパレット範囲外です")
+
+    mixed_mask = source >= 4
+    projected_count = int(np.count_nonzero(mixed_mask))
+    if not projected_count:
+        return source, 0
+
+    result = source.astype(np.int8, copy=True)
+    for part_id, part_palette in enumerate(resolved_palettes):
+        selected = mixed_mask & (part_ids == part_id)
+        if not np.any(selected):
+            continue
+        _palette_hex, palette_rgb = build_palette_rgb(
+            part_palette.physical_hex,
+            part_palette.mix_hex_overrides,
+            part_palette.mix_ratios_b,
+            part_palette.secondary_mix_ratios_b,
+        )
+        palette_lab = srgb_to_lab(palette_rgb)
+        source_states = source[selected].astype(np.int64, copy=False)
+        delta = palette_lab[source_states, None, :] - palette_lab[None, :4, :]
+        result[selected] = np.argmin(np.sum(delta * delta, axis=2), axis=1)
+
+    if np.any(result >= 4):
+        raise EngineError(
+            "Flat 4 Colorsの一部の面をF1-F4へ投影できませんでした"
+        )
+    return result, projected_count
+
+
 def recolor_level(
     level: MeshLevel,
     height_mm: float,
     tone: ToneSettings,
     palette: PaletteSettings,
 ) -> ColorResult:
-    if len(palette.enabled_states) != PALETTE_STATE_COUNT:
-        raise EngineError(
-            f"パレット有効状態は{PALETTE_STATE_COUNT}個必要です"
-        )
     palette_hex, palette_rgb = build_palette_rgb(
         palette.physical_hex,
         palette.mix_hex_overrides,
@@ -3312,7 +3689,7 @@ def recolor_level(
         palette.secondary_mix_ratios_b,
     )
     del palette_hex
-    enabled = np.asarray(palette.enabled_states, dtype=bool)
+    enabled = _effective_enabled_states(palette)
     neutral_candidates = NEUTRAL_STATES[enabled[NEUTRAL_STATES]]
     pink_candidates = PINK_STATES[enabled[PINK_STATES]]
     if len(neutral_candidates) == 0:
@@ -3320,9 +3697,13 @@ def recolor_level(
     if tone.pink_protection and len(pink_candidates) == 0:
         raise EngineError("F4系保護にはF4を含むパレットを1色以上有効にしてください")
 
-    tone_vertex = apply_tone(level.vertex_colors, tone)
+    tone_vertex, tone_face_rgb = _apply_tone_with_faces(
+        level.vertex_colors,
+        tone,
+        vertices_unit=level.vertices_unit,
+        faces=level.faces,
+    )
     source_face_rgb = level.vertex_colors[level.faces].mean(axis=1)
-    tone_face_rgb = tone_vertex[level.faces].mean(axis=1)
     face_lab = srgb_to_lab(tone_face_rgb)
     assignment_palette_rgb = assignment_palette_rgb_table(palette)
     assignment_palette_lab = srgb_to_lab(assignment_palette_rgb)
@@ -3387,6 +3768,11 @@ def recolor_level(
         palette_area_fractions=fractions,
         pink_area_fraction=float(fractions[PINK_STATES].sum()),
         black_free_remapped_faces=black_free_remapped,
+        tone_face_rgb=tone_face_rgb,
+        tone_face_rgb_flat=(
+            str(getattr(tone, "illustration_mode", "off")).strip().lower()
+            != "off"
+        ),
     )
 
 
@@ -3431,9 +3817,13 @@ def recolor_level_parts(
     assignment_palette_tables = build_part_assignment_palette_rgb_tables(
         settings, layout
     )
-    tone_vertex = apply_tone(level.vertex_colors, tone)
+    tone_vertex, tone_face_rgb = _apply_tone_with_faces(
+        level.vertex_colors,
+        tone,
+        vertices_unit=level.vertices_unit,
+        faces=level.faces,
+    )
     source_face_rgb = level.vertex_colors[level.faces].mean(axis=1)
-    tone_face_rgb = tone_vertex[level.faces].mean(axis=1)
     face_lab = srgb_to_lab(tone_face_rgb)
     areas_mm2 = level.areas_unit * float(height_mm) ** 2
     indices = np.empty(len(level.faces), dtype=np.int8)
@@ -3449,11 +3839,10 @@ def recolor_level_parts(
         selected = np.flatnonzero(layout.face_part_ids == part_id)
         if not len(selected):
             continue
-        enabled = np.asarray(part_palette.enabled_states, dtype=bool)
-        if enabled.shape != (PALETTE_STATE_COUNT,):
-            raise EngineError(
-                f"{part_key}: パレット有効状態は{PALETTE_STATE_COUNT}個必要です"
-            )
+        try:
+            enabled = _effective_enabled_states(part_palette)
+        except EngineError as exc:
+            raise EngineError(f"{part_key}: {exc}") from exc
         neutral_candidates = NEUTRAL_STATES[enabled[NEUTRAL_STATES]]
         pink_candidates = PINK_STATES[enabled[PINK_STATES]]
         if not len(neutral_candidates):
@@ -3559,6 +3948,11 @@ def recolor_level_parts(
         pink_area_fraction=float(fractions[PINK_STATES].sum()),
         black_free_remapped_faces=total_black_free_remapped,
         part_metrics=part_metrics,
+        tone_face_rgb=tone_face_rgb,
+        tone_face_rgb_flat=(
+            str(getattr(tone, "illustration_mode", "off")).strip().lower()
+            != "off"
+        ),
     )
 
 
@@ -3602,11 +3996,12 @@ def apply_palette_overrides(
         palette.secondary_mix_ratios_b,
     )
     if remap_out_of_range:
-        too_high = overrides >= palette.palette_state_count
+        effective_count = _effective_manual_state_count(palette)
+        too_high = overrides >= effective_count
         if np.any(too_high):
             overrides = overrides.copy()
             source_states = np.unique(overrides[too_high])
-            candidates = palette_rgb[: palette.palette_state_count]
+            candidates = palette_rgb[:effective_count]
             for source_state in source_states:
                 delta = candidates - palette_rgb[int(source_state)]
                 replacement = int(np.argmin(np.sum(delta * delta, axis=1)))
@@ -3620,7 +4015,13 @@ def apply_palette_overrides(
     mask = overrides >= 0
     indices = automatic.astype(np.int8, copy=True)
     indices[mask] = overrides[mask]
-    tone_face_rgb = np.asarray(colors.tone_vertex_rgb)[level.faces].mean(axis=1)
+    stored_tone_faces = getattr(colors, "tone_face_rgb", None)
+    if stored_tone_faces is None:
+        tone_face_rgb = np.asarray(colors.tone_vertex_rgb)[level.faces].mean(axis=1)
+    else:
+        tone_face_rgb = np.asarray(stored_tone_faces, dtype=np.float64)
+        if tone_face_rgb.shape != (face_count, 3):
+            raise EngineError("色調整後の面色数が最終メッシュと一致しません")
     face_lab = srgb_to_lab(tone_face_rgb)
     palette_lab = srgb_to_lab(palette_rgb)
     target_rgb = palette_rgb[indices]
@@ -3643,6 +4044,10 @@ def apply_palette_overrides(
         pink_area_fraction=float(fractions[PINK_STATES].sum()),
         manual_override_faces=int(np.count_nonzero(mask)),
         black_free_remapped_faces=colors.black_free_remapped_faces,
+        tone_face_rgb=tone_face_rgb,
+        tone_face_rgb_flat=bool(
+            getattr(colors, "tone_face_rgb_flat", False)
+        ),
     )
 
 
@@ -3668,9 +4073,10 @@ def apply_palette_overrides_parts(
         and np.issubdtype(safe_overrides.dtype, np.integer)
     ):
         for part_id, part_palette in enumerate(resolved_palettes):
+            effective_count = _effective_manual_state_count(part_palette)
             selected = (
                 (layout.face_part_ids == part_id)
-                & (safe_overrides >= part_palette.palette_state_count)
+                & (safe_overrides >= effective_count)
             )
             if not np.any(selected):
                 continue
@@ -3680,7 +4086,7 @@ def apply_palette_overrides_parts(
                 part_palette.mix_ratios_b,
                 part_palette.secondary_mix_ratios_b,
             )
-            candidates = part_rgb[: part_palette.palette_state_count]
+            candidates = part_rgb[:effective_count]
             for source_state in np.unique(safe_overrides[selected]):
                 if int(source_state) < 0 or int(source_state) >= PALETTE_STATE_COUNT:
                     continue
@@ -3701,9 +4107,14 @@ def apply_palette_overrides_parts(
     tables = build_part_palette_rgb_tables(settings, layout)
     indices = np.asarray(result.palette_indices, dtype=np.int8)
     target_rgb = tables[layout.face_part_ids, indices]
-    face_lab = srgb_to_lab(
-        np.asarray(result.tone_vertex_rgb)[level.faces].mean(axis=1)
-    )
+    result_tone_faces = getattr(result, "tone_face_rgb", None)
+    if result_tone_faces is None:
+        tone_face_rgb = np.asarray(result.tone_vertex_rgb)[level.faces].mean(axis=1)
+    else:
+        tone_face_rgb = np.asarray(result_tone_faces, dtype=np.float64)
+        if tone_face_rgb.shape != (len(level.faces), 3):
+            raise EngineError("色調整後の面色数が最終メッシュと一致しません")
+    face_lab = srgb_to_lab(tone_face_rgb)
     target_lab = srgb_to_lab(target_rgb)
     delta_e = np.linalg.norm(face_lab - target_lab, axis=1)
     areas_mm2 = level.areas_unit * float(height_mm) ** 2
@@ -3743,6 +4154,10 @@ def apply_palette_overrides_parts(
         manual_override_faces=result.manual_override_faces,
         black_free_remapped_faces=result.black_free_remapped_faces,
         part_metrics=part_metrics,
+        tone_face_rgb=tone_face_rgb,
+        tone_face_rgb_flat=bool(
+            getattr(result, "tone_face_rgb_flat", False)
+        ),
     )
 
 
@@ -3793,6 +4208,7 @@ def _make_model_settings(
     part_names: tuple[str, ...] | list[str] | None = None,
     part_face_counts: tuple[int, ...] | list[int] | None = None,
     source_file: str | None = None,
+    palette_mode: str = "full_spectrum",
 ) -> bytes:
     safe_name = html.escape(name)
     # Never write a host path into the portable 3MF.  The source basename is
@@ -3834,6 +4250,11 @@ def _make_model_settings(
     </part>'''
         )
     parts_xml = "\n".join(part_blocks)
+    plater_name = (
+        "Flat 4 Colors (F1-F4)"
+        if palette_mode == COLOR_MODE_FLAT_FOUR
+        else "Full Spectrum 4 Filaments"
+    )
     return f'''<?xml version="1.0" encoding="UTF-8"?>
 <config>
   <object id="{parent_id}">
@@ -3844,7 +4265,7 @@ def _make_model_settings(
   </object>
   <plate>
     <metadata key="plater_id" value="1"/>
-    <metadata key="plater_name" value="Full Spectrum 4 Filaments"/>
+    <metadata key="plater_name" value="{plater_name}"/>
     <metadata key="locked" value="false"/>
     <metadata key="filament_map_mode" value="Auto For Flush"/>
     <model_instance>
@@ -3859,16 +4280,23 @@ def _make_model_settings(
 
 def _make_project_settings(palette: PaletteSettings) -> bytes:
     physical = [normalize_hex(value) for value in palette.physical_hex]
+    flat_four = palette.color_mode == COLOR_MODE_FLAT_FOUR
     surface_shell_enabled = bool(
-        palette.surface_shell_enabled and SURFACE_SHELL_OUTPUT_ENABLED
+        not flat_four
+        and palette.surface_shell_enabled
+        and SURFACE_SHELL_OUTPUT_ENABLED
     )
-    definitions = make_portable_mixed_definitions(
-        palette.mix_ratios_b,
-        palette.secondary_mix_ratios_b,
-        palette.palette_state_count,
-        palette.output_mix_ratios_b,
-        surface_shell_enabled,
-        physical,
+    definitions = (
+        ""
+        if flat_four
+        else make_portable_mixed_definitions(
+            palette.mix_ratios_b,
+            palette.secondary_mix_ratios_b,
+            palette.palette_state_count,
+            palette.output_mix_ratios_b,
+            surface_shell_enabled,
+            physical,
+        )
     )
     config = {
         "print_settings_id": "0.08 Extra Fine @Snapmaker U1 (0.4 nozzle)",
@@ -3886,6 +4314,7 @@ def _make_project_settings(palette: PaletteSettings) -> bytes:
         "mixed_filament_definitions": definitions,
         "mixed_filament_height_lower_bound": "0.04",
         "mixed_filament_height_upper_bound": "0.16",
+        "chroma_matter_palette_mode": palette.color_mode,
     }
     config.update(FULL_SPECTRUM_STABLE_CADENCE_SETTINGS)
     config.update(SNAPMAKER_U1_008_TRANSITION_SETTINGS)
@@ -4555,7 +4984,35 @@ def write_3mf_atomic(
         if print_uses_global_palette
         else resolve_part_palette_settings(palette_settings, prepared.final)
     )
+    resolved_modes = {value.color_mode for value in resolved_palettes}
+    if len(resolved_modes) != 1:
+        raise EngineError(
+            "Full SpectrumとFlat 4 Colorsを1つの3MFに混在できません"
+        )
+    palette_mode = next(iter(resolved_modes))
+    flat_four = palette_mode == COLOR_MODE_FLAT_FOUR
+    active_state_count = 4 if flat_four else int(palette.palette_state_count)
     final_indices = np.asarray(colors.palette_indices)
+    if final_indices.shape != (len(prepared.final.faces),):
+        raise EngineError("3MFの色状態数が面数と一致しません")
+    if len(final_indices) and (
+        int(final_indices.min()) < 0
+        or int(final_indices.max()) >= PALETTE_STATE_COUNT
+    ):
+        raise EngineError("3MFの色状態がパレット範囲外です")
+    if (
+        not flat_four
+        and len(final_indices)
+        and int(final_indices.max()) >= int(palette.palette_state_count)
+    ):
+        raise EngineError("3MFの色状態がパレット範囲外です")
+    flat_four_projected_faces = 0
+    if flat_four:
+        final_indices, flat_four_projected_faces = _project_indices_to_flat_four(
+            final_indices,
+            face_part_ids,
+            resolved_palettes,
+        )
     black_free_parts: list[dict[str, object]] = []
     remaining_black_mix_faces = 0
     for part_id, (part_key, part_palette) in enumerate(
@@ -4563,7 +5020,8 @@ def write_3mf_atomic(
     ):
         selected = layout.face_part_ids == part_id
         remaining = 0
-        if part_palette.black_free_gradient_enabled:
+        part_flat_four = part_palette.color_mode == COLOR_MODE_FLAT_FOUR
+        if part_palette.black_free_gradient_enabled and not part_flat_four:
             forbidden = black_containing_mixed_states(
                 part_palette.palette_state_count,
                 part_palette.black_free_black_slot,
@@ -4576,7 +5034,10 @@ def write_3mf_atomic(
             {
                 "part_index": part_id,
                 "part_key": part_key,
-                "enabled": bool(part_palette.black_free_gradient_enabled),
+                "enabled": bool(
+                    part_palette.black_free_gradient_enabled
+                    and not part_flat_four
+                ),
                 "black_slot": int(part_palette.black_free_black_slot),
                 "red_slot": int(part_palette.black_free_red_slot),
                 "brown_slot": int(part_palette.black_free_brown_slot),
@@ -4634,6 +5095,7 @@ def write_3mf_atomic(
         )
     part_palette_metadata = {
         "schema": "tripo-spectrum-mapper.part-palettes.v1",
+        "palette_mode": palette_mode,
         "u1_physical_slot_limit": 4,
         "one_print_job_compatible": bool(
             grouping.one_job or print_uses_global_palette
@@ -4675,6 +5137,7 @@ def write_3mf_atomic(
         "coordinates": "normalized source coordinates before final centering",
         "height_mm": float(height_mm),
         "part_count": int(part_count),
+        "palette_mode": palette_mode,
     }
     _apply_export_self_intersection_records(
         assembly_metadata,
@@ -4693,43 +5156,74 @@ def write_3mf_atomic(
         palette.mix_ratios_b,
         palette.secondary_mix_ratios_b,
     )
-    definitions = make_portable_mixed_definitions(
-        palette.mix_ratios_b,
-        palette.secondary_mix_ratios_b,
-        palette.palette_state_count,
-        palette.output_mix_ratios_b,
-        palette.surface_shell_enabled,
-        palette.physical_hex,
+    definitions = (
+        ""
+        if flat_four
+        else make_portable_mixed_definitions(
+            palette.mix_ratios_b,
+            palette.secondary_mix_ratios_b,
+            palette.palette_state_count,
+            palette.output_mix_ratios_b,
+            palette.surface_shell_enabled,
+            palette.physical_hex,
+        )
     )
     state_names = palette_state_names(
         palette.mix_ratios_b, palette.secondary_mix_ratios_b
     )
     face_counts = np.zeros(PALETTE_STATE_COUNT, dtype=np.int64)
     area_fractions = np.zeros(PALETTE_STATE_COUNT, dtype=np.float64)
-    source_counts = np.asarray(colors.palette_face_counts).reshape(-1)
-    source_fractions = np.asarray(colors.palette_area_fractions).reshape(-1)
-    face_counts[: min(len(source_counts), PALETTE_STATE_COUNT)] = source_counts[
-        :PALETTE_STATE_COUNT
-    ]
-    area_fractions[: min(len(source_fractions), PALETTE_STATE_COUNT)] = (
-        source_fractions[:PALETTE_STATE_COUNT]
-    )
+    if flat_four:
+        face_counts = np.bincount(
+            final_indices,
+            minlength=PALETTE_STATE_COUNT,
+        ).astype(np.int64, copy=False)
+        area_by_state = np.bincount(
+            final_indices,
+            weights=np.asarray(prepared.final.areas_unit, dtype=np.float64)
+            * float(height_mm) ** 2,
+            minlength=PALETTE_STATE_COUNT,
+        )
+        area_fractions = area_by_state / max(float(area_by_state.sum()), 1e-12)
+    else:
+        source_counts = np.asarray(colors.palette_face_counts).reshape(-1)
+        source_fractions = np.asarray(colors.palette_area_fractions).reshape(-1)
+        face_counts[: min(len(source_counts), PALETTE_STATE_COUNT)] = source_counts[
+            :PALETTE_STATE_COUNT
+        ]
+        area_fractions[: min(len(source_fractions), PALETTE_STATE_COUNT)] = (
+            source_fractions[:PALETTE_STATE_COUNT]
+        )
     palette_metadata = {
         "schema": "tripo-spectrum-mapper.palette.v1",
+        "palette_mode": palette_mode,
         "filament_material": palette.material,
         "generic_filament_profile": generic_filament_profile(palette.material),
         "physical_slot_order": [normalize_hex(value) for value in palette.physical_hex],
         "physical_filament_refs": AppSettings(
             palette=palette
         ).to_dict()["palette"]["physical_filament_refs"],
-        "palette_state_count": int(palette.palette_state_count),
-        "mixing_mode": "compatible 16-state base plus appended gradient mixes",
+        "palette_state_count": active_state_count,
+        "configured_palette_state_count": int(palette.palette_state_count),
+        "mixed_state_count": 0 if flat_four else active_state_count - 4,
+        "flat_four_projected_faces": int(flat_four_projected_faces),
+        "mixing_mode": (
+            "physical F1-F4 only; mixed states disabled"
+            if flat_four
+            else "compatible 16-state base plus appended gradient mixes"
+        ),
         "black_free_gradient": black_free_metadata,
-        "mix_ratios_b_percent": [int(value) for value in palette.mix_ratios_b],
-        "secondary_mix_ratios_b_percent": [
-            int(value) for value in palette.secondary_mix_ratios_b
-        ],
-        "paint_codes": list(PAINT_CODES[: palette.palette_state_count]),
+        "mix_ratios_b_percent": (
+            []
+            if flat_four
+            else [int(value) for value in palette.mix_ratios_b]
+        ),
+        "secondary_mix_ratios_b_percent": (
+            []
+            if flat_four
+            else [int(value) for value in palette.secondary_mix_ratios_b]
+        ),
+        "paint_codes": list(PAINT_CODES[:active_state_count]),
         "states": [
             {
                 "state": index + 1,
@@ -4739,10 +5233,10 @@ def write_3mf_atomic(
                 "face_count": int(face_counts[index]),
                 "surface_area_fraction": float(area_fractions[index]),
             }
-            for index in range(palette.palette_state_count)
+            for index in range(active_state_count)
         ],
     }
-    if palette.output_mix_ratios_b is not None:
+    if palette.output_mix_ratios_b is not None and not flat_four:
         palette_metadata["output_mix_ratios_b_percent"] = [
             int(value) for value in palette.output_mix_ratios_b
         ]
@@ -4758,7 +5252,11 @@ def write_3mf_atomic(
                 palette.output_mix_ratios_b,
             )[: palette.palette_state_count - 4]
         ]
-    if palette.surface_shell_enabled and SURFACE_SHELL_OUTPUT_ENABLED:
+    if (
+        not flat_four
+        and palette.surface_shell_enabled
+        and SURFACE_SHELL_OUTPUT_ENABLED
+    ):
         shell_specs = build_surface_shell_output_specs(
             palette.physical_hex,
             palette.mix_ratios_b,
@@ -4841,7 +5339,11 @@ def write_3mf_atomic(
                 "3D/3dmodel.model",
                 _make_root_model(
                     name,
-                    f"Full Spectrum {palette.palette_state_count} colors, height {height_mm:g} mm",
+                    (
+                        f"Flat 4 Colors (F1-F4 only), height {height_mm:g} mm"
+                        if flat_four
+                        else f"Full Spectrum {palette.palette_state_count} colors, height {height_mm:g} mm"
+                    ),
                     part_count,
                 ),
             )
@@ -4850,7 +5352,7 @@ def write_3mf_atomic(
                 archive,
                 export_vertices_mm,
                 prepared.final.faces,
-                colors.palette_indices,
+                final_indices,
                 face_part_ids,
                 part_names,
             )
@@ -4863,6 +5365,7 @@ def write_3mf_atomic(
                     part_names,
                     part_face_counts,
                     source_file=prepared.source.path.name,
+                    palette_mode=palette_mode,
                 ),
             )
             archive.writestr("Metadata/project_settings.config", _make_project_settings(palette))
@@ -4912,6 +5415,7 @@ def write_3mf_atomic(
         validation["sha256"] = sha256_file(destination)
         validation.update(
             {
+                "flat_four_projected_faces": int(flat_four_projected_faces),
                 "black_free_gradient_enabled": bool(
                     black_free_metadata["enabled"]
                 ),
@@ -5012,6 +5516,9 @@ def validate_3mf(
         palette_metadata = json.loads(
             archive.read("Metadata/full_spectrum_palette.json").decode("utf-8")
         )
+        palette_mode = str(
+            palette_metadata.get("palette_mode", "full_spectrum")
+        )
         # Every mesh object emitted by this writer is a printable 3MF
         # ``type=model`` object.  Topology validation must therefore never be
         # conditional on a GUI/assembly flag: CLI and direct writer callers
@@ -5099,6 +5606,24 @@ def validate_3mf(
         )
     if "" in paints or not set(paints).issubset(PAINT_CODES):
         errors.append(f"paint_color={dict(paints)}")
+    if palette_mode not in {"full_spectrum", COLOR_MODE_FLAT_FOUR}:
+        errors.append(f"カラーモード={palette_mode}")
+    if palette_mode == COLOR_MODE_FLAT_FOUR:
+        flat_paint_codes = set(PAINT_CODES[:4])
+        if not set(paints).issubset(flat_paint_codes):
+            errors.append("Flat 4 Colorsに混色state")
+        states = palette_metadata.get("states")
+        if (
+            palette_metadata.get("palette_state_count") != 4
+            or palette_metadata.get("mixed_state_count") != 0
+            or not isinstance(states, list)
+            or len(states) != 4
+        ):
+            errors.append("Flat 4 Colorsパレットmetadata")
+        if "Flat 4 Colors" not in root:
+            errors.append("Flat 4 Colorsタイトル")
+        if 'key="plater_name" value="Flat 4 Colors (F1-F4)"' not in model_settings:
+            errors.append("Flat 4 Colorsプレート名")
     if '<metadata name="Application">BambuStudio-2.3.5</metadata>' not in root:
         errors.append("Application metadata")
     if project.get("filament_colour") != expected_physical:
@@ -6544,6 +7069,10 @@ def validate_3mf(
     definitions = project.get("mixed_filament_definitions", "")
     if definitions != expected_definitions:
         errors.append("混色定義")
+    if palette_mode == COLOR_MODE_FLAT_FOUR and definitions:
+        errors.append("Flat 4 Colors混色定義")
+    if project.get("chroma_matter_palette_mode", "full_spectrum") != palette_mode:
+        errors.append("カラーモードmetadata")
     shell_metadata = palette_metadata.get("surface_shell")
     cycle_rows = [row for row in definitions.split(";") if ",cm1," in row]
     shell_settings = {
@@ -6643,8 +7172,16 @@ def validate_3mf(
             part_palette_metadata.get("one_print_job_compatible", True)
         ),
         "paint_counts": dict(paints),
+        "palette_mode": palette_mode,
+        "active_palette_state_count": (
+            4
+            if palette_mode == COLOR_MODE_FLAT_FOUR
+            else int(palette_metadata.get("palette_state_count", 0) or 0)
+        ),
         "physical_filaments": len(expected_physical),
-        "mixed_definition_rows": len(definitions.split(";")),
+        "mixed_definition_rows": (
+            0 if not definitions else len(definitions.split(";"))
+        ),
         "surface_shell_enabled": shell_metadata is not None,
         "surface_shell_cycle_rows": len(cycle_rows),
         "surface_shell_applied_rows": (
@@ -6697,12 +7234,42 @@ def write_vertex_color_obj(
     height_mm: float,
 ) -> None:
     vertices = prepared.final.vertices_unit * float(height_mm)
+    faces = np.asarray(prepared.final.faces)
+    layout = validate_part_layout(prepared.final)
+    flat_face_tone = bool(getattr(colors, "tone_face_rgb_flat", False))
+    face_tone = getattr(colors, "tone_face_rgb", None)
+    if flat_face_tone:
+        face_tone = np.asarray(face_tone, dtype=np.float64)
+        if face_tone.shape != (len(faces), 3) or not bool(
+            np.all(np.isfinite(face_tone))
+        ):
+            raise EngineError(
+                "2D彩色フィルターの面色が失われたため予備OBJを書き出せません"
+            )
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="ascii", newline="\n") as out:
-        out.write("# ChromaMatter tone-adjusted vertex-color OBJ\n")
-        for (x, y, z), (r, g, b) in zip(vertices, colors.tone_vertex_rgb, strict=True):
-            out.write(f"v {x:.7g} {y:.7g} {z:.7g} {r:.6f} {g:.6f} {b:.6f}\n")
-        layout = validate_part_layout(prepared.final)
+        if flat_face_tone:
+            out.write(
+                "# ChromaMatter face-banded illustration vertex-color OBJ\n"
+            )
+            for triangle, rgb in zip(
+                vertices[faces], face_tone, strict=True
+            ):
+                for x, y, z in triangle:
+                    r, g, b = rgb
+                    out.write(
+                        f"v {x:.7g} {y:.7g} {z:.7g} "
+                        f"{r:.6f} {g:.6f} {b:.6f}\n"
+                    )
+        else:
+            out.write("# ChromaMatter tone-adjusted vertex-color OBJ\n")
+            for (x, y, z), (r, g, b) in zip(
+                vertices, colors.tone_vertex_rgb, strict=True
+            ):
+                out.write(
+                    f"v {x:.7g} {y:.7g} {z:.7g} "
+                    f"{r:.6f} {g:.6f} {b:.6f}\n"
+                )
         names = tuple(prepared.final.part_names)
         if len(names) != layout.part_count:
             names = tuple(
@@ -6716,11 +7283,17 @@ def write_vertex_color_obj(
                 r"[^A-Za-z0-9_.-]+", "_", part_name.strip()
             ).strip("_") or f"part_{part_id + 1}"
             out.write(f"o {safe_name}\n")
-            out.write("s 1\n")
-            for a, b, c in prepared.final.faces[
+            out.write("s off\n" if flat_face_tone else "s 1\n")
+            part_face_ids = np.flatnonzero(
                 layout.face_part_ids == part_id
-            ] + 1:
-                out.write(f"f {a} {b} {c}\n")
+            )
+            if flat_face_tone:
+                for face_id in part_face_ids:
+                    first = 3 * int(face_id) + 1
+                    out.write(f"f {first} {first + 1} {first + 2}\n")
+            else:
+                for a, b, c in faces[part_face_ids] + 1:
+                    out.write(f"f {a} {b} {c}\n")
 
 
 def weighted_quantile(values: np.ndarray, weights: np.ndarray, q: float) -> float:
@@ -6745,8 +7318,10 @@ def make_report(
         palette.mix_ratios_b,
         palette.secondary_mix_ratios_b,
     )
+    flat_four = palette.color_mode == COLOR_MODE_FLAT_FOUR
+    active_palette_hex = palette_hex[:4] if flat_four else palette_hex
     output_recipe_metadata: dict[str, object] = {}
-    if palette.output_mix_ratios_b is not None:
+    if palette.output_mix_ratios_b is not None and not flat_four:
         output_recipe_metadata = {
             "output_mix_ratios_b_percent": [
                 int(value) for value in palette.output_mix_ratios_b
@@ -6808,19 +7383,45 @@ def make_report(
             "pink_protection": tone.pink_protection,
             "pink_threshold": tone.pink_threshold,
             "smoothing": tone.smoothing,
+            "illustration_mode": getattr(tone, "illustration_mode", "off"),
+            "illustration_strength": float(
+                getattr(tone, "illustration_strength", 0.78)
+            ),
+            "illustration_bands": int(
+                getattr(tone, "illustration_bands", 4)
+            ),
+            "illustration_light": getattr(
+                tone, "illustration_light", "front_left"
+            ),
             "smoothed_faces": colors.smoothed_faces,
         },
         "color": {
+            "palette_mode": palette.color_mode,
+            "active_palette_state_count": (
+                4 if flat_four else int(palette.palette_state_count)
+            ),
+            "mixed_state_count": (
+                0 if flat_four else int(palette.palette_state_count) - 4
+            ),
             "physical_hex": [normalize_hex(value) for value in palette.physical_hex],
             "physical_filament_refs": AppSettings(
                 palette=palette
             ).to_dict()["palette"]["physical_filament_refs"],
-            "palette_hex": palette_hex,
-            "mix_ratios_b_percent": [int(value) for value in palette.mix_ratios_b],
-            "secondary_mix_ratios_b_percent": [
-                int(value) for value in palette.secondary_mix_ratios_b
-            ],
-            "expanded_mix_specs": [
+            "palette_hex": active_palette_hex,
+            "mix_ratios_b_percent": (
+                []
+                if flat_four
+                else [int(value) for value in palette.mix_ratios_b]
+            ),
+            "secondary_mix_ratios_b_percent": (
+                []
+                if flat_four
+                else [
+                    int(value)
+                    for value in palette.secondary_mix_ratios_b
+                ]
+            ),
+            "expanded_mix_specs": [] if flat_four else [
                 {
                     "physical_a": left + 1,
                     "physical_b": right + 1,
@@ -6832,7 +7433,11 @@ def make_report(
                 )
             ],
             **output_recipe_metadata,
-            "enabled_states": palette.enabled_states,
+            "enabled_states": (
+                list(palette.enabled_states[:4])
+                if flat_four
+                else palette.enabled_states
+            ),
             "manual_override_faces": int(colors.manual_override_faces),
             "black_free_gradient_enabled": bool(
                 validation.get(
@@ -6855,8 +7460,12 @@ def make_report(
             "remaining_black_mix_faces": int(
                 validation.get("remaining_black_mix_faces", 0)
             ),
-            "face_counts": colors.palette_face_counts.astype(int).tolist(),
-            "surface_area_fractions": colors.palette_area_fractions.tolist(),
+            "face_counts": colors.palette_face_counts.astype(int).tolist()[
+                : (4 if flat_four else palette.palette_state_count)
+            ],
+            "surface_area_fractions": colors.palette_area_fractions.tolist()[
+                : (4 if flat_four else palette.palette_state_count)
+            ],
             "pink_family_surface_fraction": colors.pink_area_fraction,
             "area_weighted_delta_e76_mean": float(np.average(colors.delta_e, weights=areas_mm2)),
             "area_weighted_delta_e76_p90": weighted_quantile(colors.delta_e, areas_mm2, 0.90),
@@ -6869,6 +7478,7 @@ def make_report(
 def write_guide(path: Path, model_path: Path, height_mm: float, palette: PaletteSettings) -> None:
     material = normalize_filament_material(palette.material)
     filament_profile = generic_filament_profile(material)
+    flat_four = palette.color_mode == COLOR_MODE_FLAT_FOUR
     physical = [normalize_hex(value) for value in palette.physical_hex]
     slot_lines: list[str] = []
     for index, color in enumerate(physical):
@@ -6882,7 +7492,14 @@ def write_guide(path: Path, model_path: Path, height_mm: float, palette: Palette
             f"product_id={ref.product_id}]"
         )
     physical_slot_lines = "\n".join(slot_lines)
-    if palette.output_mix_ratios_b is None:
+    if flat_four:
+        guide_specs: tuple[tuple[int, int, int], ...] = ()
+        ratio_lines = "   なし（F1〜F4の物理4色だけを使用）"
+        output_recipe_note = (
+            "\n   Flat 4 Colorsでは混色stateを出力しません。"
+            "面の色IDは1〜4だけです。"
+        )
+    elif palette.output_mix_ratios_b is None:
         guide_specs = print_palette_mix_specs(
             palette.mix_ratios_b,
             palette.secondary_mix_ratios_b,
@@ -6928,6 +7545,25 @@ def write_guide(path: Path, model_path: Path, height_mm: float, palette: Palette
             "手動ペイントのstate ID、3MFのpaint_colorは変更しません。\n"
             "   純色ID 1〜4（F1〜F4単色）は補正対象外です。"
         )
+    import_note = (
+        "   Flat 4 Colorsでも物理スロットと色IDを保つため、"
+        "プロジェクトとして開いてください。"
+        if flat_four
+        else "   形状読み込みではFull Spectrumの混色定義が反映されません。"
+    )
+    palette_check = (
+        "6. カラーモードがFlat 4 Colorsで、混色数が0、"
+        "色IDがF1〜F4の4色だけであることを確認します。"
+        if flat_four
+        else f"6. Full Spectrum混色に次の{len(guide_specs)}色があることを確認します。"
+    )
+    state_limit = 4 if flat_four else PALETTE_STATE_COUNT
+    final_note = (
+        "注意: Flat 4 Colorsはレイヤー切替による混色を使わず、"
+        "F1〜F4の物理色だけで面をシンプルに塗り分けます。"
+        if flat_four
+        else "注意: Full Spectrumはノズル内で溶融混合せず、薄いレイヤー切替で中間色に見せます。"
+    )
     text = f"""ChromaMatter 出力の読み込み方
 ==========================================
 
@@ -6936,20 +7572,20 @@ def write_guide(path: Path, model_path: Path, height_mm: float, palette: Palette
 1. Snapmaker Orca 2.3.5以降を起動します。
 2. この3MFは「Open as project / プロジェクトとして開く」で開きます。
 3. 読み込み方法を聞かれても「Import geometry / 形状として読み込み」は選びません。
-   形状読み込みではFull Spectrumの混色定義が反映されません。
+{import_note}
 4. 物理フィラメント順を確認します。
 {physical_slot_lines}
 5. 3MF内の{filament_profile}は仮設定です。実際の{material}スプールに合うプロファイルを各スロットで選び直し、1つの印刷ジョブに異素材を混在させないでください。
-6. Full Spectrum混色に次の{len(guide_specs)}色があることを確認します。
+{palette_check}
 {ratio_lines}
 {output_recipe_note}
 7. 公式「0.08 Extra Fine @Snapmaker U1 (0.4 nozzle)」が選択され、通常層0.08 mmになっていることを確認します。
 8. 3MFには公式0.08プロファイルのリブ型プライムタワーとooze prevention、通常の固定レイヤー混色を記録しています。Local Z／高度なDithering／Pointillismは安全のため無効です。
-9. サポートはモデルごとにSnapmaker Orca側で選択し、スライスプレビューで色ID 1〜{PALETTE_STATE_COUNT}を確認してから保存・印刷します。
+9. サポートはモデルごとにSnapmaker Orca側で選択し、スライスプレビューで色ID 1〜{state_limit}を確認してから保存・印刷します。
 
 出力高さ: {height_mm:g} mm
 
-注意: Full Spectrumはノズル内で溶融混合せず、薄いレイヤー切替で中間色に見せます。
+{final_note}
 実フィラメントの光沢と不透明度は画面RGBから正確に予測できないため、本番前に4本すべての色見本を試し刷りしてください。
 {('ABS β: PLAより登録色・実測・色域が少ないため、目的色が無い場合はABS内だけで近似します。PLA/PETGでは補完しません。比較チャートで確認し、Snapmaker U1ではTop Coverを使用してください。' if material == 'ABS' else 'PETG β: 全スプール／ロットの色を実機校正済みではありません。比較チャートで確認してください。PLA/ABSでは補完しません。' if material == 'PETG' else '')}
 """

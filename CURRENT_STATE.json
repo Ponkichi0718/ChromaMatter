@@ -28,6 +28,40 @@
       "source_manifest": "source_asset is authoritative; v2 OBJ bundles also carry an identical deprecated source_obj alias, and v1 OBJ bundles remain readable."
     }
   },
+  "experimental_test_workstream": {
+    "publication_status": "experimental-source-branch-prepublication",
+    "published_release_unchanged": "v0.8beta-r32.2",
+    "project_format": {
+      "write_schema": "obj-adjuster.project.v13",
+      "read_compatibility": [
+        "obj-adjuster.project.v12"
+      ],
+      "v12_default_color_mode": "full_spectrum",
+      "portable_bundle_schema": "obj-adjuster.project-bundle.v2"
+    },
+    "features": {
+      "flat_four": [
+        "Builds a deterministic area-weighted proposal of four distinct physical filament colors from the selected material family.",
+        "Creates no mixed-color recipes and writes only physical F1-F4 color states to a Flat Four 3MF.",
+        "Projects legacy mixed manual-paint state at the Flat export boundary without rewriting the caller's canonical color state."
+      ],
+      "illustration_filter": [
+        "Offers experimental Cel Colour and Shaded Monochrome modes with fixed-front, geometry-aware stepped shading.",
+        "Bakes ordinary printable RGB targets without changing geometry, parts, or canonical manual paint.",
+        "Does not generate authored line art, PBR material response, or texture detail absent from the source colors; results depend on mesh normals and source data."
+      ],
+      "large_static_glb": [
+        "Keeps the normal 512 MiB, 3,000,000-vertex, and 3,000,000-triangle limits.",
+        "A separate beta path admits only static TRIANGLES scenes from 3,000,001 through 5,000,000 triangles after explicit confirmation and with face-count adjustment enabled.",
+        "The reduced working model is limited to 450,000 faces; unsupported, ambiguous, changed, or over-limit input fails closed, and reduction can remove fine geometry or baked texture detail."
+      ]
+    },
+    "validation": {
+      "status": "local-source-regression-only",
+      "public_binary_package_or_physical_evidence": false,
+      "release_note": "This workstream is not included in the published r32.2 Windows package or frozen source tag."
+    }
+  },
   "current_features": {
     "public_main_window": [
       "Compact Filament and Output pages leave more room for the preview.",

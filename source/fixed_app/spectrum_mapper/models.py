@@ -24,6 +24,25 @@ from .mixer import (
 ProgressCallback = Callable[[str, float, str], None]
 
 
+COLOR_MODE_FULL_SPECTRUM = "full_spectrum"
+COLOR_MODE_FLAT_FOUR = "flat_four"
+SUPPORTED_COLOR_MODES = (
+    COLOR_MODE_FULL_SPECTRUM,
+    COLOR_MODE_FLAT_FOUR,
+)
+
+
+def normalize_color_mode(value: object) -> str:
+    """Return one stable palette-assignment mode for project persistence."""
+
+    normalized = str(value).strip().lower()
+    if normalized not in SUPPORTED_COLOR_MODES:
+        raise ValueError(
+            "color_mode must be 'full_spectrum' or 'flat_four'"
+        )
+    return normalized
+
+
 # Snapmaker Orca 2.3.5 can dereference a virtual mixed-state ID as a physical
 # tool when a grouped Cycle recipe reaches slicing.  Keep the persisted field
 # for backward-compatible project loading, but production output must remain
@@ -73,6 +92,36 @@ class ToneSettings:
     smoothing: bool = True
     smoothing_max_area_mm2: float = 0.04
     smoothing_delta_e_slack: float = 3.0
+    # Experimental printable illustration shading.  These fields are kept in
+    # ToneSettings so projects and exact-cache reloads reproduce the same
+    # palette assignment without destructively rewriting source vertex colour.
+    illustration_mode: str = "off"
+    illustration_strength: float = 0.78
+    illustration_bands: int = 4
+    illustration_light: str = "front_left"
+
+    def __post_init__(self) -> None:
+        mode = str(self.illustration_mode).strip().lower()
+        light = str(self.illustration_light).strip().lower()
+        strength = float(self.illustration_strength)
+        if mode not in {"off", "cel", "noir"}:
+            raise ValueError(f"unsupported illustration mode: {self.illustration_mode}")
+        if light not in {"front_left", "front", "front_right"}:
+            raise ValueError(
+                f"unsupported illustration light: {self.illustration_light}"
+            )
+        if not bool(np.isfinite(strength)) or not 0.0 <= strength <= 1.0:
+            raise ValueError("illustration strength must be in 0..1")
+        if (
+            isinstance(self.illustration_bands, (bool, np.bool_))
+            or int(self.illustration_bands) != self.illustration_bands
+            or not 2 <= int(self.illustration_bands) <= 6
+        ):
+            raise ValueError("illustration bands must be an integer in 2..6")
+        self.illustration_mode = mode
+        self.illustration_strength = strength
+        self.illustration_bands = int(self.illustration_bands)
+        self.illustration_light = light
 
 
 @dataclass(frozen=True, slots=True)
@@ -235,8 +284,14 @@ class PaletteSettings:
     physical_filament_refs: list[FilamentSnapshotRef | None] = field(
         default_factory=lambda: [None] * 4
     )
+    # Full Spectrum keeps the established mixed states.  Flat Four preserves
+    # those recipes and stable IDs in the project, but automatic/manual output
+    # is resolved through physical F1-F4 only.  This makes mode switching
+    # reversible instead of destructively rewriting a user's palette.
+    color_mode: str = COLOR_MODE_FULL_SPECTRUM
 
     def __post_init__(self) -> None:
+        self.color_mode = normalize_color_mode(self.color_mode)
         self.material = normalize_filament_material(
             self.material, default=DEFAULT_FILAMENT_MATERIAL
         )
@@ -459,7 +514,26 @@ class AppSettings:
         # Keep a no-correction/no-shell project structurally identical to the
         # legacy settings JSON.  Optional output fields persist only when
         # active, so loading then saving an old project stays stable.
+        tone = result.get("tone")
+        if isinstance(tone, dict) and tone.get("illustration_mode") == "off":
+            # Dormant slider values do not affect output.  Omitting all four
+            # keys keeps an ordinary project loadable by pre-filter releases;
+            # this build restores the documented defaults on reload.
+            for key in (
+                "illustration_mode",
+                "illustration_strength",
+                "illustration_bands",
+                "illustration_light",
+            ):
+                tone.pop(key, None)
         palette = result.get("palette")
+        if (
+            isinstance(palette, dict)
+            and palette.get("color_mode") == COLOR_MODE_FULL_SPECTRUM
+        ):
+            # Keep old project JSON structurally compatible when the new mode
+            # has never been enabled.
+            palette.pop("color_mode", None)
         if isinstance(palette, dict) and palette.get("output_mix_ratios_b") is None:
             palette.pop("output_mix_ratios_b", None)
         if isinstance(palette, dict) and palette.get("assignment_palette_hex") is None:
@@ -469,6 +543,12 @@ class AppSettings:
         part_palettes = result.get("part_palettes")
         if isinstance(part_palettes, dict):
             for part_palette in part_palettes.values():
+                if (
+                    isinstance(part_palette, dict)
+                    and part_palette.get("color_mode")
+                    == COLOR_MODE_FULL_SPECTRUM
+                ):
+                    part_palette.pop("color_mode", None)
                 if (
                     isinstance(part_palette, dict)
                     and part_palette.get("output_mix_ratios_b") is None
@@ -656,6 +736,14 @@ class ColorResult:
     manual_override_faces: int = 0
     black_free_remapped_faces: int = 0
     part_metrics: list[dict[str, object]] = field(default_factory=list)
+    # Authoritative printable-face tone.  Older/synthetic results may omit it;
+    # consumers then fall back to averaging ``tone_vertex_rgb``.
+    tone_face_rgb: np.ndarray | None = None
+    # True only when the tone pipeline intentionally made every triangle a
+    # constant colour (currently Cel/Noir illustration modes).  Ordinary tone
+    # keeps this false so adaptive shading may still use legitimate vertex
+    # gradients inside a triangle.
+    tone_face_rgb_flat: bool = False
 
 
 @dataclass

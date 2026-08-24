@@ -164,6 +164,33 @@ def _tree_fingerprint(trees: Mapping[int, Any], smooth_paint_module: object) -> 
     return digest.hexdigest().upper()
 
 
+def _stored_tone_face_rgb(
+    colors: object,
+    face_count: int,
+) -> np.ndarray | None:
+    raw = getattr(colors, "tone_face_rgb", None)
+    if raw is None:
+        return None
+    values = np.asarray(raw, dtype=np.float64)
+    if values.shape != (int(face_count), 3) or not bool(
+        np.all(np.isfinite(values))
+    ):
+        raise ValueError("tone_face_rgb does not match the final face count")
+    return values
+
+
+def _flat_tone_face_rgb(
+    colors: object,
+    face_count: int,
+) -> np.ndarray | None:
+    if not bool(getattr(colors, "tone_face_rgb_flat", False)):
+        return None
+    values = _stored_tone_face_rgb(colors, face_count)
+    if values is None:
+        raise ValueError("flat printable face tone is missing tone_face_rgb")
+    return values
+
+
 def _input_fingerprint(
     level: object,
     colors: object,
@@ -177,6 +204,13 @@ def _input_fingerprint(
     digest.update(b"tripo-r8-export-input-v1\0")
     digest.update(topology_fingerprint(level).encode("ascii"))
     _update_array_hash(digest, getattr(colors, "tone_vertex_rgb"))
+    flat_tone = _flat_tone_face_rgb(colors, len(np.asarray(getattr(level, "faces"))))
+    if flat_tone is not None:
+        # Preserve the legacy fingerprint for ordinary vertex-gradient tone,
+        # while ensuring an old adaptive-tree cache can never be reused for a
+        # discontinuous Cel/Noir face-tone result.
+        digest.update(b"\0flat-tone-face-rgb-v1\0")
+        _update_array_hash(digest, flat_tone)
     _update_array_hash(digest, getattr(colors, "palette_indices"))
     _update_array_hash(digest, palette_rgb)
     _update_array_hash(digest, manual_mask.astype(np.uint8, copy=False))
@@ -375,6 +409,7 @@ def generate_export_adaptive(
     states = np.asarray(getattr(colors, "palette_indices"), dtype=np.int16).reshape(-1)
     if len(states) != face_count:
         raise ValueError("palette indices do not match the final face count")
+    flat_tone = _flat_tone_face_rgb(colors, face_count)
     validate_palette_slot_alignment(colors, rgb)
 
     manual, warnings = _manual_mask(colors, face_count)
@@ -465,14 +500,19 @@ def generate_export_adaptive(
             getattr(palette, "enabled_states"),
             settings,
         )
+        shading_kwargs: dict[str, object] = {
+            "options": options,
+            "face_mask": allowed,
+        }
+        if flat_tone is not None:
+            shading_kwargs["tone_face_rgb"] = flat_tone
         generated = getattr(auto_shading_module, "generate_auto_shading")(
             faces,
             np.asarray(getattr(level, "vertices_unit")),
             np.asarray(getattr(colors, "tone_vertex_rgb")),
             states,
             rgb,
-            options=options,
-            face_mask=allowed,
+            **shading_kwargs,
         )
         auto_trees = {
             int(face): node
@@ -605,10 +645,25 @@ def apply_dominant_roots(
         total = float(np.sum(weighted))
         result.palette_area_fractions = weighted / total if total > 0.0 else weighted
 
-    source = np.asarray(getattr(colors, "source_face_rgb"), dtype=np.float64)
-    if source.shape == target.shape:
+    tone_source = _stored_tone_face_rgb(colors, len(states))
+    if tone_source is None:
+        faces = np.asarray(getattr(level, "faces"))
+        tone_vertex = np.asarray(
+            getattr(colors, "tone_vertex_rgb"), dtype=np.float64
+        )
+        if (
+            faces.shape != (len(states), 3)
+            or not np.issubdtype(faces.dtype, np.integer)
+            or tone_vertex.ndim != 2
+            or tone_vertex.shape[1:] != (3,)
+            or (len(faces) and int(np.max(faces)) >= len(tone_vertex))
+            or (len(faces) and int(np.min(faces)) < 0)
+        ):
+            raise ValueError("tone vertex colours do not match final topology")
+        tone_source = tone_vertex[faces].mean(axis=1)
+    if tone_source.shape == target.shape:
         result.delta_e = np.linalg.norm(
-            _srgb_to_lab(source) - _srgb_to_lab(target), axis=1
+            _srgb_to_lab(tone_source) - _srgb_to_lab(target), axis=1
         )
     return result, changed
 
@@ -777,6 +832,24 @@ def install_export_adaptive_hotfix() -> bool:
         part_palettes=None,
         print_uses_global_palette=False,
     ):
+        # Flat Four is a physical F1-F4 projection performed by the core 3MF
+        # writer.  Adaptive shading operates in the 32-state mixed palette and
+        # would otherwise regenerate/reuse mixed trees, replace dominant roots,
+        # and sync those mixed states back into the caller's live colour result.
+        # Bypass the entire r8 adaptive layer so Flat export is non-destructive;
+        # the wrapped writer remains solely responsible for the temporary F1-F4
+        # projection.  Full Spectrum follows the unchanged path below.
+        if getattr(palette, "color_mode", None) == "flat_four":
+            return original_writer(
+                destination,
+                prepared,
+                colors,
+                height_mm,
+                palette,
+                part_palettes,
+                print_uses_global_palette,
+            )
+
         # A physical palette chart must keep one uniform, independently
         # measurable coupon per state. Adaptive sub-triangle shading would
         # turn the reference into a gradient. This metadata gate is narrow so

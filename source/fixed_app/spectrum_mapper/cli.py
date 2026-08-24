@@ -694,6 +694,7 @@ def self_test() -> int:
 
 def convert(args: argparse.Namespace) -> int:
     from .engine import load_vertex_color_model, prepare_geometry
+    from .gltf_import import LARGE_GLTF_REDUCTION_TARGET_FACES
     from .models import AppSettings
     from .workflow import export_bundle
 
@@ -719,7 +720,16 @@ def convert(args: argparse.Namespace) -> int:
         raise SystemExit(
             "--convert の入力形式は頂点カラーOBJまたはGLBを指定してください"
         )
-    asset = load_vertex_color_model(source, _progress)
+    asset = load_vertex_color_model(
+        source,
+        _progress,
+        allow_large_reduced_source=bool(
+            source.suffix.lower() == ".glb"
+            and settings.geometry.adjust_face_count
+            and settings.geometry.target_faces
+            <= LARGE_GLTF_REDUCTION_TARGET_FACES
+        ),
+    )
     prepared = prepare_geometry(asset, settings.geometry, _progress)
     result = export_bundle(
         prepared,

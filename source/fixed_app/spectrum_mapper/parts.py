@@ -13,7 +13,14 @@ from .mixer import (
     validate_black_free_slots,
     validate_output_mix_ratios_b,
 )
-from .models import AppSettings, FilamentSnapshotRef, MeshLevel, PaletteSettings
+from .models import (
+    AppSettings,
+    COLOR_MODE_FLAT_FOUR,
+    FilamentSnapshotRef,
+    MeshLevel,
+    PaletteSettings,
+    normalize_color_mode,
+)
 
 
 DEFAULT_PART_KEY = "__whole_model__"
@@ -33,6 +40,7 @@ PrintFilamentRefIdentity: TypeAlias = tuple[str, str] | None
 PaletteIdentity: TypeAlias = tuple[
     str,
     int,
+    str,
     tuple[str, ...],
     tuple[bool, ...],
     tuple[str | None, ...],
@@ -50,6 +58,7 @@ PaletteIdentity: TypeAlias = tuple[
 PrintPaletteIdentity: TypeAlias = tuple[
     str,
     int,
+    str,
     tuple[str, ...],
     tuple[int, ...],
     tuple[int, ...],
@@ -316,6 +325,7 @@ def _canonical_palette(palette: PaletteSettings) -> PaletteIdentity:
     return (
         palette.material,
         int(palette.palette_state_count),
+        normalize_color_mode(getattr(palette, "color_mode", "full_spectrum")),
         physical,
         enabled,
         tuple(overrides),
@@ -355,6 +365,7 @@ def print_palette_identity(palette: PaletteSettings) -> PrintPaletteIdentity:
     (
         material,
         count,
+        color_mode,
         physical,
         _enabled,
         _overrides,
@@ -376,9 +387,18 @@ def print_palette_identity(palette: PaletteSettings) -> PrintPaletteIdentity:
         None if ref is None else (ref[0], ref[5])
         for ref in refs
     )
+    if color_mode == COLOR_MODE_FLAT_FOUR:
+        # Dormant Full Spectrum recipes remain stored for reversible editing,
+        # but they do not define a Flat Four print job.
+        count = 4
+        primary = ()
+        secondary = ()
+        output = None
+        surface_shell_enabled = False
     return (
         material,
         count,
+        color_mode,
         physical,
         primary,
         secondary,
@@ -466,11 +486,20 @@ def assignment_palette_rgb_table(palette: PaletteSettings) -> np.ndarray:
     """Return the RGB table used to choose automatic state IDs.
 
     ``assignment_palette_hex`` freezes only the choice of state.  The normal
-    display table remains authoritative for preview and print output.
+    display table remains authoritative for preview and print output.  Flat
+    Four deliberately ignores a saved Full Spectrum assignment snapshot so
+    its automatic routing follows the current F1-F4 colours.  The snapshot is
+    left stored on the palette and becomes active again when Full Spectrum is
+    restored.
     """
 
     _canonical_palette(palette)
-    assignment = getattr(palette, "assignment_palette_hex", None)
+    assignment = (
+        None
+        if normalize_color_mode(getattr(palette, "color_mode", "full_spectrum"))
+        == COLOR_MODE_FLAT_FOUR
+        else getattr(palette, "assignment_palette_hex", None)
+    )
     if assignment is None:
         _hex_values, rgb = build_palette_rgb(
             list(palette.physical_hex),

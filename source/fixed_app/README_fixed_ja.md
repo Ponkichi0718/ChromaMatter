@@ -30,6 +30,26 @@ demoを再出力するときは3MF出力前に**必ず「黒弱め 5〜25%」pre
 パーツ化modelの閉立体化はまだ不安定なbeta互換です。r32.2のexact build、source、
 package、fresh extract、checksum、公開gateはPASSしています。
 
+## 未公開の実験的テストワークストリーム
+
+現在のdefault-branch sourceには、公開済みr32.2 Windows packageと固定source tagに
+含まれないローカルtest作業もあります。
+
+- Flat Fourはモデル表面の面積を加味して重複しない4本の実フィラメントを決定的に
+  提案し、混色recipeを作らず、3MFの色経路でもF1～F4だけを書き出します。
+- 実験的2D彩色フィルターはCel Colour（セル彩色）とShaded Monochrome
+  （陰影モノクロ）を提供します。形状を使った固定正面光と段階的陰影を印刷対象色へ
+  焼き付けますが、元データにない描線、PBR material、texture細部は生成しません。
+- 静的GLBの通常上限は512 MiB／300万頂点／300万三角形のままです。別の
+  fail-closed β経路では、300万超～500万三角形の静的`TRIANGLES` sceneだけを、
+  明示確認と面数調整ONを条件に最大45万面の作業用modelへ縮約できます。縮約で
+  細部が失われる場合があります。
+- 新規projectは`obj-adjuster.project.v13`を使用し、v12は旧来のFull Spectrum
+  modeとして引き続き読み込めます。
+
+現時点の証拠はローカルsource回帰testだけです。公開済みr32.2のbinary、package、
+実機出力の検証実績を、この未公開機能の検証として扱いません。
+
 ## r32.1 公開済みprevious evidence
 
 r32.1 tag `v0.8beta-r32.1`はr32のmodel処理／3MF契約を維持し、公開preview表記を「AIモデル色」へ

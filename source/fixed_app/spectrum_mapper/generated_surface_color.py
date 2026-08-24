@@ -813,7 +813,22 @@ def optimize_generated_hidden_colors(
         )
 
     allowed[collapsed] = False
-    tone_face_rgb = tone_vertex[np.asarray(level.faces, dtype=np.int64)].mean(axis=1)
+    stored_tone_faces = getattr(colors, "tone_face_rgb", None)
+    if stored_tone_faces is None:
+        tone_face_rgb = tone_vertex[
+            np.asarray(level.faces, dtype=np.int64)
+        ].mean(axis=1)
+    else:
+        tone_face_rgb = np.asarray(stored_tone_faces, dtype=np.float64)
+        if tone_face_rgb.shape != (face_count, 3):
+            diagnostic = {
+                **masks.diagnostic,
+                "status": "skipped",
+                "reason": "invalid_tone_face_rgb",
+            }
+            return GeneratedSurfaceColorResult(
+                colors, masks, allowed, collapsed, diagnostic
+            )
     delta_e = np.linalg.norm(_srgb_to_lab(tone_face_rgb) - _srgb_to_lab(target), axis=1)
     areas = np.asarray(level.areas_unit, dtype=np.float64) * float(height_mm) ** 2
     counts = np.bincount(indices, minlength=PALETTE_STATE_COUNT)[:PALETTE_STATE_COUNT]

@@ -16,8 +16,36 @@ This is more than a file-format converter. The project gives AI 3D generation a 
 > part-specific derived demo 3MF projects. The exact build, complete source,
 > archives, checksums, and unauthenticated post-publication downloads passed.
 
+<a id="experimental-workstream"></a>
+## Experimental test workstream — not in the r32.2 download
+
+This experimental branch contains three additions without changing the
+published r32.2 package:
+
+- **Flat Four** selects four distinct physical filament colours from an
+  area-weighted representation of the model. It makes no mixed-colour recipes,
+  and its 3MF output uses only F1-F4.
+- The experimental **2D Colour Filter** provides **Cel Colour** and **Shaded
+  Monochrome**. It bakes fixed-front, geometry-aware stepped shading into the
+  printable colour targets. It is not an outline generator or PBR renderer;
+  results depend on mesh normals and source colour, and detail absent from the
+  input is not invented.
+- The normal static-GLB limits remain 512 MiB, three million vertices, and
+  three million triangles. A separate beta route accepts only static
+  `TRIANGLES` scenes from 3,000,001 through 5,000,000 triangles, after explicit
+  confirmation and with face-count adjustment enabled, and must reduce them
+  to a working model no larger than 450,000 faces. Unsupported or ambiguous
+  cases fail closed, and reduction can remove fine geometry or baked texture
+  detail.
+
+This workstream writes project schema `obj-adjuster.project.v13`. Schema v12
+remains readable as legacy Full Spectrum data. Validation is currently local
+source regression only; none of these additions inherits r32.2 release or
+physical-print evidence.
+
 ## Explore by topic
 
+- [Experimental Flat Four, 2D Colour Filter, and large-GLB tests](#experimental-workstream)
 - [Original-model workflow and project examples](#project-examples)
 - [OBJ / GLB to 3MF workflow](#model-workflow)
 - [Unofficial multipart GLB support](#multipart-glb)

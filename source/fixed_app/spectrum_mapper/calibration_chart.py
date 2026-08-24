@@ -75,6 +75,7 @@ def _copy_palette(palette: PaletteSettings) -> PaletteSettings:
     return PaletteSettings(
         material=palette.material,
         palette_state_count=int(palette.palette_state_count),
+        color_mode=palette.color_mode,
         physical_hex=list(palette.physical_hex),
         enabled_states=list(palette.enabled_states),
         mix_hex_overrides=list(palette.mix_hex_overrides),

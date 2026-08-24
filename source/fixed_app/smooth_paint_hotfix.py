@@ -415,13 +415,85 @@ def _palette_rgb(palette: Any, mixer_module: Any) -> np.ndarray:
     return np.clip(values, 0.0, 1.0)
 
 
+def _is_flat_four_palette(palette: Any) -> bool:
+    return getattr(palette, "color_mode", None) == "flat_four"
+
+
+def _flat_four_state_map(palette_rgb: np.ndarray) -> np.ndarray:
+    """Map every palette row to the nearest physical F1-F4 state."""
+
+    values = np.asarray(palette_rgb, dtype=np.float64)
+    if values.ndim != 2 or values.shape[1:] != (3,) or len(values) < 4:
+        raise ValueError("palette RGB table must contain at least four colours")
+    mapping = np.arange(len(values), dtype=np.int16)
+    if len(values) > 4:
+        delta = values[4:, None, :] - values[None, :4, :]
+        mapping[4:] = np.argmin(np.sum(delta * delta, axis=2), axis=1)
+    return mapping
+
+
+def _effective_manual_state(
+    palette: Any,
+    state: int,
+    palette_rgb: np.ndarray,
+) -> int:
+    """Constrain a newly selected Flat paint state without editing stored data."""
+
+    selected = int(state)
+    if not _is_flat_four_palette(palette):
+        return selected
+    values = np.asarray(palette_rgb, dtype=np.float64)
+    if 0 <= selected < 4:
+        return selected
+    if selected < 0 or selected >= len(values):
+        return 0
+    return int(_flat_four_state_map(values)[selected])
+
+
+def _effective_enabled_state_mask(palette: Any) -> np.ndarray:
+    """Return mode-filtered candidates while retaining the palette's raw mask."""
+
+    enabled = np.asarray(palette.enabled_states, dtype=bool).copy()
+    if _is_flat_four_palette(palette):
+        enabled[4:] = False
+    return enabled
+
+
+def _preview_palette_table(palette: Any, table: np.ndarray) -> np.ndarray:
+    """Route old mixed tree IDs to their Flat physical preview colours."""
+
+    values = np.asarray(table, dtype=np.float64)
+    if not _is_flat_four_palette(palette):
+        return values.copy()
+    mapping = _flat_four_state_map(values)
+    return values[mapping]
+
+
+def _preview_palette_routing(
+    settings: Any,
+    level: Any,
+) -> tuple[Any, tuple[Any, ...], np.ndarray]:
+    """Resolve per-part preview tables, remapping only their visible RGB rows."""
+
+    layout = part_palette_module.validate_part_layout(level)
+    palettes = tuple(
+        part_palette_module.resolve_part_palette_settings(settings, layout)
+    )
+    tables = np.asarray(
+        part_palette_module.build_part_palette_rgb_tables(settings, layout),
+        dtype=np.float64,
+    ).copy()
+    for part_id, palette in enumerate(palettes):
+        tables[part_id] = _preview_palette_table(palette, tables[part_id])
+    return layout, palettes, tables
+
+
 def _configure_gpu_palette_routing(settings: Any, level: Any) -> None:
     """Attach immutable per-part GPU tables only when their colours differ."""
 
-    layout = part_palette_module.validate_part_layout(level)
-    palettes = part_palette_module.resolve_part_palette_settings(settings, layout)
+    layout, palettes, preview_tables = _preview_palette_routing(settings, level)
     tables = np.ascontiguousarray(
-        part_palette_module.build_part_palette_rgb_tables(settings, layout),
+        preview_tables,
         dtype=np.float32,
     )
     level._hotfix_palette = palettes[0]
@@ -429,7 +501,8 @@ def _configure_gpu_palette_routing(settings: Any, level: Any) -> None:
     multipart = len(tables) > 1 and any(
         not np.array_equal(tables[0], table) for table in tables[1:]
     )
-    if not multipart:
+    flat_routing = any(_is_flat_four_palette(palette) for palette in palettes)
+    if not multipart and not flat_routing:
         level._hotfix_part_palette_rgb_tables = None
         level._hotfix_face_part_ids = None
         level._hotfix_part_palette_tokens = None
@@ -480,12 +553,19 @@ def compose_target_image(
     mvp, _state, _pixels_per_unit = renderer_module._orbit_camera_mvp(
         level.vertices_unit, (width, height), camera
     )
-    palette_rgb = _palette_rgb(palette, mixer_module)
+    palette_rgb = _preview_palette_table(
+        palette, _palette_rgb(palette, mixer_module)
+    )
     part_tables = (
         None
         if part_palette_rgb_tables is None
         else np.asarray(part_palette_rgb_tables, dtype=np.float64)
     )
+    if part_tables is not None and _is_flat_four_palette(palette):
+        part_tables = np.stack(
+            tuple(_preview_palette_table(palette, table) for table in part_tables),
+            axis=0,
+        )
     part_ids = (
         None
         if face_part_ids is None
@@ -1435,13 +1515,17 @@ def apply_smooth_paint_hotfix(
     def feedback_color(self, erase: bool) -> str:
         if erase:
             return "#DDE6EE"
-        state = int(self.paint_state_var.get())
         palette = editor_palette(self)
-        values, _rgb = mixer_module.build_palette_rgb(
+        values, palette_rgb = mixer_module.build_palette_rgb(
             list(palette.physical_hex),
             list(palette.mix_hex_overrides),
             list(palette.mix_ratios_b),
             list(palette.secondary_mix_ratios_b),
+        )
+        state = _effective_manual_state(
+            palette,
+            int(self.paint_state_var.get()),
+            np.asarray(palette_rgb, dtype=np.float64),
         )
         return str(values[state])
 
@@ -2031,12 +2115,18 @@ def apply_smooth_paint_hotfix(
         else:
             initial_scale = 1.0
             stored_pressure = pressure
-        selected_state = int(self.paint_state_var.get())
         palette = editor_palette(self)
-        active_states = list(bool(value) for value in palette.enabled_states)
+        captured_palette_rgb = _palette_rgb(palette, mixer_module)
+        selected_state = _effective_manual_state(
+            palette,
+            int(self.paint_state_var.get()),
+            captured_palette_rgb,
+        )
+        active_states = list(
+            bool(value) for value in _effective_enabled_state_mask(palette)
+        )
         if 0 <= selected_state < len(active_states):
             active_states[selected_state] = True
-        captured_palette_rgb = _palette_rgb(palette, mixer_module)
         self._hotfix_smooth_points = [point]
         self._hotfix_smooth_pressures = [stored_pressure]
         self._hotfix_smooth_radius_scales = [initial_scale]
@@ -2339,17 +2429,33 @@ def apply_smooth_paint_hotfix(
             options = _auto_shading_options(
                 quality,
                 height_mm=float(self.settings.geometry.height_mm),
-                enabled_states=palette.enabled_states,
+                enabled_states=_effective_enabled_state_mask(palette),
                 dither_strength=dither_strength,
             )
+            shading_kwargs = {
+                "options": options,
+                "face_mask": scope,
+            }
+            stored_tone_faces = getattr(
+                self._auto_colors, "tone_face_rgb", None
+            )
+            if bool(
+                getattr(self._auto_colors, "tone_face_rgb_flat", False)
+            ):
+                if stored_tone_faces is None:
+                    raise RuntimeError(
+                        "2D彩色フィルターの面色が失われたため陰影補正を停止しました"
+                    )
+                shading_kwargs["tone_face_rgb"] = np.asarray(
+                    stored_tone_faces, dtype=np.float64
+                )
             shading_result = auto_shading.generate_auto_shading(
                 np.asarray(self.level.faces),
                 np.asarray(self.level.vertices_unit),
                 np.asarray(self._auto_colors.tone_vertex_rgb),
                 current_states,
                 palette_rgb,
-                options=options,
-                face_mask=scope,
+                **shading_kwargs,
             )
             if not shading_result.trees:
                 return auto_shading_snapshot(
@@ -3257,6 +3363,9 @@ def apply_smooth_paint_hotfix(
         if store and exact_frame and gpu_revision is None and not visibility_filtered:
             cached = getattr(self, "_hotfix_overlay_cache", None)
             if not _overlay_cache_matches(cached, image, ids, self.camera, revision):
+                _layout, _palettes, preview_tables = _preview_palette_routing(
+                    self.settings, self.level
+                )
                 composite = compose_target_image(
                     image,
                     self.level,
@@ -3264,11 +3373,7 @@ def apply_smooth_paint_hotfix(
                     camera=self.camera,
                     face_ids=ids,
                     palette=self.settings.palette,
-                    part_palette_rgb_tables=(
-                        part_palette_module.build_part_palette_rgb_tables(
-                            self.settings, self.level
-                        )
-                    ),
+                    part_palette_rgb_tables=preview_tables,
                     face_part_ids=self.level.face_part_ids,
                     focus_state=(
                         int(self._palette_usage_focus_state)

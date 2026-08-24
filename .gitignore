@@ -68,6 +68,7 @@ publication/*
 !publication/BINARY_RELEASE_HANDOFF_JA.md
 !publication/RELEASE_NOTES_r32.1.md
 !publication/RELEASE_NOTES_r32.2.md
+!publication/RELEASE_NOTES_r32.2_EXPERIMENTAL_TEST_20260825.md
 
 # Historical local probes and recovery utilities stay in the private workspace.
 tooling/*

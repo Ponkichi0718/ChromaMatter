@@ -16,6 +16,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from spectrum_mapper.assembly import AssemblyError, solidify_coincident_shells
 import spectrum_mapper.engine as engine_module
 from spectrum_mapper.engine import (
+    EngineError,
+    _orient_watertight_bodies_positive,
     edge_topology,
     prepare_geometry,
     recolor_level,
@@ -333,6 +335,128 @@ class CoincidentShellSolidificationTests(unittest.TestCase):
 
 
 class GltfSingleMeshClosureWorkflowTests(unittest.TestCase):
+    def test_large_glb_metadata_requires_reduction_on_every_processing_pass(
+        self,
+    ) -> None:
+        vertices, faces, colors = _tetrahedron()
+        asset = _face_soup_asset(vertices, faces, colors)
+        asset.import_metadata = {
+            "schema": "obj-adjuster.gltf-import.v1",
+            "large_source_reduction_required": True,
+            "source_triangle_workload": 5_000_000,
+            "maximum_final_faces": 450_000,
+        }
+
+        for adjust, target in ((False, 450_000), (True, 450_001)):
+            with self.subTest(adjust=adjust, target=target):
+                with self.assertRaisesRegex(EngineError, "450,000"):
+                    prepare_geometry(
+                        asset,
+                        GeometrySettings(
+                            adjust_face_count=adjust,
+                            target_faces=target,
+                            preview_faces=1_000,
+                            solidify_parts=True,
+                        ),
+                    )
+
+        asset.import_metadata["maximum_final_faces"] = 900_000
+        with self.assertRaisesRegex(EngineError, "450,000"):
+            prepare_geometry(
+                asset,
+                GeometrySettings(
+                    adjust_face_count=True,
+                    target_faces=450_001,
+                    preview_faces=1_000,
+                    solidify_parts=True,
+                ),
+            )
+
+    def test_live_large_source_guard_does_not_depend_on_extension(self) -> None:
+        vertices, faces, colors = _tetrahedron()
+        asset = _face_soup_asset(vertices, faces, colors)
+        asset.import_metadata = {
+            "schema": "obj-adjuster.gltf-import.v1",
+            "large_source_reduction_required": False,
+        }
+        asset.path = Path("renamed_large_snapshot.obj")
+        with (
+            patch.object(engine_module, "_HARD_GLTF_NORMAL_SOURCE_FACE_LIMIT", 3),
+            self.assertRaisesRegex(
+                EngineError,
+                "大規模モデル（入力 4 面）.*450,000",
+            ),
+        ):
+            prepare_geometry(
+                asset,
+                GeometrySettings(
+                    adjust_face_count=True,
+                    target_faces=450_001,
+                    preview_faces=1_000,
+                    solidify_parts=True,
+                ),
+            )
+
+    def test_disconnected_closed_bodies_are_oriented_outward_independently(
+        self,
+    ) -> None:
+        first = trimesh.creation.box(extents=(2.0, 2.0, 2.0))
+        second = trimesh.creation.box(extents=(1.0, 1.0, 1.0))
+        second.apply_translation([4.0, 0.0, 0.0])
+        vertices = np.vstack((first.vertices, second.vertices)).astype(np.float64)
+        faces = np.vstack(
+            (
+                first.faces,
+                second.faces[:, [0, 2, 1]] + len(first.vertices),
+            )
+        ).astype(np.int32)
+        source_triangles = np.sort(faces, axis=1)
+
+        oriented, record = _orient_watertight_bodies_positive(vertices, faces)
+
+        np.testing.assert_array_equal(np.sort(oriented, axis=1), source_triangles)
+        self.assertEqual(record["changed_face_winding_count"], len(second.faces))
+        self.assertTrue(record["face_count_preserved"])
+        result = trimesh.Trimesh(vertices=vertices, faces=oriented, process=False)
+        bodies = list(result.split(only_watertight=False))
+        self.assertEqual(len(bodies), 2)
+        self.assertTrue(all(body.is_volume for body in bodies))
+        self.assertTrue(all(float(body.volume) > 0.0 for body in bodies))
+
+    def test_prepare_geometry_orients_mixed_closed_bodies_before_final_check(
+        self,
+    ) -> None:
+        first = trimesh.creation.box(extents=(2.0, 2.0, 2.0))
+        second = trimesh.creation.box(extents=(1.0, 1.0, 1.0))
+        second.apply_translation([4.0, 0.0, 0.0])
+        vertices = np.vstack((first.vertices, second.vertices)).astype(np.float64)
+        faces = np.vstack(
+            (
+                first.faces,
+                second.faces[:, [0, 2, 1]] + len(first.vertices),
+            )
+        ).astype(np.int32)
+        colors = np.tile([[0.4, 0.5, 0.6]], (len(vertices), 1))
+        asset = _face_soup_asset(vertices, faces, colors)
+
+        prepared = prepare_geometry(
+            asset,
+            GeometrySettings(
+                adjust_face_count=False,
+                preview_faces=1_000,
+                solidify_parts=True,
+            ),
+        )
+
+        self.assertTrue(prepared.topology["watertight"])
+        self.assertEqual(prepared.topology["inconsistent_winding_edges"], 0)
+        self.assertGreater(
+            prepared.assembly["repair_records"][0]["final_orientation"][
+                "changed_face_winding_count"
+            ],
+            0,
+        )
+
     def test_preclean_weld_defers_positive_volume_until_tiny_islands_are_removed(
         self,
     ) -> None:

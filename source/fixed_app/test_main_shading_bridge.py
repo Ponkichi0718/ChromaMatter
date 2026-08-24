@@ -68,6 +68,10 @@ class MainShadingBridgeTests(unittest.TestCase):
                 smoothing=False,
                 smoothing_max_area_mm2=0.09,
                 smoothing_delta_e_slack=4.5,
+                illustration_mode="noir",
+                illustration_strength=0.88,
+                illustration_bands=3,
+                illustration_light="front_right",
             )
 
             app._on_editor_tone_settings_changed(tone)
@@ -80,6 +84,14 @@ class MainShadingBridgeTests(unittest.TestCase):
             self.assertAlmostEqual(round_trip.tone.black_point, 0.08)
             self.assertAlmostEqual(round_trip.tone.white_point, 0.91)
             self.assertFalse(round_trip.tone.smoothing)
+            self.assertEqual(round_trip.tone.illustration_mode, "noir")
+            self.assertAlmostEqual(
+                round_trip.tone.illustration_strength, 0.88
+            )
+            self.assertEqual(round_trip.tone.illustration_bands, 3)
+            self.assertEqual(
+                round_trip.tone.illustration_light, "front_right"
+            )
         finally:
             app.paint_editor = None
             self._close(root, app)

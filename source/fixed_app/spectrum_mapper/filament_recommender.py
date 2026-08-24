@@ -534,6 +534,29 @@ def _eligible_candidates(
     return eligible
 
 
+def _unique_hex_candidates(
+    candidates: Sequence[FilamentCandidate],
+) -> list[FilamentCandidate]:
+    """Keep one deterministic catalog entry for each printable HEX colour.
+
+    ``_eligible_candidates`` has already sorted the input by stable product ID,
+    so retaining the first item makes the result independent of catalog input
+    order.  This is intentionally used only by the flat-four search: Full
+    Spectrum keeps its historical product-level candidate behaviour.
+    """
+
+    selected: list[FilamentCandidate] = []
+    seen_hex: set[str] = set()
+    for candidate in candidates:
+        if candidate.hex_color in seen_hex:
+            continue
+        seen_hex.add(candidate.hex_color)
+        selected.append(candidate)
+    if len(selected) < 4:
+        raise ValueError("flat four mode requires four distinct filament colours")
+    return selected
+
+
 def _shortlist_candidates(
     candidates: list[FilamentCandidate],
     representative_lab: np.ndarray,
@@ -810,6 +833,7 @@ def recommend_basic_filaments(
     primary_ratio_b_percent: int = DEFAULT_PRIMARY_RATIO_B_PERCENT,
     secondary_ratio_b_percent: int = DEFAULT_SECONDARY_RATIO_B_PERCENT,
     palette_state_count: int = DEFAULT_PALETTE_STATE_COUNT,
+    include_mixed_states: bool = True,
     coverage_delta_e76: float = DEFAULT_COVERAGE_DELTA_E76,
     alternative_count: int = 2,
     max_candidates: int | None = DEFAULT_MAX_CANDIDATES,
@@ -818,10 +842,11 @@ def recommend_basic_filaments(
 ) -> FilamentRecommendation:
     """Recommend four printable basics for one part.
 
-    Every four-colour combination is evaluated deterministically against the
-    selected 16/24/32-state Full Spectrum layout used by the application.  Automatic
-    selection is constrained to catalogued basic/skin/neutral colours; it never
-    invents a convenient middle colour from the target image.
+    Every four-colour combination is evaluated deterministically against either
+    the selected 16/24/32-state Full Spectrum layout or the four physical
+    filaments alone.  Automatic selection is constrained to catalogued
+    basic/skin/neutral colours; it never invents a convenient middle colour
+    from the target image.
     """
 
     for name, value in (
@@ -836,6 +861,9 @@ def recommend_basic_filaments(
         alternative_count, int
     ) or alternative_count < 0:
         raise ValueError("alternative_count must be a non-negative integer")
+    if not isinstance(include_mixed_states, (bool, np.bool_)):
+        raise ValueError("include_mixed_states must be a boolean")
+    include_mixed_states = bool(include_mixed_states)
     palette_state_count = coerce_palette_state_count(palette_state_count)
 
     representative_set = build_representative_colors(
@@ -859,13 +887,23 @@ def recommend_basic_filaments(
     representative_lab = _rgb255_to_lab(representative_rgb)
 
     candidates = _eligible_candidates(catalog, in_stock_only=in_stock_only)
+    if not include_mixed_states:
+        # Deduplicate before applying max_candidates.  Otherwise two products
+        # with the same HEX can consume shortlist slots and exclude a useful
+        # fourth physical colour even though duplicate combinations are later
+        # rejected.
+        candidates = _unique_hex_candidates(candidates)
     candidates = _shortlist_candidates(
         candidates, representative_lab, representative_weights, max_candidates
     )
-    mix_specs = palette_mix_specs(
-        (primary_ratio_b_percent,) * len(PAIR_INDICES),
-        (secondary_ratio_b_percent,) * len(PAIR_INDICES),
-    )[: palette_state_count - 4]
+    mix_specs = (
+        palette_mix_specs(
+            (primary_ratio_b_percent,) * len(PAIR_INDICES),
+            (secondary_ratio_b_percent,) * len(PAIR_INDICES),
+        )[: palette_state_count - 4]
+        if include_mixed_states
+        else ()
+    )
     pair_mixes = _precompute_pair_mixes(
         candidates, mix_specs
     )
@@ -924,7 +962,7 @@ def recommend_basic_filaments(
         object_weight_fraction=representative_set.object_weight_fraction,
         reference_weight_fraction=representative_set.reference_weight_fraction,
         candidate_pool_size=len(candidates),
-        evaluated_combinations=math.comb(len(candidates), 4),
+        evaluated_combinations=len(evaluations),
     )
 
 

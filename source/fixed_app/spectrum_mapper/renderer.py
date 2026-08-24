@@ -358,6 +358,25 @@ def _face_colors(result: ColorResult, mode: ColorMode, face_count: int) -> np.nd
     return np.clip(colors, 0.0, 1.0).astype(np.float32, copy=False)
 
 
+def _effective_shaded(
+    result: ColorResult,
+    mode: ColorMode,
+    requested: bool,
+) -> bool:
+    """Avoid applying a second light to a baked illustration target.
+
+    Cel/Noir palette assignment already contains its selected fixed-front
+    light.  The ordinary viewport shader remains useful for the AI/source
+    colour, but applying its fixed upper-left light to the converted target
+    would contradict Front or Upper Right and misrepresent the 3MF colours.
+    """
+
+    return bool(requested) and not (
+        mode == "target"
+        and bool(getattr(result, "tone_face_rgb_flat", False))
+    )
+
+
 def _create_context():
     if moderngl is None:
         detail = f" ({_MODERNGL_IMPORT_ERROR})" if _MODERNGL_IMPORT_ERROR else ""
@@ -560,7 +579,9 @@ def _render_with_context(
         )
         mvp = _camera_mvp(vertices, size)
         program["mvp"].write(mvp.T.astype(np.float32).tobytes())
-        program["shade_strength"].value = 1.0 if shaded else 0.0
+        program["shade_strength"].value = (
+            1.0 if _effective_shaded(result, mode, shaded) else 0.0
+        )
 
         framebuffer = context.simple_framebuffer(size, components=4)
         framebuffer.use()
@@ -1292,25 +1313,32 @@ class InteractiveMeshRenderer:
             )
             self._prepare_draw_state()
             self._program["mvp"].write(mvp.T.astype(np.float32).tobytes())
-            self._program["shade_strength"].value = 1.0 if shaded else 0.0
             self._pick_program["mvp"].write(mvp.T.astype(np.float32).tobytes())
             if self._visibility_program is not None:
                 self._visibility_program["mvp"].write(
                     mvp.T.astype(np.float32).tobytes()
                 )
-                self._visibility_program["shade_strength"].value = (
-                    1.0 if shaded else 0.0
-                )
             if self._visibility_pick_program is not None:
                 self._visibility_pick_program["mvp"].write(
                     mvp.T.astype(np.float32).tobytes()
                 )
-            source_image = (
-                self._render_color_image(self._source_vao) if render_source else None
-            )
-            target_image = (
-                self._render_color_image(self._target_vao) if render_target else None
-            )
+
+            def set_shading(mode: ColorMode) -> None:
+                active = _effective_shaded(result, mode, shaded)
+                self._program["shade_strength"].value = 1.0 if active else 0.0
+                if self._visibility_program is not None:
+                    self._visibility_program["shade_strength"].value = (
+                        1.0 if active else 0.0
+                    )
+
+            source_image = None
+            if render_source:
+                set_shading("source")
+                source_image = self._render_color_image(self._source_vao)
+            target_image = None
+            if render_target:
+                set_shading("target")
+                target_image = self._render_color_image(self._target_vao)
             # Rotation preview frames deliberately pass ``render_face_ids=False``
             # to stay fluid.  Active-part decoration must never turn that heavy
             # picking pass back on; the outline is refreshed on the next settled

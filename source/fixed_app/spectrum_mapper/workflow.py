@@ -41,6 +41,7 @@ from .generated_surface_color import (
 from .filament_materials import generic_filament_profile
 from .models import (
     AppSettings,
+    COLOR_MODE_FLAT_FOUR,
     ExportResult,
     MeshLevel,
     PaletteSettings,
@@ -968,8 +969,13 @@ def _write_individual_part_models(
                 settings.geometry.height_mm,
                 part_manual_overrides,
             )
+            mode_suffix = (
+                "Flat4"
+                if palette.color_mode == COLOR_MODE_FLAT_FOUR
+                else "FullSpectrum"
+            )
             part_path = staging_dir / (
-                _safe_part_filename(name, part_id) + "_FullSpectrum.3mf"
+                _safe_part_filename(name, part_id) + f"_{mode_suffix}.3mf"
             )
             validation = write_3mf_atomic(
                 part_path,
@@ -992,6 +998,7 @@ def _write_individual_part_models(
                     "sha256": validation.get("sha256"),
                     "physical_filaments": list(palette.physical_hex),
                     "material": palette.material,
+                    "palette_mode": palette.color_mode,
                     "physical_filament_refs": AppSettings(
                         palette=palette
                     ).to_dict()["palette"]["physical_filament_refs"],
@@ -1000,6 +1007,9 @@ def _write_individual_part_models(
         manifest = {
             "schema": "tripo-spectrum-mapper.part-exports.v1",
             "source_assembly": str(destination.name),
+            "palette_modes": sorted(
+                {palette.color_mode for palette in palettes}
+            ),
             "layer_height_mm": 0.08,
             "initial_layer_height_mm": 0.2,
             "support_fixed": False,
@@ -1029,7 +1039,8 @@ def _write_individual_only_guide(
     )
     rows = "\n".join(
         f"- {model_path.name}: {palette.material} / "
-        f"{generic_filament_profile(palette.material)}"
+        f"{generic_filament_profile(palette.material)} / "
+        f"{'Flat 4 Colors' if palette.color_mode == COLOR_MODE_FLAT_FOUR else 'Full Spectrum'}"
         for model_path, palette in zip(part_model_paths, palettes, strict=True)
     )
     text = f"""ChromaMatter パーツ別3MFの読み込み方
@@ -1047,6 +1058,8 @@ def _write_individual_only_guide(
 3. 1つの印刷ジョブにPLA／ABS／PETGを混在させないでください。
 4. 通常層0.08 mmを確認し、サポートはモデルごとに設定します。
 5. ABSは登録色・実測・色域が少ないため、実機比較チャートで確認し、Snapmaker U1ではTop Coverを使用してください。
+
+Flat 4 Colorsのファイルは混色stateを持たず、F1～F4の物理4色だけを使用します。
 
 ABS／PETGの色予測はβ機能です。実フィラメントの銘柄・ロット・光沢・不透明度で結果が変わります。
 """
@@ -1241,6 +1254,7 @@ def export_bundle(
         "support_fixed": False,
         "filament_material": None if individual_only else print_palette.material,
         "individual_part_materials": sorted(resolved_materials),
+        "palette_mode": print_palette.color_mode,
     }
     report_path.write_text(
         json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8-sig"

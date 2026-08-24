@@ -389,7 +389,7 @@ class BlackFreeGradientGuiLogicTests(unittest.TestCase):
 
         payload = app._project_payload_for_save(app.settings, None)
 
-        self.assertEqual(payload["schema"], "obj-adjuster.project.v12")
+        self.assertEqual(payload["schema"], "obj-adjuster.project.v13")
         self.assertTrue(
             payload["settings"]["palette"]["black_free_gradient_enabled"]
         )

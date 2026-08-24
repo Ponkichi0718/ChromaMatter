@@ -45,6 +45,29 @@ privacy確認済み・字幕付きの[`v0.8beta-r32.2`「シンプルな使い�
 
 [`v0.8beta-r32.2` Release](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2)は、Windows ZIP、完全対応ソース、SBOM、component map、動画、detached checksumを一組として公開済みです。Releaseの正確なsourceはtag `v0.8beta-r32.2`、commit [`aba20685d2fd6987621b2e1e6624f46ea84912a3`](https://github.com/Ponkichi0718/ChromaMatter/commit/aba20685d2fd6987621b2e1e6624f46ea84912a3)に固定しています。default branchの文書だけが公開後に更新される場合がありますが、Releaseのbinaryとsource assetは変わりません。
 
+## 実験的テストワークストリーム — r32.2には未収録
+
+この実験ブランチには、別テスト経路として次の機能が入っています。
+r32.2 Windows版や固定済みsource tagには含まれません。
+
+- **Flat Four**は、モデル表面の面積を加味して、重複しない4本の実フィラメントを
+  決定的に自動提案します。混色recipeは作らず、Flat Fourの3MFはF1～F4だけを
+  使用します。
+- 実験的な**2D彩色フィルター**は、**Cel Colour（セル彩色）**と
+  **Shaded Monochrome（陰影モノクロ）**を提供します。形状を使った固定正面光と
+  段階的な陰影を印刷対象色へ焼き付ける処理で、screen-space rendererでは
+  ありません。元データにない描線、PBR material、texture細部は再現できません。
+- 静的GLBの通常上限は512 MiB／300万頂点／300万三角形のままです。別のβ経路では、
+  300万超～500万三角形の静的`TRIANGLES` sceneに限り、明示確認と面数調整ONを
+  条件として、最大45万面の作業用modelへ縮約して読み込めます。非対応・曖昧な
+  inputはfail-closedで停止し、縮約により細かな形状や焼付textureが失われる場合が
+  あります。
+- このワークストリームはproject schema `obj-adjuster.project.v13`を書き出します。
+  v12は引き続き読込でき、旧来のFull Spectrum modeとして扱います。
+
+現時点の検証はローカルsource回帰testだけです。公開済みr32.2のbinary、package、
+実機出力の検証実績を、この未公開機能へ流用しません。
+
 ## AI Model Print Studio r32.2
 
 r32.2はr32.1のapplicationとfail-closed 3MF契約を維持し、`DemoData/3MF/`へ結合6 mesh project

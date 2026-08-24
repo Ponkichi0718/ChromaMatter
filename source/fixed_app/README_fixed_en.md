@@ -31,6 +31,29 @@ regenerating the demo, **always apply the Weak Black 5–25% preset before 3MF
 export**. Multipart solidification remains unstable beta compatibility. The
 exact build, source, package, fresh extraction, checksums, and publication gates passed.
 
+## Unpublished experimental test workstream
+
+The current default-branch source also contains local test work that is not in
+the published r32.2 Windows package or frozen source tag:
+
+- Flat Four derives a deterministic, area-weighted proposal of four distinct
+  physical filament colours, creates no mixed recipes, and writes only F1-F4
+  into its 3MF colour path.
+- The experimental 2D Colour Filter offers Cel Colour and Shaded Monochrome.
+  It bakes fixed-front, geometry-aware stepped shading into printable colour;
+  it does not create missing line art, PBR material response, or texture detail.
+- Normal static-GLB limits remain 512 MiB, three million vertices, and three
+  million triangles. A separate fail-closed beta path can admit a static
+  `TRIANGLES` scene with 3,000,001-5,000,000 triangles only after explicit
+  confirmation and with face-count adjustment enabled, producing a working
+  model of at most 450,000 faces. Reduction can remove fine detail.
+- New projects use `obj-adjuster.project.v13`; v12 remains readable and defaults
+  to legacy Full Spectrum mode.
+
+These additions currently have local source-level regression evidence only.
+Published r32.2 binary, package, and physical-print evidence does not validate
+them.
+
 ## r32.1 published previous evidence
 
 r32.1 tag `v0.8beta-r32.1` preserves the r32 modelling and 3MF contracts, changes the public preview

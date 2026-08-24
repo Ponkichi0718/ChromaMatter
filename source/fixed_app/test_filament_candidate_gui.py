@@ -6,7 +6,7 @@ import sys
 import time
 from types import SimpleNamespace
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import numpy as np
 
@@ -16,7 +16,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from spectrum_mapper.filament_candidate_gui import FilamentCandidateWindow
 from spectrum_mapper.filament_database import FilamentProduct
 from spectrum_mapper.i18n import Translator
-from spectrum_mapper.models import AppSettings, PaletteSettings
+from spectrum_mapper.models import (
+    AppSettings,
+    COLOR_MODE_FLAT_FOUR,
+    PaletteSettings,
+)
 from spectrum_mapper.owned_filaments import OwnedFilamentInventory
 
 
@@ -484,6 +488,174 @@ class FilamentCandidateWindowTests(unittest.TestCase):
         finally:
             self._close_app(root, app)
 
+    def test_flat_product_assignment_refreshes_global_and_part_without_pending(self) -> None:
+        root, app = self._create_app()
+        products = _products()[:2]
+        mix_overrides = ["#123456", None, "#345678", None, None, "#56789A"]
+        primary = [12, 23, 34, 45, 56, 67]
+        secondary = [78, 69, 58, 47, 36, 25]
+        assignment = [f"#{index:02X}{index:02X}{index:02X}" for index in range(32)]
+
+        def flat_palette() -> PaletteSettings:
+            return PaletteSettings(
+                palette_state_count=32,
+                color_mode=COLOR_MODE_FLAT_FOUR,
+                enabled_states=[False] * 4 + [True] * 28,
+                mix_hex_overrides=mix_overrides,
+                mix_ratios_b=primary,
+                secondary_mix_ratios_b=secondary,
+                assignment_palette_hex=assignment,
+            )
+
+        try:
+            app.settings.palette = flat_palette()
+            app._load_palette_variables(app.settings.palette)
+            app._schedule_preview = Mock()
+            editor = SimpleNamespace(
+                settings=None,
+                reapply_palette_settings=Mock(),
+            )
+            app.paint_editor = editor
+
+            self.assertTrue(app._set_physical_filament_product(0, products[0]))
+            global_palette = app.settings.palette
+            self.assertEqual(global_palette.physical_hex[0], products[0].matched_hex)
+            self.assertTrue(global_palette.enabled_states[0])
+            self.assertIsNone(global_palette.assignment_palette_hex)
+            self.assertEqual(global_palette.mix_hex_overrides, mix_overrides)
+            self.assertEqual(global_palette.mix_ratios_b, primary)
+            self.assertEqual(global_palette.secondary_mix_ratios_b, secondary)
+            self.assertEqual(app._pending_physical_palette_targets, set())
+            app._schedule_preview.assert_called_once_with(immediate=True)
+            self.assertIsNone(editor.reapply_palette_settings.call_args.args[0])
+
+            app.settings.part_names["arm"] = "Arm"
+            app.settings.part_palettes["arm"] = flat_palette()
+            app.active_part_key = "arm"
+            app._load_palette_variables(app.settings.part_palettes["arm"])
+            app._schedule_preview.reset_mock()
+            editor.reapply_palette_settings.reset_mock()
+
+            self.assertTrue(app._set_physical_filament_product(1, products[1]))
+            part_palette = app.settings.part_palettes["arm"]
+            self.assertEqual(part_palette.physical_hex[1], products[1].matched_hex)
+            self.assertTrue(part_palette.enabled_states[1])
+            self.assertIsNone(part_palette.assignment_palette_hex)
+            self.assertEqual(part_palette.mix_hex_overrides, mix_overrides)
+            self.assertEqual(app._pending_physical_palette_targets, set())
+            app._schedule_preview.assert_called_once_with(immediate=True)
+            self.assertEqual(editor.reapply_palette_settings.call_args.args[0], "arm")
+        finally:
+            app.paint_editor = None
+            self._close_app(root, app)
+
+    def test_full_product_assignment_keeps_snapshot_pending_until_apply(self) -> None:
+        root, app = self._create_app()
+        product = _products()[0]
+        try:
+            previous = app._copy_palette(app.settings.palette)
+            expected_snapshot = app._palette_state_hex_snapshot(previous)
+            app._schedule_preview = Mock()
+
+            self.assertTrue(app._set_physical_filament_product(0, product))
+
+            palette = app.settings.palette
+            self.assertEqual(palette.physical_hex[0], product.matched_hex)
+            self.assertEqual(palette.assignment_palette_hex, expected_snapshot)
+            self.assertEqual(app._pending_physical_palette_targets, {None})
+            app._schedule_preview.assert_not_called()
+        finally:
+            self._close_app(root, app)
+
+    def test_flat_basic_recommendation_reassigns_global_without_losing_dormant_mixes(self) -> None:
+        root, app = self._create_app()
+        products = _products()[:4]
+        enabled = [False] * 4 + [index % 2 == 0 for index in range(28)]
+        mix_overrides = ["#123456", None, "#345678", None, None, "#56789A"]
+        primary = [12, 23, 34, 45, 56, 67]
+        secondary = [78, 69, 58, 47, 36, 25]
+        output = [20 + index for index in range(28)]
+        recommendation = SimpleNamespace(
+            physical_hex=("#E32B35", "#F2F1ED", "#2255CC", "#161616"),
+            primary_ratio_b_percent=33,
+            secondary_ratio_b_percent=67,
+            candidates=products,
+            mean_delta_e76=4.5,
+            coverage_fraction=0.9,
+            confidence=0.85,
+        )
+
+        try:
+            app.settings.palette = PaletteSettings(
+                palette_state_count=32,
+                color_mode=COLOR_MODE_FLAT_FOUR,
+                enabled_states=enabled,
+                mix_hex_overrides=mix_overrides,
+                mix_ratios_b=primary,
+                secondary_mix_ratios_b=secondary,
+                output_mix_ratios_b=output,
+                assignment_palette_hex=["#101010"] * 32,
+            )
+            app._load_palette_variables(app.settings.palette)
+            app._mark_physical_palette_pending(None)
+            app.prepared = SimpleNamespace(
+                final=SimpleNamespace(
+                    vertex_colors=np.asarray(
+                        [[0.9, 0.1, 0.1], [0.8, 0.2, 0.1], [0.7, 0.1, 0.2]],
+                        dtype=np.float64,
+                    ),
+                    faces=np.asarray([[0, 1, 2]], dtype=np.int64),
+                    areas_unit=np.asarray([1.0], dtype=np.float64),
+                    face_part_ids=np.asarray([0], dtype=np.int64),
+                    part_keys=["part-0"],
+                    part_names=["Head"],
+                ),
+                preview=SimpleNamespace(),
+            )
+            app.prepared_key = ("basic-flat-test",)
+            editor = SimpleNamespace(reapply_shading_settings=Mock())
+            app.paint_editor = editor
+
+            def run_synchronously(_label, function, done, **_kwargs):
+                done(function())
+                return True
+
+            with (
+                patch(
+                    "spectrum_mapper.filament_database.FilamentRepository.list_products",
+                    return_value=products,
+                ),
+                patch(
+                    "spectrum_mapper.gui.recommend_basic_filaments",
+                    return_value=recommendation,
+                ) as recommend,
+                patch.object(app, "_submit_main", side_effect=run_synchronously),
+                patch.object(app, "_schedule_preview") as schedule_preview,
+            ):
+                app._recommend_part_ids((), whole_model=True)
+
+            recommend.assert_called_once()
+            self.assertFalse(recommend.call_args.kwargs["include_mixed_states"])
+            palette = app.settings.palette
+            self.assertEqual(palette.color_mode, COLOR_MODE_FLAT_FOUR)
+            self.assertEqual(palette.physical_hex, list(recommendation.physical_hex))
+            self.assertEqual(palette.enabled_states[:4], [True] * 4)
+            self.assertEqual(palette.enabled_states[4:], enabled[4:])
+            self.assertEqual(palette.mix_hex_overrides, mix_overrides)
+            self.assertEqual(palette.mix_ratios_b, primary)
+            self.assertEqual(palette.secondary_mix_ratios_b, secondary)
+            self.assertEqual(palette.output_mix_ratios_b, output)
+            self.assertIsNone(palette.assignment_palette_hex)
+            self.assertEqual(app._pending_physical_palette_targets, set())
+            schedule_preview.assert_called_once_with(immediate=True)
+            editor.reapply_shading_settings.assert_called_once_with(
+                app.settings,
+                message=app.status_var.get(),
+            )
+        finally:
+            app.paint_editor = None
+            self._close_app(root, app)
+
     def test_owned_auto_action_names_target_and_prevents_double_start(self) -> None:
         root, app = self._create_app()
         products = _products()[:4]
@@ -714,6 +886,104 @@ class FilamentCandidateWindowTests(unittest.TestCase):
             self.assertIn("F4:", app.recommendation_var.get())
             self.assertIn("product_id=a-red", app.recommendation_var.get())
         finally:
+            self._close_app(root, app)
+
+    def test_owned_auto_flat_mode_activates_f1_f4_and_preserves_dormant_mixes(self) -> None:
+        root, app = self._create_app()
+        products = _products()[:4]
+        enabled = [False] * 4 + [index % 3 == 0 for index in range(28)]
+        mix_overrides = ["#102030", None, "#405060", None, None, "#708090"]
+        primary_ratios = [12, 23, 34, 45, 56, 67]
+        secondary_ratios = [78, 69, 58, 47, 36, 25]
+        output_ratios = [20 + index for index in range(28)]
+        assignment_palette = [f"#{index:02X}{index:02X}{index:02X}" for index in range(32)]
+        original = PaletteSettings(
+            palette_state_count=32,
+            color_mode=COLOR_MODE_FLAT_FOUR,
+            enabled_states=enabled,
+            mix_hex_overrides=mix_overrides,
+            mix_ratios_b=primary_ratios,
+            secondary_mix_ratios_b=secondary_ratios,
+            output_mix_ratios_b=output_ratios,
+            assignment_palette_hex=assignment_palette,
+        )
+        try:
+            app.settings.palette = original
+            app._load_palette_variables(original)
+            app._mark_physical_palette_pending(None)
+            editor = SimpleNamespace(
+                settings=None,
+                reapply_palette_settings=Mock(),
+            )
+            app.paint_editor = editor
+            app.prepared = SimpleNamespace(
+                final=SimpleNamespace(
+                    vertex_colors=np.asarray(
+                        [[0.9, 0.1, 0.1], [0.8, 0.2, 0.1], [0.7, 0.1, 0.2]],
+                        dtype=np.float64,
+                    ),
+                    faces=np.asarray([[0, 1, 2]], dtype=np.int64),
+                    areas_unit=np.asarray([1.0], dtype=np.float64),
+                    face_part_ids=np.asarray([0], dtype=np.int64),
+                    part_keys=["part-0"],
+                    part_names=["Head"],
+                ),
+                preview=SimpleNamespace(),
+            )
+            app.prepared_key = ("owned-flat-test",)
+            result = SimpleNamespace(
+                palette_state_count=32,
+                physical_hex=("#E32B35", "#F2F1ED", "#2255CC", "#161616"),
+                # Flat mode must not overwrite these dormant Full Spectrum recipes.
+                mix_ratios_b=(91, 82, 73, 64, 55, 46),
+                secondary_mix_ratios_b=(19, 28, 37, 46, 55, 64),
+                candidates=products,
+                before_mean_delta_e76=15.0,
+                mean_delta_e76=7.5,
+                improvement_percent=50.0,
+                ignored_duplicate_color_product_ids=(),
+                special_finish_products=(),
+            )
+
+            def run_synchronously(_label, function, done, **_kwargs):
+                done(function())
+                return True
+
+            with (
+                patch(
+                    "spectrum_mapper.owned_filaments.recommend_from_owned_filaments",
+                    return_value=result,
+                ) as recommend,
+                patch.object(app, "_submit_main", side_effect=run_synchronously),
+                patch.object(app, "_schedule_preview") as schedule_preview,
+            ):
+                started = app._configure_from_owned_filaments(
+                    products,
+                    inventory_revision=tuple(
+                        (product.product_id, product.matched_hex)
+                        for product in products
+                    ),
+                )
+
+            self.assertTrue(started)
+            recommend.assert_called_once()
+            self.assertFalse(recommend.call_args.kwargs["include_mixed_states"])
+            palette = app.settings.palette
+            self.assertEqual(palette.color_mode, COLOR_MODE_FLAT_FOUR)
+            self.assertEqual(palette.physical_hex, list(result.physical_hex))
+            self.assertEqual(palette.enabled_states[:4], [True] * 4)
+            self.assertEqual(palette.enabled_states[4:], enabled[4:])
+            self.assertEqual(palette.mix_hex_overrides, mix_overrides)
+            self.assertEqual(palette.mix_ratios_b, primary_ratios)
+            self.assertEqual(palette.secondary_mix_ratios_b, secondary_ratios)
+            self.assertEqual(palette.output_mix_ratios_b, output_ratios)
+            self.assertIsNone(palette.assignment_palette_hex)
+            self.assertEqual(app._pending_physical_palette_targets, set())
+            schedule_preview.assert_called_once_with(immediate=True)
+            editor.reapply_palette_settings.assert_called_once()
+            self.assertIsNone(editor.reapply_palette_settings.call_args.args[0])
+        finally:
+            app.paint_editor = None
             self._close_app(root, app)
 
     def test_owned_auto_common_uses_only_faces_without_part_palettes(self) -> None:

@@ -28,6 +28,32 @@ r32は、閉立体化前の適格modelを3MF出力しようとした場合に、
 
 3MFにはSnapmaker Orca Full Spectrumの安定したlayer-cycleとprime-tower baselineを明示します。Local Z、advanced dithering、pointillism等の実験設定は有効化せず、supportはChromaMatterから強制しません。これは印刷品質の保証ではなく、Snapmaker Orcaでprojectとして開き、slice previewと実機条件を確認する前提です。
 
+### 実験的テストワークストリーム
+
+この実験ブランチには、公開済みr32.2 tag／binary／対応sourceを変更せず、次の機能が
+入っています。
+
+- Flat Fourは、モデル表面の面積加重color distributionから、同一素材かつ重複しない
+  4本の実フィラメントを決定的に提案します。混色recipeは生成せず、Flat Fourの
+  3MFは物理tool F1～F4だけを使用します。既存のmixed stateやmanual paintを
+  破壊して保存し直すのではなく、Flat出力境界でF1～F4へ投影します。
+- 2D彩色フィルターのCel ColourとShaded Monochromeは、mesh normalを使った
+  固定正面光と2～6段階の陰影を通常の印刷対象RGBへ焼き付けます。geometry、part、
+  manual paintを変更するscreen-space effectではありません。描線生成、PBR lighting、
+  元textureにない細部の復元は行いません。
+- 静的GLBの通常limitは512 MiB／300万頂点／300万三角形のままです。別のβ経路は、
+  頂点上限を満たす300万超～500万三角形の静的`TRIANGLES` sceneだけを、利用者の
+  明示確認と面数調整ONを条件に最大45万面の作業用modelへ縮約します。条件外、
+  曖昧な構造、file差し替え、縮約後limit超過はfail-closedです。縮約は細かな形状や
+  頂点へ焼き付けたtexture detailを失う場合があります。
+- このワークストリームはproject schema `obj-adjuster.project.v13`を書き、v12を
+  旧来のFull Spectrum modeとして読み込みます。palette canonical state ID、physical
+  tool F1～F4、portable bundle v2は維持します。
+
+現時点の証拠はローカルsource回帰testだけです。公開済みr32.2のbinary、package、
+実機出力の検証実績を、この未公開ワークストリームへ流用しません。個人所有modelや
+内部packageを公開source、manifest、配布物へ加えません。
+
 r31は公開名を`ChromaMatter — AI Model Print Studio`へ変更し、利用者提供画像を基にした新しいアイコンへ統一します。原本、透過PNG、ICOの変換内容とSHA-256はアイコンprovenance sidecarに記録します。2026-08-20、利用者兼project creatorは、ロボットが参考資料の影響を受けつつも既存character／製品を再現する意図のないオリジナルの架空機体であり、胸部の`ZENITH DYNAMICS CORP.`も実在組織との関係を示す意図のない創作上の文言であると申告し、この画像をChromaMatterのrepository、実行file、画像、動画、Innovation Fund応募で公開・再配布することを承認して公開GOを出しました。この記録はcreator declarationであって、独立した商標調査、第三者意匠clearance、法的意見ではありません。basic exact-match web checkでは`ZENITH DYNAMICS CORP.`と`ChromaMatter`の完全一致を確認できませんでしたが、近似名`Zenith Dynamics`を使う複数の実在組織があるため、非提携を明示し、世界的な権利clearanceを主張しません。既存project、settings、schemaを読み続けるため、保存形式内の`obj-adjuster.*`識別子と旧AppData保存先は互換性識別子として維持します。
 
 r30はr29の混色palette／比較chart、フィラメントDB、OBJ／GLB入力、自動提案修正、公開UI整理を継承し、part markerのない単一GLBに安全なUV seam閉立体化を追加します。canonical palette state ID、manual paint、3MF recipeは変更しません。project bundleはGLB sourceを保持できるv2で、v1 OBJ bundleも引き続き読み込めます。
@@ -80,7 +106,8 @@ r30は、Hi3D AI等から出力されるstatic GLB／glTF 2.0 meshを直接読�
 ## 3. 継続する公開契約
 
 - public version: `0.8beta`
-- project schema: `obj-adjuster.project.v12`（v11以前で素材指定がないprojectはPLAとして読込）
+- published r32.2 project schema: `obj-adjuster.project.v12`
+- experimental test workstream project schema: `obj-adjuster.project.v13`（v12は旧来のFull Spectrum modeとして読込。v11以前で素材指定がないprojectはPLAとして読込）
 - portable bundle v2: `source.obj`または`source.glb`、`project.json`、`prepared_geometry.npz`、optional reference image（v1 OBJ bundleも読込可）
 - palette canonical state IDs: 不変
 - physical tools: F1～F4

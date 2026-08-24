@@ -746,17 +746,20 @@ def recommend_from_owned_filaments(
     initial_ratios_b: Sequence[int] | None = None,
     secondary_ratios_b: Sequence[int] | None = None,
     enabled_states: Sequence[bool] | None = None,
+    include_mixed_states: bool = True,
     pink_protection_mask: Sequence[bool] | np.ndarray | None = None,
     max_candidates: int = DEFAULT_MAX_CANDIDATES,
     max_passes: int = 8,
 ) -> OwnedFilamentRecommendation:
-    """Choose four owned products and jointly fit both six-ratio ramps.
+    """Choose four owned products and optionally fit both six-ratio ramps.
 
     Candidate search is capped before the O(n choose 4) evaluation so a large
     personal inventory cannot freeze the UI.  Same-HEX spools remain visible in
     the inventory but only one representative participates in automatic search.
     The final ratio fit uses the exact 16/24/32 active-state boundary supplied
-    by the caller and the same mixer model as normal conversion.
+    by the caller and the same mixer model as normal conversion.  When
+    ``include_mixed_states`` is false, all four physical slots are evaluated
+    and every mixed state is excluded; the stored ratios remain unchanged.
     """
 
     selected_material = normalize_filament_material(material)
@@ -796,6 +799,14 @@ def recommend_from_owned_filaments(
         )
     state_count = coerce_palette_state_count(palette_state_count)
     enabled = _coerce_enabled_for_state_count(enabled_states, state_count)
+    if not isinstance(include_mixed_states, (bool, np.bool_)):
+        raise ValueError("include_mixed_states must be a boolean")
+    include_mixed_states = bool(include_mixed_states)
+    if not include_mixed_states:
+        # Flat mode proposes four printable spools, so all four physical slots
+        # participate in its score regardless of stale per-state switches from
+        # a preceding Full Spectrum session.  Mixed states remain unavailable.
+        enabled = tuple(index < 4 for index in range(len(enabled)))
     initial = tuple(_DEFAULT_PRIMARY_RATIOS if initial_ratios_b is None else initial_ratios_b)
     secondary = tuple(
         _DEFAULT_SECONDARY_RATIOS if secondary_ratios_b is None else secondary_ratios_b
@@ -843,6 +854,7 @@ def recommend_from_owned_filaments(
         catalog=catalog,
         in_stock_only=False,
         palette_state_count=state_count,
+        include_mixed_states=include_mixed_states,
         alternative_count=OWNED_REFINEMENT_SHORTLIST_SIZE - 1,
         max_candidates=len(catalog),
     )
@@ -854,7 +866,7 @@ def recommend_from_owned_filaments(
     # count.  Only the final fixed-size refinement shortlist is optimised, so
     # this does not increase the expensive optimiser ceiling.
     legacy_selection = None
-    if state_count > DEFAULT_PALETTE_STATE_COUNT:
+    if include_mixed_states and state_count > DEFAULT_PALETTE_STATE_COUNT:
         legacy_selection = recommend_basic_filaments(
             object_rgb,
             object_area_weights,
@@ -864,6 +876,7 @@ def recommend_from_owned_filaments(
             catalog=catalog,
             in_stock_only=False,
             palette_state_count=DEFAULT_PALETTE_STATE_COUNT,
+            include_mixed_states=True,
             alternative_count=OWNED_REFINEMENT_SHORTLIST_SIZE - 1,
             max_candidates=len(catalog),
         )
@@ -1009,7 +1022,7 @@ def recommend_from_owned_filaments(
             unrestricted_state_mask=optimization_unrestricted_mask,
             histogram_bins_per_channel=32,
             max_passes=max_passes,
-            optimize_secondary_ratios=True,
+            optimize_secondary_ratios=include_mixed_states,
         )
         refined.append(
             (

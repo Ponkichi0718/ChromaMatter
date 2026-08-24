@@ -918,3 +918,36 @@ Keep these outside Git and do not copy them to the public release by default:
   failures. This is not a completed r32.2 release gate; the exact-commit clean
   build, packaged/fresh-extracted smoke, complete corresponding-source stage,
   final archive, and checksum gates remain pending.
+
+## 2026-08-25 experimental Flat Four / Large GLB / 2D colour workstream
+
+- The owner approved publishing the source changes on a dedicated experimental
+  branch and keeping them separate from the immutable Innovation Fund r32.2
+  release. The intended branch is
+  `codex/r32-2-experimental-flat4-large-glb-2d-filter`; do not merge or retag
+  r32.2 as part of this workstream.
+- The workstream combines three related beta features: a conditional reduced
+  working-model path for supported static GLBs above the normal triangle
+  ceiling, a fixed-front 2D Colour Filter (Cel Colour and Shaded Monochrome),
+  and an area-weighted Flat Colour mode that proposes and exports exactly four
+  physical F1-F4 colours without mixed recipes.
+- Flat export projects dormant Full Spectrum face states to the nearest current
+  F1-F4 only at the output boundary. It does not mutate saved Full Spectrum
+  assignments. Manual F1-F4 edits and filament recommendations update the Flat
+  preview immediately. Project schema v13 stores the new state and continues
+  to read trusted v12 projects.
+- Multipart solidification and part-specific 3MF output remain input-dependent
+  beta behavior. The conditional large-GLB path remains fail-closed and does
+  not claim support for arbitrary damaged, open, skinned, animated, or
+  compressed models.
+- Final local validation of the changed source completed 1,375 tests in
+  379.271 seconds with zero failures and three optional skips. The one-folder
+  Windows package passed its self-test and isolated Japanese and English UI
+  smoke tests, and an independently extracted copy passed the same checks.
+  `git diff --check`, archive path/CRC checks, file-by-file extraction parity,
+  and privacy/content audits passed.
+- Any GitHub binary test entry must remain a separate draft/experimental
+  prerelease until an exact-commit clean rebuild supplies complete
+  corresponding source, SBOM, binary component map, notices/relinking
+  materials, checksums, and final fresh-extraction evidence. The published
+  r32.2 tag and assets remain unchanged.

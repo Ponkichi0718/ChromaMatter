@@ -11,6 +11,7 @@ import numpy as np
 
 from spectrum_mapper.cli import _glb_import_smoke, build_parser, convert
 from spectrum_mapper.engine import write_3mf_atomic
+from spectrum_mapper.gltf_import import GltfImportPlan
 from spectrum_mapper.gui import MapperApp, _geometry_key
 from spectrum_mapper.i18n import Translator
 from spectrum_mapper.models import (
@@ -21,7 +22,7 @@ from spectrum_mapper.models import (
 )
 from spectrum_mapper.project_bundle import save_project_bundle_in_parent
 
-from test_new_obj_defaults import bare_app, model_settings
+from test_new_obj_defaults import Variable, bare_app, model_settings
 from test_project_bundle import prepared_geometry
 from test_project_bundle_gui import bare_load_app
 
@@ -31,10 +32,18 @@ class GlbGuiWorkflowTests(unittest.TestCase):
         app = bare_app(model_settings(state_count=24))
         app.i18n = Translator("ja")
 
-        with patch(
-            "spectrum_mapper.gui.filedialog.askopenfilename",
-            return_value="C:/models/Hi3D robot.glb",
-        ) as picker:
+        small_plan = GltfImportPlan(3, 1, 1, 1, (4,))
+        with (
+            patch(
+                "spectrum_mapper.gui.filedialog.askopenfilename",
+                return_value="C:/models/Hi3D robot.glb",
+            ) as picker,
+            patch(
+                "spectrum_mapper.gui.inspect_gltf_asset",
+                return_value=small_plan,
+            ),
+            patch("spectrum_mapper.gui.messagebox.askyesno") as askyesno,
+        ):
             MapperApp._choose_obj(app)
 
         self.assertEqual(app.source_path, Path("C:/models/Hi3D robot.glb"))
@@ -42,6 +51,7 @@ class GlbGuiWorkflowTests(unittest.TestCase):
         self.assertEqual(app.obj_name_var.get(), "モデル: Hi3D robot.glb")
         filetypes = picker.call_args.kwargs["filetypes"]
         self.assertIn("*.obj *.glb", tuple(pattern for _, pattern in filetypes))
+        askyesno.assert_not_called()
         app._process_geometry.assert_called_once_with(reuse_asset=False)
 
     def test_open_dialog_rejects_unknown_suffix_before_resetting_model(self) -> None:
@@ -63,6 +73,36 @@ class GlbGuiWorkflowTests(unittest.TestCase):
         app._process_geometry.assert_not_called()
         showerror.assert_called_once()
         self.assertEqual(showerror.call_args.args[0], "Unsupported Model Format")
+
+    def test_large_glb_confirmation_binds_plan_and_caps_working_faces(self) -> None:
+        app = bare_app(model_settings())
+        app.i18n = Translator("ja")
+        app.target_faces_var = Variable(900_000)
+        selected = Path("C:/models/large.glb")
+        plan = GltfImportPlan(2_500_000, 5_000_000, 1, 1, (4,))
+
+        with (
+            patch(
+                "spectrum_mapper.gui.filedialog.askopenfilename",
+                return_value=str(selected),
+            ),
+            patch(
+                "spectrum_mapper.gui.inspect_gltf_asset",
+                return_value=plan,
+            ),
+            patch(
+                "spectrum_mapper.gui.messagebox.askyesno",
+                return_value=True,
+            ) as askyesno,
+        ):
+            MapperApp._choose_obj(app)
+
+        askyesno.assert_called_once()
+        self.assertTrue(bool(app.adjust_face_count_var.get()))
+        self.assertLessEqual(int(app.target_faces_var.get()), 450_000)
+        self.assertEqual(app._large_glb_import_plan, plan)
+        self.assertEqual(app._large_glb_import_path, selected)
+        app._process_geometry.assert_called_once_with(reuse_asset=False)
 
     def test_geometry_worker_dispatches_glb_through_generic_core_loader(self) -> None:
         app = MapperApp.__new__(MapperApp)
@@ -100,7 +140,12 @@ class GlbGuiWorkflowTests(unittest.TestCase):
             self.assertTrue(MapperApp._process_geometry(app, reuse_asset=False))
             result = captured["work"]()
 
-        loader.assert_called_once_with(app.source_path, app._thread_progress)
+        loader.assert_called_once_with(
+            app.source_path,
+            app._thread_progress,
+            allow_large_reduced_source=False,
+            expected_gltf_plan=None,
+        )
         prepare.assert_called_once_with(
             loaded_asset,
             app.settings.geometry,
@@ -129,7 +174,7 @@ class GlbGuiWorkflowTests(unittest.TestCase):
                 root,
                 source,
                 {
-                    "schema": "obj-adjuster.project.v12",
+                    "schema": "obj-adjuster.project.v13",
                     "settings": settings.to_dict(),
                     "parts": [
                         {
@@ -156,6 +201,59 @@ class GlbGuiWorkflowTests(unittest.TestCase):
             self.assertEqual(app.prepared.final.part_names, ("body",))
             self.assertEqual(app.prepared.final.part_keys, ("part:body",))
             app._process_geometry.assert_not_called()
+
+    def test_source_only_large_glb_project_requires_consent_and_binds_plan(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "large.glb"
+            source.write_bytes(b"glTF" + (2).to_bytes(4, "little") + b"opaque")
+            settings = AppSettings(
+                geometry=GeometrySettings(
+                    target_faces=900_000,
+                    preview_faces=80_000,
+                    adjust_face_count=False,
+                )
+            )
+            bundle = save_project_bundle_in_parent(
+                root,
+                source,
+                {
+                    "schema": "obj-adjuster.project.v13",
+                    "settings": settings.to_dict(),
+                    "parts": [],
+                },
+                project_folder_name="large_source_project",
+            )
+            plan = GltfImportPlan(2_500_000, 5_000_000, 1, 1, (4,))
+
+            cancelled = bare_load_app()
+            with (
+                patch("spectrum_mapper.gui.inspect_gltf_asset", return_value=plan),
+                patch(
+                    "spectrum_mapper.gui.messagebox.askyesno",
+                    return_value=False,
+                ),
+            ):
+                cancelled._load_project_path(bundle.folder)
+            self.assertIsNone(cancelled.source_path)
+            cancelled._process_geometry.assert_not_called()
+
+            accepted = bare_load_app()
+            with (
+                patch("spectrum_mapper.gui.inspect_gltf_asset", return_value=plan),
+                patch(
+                    "spectrum_mapper.gui.messagebox.askyesno",
+                    return_value=True,
+                ) as askyesno,
+            ):
+                accepted._load_project_path(bundle.folder)
+
+            askyesno.assert_called_once()
+            self.assertEqual(accepted.source_path, bundle.folder / "source.glb")
+            self.assertTrue(accepted.settings.geometry.adjust_face_count)
+            self.assertLessEqual(accepted.settings.geometry.target_faces, 450_000)
+            self.assertEqual(accepted._large_glb_import_plan, plan)
+            accepted._process_geometry.assert_called_once_with(reuse_asset=False)
 
     def test_model_messages_are_localized_and_explicit(self) -> None:
         ja = Translator("ja")
@@ -206,7 +304,11 @@ class GlbCliDispatchTests(unittest.TestCase):
         ):
             self.assertEqual(convert(args), 0)
 
-        loader.assert_called_once_with(Path("robot.glb"), ANY)
+        loader.assert_called_once_with(
+            Path("robot.glb"),
+            ANY,
+            allow_large_reduced_source=True,
+        )
         self.assertEqual(export.call_args.args[2], Path("robot.3mf"))
 
     def test_convert_rejects_unsupported_suffix_clearly(self) -> None:
