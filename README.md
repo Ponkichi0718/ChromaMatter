@@ -35,20 +35,22 @@ Extract the entire ZIP before starting. If the direct download does not open, us
 
 A public full-body, one-piece sample completed on a Snapmaker U1 in **48 hours** and used about **220 g including the prime tower**. At normal viewing distance, its deliberately graphic shading reads as form and depth. The recorded limitations are rear support scarring, a loose stand, and colour boundaries that can look less clean at close range. See [ChromaMatter Sample Character — Print Results](https://note.com/ponkichi0718/n/nf6c77165127c) for the result and video.
 
-The privacy-reviewed, captioned [Simple Workflow Demo (about two minutes)](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.1/ChromaMatter-simple-workflow-demo.mp4) is the separate video asset for `v0.8beta-r32.1`. It shows the path from a compatible OBJ/GLB through size and geometry preparation, Full Spectrum 3MF export and validation, opening and slicing the project in Snapmaker Orca, and the U1 print. The Release copy is 125.33 seconds, 1920 x 1080 H.264, and intentionally has no audio. The link resolves only after the complete Release asset set is published together.
+The privacy-reviewed, captioned [Simple Workflow Demo (about two minutes)](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.1/ChromaMatter-simple-workflow-demo.mp4) is published as a separate `v0.8beta-r32.1` asset. It shows the path from a compatible OBJ/GLB through size and geometry preparation, Full Spectrum 3MF export and validation, opening and slicing the project in Snapmaker Orca, and the U1 print. The published copy is 125.33 seconds, 1920 x 1080 H.264, and intentionally has no audio.
 
-This is a practical print observation, not yet release-bound reproducibility evidence. The exact r32.1 release revision, sample and 3MF hashes, four filament records, Snapmaker Orca version, and U1 profile are still being assembled and verified together.
+This is a practical print observation, not a guarantee that every model, filament set, slicer profile, or printer will reproduce the same result. Inspect the generated project and slice preview before printing.
 
 ChromaMatter is an independent Windows desktop project. It is not an official or affiliated product of TripoAI, Hi3D AI, Snapmaker, OpenAI, or any other third party.
 
 ## Current status
 
-- **Release target:** `v0.8beta-r32.1`
-- **Source and Windows package:** r32.1 is released only as one simultaneous asset set; until that fixed Release is complete, immutable `v0.8beta-r32` remains the latest public Release
-- **Complete corresponding source:** Required beside the Windows ZIP, SBOM, component map, video, and detached checksums
+- **Published release:** [`v0.8beta-r32.1`](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.1)
+- **Frozen release source:** tag `v0.8beta-r32.1`, commit [`b575b93d973ed67e7ada986469b10b4490eef4e5`](https://github.com/Ponkichi0718/ChromaMatter/commit/b575b93d973ed67e7ada986469b10b4490eef4e5)
+- **Published asset set:** Windows ZIP, complete corresponding source, SBOM, component map, workflow video, and detached checksums
 - **Public test model:** Rights-cleared Hi3D multipart GLB and reference image are included under `DemoData/` in the Windows package
-- **Physical U1 validation:** Public print observed; release-bound reproducibility validation in progress
+- **Physical U1 validation:** The linked public print completed; it does not prove compatibility with every model or production setup
 - **Version:** `0.8beta`
+
+The documentation on the default branch may receive corrections after publication. For the exact source that produced the downloadable r32.1 files, use the frozen tag and commit above.
 
 ## Four things ChromaMatter does
 
@@ -61,7 +63,7 @@ ChromaMatter is an independent Windows desktop project. It is not an official or
 
 ## Quick Start
 
-Use the fixed `v0.8beta-r32.1` Release for the matching r32.1 source and Windows package. Until that Release is visible with its complete asset set, use immutable `v0.8beta-r32` as the latest public Release. To run r32.1 from source, use Windows with Python 3.13:
+Use the published [`v0.8beta-r32.1` Release](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.1) for the matching r32.1 source and Windows package. To run the frozen release source, check out tag `v0.8beta-r32.1` on Windows with Python 3.13:
 
 ```powershell
 git clone https://github.com/Ponkichi0718/ChromaMatter.git
@@ -71,7 +73,7 @@ $pyTetWildWheel = "C:\path\to\pytetwild-0.3.0-cp312-abi3-win_amd64.whl"
 .\.venv\Scripts\python.exe .\source\fixed_app\TripoSpectrumMapper_fixed.py
 ```
 
-r32.1 retains the controlled PyTetWild wheel pin by SHA-256, so a bare bootstrap intentionally fails instead of downloading the different historical PyPI wheel. In the matching `v0.8beta-r32.1` Release, use the repaired wheel from the complete corresponding-source asset at `build-evidence/pytetwild/repaired-wheel/`, or reproduce it with the controlled recipe before passing its local path. If that asset is unavailable, the r32.1 Release set is incomplete. `-PyTetWildWheelhouse` is also supported; `-SkipInstall` is only for an already verified environment.
+r32.1 retains the controlled PyTetWild wheel pin by SHA-256, so a bare bootstrap intentionally fails instead of downloading the different historical PyPI wheel. Use the repaired wheel from the published [complete corresponding-source ZIP](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.1/ChromaMatter-0.8beta-r32.1-complete-corresponding-source.zip) at `build-evidence/pytetwild/repaired-wheel/`, or reproduce it with the controlled recipe before passing its local path. `-PyTetWildWheelhouse` is also supported; `-SkipInstall` is only for an already verified environment.
 
 Then:
 
@@ -88,7 +90,7 @@ The public display version remains pinned to `0.8beta`. This edition is `AI Mode
 
 ## AI Model Print Studio r32.1
 
-r32.1 is a post-r32 release update that keeps the r32 modelling and 3MF contracts while renaming the preview heading to `AI Model Color` and adding a rights-cleared Hi3D multipart GLB plus its reference image under `DemoData/`. For this demo, verify parts by preview rather than trusting imported part names, select the actual darkest filament, and apply the `Weak Black 5–25%` preset before 3MF export. Published `v0.8beta-r32` remains immutable previous evidence and does not validate the rebuilt r32.1 executable or archives.
+r32.1 is a published post-r32 update that keeps the r32 modelling and 3MF contracts while renaming the preview heading to `AI Model Color` and adding a rights-cleared Hi3D multipart GLB plus its reference image under `DemoData/`. For this demo, verify parts by preview rather than trusting imported part names, select the actual darkest filament, and apply the `Weak Black 5–25%` preset before 3MF export. The r32.1 binaries and source assets are frozen at commit `b575b93d973ed67e7ada986469b10b4490eef4e5`; later documentation-only commits on the default branch do not change those release files.
 
 ## AI Model Print Studio r32
 
@@ -182,11 +184,11 @@ project-folder/
 - Displayed and printed colour are not guaranteed to match; use a test print under the same production conditions.
 - Research engines remain in source for continued development but cannot be reached from the public workflow.
 
-## Validation and release gates
+## Published validation
 
-The published r32 exact final build log records Python `3.13.14` `Ran 1270 tests in 236.319s: OK (skipped=3)`, 1267 passed / 3 optional skips / 0 failed, followed by a clean build, packaged self-test, and Japanese/English UI smoke. That immutable r32 result is previous evidence only. The r32.1 exact regression, clean build, source/software stages, fresh-extract audits, and detached checksum remain pending and must be measured from the frozen r32.1 source.
+The exact r32.1 release build was produced from commit `b575b93d973ed67e7ada986469b10b4490eef4e5`. Its focused suite passed 113 tests. Its full regression recorded 1,277 tests: 1,274 passed, 3 optional skips, and 0 failures. Packaged self-test and isolated-profile Japanese and English UI smoke tests passed.
 
-Controlled outbound-isolated run `20260823-174626-089357844d4b` succeeded. The application lock binds repaired wheel SHA-256 `e3b11ac058266d277b0f83448c6023d5da98e731d0d016e461dbce4ebdfd613d`; the `release-approved` PyTetWild static closure binds that wheel and extension PYD SHA-256 `26a091b53279407014899c046691958c9df07e22703576da6a45d68a9be22430`. Attestation SHA-256 `3989fd1debe8b6c984938c4a64ee5fb3bcce1b612cf83524ea309b1fae3cde9f` is recorded as controlled-build evidence. The final release gate requires this evidence to be bound into the exact-commit rebuild lock used for staging. This approves only the controlled PyTetWild closure, not an isolated Windows application archive. Published r32 assets remain immutable previous evidence and do not match the r32.1 source. `binary publication eligibility` for r32.1 applies only to the simultaneous set containing the matching Windows ZIP, `release-approved` complete corresponding source, SBOM, component map, privacy-reviewed workflow video, and detached checksums. If any clean-build, packaged-smoke, fresh-extract, manifest, privacy, archive, checksum, or immutable HTTPS URL check is absent or fails, the Release is incomplete and must not be distributed.
+The release compliance inventory passed with 1,455 files and 256 native files. The Windows package contains 1,518 files; its packaged and independently fresh-extracted self-tests and UI smokes passed. The complete corresponding-source bundle is `release-approved` with no known source-closure gaps. All six public assets were downloaded without authentication after publication and matched their expected sizes and SHA-256 checksums. The Windows ZIP SHA-256 is `1215CF77D8C8CB8AA5CE91DC7C84AE13404F3AA46221321807AD2E8A19F9064A`; the complete corresponding-source ZIP SHA-256 is `D5A64F3022265BCE7C5C2DFA0358DFC2C94EEA541A5A4AC5671CE3BA829BE4CC`.
 
 The published r32 Release and the following r31 and Creator Studio r30 results are **previous evidence** for their own revisions and do not validate r32.1.
 
@@ -204,7 +206,7 @@ Icon publication-rights status: `passed-by-creator-declaration` (2026-08-20).
 - software stage: 1,340 files / 1,339 manifest records
 - source and software ZIP structure, manifest equality, path safety, CRC, and privacy: passed
 
-The published r32 Release and the r31, r30, and r27 evidence above apply only to those artifacts and do not validate ChromaMatter r32.1. The r29, r28, and r26 results are likewise **previous evidence**. Icon publication rights and owner legal acceptance for that declared asset scope are recorded. Physical XP-PEN validation remains a pending limitation; the public U1 print and its recorded limitations are linked above. `binary publication eligibility` and `Innovation Fund submission ready` are conditional on the complete simultaneous Release, detached checksum parity, rights-cleared evidence, and the stated Orca/U1 checks rather than on any standalone file.
+The published r32 Release and the r31, r30, and r27 evidence above apply only to those older artifacts. The r32.1 publication gate passed for the simultaneous asset set linked above. This does not remove the documented beta limitations: multipart solidification can still fail outside the bundled demo, and physical XP-PEN validation remains pending. Icon publication rights and owner legal acceptance for the declared asset scope are recorded.
 
 See [CURRENT_STATE.json](CURRENT_STATE.json) and [PROVENANCE.md](PROVENANCE.md) for the canonical boundary.
 
@@ -217,14 +219,11 @@ $pyTetWildWheel = "C:\path\to\pytetwild-0.3.0-cp312-abi3-win_amd64.whl"
 .\BOOTSTRAP_WINDOWS.ps1 -PyTetWildWheel $pyTetWildWheel
 ```
 
-`-Build` creates a PyInstaller one-folder build after the full regression. The planned r32.1 stage names remain non-distributable until validation completes:
-
-- source candidate: `ChromaMatter-0.8beta-r32.1-source-public-20260824`
-- gated Windows package: `ChromaMatter-0.8beta-r32.1-win64`
+`-Build` creates a PyInstaller one-folder build after the full regression. The distributable r32.1 files are the immutable assets on the [`v0.8beta-r32.1` Release page](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.1); local build and staging directories are not release artifacts.
 
 ## Privacy and licensing
 
-Do not include non-public validation assets or identifying details in the public tree or release candidate. Public samples require traceable rights and provenance.
+Do not include non-public validation assets or identifying details in the public tree or a future release candidate. Public samples require traceable rights and provenance.
 
 The application is `GPL-3.0-or-later`. Bundled dependencies have their own licences, and TetGen itself is `AGPL-3.0-or-later`. Review `licenses/` and the publication checklist before binary distribution.
 

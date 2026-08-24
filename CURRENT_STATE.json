@@ -4,7 +4,7 @@
   "package_version": "0.8beta",
   "edition": "AI Model Print Studio r32.1",
   "artifact_slug": "r32.1-ai-model-print-studio",
-  "status": "r32.1-release-update-final-build-pending",
+  "status": "v0.8beta-r32.1-published-prerelease",
   "updated": "2026-08-24",
   "version_policy": {
     "pinned_until_explicit_user_request": true,
@@ -70,11 +70,11 @@
     ]
   },
   "validation": {
-    "implementation_focused_source": "pending for the exact r32.1 source; published r32 results are previous evidence only",
-    "release_focused_identity_regression_tooling_gui_layout": "pending for the exact r32.1 source; published r32 results are previous evidence only",
-    "current_public_ui_focused_regression": "pending for the exact r32.1 source and rebuilt package; published r32 results are previous evidence only",
-    "current_full_regression": "published r32 and intermediate commit 6ada59418796ab0bbe158fa5a9bcff32e8e188bc results are previous evidence only; the r32.1 source requires a new exact full regression after the UI terminology, release identity, documentation, and package changes are frozen",
-    "changed_worktree_full_regression": "focused public-document/privacy regression passed 87 tests with 0 failures; the sanitized public commit still requires a new exact full regression, and the 1246-test intermediate checkpoint remains historical evidence only",
+    "implementation_focused_source": "passed for the exact tagged r32.1 release source: 113 focused tests passed with 0 failures",
+    "release_focused_identity_regression_tooling_gui_layout": "passed for the exact tagged r32.1 release source as part of the 113-test focused run",
+    "current_public_ui_focused_regression": "passed for the exact tagged r32.1 package: packaged self-test plus isolated Japanese and English UI smoke all passed",
+    "current_full_regression": "passed for tagged commit b575b93d973ed67e7ada986469b10b4490eef4e5 on Python 3.13.14: Ran 1277 tests in 234.260s; 1274 passed, 3 optional skips, and 0 failed",
+    "changed_worktree_full_regression": "historical pre-release checkpoints are superseded by the exact tagged r32.1 full regression; documentation-only commits after the tag do not change the frozen binary or release assets",
     "changed_worktree_multipart_e2e": "passed on a non-public six-part full-resolution validation asset with face-count reduction disabled: 2016940 output faces, 6 watertight consistently wound positive-volume single bodies, categorical identification colours suppressed, combined exact 3MF validation passed, and all 6 individual 3MF files plus their manifest passed strict archive-reload topology and projected-provenance validation; generated repair caps were not accepted as source faces or source self-intersections, and no private asset identity or derived output is retained",
     "changed_worktree_full_resolution_policy": "the inherited-source warning is not a repair or a trust in saved metadata: exact-coordinate triangle ancestry, externally anchored source prefixes, complete source-only intersection IDs, count <= max(100, ceil(source_faces / 100)), area fraction <= 0.002, and every mandatory solid check are required; individual output additionally requires exact part and boundary-vertex rebasing, complete direct parent proof, and distinct local-cap or shared-interface provenance; QEM, joints, moved coordinates, incomplete proof, stale layouts, and generated-face intersections remain fail-closed",
     "changed_worktree_build_evidence": "the current owner-only internal build passed 1168 source tests with 1 optional skip, packaged and fresh-extracted self-tests, isolated Japanese and English UI smokes, binary inventory, deterministic component-map/SBOM regeneration, ZIP CRC/encryption/security/path/privacy checks, and 1355-file fresh-archive path/size/SHA-256 parity; archive ChromaMatter_0.8beta-r32-FullResMultipart-INTERNAL-TEST-20260822c.zip is 118851316 bytes with SHA-256 748E3C7962DB21AFB9DDFBABF9082E2E49DECBA4BAF2078EE99A737910E40C19, is unsigned and non-public, and is not public release evidence",
@@ -118,9 +118,10 @@
       "static_closure_status": "release-approved",
       "artifact_policy": "adopt only this repaired wheel together with its distinct raw wheel, exact 8 logs, 12 source archives, attestation, canonical recipe and locks; the closure approval does not approve the Windows application archive"
     },
-    "current_clean_build_and_packaged_smoke": "pending for r32.1; the published r32 build and intermediate commit 6ada59418796ab0bbe158fa5a9bcff32e8e188bc are previous evidence only",
-    "binary_component_licence_and_static_link_coverage": "current source contracts cover 19 non-Qt PyMeshLab DLL identities plus 7 Qt DLL identities, 50 Qt static components with 51 exact Qt licence assets, and a release-approved 20-component/29-asset PyTetWild static/header closure bound to the controlled wheel, PYD, and matching application-lock identity. No current Windows application binary has yet regenerated and passed the complete inventory",
-    "current_stage_archive_privacy_and_checksum_audit": "pending for r32.1; regenerate corresponding-source and software stages, fresh extraction, packaged smoke, privacy/archive parity, SHA256SUMS-r32.1.txt, and the simultaneous immutable-URL Release after final bytes are frozen",
+    "current_clean_build_and_packaged_smoke": "passed for the exact tagged r32.1 build: clean Windows build, packaged self-test, isolated Japanese UI smoke, isolated English UI smoke, and independent fresh-extract repeats all passed",
+    "binary_component_licence_and_static_link_coverage": "passed for the exact tagged r32.1 Windows package: compliance inventory covered 1455 files and 256 native files, including the contracted 19 non-Qt PyMeshLab DLL identities, 7 Qt DLL identities, 50 Qt static components with 51 exact Qt licence assets, and the release-approved 20-component/29-asset PyTetWild static/header closure; the complete corresponding-source bundle is release-approved with no known gaps",
+    "current_stage_archive_privacy_and_checksum_audit": "passed for r32.1: the 1518-file Windows archive was extracted independently; self-test, Japanese/English UI smoke, DemoData manifest/hash validation, privacy/archive checks, and all six detached public asset checksums matched",
+    "multipart_solidification_beta_limitation": "The bundled DemoData is a confirmed successful multipart solidification and 3MF-export case, but other multipart files may still fail solidification or 3MF export. This instability is one reason the product remains 0.8beta.",
     "source_runtime": {
       "python": "3.13.14",
       "pyinstaller": "6.20.0"
@@ -142,32 +143,51 @@
     "physical_print": "pending"
   },
   "release": {
-    "state": "r32.1-release-update-final-build-pending",
+    "state": "v0.8beta-r32.1-published-prerelease",
     "target_revision": "r32.1-ai-model-print-studio",
-    "revision": "AI Model Print Studio r32.1 is a post-r32 release update. It retains the r32 multipart GLB, identification-colour suppression, 3MF provenance, manual F1-F4 application, and compliance contracts while updating public preview terminology and the distribution package. A new Windows binary remains blocked until a release-approved complete corresponding-source bundle is generated, a current clean binary build plus packaged self-test and Japanese/English smoke passes, fresh-extract manifest/privacy/archive/checksum parity passes, and every r32.1 asset is simultaneously available from its immutable HTTPS Release URL.",
-    "public_source_default": "ChromaMatter-0.8beta-r32.1-source-public-20260824",
+    "revision": "AI Model Print Studio r32.1 is published as a GitHub prerelease. The immutable v0.8beta-r32.1 tag freezes the tested source, Windows package, complete corresponding source, SBOM, component map, workflow video, and detached checksums. Later main-branch documentation commits do not alter those frozen release bytes. Multipart solidification remains beta: the bundled DemoData succeeds, while other multipart files may still fail solidification or 3MF export.",
+    "public_source_default": "ChromaMatter-0.8beta-r32.1-complete-corresponding-source",
     "software_package_default": "ChromaMatter-0.8beta-r32.1-win64",
     "latest_source_branch_validation": {
-      "status": "r32.1-final-build-pending",
-      "source_full_regression": "pending for the exact r32.1 source; the published r32 Release and intermediate commit 6ada59418796ab0bbe158fa5a9bcff32e8e188bc results are previous evidence only",
-      "focused_release_tooling": "baseline passed: Qt/PyMeshLab/PyTetWild, binary compliance, corresponding-source, release tooling, notices, release identity, CLI, and Decal packaging policy; 178 tests, 177 passed, 1 optional skip, and 0 failed. Corrected toolchain follow-up passed 137/137. The UTF-8 recipe/static-closure/release follow-up passed 143/143. The later Base64 native Python-probe transport, release-tooling, and static-closure follow-up passed 78/78. Post-adoption release-tooling, identity, closure, notices, and inventory follow-up passed 108/108.",
+      "status": "published-prerelease-exact-tagged-build",
+      "tag": "v0.8beta-r32.1",
+      "tagged_commit": "b575b93d973ed67e7ada986469b10b4490eef4e5",
+      "release_url": "https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.1",
+      "direct_windows_download": "https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.1/ChromaMatter-0.8beta-r32.1-win64.zip",
+      "source_full_regression": "passed for exact tagged commit b575b93d973ed67e7ada986469b10b4490eef4e5 on Python 3.13.14: Ran 1277 tests in 234.260s; 1274 passed, 3 optional skips, and 0 failed",
+      "focused_release_tooling": "passed for the exact tagged release source: 113 focused tests passed with 0 failures; packaged self-test and isolated Japanese/English UI smoke passed both before staging and after independent fresh extraction",
       "public_source_stage": {
-        "expected_root": "ChromaMatter-0.8beta-r32.1-source-public-20260824",
-        "total_files_including_manifest": null,
-        "manifest_records": null,
-        "privacy_audit": "pending for the final r32.1 restage",
-        "independent_manifest_sha256_parity": "pending for the final r32.1 restage",
-        "scope": "current r32.1 target; do not reuse r32 stage counts or hashes"
+        "expected_root": "ChromaMatter-0.8beta-r32.1-complete-corresponding-source",
+        "status": "release-approved",
+        "bytes": 1365864778,
+        "sha256": "D5A64F3022265BCE7C5C2DFA0358DFC2C94EEA541A5A4AC5671CE3BA829BE4CC",
+        "known_gaps": [],
+        "privacy_audit": "passed",
+        "independent_manifest_sha256_parity": "passed",
+        "scope": "exact complete corresponding source published alongside the frozen v0.8beta-r32.1 Windows package"
       },
-      "source_publication_eligible": false,
-      "binary_publication_eligible": false,
-      "binary_publication_blockers": [
-        "release-approved-complete-corresponding-source-not-generated",
-        "current-clean-binary-build-packaged-self-test-and-ja-en-smoke-pending",
-        "fresh-extract-manifest-privacy-archive-checksum-parity-pending",
-        "immutable-https-release-url-and-simultaneous-assets-pending"
-      ],
-      "branch": "codex/demo-data-ui-label-update",
+      "software_package": {
+        "filename": "ChromaMatter-0.8beta-r32.1-win64.zip",
+        "bytes": 234650536,
+        "sha256": "1215CF77D8C8CB8AA5CE91DC7C84AE13404F3AA46221321807AD2E8A19F9064A",
+        "packaged_files": 1518,
+        "manifest_sha256": "9E9DEFF9B36FE2DCFE9767B19CBF445ACAD6153A213D4B0D36C89E4CDBB3D23C",
+        "executable_bytes": 14018519,
+        "executable_sha256": "E7392BF7C9EF627420459802642B6211B93DC454AEC6127C67F2FD3F45719E63"
+      },
+      "public_asset_verification": "all six GitHub Release assets were downloaded without authentication after publication; every byte size and SHA-256 matched the frozen local release set",
+      "release_assets": {
+        "ChromaMatter-0.8beta-r32.1-win64.zip": "1215CF77D8C8CB8AA5CE91DC7C84AE13404F3AA46221321807AD2E8A19F9064A",
+        "ChromaMatter-0.8beta-r32.1-complete-corresponding-source.zip": "D5A64F3022265BCE7C5C2DFA0358DFC2C94EEA541A5A4AC5671CE3BA829BE4CC",
+        "ChromaMatter-0.8beta-r32.1-SBOM.cdx.json": "D825C318E1387CDDA18AF25D4611E8B81CE1C8DAAA9AB6C180C420BEBF7CF1A0",
+        "ChromaMatter-0.8beta-r32.1-BINARY_COMPONENT_MAP.json": "EB5053860139E3AA0E78B4D6857728A8B6D05DB747D70C30AC7EBD1A7A2DCB2C",
+        "ChromaMatter-simple-workflow-demo.mp4": "F55F9505EC7385D27A933799F9EEFD1C2499A77B86B0BB1162832320E88FEE61",
+        "SHA256SUMS-r32.1.txt": "B8D76A07C30568F9E42002B67BFE4DAA5F4339B0A2224C529C85984FF7B1E640"
+      },
+      "source_publication_eligible": true,
+      "binary_publication_eligible": true,
+      "binary_publication_blockers": [],
+      "branch": "main (documentation HEAD may be newer than the frozen tag)",
       "draft_pull_request": null
     },
     "previous_r32_public_release": {
@@ -344,29 +364,31 @@
     },
     "distribution_policy": {
       "non_public_validation_assets_distributed": false,
-      "artifact_checksum_record": "SHA256SUMS-r32.1.txt is pending and must be generated outside canonical documents only after final r32.1 artifacts exist. Completed SHA256SUMS-r32.txt and SHA256SUMS-r31.txt records remain previous evidence only.",
+      "artifact_checksum_record": "SHA256SUMS-r32.1.txt is published alongside the six immutable v0.8beta-r32.1 Release assets and was independently re-downloaded and verified. SHA256SUMS-r32.txt and SHA256SUMS-r31.txt remain previous-release evidence only.",
       "published_location_claimed": true,
       "public_repository_url": "https://github.com/Ponkichi0718/ChromaMatter",
       "public_repository_owner_handle": "Ponkichi0718",
       "public_repository_visibility": "public",
       "public_repository_default_branch": "main",
       "initial_publication_commit": "a01ba4baa791809a5a6621fac35956dc65479216",
-      "downloads_placement_claimed": false,
+      "downloads_placement_claimed": true,
       "legal_review": "owner-accepted for the declared ChromaMatter icon asset scope on 2026-08-20; no independent legal clearance claimed",
-      "source_publication_policy": "the repository and immutable v0.8beta-r32 Release are already public; publish r32.1 only after exact regression/build, final source and software restage, DemoData manifest/rights/hash validation, privacy/archive/Git-tree parity, and simultaneous immutable Release assets pass",
-      "binary_publication_policy": "the controlled PyTetWild evidence, matching application lock, and static closure are approved; withhold the software ZIP and executable until a release-approved complete corresponding-source bundle, current clean-build/package smoke, fresh-extract manifest/privacy/archive/checksum parity, and immutable HTTPS simultaneous Release assets all pass",
-      "final_failure_contract": "Do not distribute or claim r32.1 publication while any r32.1 final gate is pending or failed."
+      "source_publication_policy": "v0.8beta-r32.1 is published from exact tagged commit b575b93d973ed67e7ada986469b10b4490eef4e5 with a release-approved complete corresponding-source bundle; later documentation-only main-branch commits do not move the tag or change release assets",
+      "binary_publication_policy": "the r32.1 Windows ZIP is an approved public prerelease asset after exact regression, clean build, packaged and fresh-extracted smoke, privacy/archive parity, dependency compliance, and detached checksum verification passed",
+      "final_failure_contract": "Do not replace or retag the frozen r32.1 assets without repeating the complete release gate. Multipart solidification remains explicitly beta even though the bundled DemoData succeeds."
     }
   },
   "known_pending": [
     "Validate the final Manual Editing interaction on physical XP-PEN hardware.",
     "Run a physical printer matrix and confirm exported projects in Snapmaker Orca slice preview.",
-    "Complete the r32.1 exact release gates, evidence media, community post, and Innovation Fund submission; do not publish the r32.1 EXE or software ZIP until every binary and DemoData package gate passes.",
+    "Complete the Innovation Fund submission materials and community post using the published v0.8beta-r32.1 Release as the frozen download source.",
+    "Improve multipart solidification coverage: the bundled DemoData succeeds, but other multipart files may still fail solidification or 3MF export.",
     "Keep the retained Decal beta implementation inaccessible until it is separately revalidated and explicitly reintroduced."
   ],
   "known_constraints": [
     "The current public desktop layout is validated at 1920x1080 in Japanese and English.",
-    "1280x720 is not a supported public UI target for r32.1."
+    "1280x720 is not a supported public UI target for r32.1.",
+    "Multipart solidification and per-part 3MF export are not universally reliable in 0.8beta. The bundled DemoData is a confirmed successful case, but other multipart files may fail."
   ],
   "privacy": {
     "policy": "Do not publish non-public validation assets or identifying asset details. The only model/image package exception is the owner-approved, manifest-locked r32.1 DemoData payload set.",

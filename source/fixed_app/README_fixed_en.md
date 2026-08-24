@@ -8,11 +8,19 @@
 
 This directory contains the fixed ChromaMatter — AI Model Print Studio source application. The display version is `0.8beta`, the edition is `AI Model Print Studio r32.1`, and the artifact revision is `r32.1-ai-model-print-studio`; the Windows numeric version remains `0.8.0.0`.
 
+> **Windows download:** [Download ChromaMatter 0.8beta r32.1 for Windows](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.1/ChromaMatter-0.8beta-r32.1-win64.zip)
+>
+> **Release page:** [v0.8beta-r32.1](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.1)
+>
+> The published build and corresponding source are frozen at commit `b575b93d973ed67e7ada986469b10b4490eef4e5`.
+
+> **0.8beta multipart limitation:** the bundled `DemoData/` model is a confirmed successful case, but other multipart models can still fail solidification or 3MF export. Multipart repair is not yet reliable for every input; this is one reason the product is labelled `0.8beta`.
+
 See the [visual feature overview and production flow](../../FEATURES_EN.md) and the [development journal, including experiments, failures, and hardware calibration](https://note.com/ponkichi0718).
 
 ## r32.1 release update
 
-r32.1 preserves the r32 modelling and 3MF contracts, changes the public preview heading to `AI Model Color`, and packages a rights-cleared Hi3D multipart GLB plus reference image under `DemoData/`. For that demo, verify parts in the preview instead of trusting imported part names and apply the `Weak Black 5–25%` preset before 3MF export. Published r32 remains immutable previous evidence.
+r32.1 preserves the r32 modelling and 3MF contracts, changes the public preview heading to `AI Model Color`, and packages a rights-cleared Hi3D multipart GLB plus reference image under `DemoData/`. For that demo, verify parts in the preview instead of trusting imported part names and apply the `Weak Black 5–25%` preset before 3MF export. The r32.1 prerelease is published; r32 remains immutable previous evidence.
 
 ## r32 output workflow
 
@@ -90,11 +98,15 @@ Repository-root `BOOTSTRAP_WINDOWS.ps1` is the standard setup and test entry poi
 
 ## r32.1 validation state
 
-- published r32 exact final build log on Python `3.13.14`: `Ran 1270 tests in 236.319s: OK (skipped=3)`, 1267 passed / 3 optional skips / 0 failed, followed by clean build, packaged self-test, and Japanese/English UI smoke; immutable r32 previous evidence only, while every r32.1 exact regression/build/stage/checksum gate remains pending
-- focused binary-compliance, corresponding-source, and release-tooling set (80 tests) plus release identity (10 tests): passed
-- component-specific licence texts and static-linked component coverage are implemented and covered by fail-closed inventory tests
-- controlled run `20260823-174626-089357844d4b` succeeded; the application lock binds repaired wheel SHA-256 `e3b11ac058266d277b0f83448c6023d5da98e731d0d016e461dbce4ebdfd613d`, the `release-approved` PyTetWild closure binds that wheel and extension PYD SHA-256 `26a091b53279407014899c046691958c9df07e22703576da6a45d68a9be22430`, and attestation SHA-256 `3989fd1debe8b6c984938c4a64ee5fb3bcce1b612cf83524ea309b1fae3cde9f` remains recorded build evidence pending the final commit-specific rebuild lock
-- published r32 assets remain immutable previous evidence and do not match this r32.1 source; closure approval does not approve a Windows application archive, so binary publication is NO-GO until a `release-approved` complete corresponding-source bundle, a current clean binary build with regenerated inventory, packaged self-test and Japanese/English smoke, fresh-extract manifest/privacy/archive/checksum parity, and immutable HTTPS simultaneous Release assets all pass
+- Published r32.1 is frozen at commit `b575b93d973ed67e7ada986469b10b4490eef4e5`.
+- Focused r32.1 release tests: 113 passed / 0 failed.
+- Full r32.1 regression: 1,277 tests total, 1,274 passed / 3 optional skips / 0 failed.
+- Packaged self-test and Japanese/English UI smoke passed for the final package and its independent fresh extraction.
+- Fail-closed compliance inventory passed for 1,455 files, including 256 native files.
+- The Windows package contains 1,518 files and has SHA-256 `1215CF77D8C8CB8AA5CE91DC7C84AE13404F3AA46221321807AD2E8A19F9064A`.
+- The complete corresponding-source bundle is `release-approved`, reports no known gaps, and has SHA-256 `D5A64F3022265BCE7C5C2DFA0358DFC2C94EEA541A5A4AC5671CE3BA829BE4CC`.
+- All six GitHub Release assets were independently downloaded without authentication and matched their published sizes and SHA-256 values.
+- Source publication eligibility: **true**. Binary publication eligibility: **true** for the exact tagged r32.1 assets above.
 - the r32 and r31 results below are **previous evidence** and do not validate r32.1
 
 - previous evidence for the post-GLB r28 candidate immediately before the public-UI change: Python `3.13.14`, PyInstaller `6.20.0`, `Ran 992 tests in 87.406s: OK (skipped=1)`, 991 passed / 1 optional skip
@@ -114,26 +126,26 @@ Repository-root `BOOTSTRAP_WINDOWS.ps1` is the standard setup and test entry poi
 - preflight public source: 204 files / 203 manifest records
 - preflight software: 1,340 files / 1,339 manifest records
 - preflight ZIP structure, manifest equality, path safety, CRC, and privacy: passed
-- release state: `source-published`
-- final ZIP SHA-256: `null`
+- r27 previous-evidence release state: `source-published`
+- r27 previous-evidence final ZIP SHA-256: `null`
 - icon publication rights: `passed-by-creator-declaration` (2026-08-20); the project owner accepted publication for that asset scope, without claiming independent legal clearance
 - r31 previous-evidence publication eligibility: true only for its validated `publication_scope=source-only`
-- current r32.1 source publication eligibility: false until the final source is restaged; binary publication also remains false
-- binary publication eligibility: false until every final release-engineering gate above passes
+- current r32.1 source publication eligibility: true for the exact tagged corresponding-source asset
+- current r32.1 binary publication eligibility: true for the exact tagged Windows asset
 - public repository: [https://github.com/Ponkichi0718/ChromaMatter](https://github.com/Ponkichi0718/ChromaMatter) (owner handle `Ponkichi0718`)
-- Innovation Fund submission ready: false pending the rights-cleared sample, Orca/U1 evidence, cover/video, and community post
+- Innovation Fund distribution package: published; physical evidence and submission presentation can continue to evolve without changing the frozen r32.1 artifacts
 - physical XP-PEN validation and physical print: pending disclosed limitations, not source-publication blockers
 
-The published r32 Release and the r31, r30, r29, r28, and r27 results above are **previous evidence** for their respective revisions only. They do not validate r32.1. A new exact regression, clean binary build, corresponding-source/software stages, package smoke, Japanese/English UI smoke, fresh extraction, archive/privacy parity, SBOM, component map, and detached checksum are pending for r32.1. The unchanged icon, including its robot and fictional `ZENITH DYNAMICS CORP.` wording, retains the 2026-08-20 creator declaration and owner acceptance without claiming independent legal clearance. Binary publication eligibility remains false until every final release-engineering gate above passes.
+The published r32 Release and the r31, r30, r29, r28, and r27 results above are **previous evidence** for their respective revisions only. The r32.1 validation and hashes listed first apply only to the exact tagged commit and published assets. The unchanged icon, including its robot and fictional `ZENITH DYNAMICS CORP.` wording, retains the 2026-08-20 creator declaration and owner acceptance without claiming independent legal clearance. Multipart solidification remains a disclosed beta limitation even though the bundled demo and release gates passed.
 
 Creator Studio r26 results are previous evidence as well and do not validate ChromaMatter r31.
 
 ## Package identity
 
-- source candidate: `ChromaMatter-0.8beta-r32.1-source-public-20260824`
-- gated Windows package: `ChromaMatter-0.8beta-r32.1-win64`
+- published complete corresponding source: `ChromaMatter-0.8beta-r32.1-complete-corresponding-source.zip`
+- published Windows package: `ChromaMatter-0.8beta-r32.1-win64.zip`
 
-The detached `SHA256SUMS-r32.1.txt` remains pending until final r32.1 artifacts exist. Completed `SHA256SUMS-r32.txt` and `SHA256SUMS-r31.txt` apply only to previous evidence. Self-referential ZIP hashes are not embedded in canonical documents.
+The published detached checksum file is `SHA256SUMS-r32.1.txt`; all six downloaded Release assets matched it. Completed `SHA256SUMS-r32.txt` and `SHA256SUMS-r31.txt` apply only to previous evidence. Self-referential ZIP hashes are not embedded in canonical documents.
 
 ## Notes
 

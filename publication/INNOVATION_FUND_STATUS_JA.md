@@ -1,13 +1,15 @@
 # ChromaMatter — Snapmaker U1 Innovation Fund 応募準備状況
 
 更新日: 2026-08-24
-対象: `ChromaMatter — AI Model Print Studio 0.8beta` r32.1 candidate（以下「r32.1候補」）。r32.1は、公開preview表記を「AIモデル色」へ改め、権利確認済みHi3D分割GLBとreference画像をDemoDataとして同梱するpost-r32更新です。r32の安全な閉立体化、F1～F4明示適用、Full Spectrum layer-cycle／prime-tower baseline、schema、アイコン、既存設定互換性は維持します。公開済み`v0.8beta-r32`と、そのexact final build logの1,270 tests／1,267 PASS／3 optional SKIPはimmutableなprevious evidenceで、r32.1へ流用しません。r32.1のclean build、packaged smoke、source/software stage、SBOM、component map、`SHA256SUMS-r32.1.txt`、GitHub updateはpendingで、EXE path／size／hashを推測しません。全身一体の公開sampleがU1で48時間、prime tower込み約220 gで完走した観測はnoteで公開済みですが、exact r32.1 release、sample／3MF hash、4本のfilament、Orca版、U1 profileへ紐づくrelease-bound再現性証拠はpendingです。binary publication eligibilityは最終binary gate完了までfalse、Innovation Fund submission readyもrelease同一性、cover／video／community postの全gateが揃うまでfalseです。
+対象: 公開済みpre-release [`ChromaMatter — AI Model Print Studio 0.8beta r32.1`](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.1)。tag `v0.8beta-r32.1`はcommit `b575b93d973ed67e7ada986469b10b4490eef4e5`へ固定されています。r32.1は公開preview表記を「AIモデル色」へ改め、権利確認済みHi3D分割GLBとreference画像をDemoDataとして同梱しました。exact regression、clean build、packaged smoke、source／software stage、SBOM、component map、`SHA256SUMS-r32.1.txt`、GitHub公開と公開assetの再取得検証は完了しています。一方、全身一体sampleがU1で48時間、prime tower込み約220 gで完走したnote上の観測は、sample／3MF hash、4本のfilament、Orca版、U1 profileを同一r32.1へ束ねたrelease-bound再現性証拠にはまだなっていません。したがってInnovation Fund submission readyは、cover／90秒hero／community post／release-bound実機記録が揃うまでfalseのままです。
 
 ## 結論
 
-**r32 ReleaseとU1実機の公開観測は存在するが、r32.1更新はrelease gate完了までpending。Innovation Fundへの提出は、exact revision／hash、Orca／U1条件、公開assetを一組にしたrelease-bound demoが揃うまで未readyとする。**
+**r32.1のWindows配布、対応source、checksum、検証証拠は公開済み。ただしInnovation Fundへの提出は、Orca／U1条件と実機結果を同一sample／3MF hashへ結び付けたrelease-bound demo、cover、90秒hero、community postが揃うまで未readyとする。**
 
 ChromaMatterは、Full Spectrumそのものを作り直すのではなく、**AI生成された頂点カラーOBJまたはUV baseColor付きGLBを、色・パーツ・陰影を生かしたSnapmaker Orca用Full Spectrum 3MFへ持ち込む前処理と修正の空白**を埋める。Hi3D AI等から出力された条件適合の静的分割GLBへはβ対応するが、ChromaMatterは独立・非公式・非提携であり、Hi3Dから出力されるすべてのfileとの互換性を保証しない。これはU1に明確に結び付いた実用課題であり、Innovation Fundの「Innovation & Technical Depth」「Openness & Quality」「Practicality & Adaptability」の三軸と合う。
+
+> **0.8betaの重要な制約:** パーツ化modelの閉立体化はまだ不安定です。同梱DemoDataでは閉立体化と3MF出力に成功していますが、他のmultipart OBJ／GLBでは形状、開口、重なり、非manifold状態により閉立体化または3MF出力に失敗する場合があります。デモ成功を一般的な互換性保証とはせず、この未完成領域が`0.8beta`である理由の一つだと明記します。
 
 一方、公式応募一覧には、GLB/OBJ、手持ち色、dither、mesh repairを扱う`ditherforge`など近い領域の応募が既にある。単に「OBJを多色3MFへ変換するソフト」と説明すると埋もれる。勝ち筋は、次の一文へ絞ることにある。
 
@@ -76,10 +78,11 @@ ChromaMatterは、Full Spectrumそのものを作り直すのではなく、**AI
 - r31 final source-only stage **previous evidence** `ChromaMatter_0.8beta-r31-source-public-20260820`: 227 files／226 manifest records、folder／archive parity、CRC、privacy、staged identity／icon／tooling 32 tests、Downloads配置、外部detached `SHA256SUMS-r31.txt`照合: PASS
 - r31 software preflight **previous evidence**: 1,404 files／1,403 manifest records、fresh-extracted self-test／日英UI smoke: exit 0。ただし第三者binary再配布監査未完了のため公開対象外
 - ChromaMatter r32 public Release **previous evidence**: exact final build logは`Ran 1270 tests in 236.319s: OK (skipped=3)`、1,267 PASS／3 optional SKIP／0 FAIL。clean build、packaged self-test、日英UI smoke、同時Releaseは完了し、tag `v0.8beta-r32`／commit `86e34b2a9468f81768ee134a680a792b1a83df05`を変更しない
-- ChromaMatter r32.1 candidate: preview表記とDemoData package更新後のexact regression、clean build、packaged smoke、1920×1080日英UI smoke、source／software stage、DemoData hash／rights gate、archive／privacy／identity、外部detached `SHA256SUMS-r32.1.txt`、GitHub updateはpending。1280×720は対応対象外の既知制約
+- ChromaMatter r32.1 public pre-release: focused regression 113 PASS。full regressionは1,277 tests中1,274 PASS／3 optional SKIP／0 FAIL。clean build、packaged self-test、1920×1080の日英UI smoke、DemoData manifest／hash、archive／privacy／identityはPASS。compliance inventoryは1,455 files／256 native files、Windows packageは1,518 files
+- 対応source bundleは`release-approved`かつ`known_gaps: []`。Windows ZIP、complete corresponding source、SBOM、binary component map、workflow video、detached checksumの公開6 assetをsign-in不要で再取得し、すべてのsize／SHA-256が公開前の値と一致した
 - 非公開の大規模GLBはread-only検証だけに使い、実modelをcopy、hash記録、manifest登録、配布しない
 
-r31以前と公開済みr32のevidenceはr32.1へ適用しない。公開先は[https://github.com/Ponkichi0718/ChromaMatter](https://github.com/Ponkichi0718/ChromaMatter)、owner handleは`Ponkichi0718`である。変更していないiconのcreator-declarationだけはasset provenanceとして保持する。r32.1のrelease state、source／binary publication eligibility、checksum、GitHub updateはpendingで、Innovation Fund submission readyもfalseである。
+r31以前と公開済みr32のevidenceはr32.1へ流用しない。r32.1の正本は[Release](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.1)と固定commit `b575b93d973ed67e7ada986469b10b4490eef4e5`で、Windows ZIPは[ここから直接取得できる](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.1/ChromaMatter-0.8beta-r32.1-win64.zip)。source／binary publication eligibilityとchecksum検証は完了したが、Innovation Fund submission readyはfalseである。
 
 ### Development and physical evidence on note
 
@@ -160,23 +163,23 @@ r31以前と公開済みr32のevidenceはr32.1へ適用しない。公開先は[
 
 | 審査軸 | 現在の強み | 応募直前に足す証拠 |
 |---|---|---|
-| Innovation & Technical Depth | 頂点色／UV baseColor GLB→canonical Full Spectrum state、part palette、3D manual correction、色保持3MF、adaptive paint性能、安全なUV seam閉立体化、実機黒補正 | r32.1 architecture図、GLB texture bake／1:1 seam proof／strict type=model検証とpalette／chart順序test、自動提案の素材分離／色域回帰test、実入力から3MFまでのstate追跡例、処理時間・memory計測 |
-| Openness & Quality | GPL source方針、public GitHub、fail-closed seam契約、公開済みr32 previous evidence | r32.1 clean build／package smoke／日英UI smoke／final stage／archive／privacy／identity、CI結果、signed provenance、SBOM方針、issue template |
+| Innovation & Technical Depth | 頂点色／UV baseColor GLB→canonical Full Spectrum state、part palette、3D manual correction、色保持3MF、adaptive paint性能、安全なUV seam閉立体化、実機黒補正 | architecture図、実入力から3MFまでのstate追跡例、処理時間・memory計測、multipart閉立体化の成功／失敗matrix |
+| Openness & Quality | GPL source方針、public GitHub、fail-closed seam契約、r32.1 exact regression／build／package／公開asset再取得検証 | CI結果、signed provenance、issue template、第三者clean-clone再現 |
 | Practicality & Adaptability | noteに実際の失敗、再出力、U1 calibration、完成全身造形がある | 公開sampleでOrca open→slice→save→reopen→U1 printを一続きに記録。4色／16・24・32色とpart output matrix |
 | Community 20% | 継続的なnote記事と制作物がある | GitHub README、英語字幕付き短編、Snapmaker Forum投稿を同日に公開し、質問・再現報告を受け付ける |
 
 ## 未解決リスク
 
-- r31と公開済みr32のrelease evidenceはGOだが、r32.1のexact regression、clean build以降のrelease gate、CI、DemoData入りpackage監査は未完了。
+- r32.1のrelease gateとDemoData入りpackage監査は完了したが、第三者環境でのclean-clone／実機再現とCIの公開証拠はまだ不足している。
 - ABS／PETG混色はβであり、素材別ライブラリと3MF profileの整合までは検証しているが、U1実機での同素材4本による色再現matrixは未完了。ABSは色数・色域が狭く、Top Coverを含む造形条件も別途検証が必要である。
 - 実機黒補正とcalibration chartを、複数black／white、16／24／32色で定量比較したmatrixがない。
-- 大規模OBJ／GLBの読込、準備、閉立体化は時間とmemoryを要し、200万面級のManual Editingはβ境界である。
+- 大規模OBJ／GLBの読込、準備、閉立体化は時間とmemoryを要し、200万面級のManual Editingはβ境界である。とくにmultipart閉立体化は不安定で、同梱DemoDataは成功しても他fileでは閉立体化または3MF出力に失敗し得る。これは`0.8beta`の主要な既知制約である。
 - GLBのUV色はmesh頂点へsampleして焼き付けるため、面より細かいtexture detailは失われ、面数削減で差が広がる場合がある。baseColor以外のnormal／metallic／roughness／透明度、animation、skin、morph、Draco等は再現しない。
 - 非manifold meshはfail-softで扱えるが、任意modelの自動修復・印刷可能性を保証しない。
 - TripoAI以外の頂点カラーOBJに対する実機validationが薄い。応募では入力契約を狭く正確に書く。
-- physical XP-PEN操作と、r32.1 exact buildのU1一貫試験が未完了。
+- physical XP-PEN操作と、公開r32.1の同一sample／hash／profileを用いたU1一貫試験が未完了。
 - UIを簡素化した一方、初見利用者が4色選択、混色state、part palette、black correctionを理解できるonboarding evidenceがない。
-- project ownerによるr31／r32公開承認は記録済み。r32.1更新の公開判断はfinal bytes監査までpending。公開handle `Ponkichi0718`とrepository URLは反映済みで、公開連絡先のGitHub metadata反映は未完了。
+- project ownerによるr32.1公開承認とfinal bytes監査は完了し、tag／Releaseを公開済み。公開handle `Ponkichi0718`とrepository URLは反映済みで、公開連絡先のGitHub metadata反映は未完了。
 
 ## IP・ライセンス・プライバシー
 
@@ -197,7 +200,7 @@ r31以前と公開済みr32のevidenceはr32.1へ適用しない。公開先は[
 
 1. **Public GitHub**: source、README日英、LICENSE、PROVENANCE、setup、合成sample、tests、known limitations
 2. **640×360 cover**: 元2D／AI GLB・OBJ／U1完成品の3分割。文字は「4 Filaments / AI 3D Color / Full Spectrum 3MF」程度
-3. **シンプルな使い方（約2分）**: [Release asset `ChromaMatter-simple-workflow-demo.mp4`](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32/ChromaMatter-simple-workflow-demo.mp4)。対応OBJ／GLB→サイズ・形状準備→Full Spectrum 3MF export／validation→Snapmaker Orcaでproject open／slice→U1 print。privacy確認済みの公開用copyは125.33秒、1920×1080、H.264、音声なし、37,708,741 bytes。Git treeへ入れず、最終Releaseで他assetと同時uploadする
+3. **シンプルな使い方（約2分）**: [Release asset `ChromaMatter-simple-workflow-demo.mp4`](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.1/ChromaMatter-simple-workflow-demo.mp4)。対応OBJ／GLB→サイズ・形状準備→Full Spectrum 3MF export／validation→Snapmaker Orcaでproject open／slice→U1 print。privacy確認済みの公開用copyは125.33秒、1920×1080、H.264、音声なし、37,708,741 bytesで、r32.1 Release assetとして公開・再取得・SHA-256一致を確認済み
 4. **90秒hero video**: 完成品→入力→自動変換→1箇所手修正→chart→Orca→print。日英字幕
 5. **3～5分technical demo**: part palette、16／24／32、黒補正、portable restore、per-part 3MF、Orca reopen
 6. **一枚architecture図**: Vertex Color OBJ / UV baseColor GLB → palette fitting → canonical states → manual overrides → Snapmaker 3MF
@@ -219,19 +222,19 @@ r31以前と公開済みr32のevidenceはr32.1へ適用しない。公開先は[
 - [x] Public GitHubをclean cloneし、source公開範囲の32 testsを再実行した
 - [x] 公開済みr32 exact final regression（1,267 PASS＋3 optional SKIP）、clean build、packaged self-test、日英UI smokeを完了した
 - [x] 公開済みr32をtag `v0.8beta-r32`／commit `86e34b2a9468f81768ee134a680a792b1a83df05`へ固定した
-- [ ] r32.1 exact regression、clean build、packaged self-test、1920×1080の日英UI smokeを完了する
-- [ ] r32.1 final source／software stage、DemoData manifest、fresh extract、archive／privacy／identityを完了する
-- [ ] r32.1 artifactの外部detached `SHA256SUMS-r32.1.txt`照合とGitHub update／公開tree一致を完了する
+- [x] r32.1 focused 113 PASS、full 1,277 tests／1,274 PASS／3 optional SKIP／0 FAIL、clean build、packaged self-test、1920×1080の日英UI smokeを完了した
+- [x] r32.1 final source／software stage、DemoData manifest、fresh extract、archive／privacy／identityを完了した（inventory 1,455 files／256 native files、Windows package 1,518 files）
+- [x] complete corresponding sourceを`release-approved`／`known_gaps: []`で確定し、`SHA256SUMS-r32.1.txt`と公開6 assetのsign-in不要再取得／size／SHA-256一致を確認した
 - [ ] 権利処理済みpublic sample workflowを記載手順だけで再現した
 - [x] project ownerによるr31 sourceの公開承認を記録した
 - [x] project ownerによる既存r32公開判断を記録した
-- [ ] project ownerによるexact r32.1 updateの公開判断をfinal bytes監査後に記録する
+- [x] project ownerによるexact r32.1 updateの公開判断を記録し、tag `v0.8beta-r32.1`をcommit `b575b93d973ed67e7ada986469b10b4490eef4e5`へ固定した
 - [x] public repository URLとowner handle `Ponkichi0718`を確定した
 - [ ] 公開連絡先、GPL／第三者通知のGitHub表示を確定した
 - [ ] 応募sampleの権利記録と第三者IP確認を完了した
 - [ ] 公開sampleでOrca open→slice→save→reopenを完走した
 - [ ] 同じsampleをU1で完走し、完成写真、条件、失敗／制限を公開した
-- [ ] `ChromaMatter-simple-workflow-demo.mp4`を最終Releaseへ同時uploadし、sign-in不要の公開URLとchecksumを確認した
+- [x] `ChromaMatter-simple-workflow-demo.mp4`をr32.1 Releaseへuploadし、sign-in不要の公開URLとchecksumを確認した
 - [ ] cover、short description、90秒video、forum postを公開URLから閲覧できる
 
 ### NO-GO／Phase 2へ送る条件
@@ -251,8 +254,8 @@ r31以前と公開済みr32のevidenceはr32.1へ適用しない。公開先は[
 | prototypeの技術深度 | 強い |
 | 実機で可能性を示した証拠 | あり。ただしrevision追跡を要整理 |
 | 競合との差別化 | 可能。ただし応募文と動画で明文化必須 |
-| source quality | r31と公開済みr32はprevious evidence。r32 finalは1,270 tests中1,267 PASS／3 optional SKIP、clean build、packaged self-test、日英UI smoke PASS。r32.1 exact regression以降はpending |
-| public release／legal | r32は`v0.8beta-r32`で公開済み。r32.1 updateはpending。公開先は[GitHub](https://github.com/Ponkichi0718/ChromaMatter)。DemoDataはowner権利申告済みでfinal package監査待ち |
+| source quality | r32.1 focused 113 PASS、full 1,277 tests中1,274 PASS／3 optional SKIP／0 FAIL。clean build、packaged self-test、日英UI smoke、1,455 files／256 native filesのinventory、1,518-file package監査はPASS |
+| public release／legal | [`v0.8beta-r32.1`](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.1)を固定commitから公開済み。対応sourceは`release-approved`／`known_gaps: []`で、公開6 assetの再取得／hash一致を確認済み。DemoDataはowner権利申告済み |
 | 応募asset | 作成途中 |
 
-**現時点の総合判断は「r32 Releaseは公開済み、r32.1 updateとInnovation Fund提出物はまだ未完成」。** 中位以上を狙える題材だが、top tierを争うには、機能数を増やすよりも、original public sampleによる再現可能な一貫実証、競合との一文差別化、public repository運用品質の三つが必要である。
+**現時点の総合判断は「r32.1配布版は公開済み、Innovation Fund提出物はまだ未完成」。** 中位以上を狙える題材だが、top tierを争うには、機能数を増やすよりも、multipart閉立体化のβ制約を正直に示しながらoriginal public sampleによる再現可能な一貫実証、競合との一文差別化、public repository運用品質の三つが必要である。

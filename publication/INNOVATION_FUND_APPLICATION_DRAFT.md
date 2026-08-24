@@ -1,8 +1,13 @@
 # ChromaMatter — Innovation Fund応募原稿案
 
 更新日: 2026-08-24
-状態: **`v0.8beta-r32`は[GitHub](https://github.com/Ponkichi0718/ChromaMatter)で公開済みのimmutableなprevious evidence。r32.1はAIモデル色表記と権利確認済みHi3D DemoDataを加える更新で、exact regression／build／stage／`SHA256SUMS-r32.1.txt`／GitHub updateがpending。全身一体sampleのU1完走観測はnoteで公開済みだが、sample／3MF hash、4本のfilament、Orca／U1 profileを一組にしたrelease-bound再現性証拠とInnovation Fund submission readyはpending。残る角括弧のplaceholderと応募sample実証値を置換するまで提出しない。**
-対象: `ChromaMatter — AI Model Print Studio 0.8beta` r32.1候補
+状態: **[`v0.8beta-r32.1`](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.1)はcommit `b575b93d973ed67e7ada986469b10b4490eef4e5`から公開済みのpre-release。exact regression／build／stage／`SHA256SUMS-r32.1.txt`／GitHub asset公開・再取得検証は完了した。全身一体sampleのU1完走観測はnoteで公開済みだが、sample／3MF hash、4本のfilament、Orca／U1 profileを一組にしたrelease-bound再現性証拠、cover、90秒hero、community post、Innovation Fund submissionは未完了。残る角括弧のplaceholderと応募sample実証値を置換するまで提出しない。**
+対象: 公開済み`ChromaMatter — AI Model Print Studio 0.8beta r32.1`
+
+> **0.8betaの重要な制約:** パーツ化modelの閉立体化はまだ不安定です。同梱DemoDataは閉立体化と3MF出力に成功しますが、他のmultipart OBJ／GLBでは形状、開口、重なり、非manifold状態により閉立体化または3MF出力に失敗する場合があります。デモ成功は一般的な互換性保証ではなく、この未完成領域が`0.8beta`である理由の一つです。
+
+- 公開Release: https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.1
+- Windows版の直接download: https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.1/ChromaMatter-0.8beta-r32.1-win64.zip
 
 ## 1. 応募の基本情報
 
@@ -79,7 +84,7 @@ basic exact-match web checkでは`ZENITH DYNAMICS CORP.`と`ChromaMatter`の完�
 
 同記事には、Hi3D系分割GLBの識別色が本来のbaseColorへ影響する問題と、part構成・色を保ったpart別3MF経路も含まれる。ただしChromaMatterはHi3D AIの公式・提携製品ではなく、識別用`COLOR_0`はexporter／node／material／共通texture／既知paletteの証拠がすべて一致した場合だけ除外する限定的なβ対応である。
 
-この結果はpractical observationとして使用できるが、現時点ではexact r32.1 release revision、sample／3MF hash、4本のfilament製品・lot、Snapmaker Orca版、U1 profileへ一括追跡できない。応募のrelease-bound再現性証拠としては未完了のまま扱う。
+この結果はpractical observationとして使用できるが、note上の造形結果は公開r32.1のsample／3MF hash、4本のfilament製品・lot、Snapmaker Orca版、U1 profileへ一括追跡できない。応募のrelease-bound再現性証拠としては未完了のまま扱う。
 
 言い切るべき価値は、**「4色へ減らす」ではなく「4本から生まれるFull Spectrum stateを、AI生成modelの制作単位として編集・保存する」**こと。
 
@@ -89,7 +94,7 @@ basic exact-match web checkでは`ZENITH DYNAMICS CORP.`と`ChromaMatter`の完�
 
 | tier | 現時点の見込み | 到達条件 |
 |---|---|---|
-| Active Builder | **十分狙える** | public GitHub、exact release gate、権利処理済みsample、U1完走動画、known limitationsを同時公開 |
+| Active Builder | **十分狙える** | 公開済みr32.1へ権利処理済みsample、U1完走動画、known limitations、応募assetを結び付ける |
 | Eco-Enhancer | **証拠次第で可能** | 失敗→calibration→改善を同一sample／hashで追跡し、clean clone再現、Orca reopen、少なくとも1件の第三者再現を追加 |
 | U1 Pioneer | **現状では難しい** | ditherforge等より広い機能数では勝ちにくい。Full Spectrum canonical state authoringの技術仕様、定量色評価、複数model／filamentでの実証、communityが再利用できるformatまたはAPIまで示す必要がある |
 
@@ -131,9 +136,9 @@ basic exact-match web checkでは`ZENITH DYNAMICS CORP.`と`ChromaMatter`の完�
 
 ### 公開用「シンプルな使い方」動画
 
-[Release asset `ChromaMatter-simple-workflow-demo.mp4`](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32/ChromaMatter-simple-workflow-demo.mp4)は、対応OBJ／GLBの読込、サイズ・形状準備、Full Spectrum 3MF export／validation、Snapmaker Orcaでprojectとしてopen／slice、U1 printまでを約2分で示す。privacy確認済みの公開用copyは125.33秒、1920×1080、H.264、音声なし、37,708,741 bytes。repositoryへcommitせず、最終Releaseの独立assetとしてsource／software assetと同時にuploadする。
+[Release asset `ChromaMatter-simple-workflow-demo.mp4`](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.1/ChromaMatter-simple-workflow-demo.mp4)は、対応OBJ／GLBの読込、サイズ・形状準備、Full Spectrum 3MF export／validation、Snapmaker Orcaでprojectとしてopen／slice、U1 printまでを約2分で示す。privacy確認済みの公開用copyは125.33秒、1920×1080、H.264、音声なし、37,708,741 bytes。r32.1 Releaseの独立assetとして公開済みで、sign-in不要の再取得とSHA-256一致を確認した。
 
-これは初見利用者向けの操作導線とし、下記の90秒hero動画とは役割を分ける。Release URL、checksum、sign-in不要の再生／downloadは公開時に確認する。
+これは初見利用者向けの操作導線とし、下記の90秒hero動画とは役割を分ける。90秒heroとrelease-bound実機再現記録は引き続き応募前の未完了項目である。
 
 完成品を最初に出す。操作説明動画ではなく、問題・解決・実証の順にする。字幕は英語を主、同じ意味の日本語を2行目に置く。音声なしでも理解できる構成とする。
 
@@ -227,7 +232,7 @@ basic exact-match web checkでは`ZENITH DYNAMICS CORP.`と`ChromaMatter`の完�
 
 ChromaMatter maps each model part to four physical filaments and 16, 24, or 32 canonical mixed states, lets you correct colour directly on the 3D surface, and exports combined or per-part 3MF while preserving the colour recipe. Portable project folders keep the source OBJ or GLB, prepared geometry, palettes, and manual edits together.
 
-![AI colour model to Full Spectrum workflow](docs/images/hero-640x360.png)
+![ChromaMatter icon](source/fixed_app/assets/obj_adjuster_icon.png)
 
 > **Independent project.** ChromaMatter is not an official or affiliated product of Snapmaker, TripoAI, Hi3D AI, OpenAI, or any filament manufacturer.
 
@@ -244,20 +249,23 @@ Vertex-coloured or textured AI models can look richly shaded on screen, but a U1
 
 ## Simple workflow demo
 
-[Watch the approximately two-minute ChromaMatter workflow demo](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32/ChromaMatter-simple-workflow-demo.mp4). It covers compatible OBJ/GLB input, size and geometry preparation, Full Spectrum 3MF export and validation, opening and slicing the project in Snapmaker Orca, and the U1 print. A separate 90-second Innovation Fund hero cut remains planned.
+[Watch the approximately two-minute ChromaMatter workflow demo](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.1/ChromaMatter-simple-workflow-demo.mp4). It covers compatible OBJ/GLB input, size and geometry preparation, Full Spectrum 3MF export and validation, opening and slicing the project in Snapmaker Orca, and the U1 print. A separate 90-second Innovation Fund hero cut remains planned.
+
+> **0.8beta limitation:** Multipart solidification is not reliable for every model. The bundled DemoData succeeds, but other multipart OBJ/GLB files may fail solidification or 3MF export. This is one reason the release remains 0.8beta.
 
 ## Reproduce the public demo
 
-- Release: `[TAG / COMMIT]`
-- Source ZIP SHA-256: `[SHA256]`
-- Demo source GLB/OBJ SHA-256: `[SHA256]`
-- Demo 3MF SHA-256: `[SHA256]`
+- Release: `v0.8beta-r32.1 / b575b93d973ed67e7ada986469b10b4490eef4e5`
+- Windows ZIP SHA-256: `1215CF77D8C8CB8AA5CE91DC7C84AE13404F3AA46221321807AD2E8A19F9064A`
+- Complete corresponding source ZIP SHA-256: `D5A64F3022265BCE7C5C2DFA0358DFC2C94EEA541A5A4AC5671CE3BA829BE4CC`
+- Demo source GLB SHA-256: `1BFF30D3210CD13E233D4F4A5B9ED895858F0AB524FD8FC06124A4CBD27298AA`
+- Demo 3MF SHA-256: `[PENDING RELEASE-BOUND INNOVATION FUND DEMO]`
 - Snapmaker Orca: `[VERSION]`
 - Printer: Snapmaker U1, `[FIRMWARE]`
 - Layer height: `[0.08 mm — VERIFY]`
 - Physical filaments: `[F1]`, `[F2]`, `[F3]`, `[F4]`
 
-See [Quick Start](docs/QUICK_START_EN.md), [Validation](docs/VALIDATION.md), [Known Limitations](docs/KNOWN_LIMITATIONS.md), and [Sample Rights & Provenance](samples/PROVENANCE.md).
+See [Quick Start](README.md#quick-start), [Technical details](README.md#technical-details), [Features](FEATURES_EN.md), [Provenance](PROVENANCE.md), and [Release notes](publication/RELEASE_NOTES_r32.1.md).
 ```
 
 READMEではditherforgeを攻撃的に比較しない。必要なら`Related projects`で敬意をもって紹介し、ChromaMatterがFull Spectrum canonical state authoringへ特化していることだけを書く。
@@ -279,7 +287,7 @@ READMEではditherforgeを攻撃的に比較しない。必要なら`Related pro
 > This is not a claim of perfect screen-to-print colour. Filament opacity, lot, lighting, geometry, and slicer settings all matter. My goal is to make the failures visible and the correction path reproducible. The linked two-minute demo shows the simple workflow only; it does not record the exact source revision, OBJ/3MF hashes, four filaments, Snapmaker Orca version, U1 settings, or failed and improved prints. A separate release-bound reproducibility package containing those records is still pending.
 >
 > **Project:** https://github.com/Ponkichi0718/ChromaMatter  
-> **Simple workflow demo (about two minutes; the link resolves with the complete `v0.8beta-r32` Release):** https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32/ChromaMatter-simple-workflow-demo.mp4<br>
+> **Simple workflow demo (about two minutes):** https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.1/ChromaMatter-simple-workflow-demo.mp4<br>
 > **90-second Innovation Fund hero:** [VIDEO_URL]<br>
 > **Development and physical-print log:** [NOTE_INDEX_URL]  
 > **Public sample and reproduction steps:** [SAMPLE_URL]
@@ -290,6 +298,8 @@ READMEではditherforgeを攻撃的に比較しない。必要なら`Related pro
 > 2. a vertex-colour OBJ or textured GLB from another AI service;
 > 3. 16 vs 24 vs 32 mixed states;
 > 4. large multipart meshes and per-part export.
+>
+> Multipart solidification is still a beta boundary: the bundled DemoData succeeds, but other multipart OBJ/GLB files may fail solidification or 3MF export. Please report both successful and failed models; the demo is not a universal compatibility guarantee.
 >
 > ChromaMatter is independent and is not an official or affiliated product of Snapmaker, TripoAI, Hi3D AI, OpenAI, or any filament manufacturer. I built it with deep respect for the work behind the U1, Snapmaker Orca, Full Spectrum, and the wider open-source colour-printing community.
 
@@ -308,12 +318,14 @@ READMEではditherforgeを攻撃的に比較しない。必要なら`Related pro
 > これは画面色と実物色の完全一致を保証するものではありません。filamentの隠蔽力、lot、照明、geometry、slicer設定で結果は変わります。目標は、失敗を見えるようにし、補正工程を再現可能にすることです。公開demoには、exact revision、OBJ／3MF hash、4本のfilament、Snapmaker Orca版、U1条件、失敗版と改善版を記録します。
 >
 > **GitHub:** https://github.com/Ponkichi0718/ChromaMatter  
-> **シンプルな使い方（約2分）:** https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32/ChromaMatter-simple-workflow-demo.mp4<br>
+> **シンプルな使い方（約2分）:** https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.1/ChromaMatter-simple-workflow-demo.mp4<br>
 > **Innovation Fund用90秒hero:** [VIDEO_URL]<br>
 > **開発・実機造形記録:** [NOTE_INDEX_URL]  
 > **公開sampleと再現手順:** [SAMPLE_URL]
 >
 > 特に、別の4色filament、別AI serviceの頂点カラーOBJ／texture付きGLB、16／24／32の比較、大型multipart modelで試していただける方を探しています。
+>
+> パーツ化modelの閉立体化はまだβ境界です。同梱DemoDataは成功しますが、他のmultipart OBJ／GLBでは閉立体化または3MF出力に失敗する場合があります。成功例だけでなく失敗例も報告していただきたいと考えており、デモを一般的な互換性保証とは扱いません。
 >
 > ChromaMatterは独立projectであり、Snapmaker、TripoAI、Hi3D AI、OpenAI、各filament makerの公式・提携製品ではありません。U1、Snapmaker Orca、Full Spectrum、open-source color printing communityへの敬意を前提に開発しています。
 
@@ -322,14 +334,15 @@ READMEではditherforgeを攻撃的に比較しない。必要なら`Related pro
 ### A. release同一性
 
 - [x] public repository URL: `https://github.com/Ponkichi0718/ChromaMatter`
-- [x] initial source publication commit: `a01ba4baa791809a5a6621fac35956dc65479216`（release tagは未作成）
-- [ ] source ZIP name／SHA-256: `[FILE / HASH]`
-- [ ] software ZIP name／SHA-256: `[FILE / HASH]`
-- [ ] public sample OBJ name／SHA-256: `[FILE / HASH]`
+- [x] r32.1 release tag／commit: `v0.8beta-r32.1 / b575b93d973ed67e7ada986469b10b4490eef4e5`
+- [x] complete corresponding source ZIP／SHA-256: `ChromaMatter-0.8beta-r32.1-complete-corresponding-source.zip / D5A64F3022265BCE7C5C2DFA0358DFC2C94EEA541A5A4AC5671CE3BA829BE4CC`
+- [x] Windows ZIP／SHA-256: `ChromaMatter-0.8beta-r32.1-win64.zip / 1215CF77D8C8CB8AA5CE91DC7C84AE13404F3AA46221321807AD2E8A19F9064A`
+- [x] bundled DemoData GLB／SHA-256: `Original AI model Color.glb / 1BFF30D3210CD13E233D4F4A5B9ED895858F0AB524FD8FC06124A4CBD27298AA`
 - [ ] combined 3MF name／SHA-256: `[FILE / HASH]`
 - [ ] per-part 3MF names／SHA-256: `[FILES / HASHES]`
 - [ ] calibration bundle name／SHA-256: `[FILE / HASH]`
 - [x] privacy-reviewed, no-audio simple workflow demo Release asset／SHA-256: `ChromaMatter-simple-workflow-demo.mp4 / F55F9505EC7385D27A933799F9EEFD1C2499A77B86B0BB1162832320E88FEE61`
+- [x] Windows ZIP、complete corresponding source、SBOM、component map、workflow video、`SHA256SUMS-r32.1.txt`の公開6 assetを再取得し、全size／SHA-256一致を確認
 - [ ] screenshotに写るeditionとrelease tagが一致
 
 ### B. source quality
@@ -339,9 +352,11 @@ READMEではditherforgeを攻撃的に比較しない。必要なら`Related pro
 - [x] r31 clean build、built self-test、日英UI smoke（previous evidence）
 - [x] r31 preflight fresh extract self-test、日英UI smoke、manifest／archive／path safety／privacy audit（previous evidence）
 - [x] r31 final source-only restage、Downloads配置、detached `SHA256SUMS-r31.txt`、archive／CRC／privacy／identity照合（previous evidence）
-- [ ] r32.1 exact full regression、clean build、built self-test、1920×1080日英UI smoke
-- [ ] r32.1 final source／software stage、DemoData manifest、fresh extract、archive／path safety／privacy／identity照合
-- [ ] r32.1外部detached `SHA256SUMS-r32.1.txt`、GitHub update／公開tree一致
+- [x] r32.1 focused regression 113 PASS、full regression 1,277 tests／1,274 PASS／3 optional SKIP／0 FAIL
+- [x] r32.1 clean build、packaged self-test、1920×1080日英UI smoke、DemoData manifest、fresh extract、archive／path safety／privacy／identity照合
+- [x] compliance inventory 1,455 files／256 native files、Windows package 1,518 filesを確認
+- [x] complete corresponding sourceは`release-approved`／`known_gaps: []`
+- [x] r32.1外部detached `SHA256SUMS-r32.1.txt`、GitHub Release、公開6 assetの再取得一致
 - [ ] clean cloneでsetup／test／public sampleを第三者手順だけで再現
 - [ ] GPL、第三者license notice、TetGen／Qt等binary distribution条件を確認
 - [ ] known limitations、issue template、security／privacy窓口
@@ -363,7 +378,7 @@ READMEではditherforgeを攻撃的に比較しない。必要なら`Related pro
 - [ ] Manual EditingのBrush／Fill／Smudge／Eyedropper／Undoを一続きで収録
 - [ ] portable folderを別pathへ移しexact restore
 - [ ] combined／per-part 3MFをOrcaでsave→close→reopen→slice
-- [ ] `Solidify`は任意meshの完全修復を保証しないと記載
+- [x] multipart閉立体化は不安定で、DemoData成功後も他fileの閉立体化／3MF出力が失敗し得る0.8beta制約だと記載
 
 ### E. physical print claim
 
@@ -382,7 +397,7 @@ READMEではditherforgeを攻撃的に比較しない。必要なら`Related pro
 
 - [ ] [Innovation Fund公式ページ](https://www.snapmaker.com/en-US/innovation-fund)の送信日条件を再確認し、画面を保存
 - [ ] 640×360 cover、90秒video、technical demoがpublic URLでsign-in不要
-- [ ] `ChromaMatter-simple-workflow-demo.mp4`を最終Releaseへ同時uploadし、public URL、file size、SHA-256を確認
+- [x] `ChromaMatter-simple-workflow-demo.mp4`をr32.1 Releaseへuploadし、public URL、file size、SHA-256を確認
 - [ ] Snapmaker Forum等へcommunity post
 - [ ] form short descriptionとGitHub READMEの主張が一致
 - [ ] 応募category `3D Model Editor`
@@ -392,18 +407,17 @@ READMEではditherforgeを攻撃的に比較しない。必要なら`Related pro
 
 ## 9. 最終submit前の順番
 
-1. r32.1 exact regression／binary／source／software／DemoData package gateを完了する。
-2. 権利処理済みsampleを同じr32.1でGLB／OBJ→project→3MF→Orca→U1まで完走する。
-3. hash、profile、filament、失敗／改善写真を記録する。
-4. 公開済みGitHubへREADME hero、sample、known limitations、validationを追記する。
-5. `ChromaMatter-simple-workflow-demo.mp4`を最終Releaseへ同時uploadし、public URLとchecksumを確認する。
-6. 90秒hero videoとtechnical demoを公開する。
-7. Snapmaker Forumへ投稿し、URLを保存する。
-8. 公式formへproject URL、category、short description、coverを入力する。
-9. 送信前画面、送信完了画面、当日の規約／FAQを保存する。
+1. 権利処理済みsampleを公開r32.1でGLB／OBJ→project→3MF→Orca→U1まで完走する。
+2. sample／3MF hash、profile、filament、失敗／改善写真を記録する。
+3. multipart閉立体化の成功／失敗条件を少なくとも複数fileで記録し、0.8beta制約を応募本文と動画で示す。
+4. GitHubへ応募用README hero、sample、validationを追記する。
+5. 90秒hero videoとtechnical demoを公開する。
+6. Snapmaker Forumへ投稿し、URLを保存する。
+7. 公式formへproject URL、category、short description、coverを入力する。
+8. 送信前画面、送信完了画面、当日の規約／FAQを保存する。
 
 ## 10. 最終判断
 
 応募文を強くするために、これ以上featureを増やす必要はない。現在の課題は**同一revisionと同一sampleで、software contractと実機結果を一本につなぐこと**である。
 
-公開前に必ず揃える最低線は、`public source + exact test evidence + original redistributable sample + Orca reopen/slice + U1 final print + honest limitations`。これが揃えばActive Builderは現実的で、実機calibrationの定量比較と第三者再現まで加わればEco-Enhancerを狙える。U1 Pioneerを主目標に誇張するより、Full Spectrum creator workflowの新しい入口を確実に実証する方が勝率は高い。
+公開source、Windows配布物、exact test evidence、対応source、checksum、DemoDataはr32.1で揃った。応募前に残る最低線は、`release-bound original sample + Orca reopen/slice + U1 final print + multipart failureを含むhonest limitations + cover／hero／community post`。これが揃えばActive Builderは現実的で、実機calibrationの定量比較と第三者再現まで加わればEco-Enhancerを狙える。U1 Pioneerを主目標に誇張するより、Full Spectrum creator workflowの新しい入口を確実に実証する方が勝率は高い。

@@ -131,7 +131,7 @@ class ReleaseIdentityTests(unittest.TestCase):
             with self.subTest(required=required):
                 self.assertIn(required, handoff)
 
-    def test_handoff_state_records_current_source_and_blocked_binary_scope(self):
+    def test_handoff_state_records_published_r32_1_scope(self):
         state = json.loads(read_text(REPO_ROOT / "CURRENT_STATE.json"))
         self.assertEqual(
             "ChromaMatter — AI Model Print Studio",
@@ -141,10 +141,7 @@ class ReleaseIdentityTests(unittest.TestCase):
         self.assertEqual("0.8beta", state["package_version"])
         self.assertEqual("AI Model Print Studio r32.1", state["edition"])
         self.assertEqual("r32.1-ai-model-print-studio", state["artifact_slug"])
-        self.assertEqual(
-            "r32.1-release-update-final-build-pending",
-            state["status"],
-        )
+        self.assertEqual("v0.8beta-r32.1-published-prerelease", state["status"])
         self.assertTrue(state["version_policy"]["pinned_until_explicit_user_request"])
         self.assertTrue(
             state["version_policy"]["edition_and_artifact_revision_may_advance_independently"]
@@ -157,24 +154,17 @@ class ReleaseIdentityTests(unittest.TestCase):
         )
 
         validation = state["validation"]
-        for pending_gate in (
+        for passed_gate in (
             "implementation_focused_source",
             "release_focused_identity_regression_tooling_gui_layout",
             "current_public_ui_focused_regression",
         ):
-            with self.subTest(pending_gate=pending_gate):
-                self.assertTrue(validation[pending_gate].startswith("pending"))
-                self.assertIn("r32.1", validation[pending_gate])
-        self.assertIn(
-            "6ada59418796ab0bbe158fa5a9bcff32e8e188bc",
-            validation["current_full_regression"],
-        )
-        self.assertIn("r32.1", validation["current_full_regression"])
-        self.assertIn("previous evidence", validation["current_full_regression"])
-        self.assertIn(
-            "requires a new exact full regression",
-            validation["current_full_regression"],
-        )
+            with self.subTest(passed_gate=passed_gate):
+                self.assertTrue(validation[passed_gate].startswith("passed"))
+        self.assertIn("b575b93d973ed67e7ada986469b10b4490eef4e5", validation["current_full_regression"])
+        self.assertIn("Ran 1277 tests", validation["current_full_regression"])
+        self.assertIn("1274 passed", validation["current_full_regression"])
+        self.assertIn("0 failed", validation["current_full_regression"])
         self.assertIn(
             "VCTools directory 14.44.35207",
             validation["controlled_toolchain_install_and_contract"],
@@ -234,20 +224,20 @@ class ReleaseIdentityTests(unittest.TestCase):
             controlled_run["repaired_wheel"]["sha256"],
             controlled_run["application_locked_wheel_sha256"],
         )
+        self.assertTrue(validation["current_clean_build_and_packaged_smoke"].startswith("passed"))
         self.assertTrue(
-            validation["current_clean_build_and_packaged_smoke"].startswith(
-                "pending for r32.1"
-            )
+            validation["current_stage_archive_privacy_and_checksum_audit"].startswith("passed")
         )
         self.assertTrue(
-            validation["current_stage_archive_privacy_and_checksum_audit"].startswith(
-                "pending for r32.1"
-            )
+            validation["binary_component_licence_and_static_link_coverage"].startswith("passed")
         )
-        self.assertTrue(
-            validation["binary_component_licence_and_static_link_coverage"].startswith(
-                "current source contracts cover"
-            )
+        self.assertIn(
+            "1455 files",
+            validation["binary_component_licence_and_static_link_coverage"],
+        )
+        self.assertIn(
+            "256 native files",
+            validation["binary_component_licence_and_static_link_coverage"],
         )
         self.assertIn(
             "50 Qt static components",
@@ -302,13 +292,10 @@ class ReleaseIdentityTests(unittest.TestCase):
         )
 
         release = state["release"]
-        self.assertEqual(
-            "r32.1-release-update-final-build-pending",
-            release["state"],
-        )
+        self.assertEqual("v0.8beta-r32.1-published-prerelease", release["state"])
         self.assertEqual("r32.1-ai-model-print-studio", release["target_revision"])
         self.assertEqual(
-            "ChromaMatter-0.8beta-r32.1-source-public-20260824",
+            "ChromaMatter-0.8beta-r32.1-complete-corresponding-source",
             release["public_source_default"],
         )
         self.assertEqual(
@@ -316,32 +303,36 @@ class ReleaseIdentityTests(unittest.TestCase):
             release["software_package_default"],
         )
         latest = release["latest_source_branch_validation"]
+        self.assertEqual("published-prerelease-exact-tagged-build", latest["status"])
+        self.assertEqual("v0.8beta-r32.1", latest["tag"])
         self.assertEqual(
-            "r32.1-final-build-pending",
-            latest["status"],
+            "b575b93d973ed67e7ada986469b10b4490eef4e5",
+            latest["tagged_commit"],
         )
-        self.assertIn("pending for the exact r32.1 source", latest["source_full_regression"])
-        self.assertIn("previous evidence only", latest["source_full_regression"])
-        self.assertFalse(latest["source_publication_eligible"])
+        self.assertIn("Ran 1277 tests", latest["source_full_regression"])
+        self.assertIn("1274 passed", latest["source_full_regression"])
+        self.assertIn("3 optional skips", latest["source_full_regression"])
+        self.assertTrue(latest["source_publication_eligible"])
         self.assertEqual(
-            None,
-            latest["public_source_stage"]["total_files_including_manifest"],
-        )
-        self.assertIsNone(latest["public_source_stage"]["manifest_records"])
-        self.assertEqual(
-            "ChromaMatter-0.8beta-r32.1-source-public-20260824",
+            "ChromaMatter-0.8beta-r32.1-complete-corresponding-source",
             latest["public_source_stage"]["expected_root"],
         )
-        self.assertFalse(latest["binary_publication_eligible"])
+        self.assertEqual("release-approved", latest["public_source_stage"]["status"])
+        self.assertEqual([], latest["public_source_stage"]["known_gaps"])
+        self.assertTrue(latest["binary_publication_eligible"])
+        self.assertEqual([], latest["binary_publication_blockers"])
         self.assertEqual(
-            latest["binary_publication_blockers"],
-            [
-                "release-approved-complete-corresponding-source-not-generated",
-                "current-clean-binary-build-packaged-self-test-and-ja-en-smoke-pending",
-                "fresh-extract-manifest-privacy-archive-checksum-parity-pending",
-                "immutable-https-release-url-and-simultaneous-assets-pending",
-            ],
+            "1215CF77D8C8CB8AA5CE91DC7C84AE13404F3AA46221321807AD2E8A19F9064A",
+            latest["software_package"]["sha256"],
         )
+        self.assertIn("documentation HEAD may be newer", latest["branch"])
+        self.assertIn(
+            "other multipart files may still fail",
+            state["validation"]["multipart_solidification_beta_limitation"],
+        )
+        distribution = release["distribution_policy"]
+        self.assertTrue(distribution["downloads_placement_claimed"])
+        self.assertIn("is published", distribution["artifact_checksum_record"])
         published_r32 = release["previous_r32_public_release"]
         self.assertEqual("previous evidence only: published", published_r32["status"])
         self.assertEqual("v0.8beta-r32", published_r32["tag"])
@@ -541,6 +532,7 @@ class ReleaseIdentityTests(unittest.TestCase):
             with self.subTest(path=path):
                 text = read_text(path)
                 folded = text.casefold()
+                compact = folded.replace(",", "")
                 for required in (
                     "ChromaMatter",
                     "AI Model Print Studio r32.1",
@@ -557,41 +549,22 @@ class ReleaseIdentityTests(unittest.TestCase):
                     "Orca",
                     "manual",
                     "adaptive",
-                    "1270",
-                    "1267",
-                    "236.319",
+                    "1277",
+                    "1274",
                     "r31",
-                    "1024",
-                    "1023",
-                    "100.656",
-                    "13,986,866",
-                    "ChromaMatter.exe",
-                    "208167A225A37BAAAA473B574B2F746E46427FD0CA63FC5B7201BF3394243743",
-                    "227",
-                    "226",
-                    "1,404",
-                    "1,403",
-                    "SHA256SUMS-r31.txt",
-                    "pending",
                     "XP-PEN",
                     "passed-by-creator-declaration",
                     "ZENITH DYNAMICS CORP.",
-                    "binary publication eligibility",
-                    "application lock",
                     "release-approved",
-                    "20260823-174626-089357844d4b",
-                    "e3b11ac058266d277b0f83448c6023d5da98e731d0d016e461dbce4ebdfd613d",
-                    "26a091b53279407014899c046691958c9df07e22703576da6a45d68a9be22430",
-                    "3989fd1debe8b6c984938c4a64ee5fb3bcce1b612cf83524ea309b1fae3cde9f",
-                    "immutable HTTPS",
-                    "ChromaMatter-0.8beta-r32.1-source-public-20260824",
+                    "b575b93d973ed67e7ada986469b10b4490eef4e5",
+                    "1215CF77D8C8CB8AA5CE91DC7C84AE13404F3AA46221321807AD2E8A19F9064A",
+                    "D5A64F3022265BCE7C5C2DFA0358DFC2C94EEA541A5A4AC5671CE3BA829BE4CC",
                     "ChromaMatter-0.8beta-r32.1-win64",
-                    "Innovation Fund",
+                    "v0.8beta-r32.1",
                     "https://github.com/Ponkichi0718/ChromaMatter",
-                    "Ponkichi0718",
                 ):
                     with self.subTest(path=path, required=required):
-                        self.assertIn(required.casefold(), folded)
+                        self.assertIn(required.casefold().replace(",", ""), compact)
                 self.assertIn("previous evidence", folded)
                 self.assertIn("pending", folded)
                 self.assertTrue("no cap" in folded or "蓋を追加" in text)
@@ -612,6 +585,14 @@ class ReleaseIdentityTests(unittest.TestCase):
                 self.assertTrue(
                     "technical errors" in folded or "技術的な誤り" in text
                 )
+                if path.name.casefold().endswith("_ja.md"):
+                    self.assertIn("DemoData", text)
+                    self.assertTrue("他の" in text or "ほかの" in text)
+                    self.assertIn("3MF出力", text)
+                else:
+                    self.assertIn("bundled `demodata", folded)
+                    self.assertIn("other multipart", folded)
+                    self.assertIn("3mf export", folded)
                 self.assertNotIn("decal beta", folded)
                 self.assertNotIn("デカール β", text)
 
@@ -665,14 +646,15 @@ class ReleaseIdentityTests(unittest.TestCase):
             "## Download for Windows",
             "ChromaMatter-0.8beta-r32.1-win64.zip",
             "## Current status",
-            "**Release target:** `v0.8beta-r32.1`",
-            "**Source and Windows package:** r32.1 is released only as one "
-            "simultaneous asset set",
-            "**Complete corresponding source:** Required beside the Windows ZIP",
+            "**Published release:** [`v0.8beta-r32.1`]",
+            "**Frozen release source:** tag `v0.8beta-r32.1`",
+            "**Published asset set:** Windows ZIP, complete corresponding source, "
+            "SBOM, component map, workflow video, and detached checksums",
             "**Public test model:** Rights-cleared Hi3D multipart GLB and "
             "reference image are included under `DemoData/` in the Windows package",
-            "**Physical U1 validation:** Public print observed; "
-            "release-bound reproducibility validation in progress",
+            "**Physical U1 validation:** The linked public print completed; "
+            "it does not prove compatibility with every model or production setup",
+            "Solidification of multipart models is still unstable.",
             "## Four things ChromaMatter does",
             "## Quick Start",
             "## Technical details",
@@ -719,10 +701,7 @@ class ReleaseIdentityTests(unittest.TestCase):
         self.assertIn("## Physical U1 result", readme)
         self.assertIn("48 hours", readme)
         self.assertIn("220 g including the prime tower", readme)
-        self.assertIn(
-            "not yet release-bound reproducibility evidence",
-            readme,
-        )
+        self.assertIn("not a guarantee that every model", readme)
         self.assertIn(
             "ChromaMatter-simple-workflow-demo.mp4",
             readme,
@@ -783,6 +762,32 @@ class ReleaseIdentityTests(unittest.TestCase):
             for marker in japanese_markers:
                 with self.subTest(path=path, marker=marker):
                     self.assertIn(marker, document)
+
+        status_docs = (
+            REPO_ROOT / "FEATURES_EN.md",
+            REPO_ROOT / "FEATURES_JA.md",
+            REPO_ROOT / "PROVENANCE.md",
+            REPO_ROOT / "HANDOFF.md",
+            REPO_ROOT / "publication" / "BINARY_RELEASE_HANDOFF_JA.md",
+            REPO_ROOT / "publication" / "PUBLICATION_CHECKLIST_JA.md",
+            REPO_ROOT / "publication" / "GITHUB_PUBLICATION_GUIDE_JA.md",
+            REPO_ROOT / "publication" / "LEGAL_AND_RIGHTS_JA.md",
+            REPO_ROOT / "publication" / "INNOVATION_FUND_APPLICATION_DRAFT.md",
+            REPO_ROOT / "publication" / "INNOVATION_FUND_STATUS_JA.md",
+            REPO_ROOT / "publication" / "VIDEO_VALIDATION_CHECKLIST_JA.md",
+        )
+        for path in status_docs:
+            document = read_text(path).casefold()
+            with self.subTest(status_document=path):
+                self.assertIn("0.8beta", document)
+                self.assertIn("demodata", document)
+                self.assertIn("3mf", document)
+                self.assertTrue(
+                    "multipart" in document
+                    or "パーツ化" in document
+                    or "分割" in document
+                )
+                self.assertTrue("fail" in document or "失敗" in document)
 
         english_landing = read_text(REPO_ROOT / "README.md")
         self.assertLess(

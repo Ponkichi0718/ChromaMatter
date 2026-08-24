@@ -9,12 +9,18 @@ ChromaMatter — AI Model Print Studioは、AI生成された頂点カラー付�
 
 表示versionは利用者の指定どおり`0.8beta`、Windows数値versionは`0.8.0.0`に固定し、人向けeditionを`AI Model Print Studio r32.1`とします。
 
-- public source: `ChromaMatter-0.8beta-r32.1-source-public-20260824`
-- software package: `ChromaMatter-0.8beta-r32.1-win64`
+- published complete corresponding source: `ChromaMatter-0.8beta-r32.1-complete-corresponding-source.zip`
+- published Windows package: `ChromaMatter-0.8beta-r32.1-win64.zip`
+- immutable release tag: `v0.8beta-r32.1`
+- exact tagged commit: `b575b93d973ed67e7ada986469b10b4490eef4e5`
+- release: [https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.1](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.1)
+- direct Windows download: [ChromaMatter-0.8beta-r32.1-win64.zip](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.1/ChromaMatter-0.8beta-r32.1-win64.zip)
 
 ## 2. r32.1更新とr32出力workflowの継承
 
 r32.1は公開previewの「Tripo 元モデル色」を「AIモデル色」へ変更し、権利確認済みのHi3D分割GLBと元画像をWindows packageの`DemoData/`へ加えるpost-r32更新です。demoではimportしたpart名をsemanticな印刷part名として信用せずpreviewで対象を確認し、3MF出力前に実際の最暗filamentを選んで「黒弱め 5〜25%」presetを必ず適用します。model処理、閉立体化、識別色抑制、palette、manual paint、3MF provenanceのr32契約は変更しません。公開済み`v0.8beta-r32`のtag／assetは変更せずprevious evidenceとして保持します。
+
+> **分割モデル閉立体化の0.8beta制約:** 同梱`DemoData/`は閉立体化と3MF出力の成功を確認済みですが、ほかの分割modelでは閉立体化または3MF出力に失敗する場合があります。すべての入力を安定して修復できる段階ではなく、これが`0.8beta`である理由の一つです。
 
 r32は、閉立体化前の適格modelを3MF出力しようとした場合に、安全確認済みのpart境界またはGLB同一座標seamだけを閉立体化すると宣言し、成功後に同じ出力操作を再開します。本当の穴へ推測で蓋を追加せず、対応を証明できない境界、非manifold結果、または処理失敗は従来どおりfail-closedです。
 
@@ -86,13 +92,32 @@ r30は、Hi3D AI等から出力されるstatic GLB／glTF 2.0 meshを直接読�
 
 メイン画面、mixed palette、calibration chart、全体共通palette count、実機黒補正、公開機能の境界、Manual Editingのtool配置はCreator Studio r26の公開契約を継続します。
 
-## 4. r32.1検証状態とr32 previous evidence
+## 4. r32.1公開済み検証とr32 previous evidence
 
-r32.1はsource bytes、frozen executable、software ZIP、完全対応ソース、SBOM、component map、fresh extraction、日英UI smoke、privacy／archive parity、`SHA256SUMS-r32.1.txt`を新しく測定します。これらが完了するまでr32.1のsource／binary publication eligibilityはfalseです。
+`v0.8beta-r32.1`はInnovation Fund向けWindows prereleaseとして公開済みです。release tagは検証済みsourceと配布assetをcommit `b575b93d973ed67e7ada986469b10b4490eef4e5`へ固定し、後続のdocumentation-onlyな`main`更新はtagまたはrelease assetのbytesを変更しません。
+
+- focused release test: 113 PASS／0 FAIL
+- full regression: Python `3.13.14`、全1,277件、1,274 PASS／3 optional SKIP／0 FAIL（234.260秒）
+- clean Windows build、packaged self-test、隔離profileの日英UI smoke: PASS
+- 独立fresh extractでのself-test、日英UI smoke、DemoData manifest／hash: PASS
+- fail-closed compliance inventory: 1,455 files（native 256 files）でPASS
+- Windows package: 234,650,536 bytes、1,518 files、SHA-256 `1215CF77D8C8CB8AA5CE91DC7C84AE13404F3AA46221321807AD2E8A19F9064A`
+- Windows package manifest SHA-256: `9E9DEFF9B36FE2DCFE9767B19CBF445ACAD6153A213D4B0D36C89E4CDBB3D23C`
+- executable: 14,018,519 bytes、SHA-256 `E7392BF7C9EF627420459802642B6211B93DC454AEC6127C67F2FD3F45719E63`
+- 完全対応ソース: 1,365,864,778 bytes、`release-approved`、known gapsなし、SHA-256 `D5A64F3022265BCE7C5C2DFA0358DFC2C94EEA541A5A4AC5671CE3BA829BE4CC`
+- SBOM SHA-256: `D825C318E1387CDDA18AF25D4611E8B81CE1C8DAAA9AB6C180C420BEBF7CF1A0`
+- binary component map SHA-256: `EB5053860139E3AA0E78B4D6857728A8B6D05DB747D70C30AC7EBD1A7A2DCB2C`
+- workflow video SHA-256: `F55F9505EC7385D27A933799F9EEFD1C2499A77B86B0BB1162832320E88FEE61`
+- detached `SHA256SUMS-r32.1.txt` SHA-256: `B8D76A07C30568F9E42002B67BFE4DAA5F4339B0A2224C529C85984FF7B1E640`
+- 公開後、全6 Release assetを未認証で独立downloadし、sizeとSHA-256がすべて一致
+- exact tagged完全対応ソースのsource publication eligibility: **true**
+- exact tagged Windows assetのbinary publication eligibility: **true**
+
+physical XP-PEN validationとphysical printはpendingの既知制約ですが、上記exact prereleaseの公開blockerではありません。分割model閉立体化も、同梱demoの成功だけを一般化せず、入力によって失敗し得る0.8beta制約として継続開示します。
 
 公開済みr32のexact final build logはPython `3.13.14`で`Ran 1270 tests in 236.319s: OK (skipped=3)`、1267 PASS／3 optional SKIP／0 FAILを記録し、clean build、packaged self-test、日英UI smokeもPASSしました。controlled PyTetWild run `20260823-174626-089357844d4b`、application lock、release-approved static-closure contractも採用済みです。これらと、以前の1048-test結果、`C:\OBJAdjR32CM3`のbuild証拠、SHA-256 `8BBABEACCF9B47AC2750C86B7C38966E46F00A624C648036D600C9601CF86EBB`のEXEはr32系の**previous evidence**であり、r32.1 binaryを検証しません。
 
-採用前のr32 public-source stageは395 files／394 manifest recordsで、manifest全SHA、privacy、独立path／SHA-256 parityがPASSしました。以前のsoftware stage 1,404 files／1,403 manifest recordsとfresh software self-test／日英UI smokeも**previous evidence**です。r32.1の現行sourceからのclean build、final source／software stage、fresh extract、detached `SHA256SUMS-r32.1.txt`、Git-tree parity、GitHub更新は**pending**です。
+採用前のr32 public-source stageは395 files／394 manifest recordsで、manifest全SHA、privacy、独立path／SHA-256 parityがPASSしました。以前のsoftware stage 1,404 files／1,403 manifest recordsとfresh software self-test／日英UI smokeも**previous evidence**です。これらは上記のexact r32.1 build、stage、fresh extract、detached checksum、Git-tree parity、GitHub prerelease公開を置き換える証拠ではありません。
 
 以下のr31結果は公開済みrevisionだけに適用する**previous evidence**であり、r32.1を検証しません。
 
@@ -119,11 +144,11 @@ r31 preflight public sourceは227 files（manifest含む）／226 manifest recor
 
 この証拠はr27 artifactだけに適用し、r32.1 source、binary、package、checksumの検証には流用しません。preflight ZIP hashはcanonical文書へ埋め込みません。
 
-r32以前のregression／build／artifact evidenceはr32.1 sourceへ流用しません。公開済みr32 Releaseはtag `v0.8beta-r32`、commit `86e34b2a9468f81768ee134a680a792b1a83df05`に固定されたprevious evidenceです。project ownerは2026-08-20にr31公開GOを出し、icon publication rightsはcreator declarationによりpass、当該asset scopeのlegal gateはowner acceptanceとして完了しました。これは独立した法務clearanceではありません。最終r31 source-only stage `ChromaMatter_0.8beta-r31-source-public-20260820`は227 files／226 manifest recordsで、folder／archive parity、CRC、privacy、staged identity／icon／tooling 32 testsを全て通過しました。Downloads配置と外部detached `SHA256SUMS-r31.txt`の照合もr31 source-only distributionについて完了しています。repositoryはpublic owner handle `Ponkichi0718`により[https://github.com/Ponkichi0718/ChromaMatter](https://github.com/Ponkichi0718/ChromaMatter)で公開されています。r32.1現行sourceからのclean buildと全package gateが完了するまで`binary_publication_eligible`はfalseです。
+r32以前のregression／build／artifact evidenceはr32.1 sourceへ流用しません。公開済みr32 Releaseはtag `v0.8beta-r32`、commit `86e34b2a9468f81768ee134a680a792b1a83df05`に固定されたprevious evidenceです。project ownerは2026-08-20にr31公開GOを出し、icon publication rightsはcreator declarationによりpass、当該asset scopeのlegal gateはowner acceptanceとして完了しました。これは独立した法務clearanceではありません。最終r31 source-only stage `ChromaMatter_0.8beta-r31-source-public-20260820`は227 files／226 manifest recordsで、folder／archive parity、CRC、privacy、staged identity／icon／tooling 32 testsを全て通過しました。Downloads配置と外部detached `SHA256SUMS-r31.txt`の照合もr31 source-only distributionについて完了しています。repositoryはpublic owner handle `Ponkichi0718`により[https://github.com/Ponkichi0718/ChromaMatter](https://github.com/Ponkichi0718/ChromaMatter)で公開されています。現在の`binary_publication_eligible=true`は、上記exact tagged r32.1 Windows assetだけに適用します。
 
 ## 5. Previous evidence
 
-公開済みChromaMatter r32、r31およびCreator Studio r30、r29、r28、r27の上記結果は**previous evidence only**であり、ChromaMatter r32.1のsource、binary、package、checksumを検証しません。
+公開済みChromaMatter r32、r31およびCreator Studio r30、r29、r28、r27の上記結果は**previous evidence only**であり、ChromaMatter r32.1のsource、binary、package、checksumを検証しません。r32.1にはsection 4のexact tagged release evidenceだけを適用します。
 
 Creator Studio r26のsource regression、clean build、packaged self-test、日英UI smoke、stage、fresh-extract、privacy、archive、detached-checksum監査もr26 artifactだけのprevious evidenceです。
 
@@ -139,4 +164,4 @@ r30は離散印刷stateと互換なsoft falloff、time build-up、visible-face�
 
 公開sourceと配布候補には、非公開の検証OBJ／GLB／textureその他のassetや識別可能な詳細を含めません。公開文書には一般化した機能契約と、再現可能なpublic-source testだけを記録します。
 
-r32.1配布checksum `SHA256SUMS-r32.1.txt`はfinal restage後に外部作成するため現在pendingです。完成済みの`SHA256SUMS-r32.txt`と`SHA256SUMS-r31.txt`はprevious evidenceだけに適用します。canonical文書へfinal ZIPの自己参照hashは埋め込みません。
+r32.1配布checksum `SHA256SUMS-r32.1.txt`はほかの5 assetと同時に公開済みで、全6 assetの未認証再downloadによるsize／SHA-256照合にPASSしています。完成済みの`SHA256SUMS-r32.txt`と`SHA256SUMS-r31.txt`はprevious evidenceだけに適用します。canonical文書へfinal ZIPの自己参照hashは埋め込みません。

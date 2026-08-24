@@ -1,23 +1,26 @@
 # ChromaMatter 公開前のライセンス・権利整理
 
 更新日: 2026-08-24
-対象: ChromaMatter — AI Model Print Studio 0.8beta r32.1 のsource／Windows package更新
+対象: 公開済みChromaMatter — AI Model Print Studio `0.8beta r32.1`のsource／Windows package記録
 
 ## 先に結論
 
 TetGen が AGPL のオープンソースであることだけを理由に、「そのまま公開・配布して問題ない」とは判断できません。AGPL は利用を禁止するライセンスではありませんが、配布方法に応じたソースコード、ライセンス表示、ビルド情報などの提供義務があります。
 
-さらに、現在の配布候補には PyMeshLab、Qt、GEOS、Python ランタイムなども関係します。そのため、TetGen だけを確認しても EXE 配布全体の確認は完了しません。
+さらに、公開済みr32.1 packageには PyMeshLab、Qt、GEOS、Python ランタイムなども関係します。そのため、TetGen だけを確認しても EXE 配布全体の確認にはなりません。r32.1では全component inventory、SBOM、component map、通知、対応sourceをexact binaryに対して監査しました。
 
-現時点の推奨順序は次のとおりです。
+現時点の推奨順序は次のとおりで、r32.1では1～4を完了しました。次版でも同じ順序を繰り返します。
 
-1. 公開済みr32のtag／assetを変更せず、r32.1 sourceとmanifest固定済みDemoDataをfreezeする。
-2. 新しい空の環境でr32.1をbuildし、クリーンクローン／fresh-extract検証する。
-3. r32.1 EXEは、全依存関係、対応ソース、ライセンス表示、再リンク・置換可能性、DemoData権利／hashを含む配布監査が完了するまで公開しない。
+1. release対象sourceとmanifest固定済みDemoDataをfreezeする。
+2. 新しい空のbuild rootでclean buildし、fresh-extract検証する。
+3. 全依存関係、対応source、ライセンス表示、再リンク・置換可能性、DemoData権利／hashをexact final bytesに対して監査する。
+4. 新しいtagと変更しないasset一式でpre-releaseを公開し、sign-in不要で再取得してsize／SHA-256を照合する。
 
 これは法的助言ではありません。正式な公開、とくに企業への提案や広い範囲へのバイナリ配布の前には、ライセンスに詳しい専門家による最終確認が望まれます。
 
-2026-08-20、project ownerはChromaMatter r31のsource-only公開GOを出し、その後r32はtag `v0.8beta-r32`／commit `86e34b2a9468f81768ee134a680a792b1a83df05`で公開されました。これらはimmutableなprevious evidenceです。r32.1は変更していないアイコンのcreator declarationを継承しますが、exact regression／build／source・software stage／DemoData package監査／checksum／GitHub更新の公開判断はpendingです。このGOと権利申告はproject ownerによる判断であり、独立した法律事務所のreview、商標登録可能性の判定、第三者意匠clearanceを完了したという意味ではありません。
+2026-08-24、project ownerはr32.1の公開を承認し、[`v0.8beta-r32.1`](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.1)をcommit `b575b93d973ed67e7ada986469b10b4490eef4e5`からpre-releaseとして公開しました。[Windows版の直接download](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.1/ChromaMatter-0.8beta-r32.1-win64.zip)も提供しています。focused 113 PASS、full 1,277 tests／1,274 PASS／3 optional SKIP／0 FAIL、packaged self-test、日英UI smokeはPASSです。compliance inventoryは1,455 files／256 native files、Windows packageは1,518 files、complete corresponding sourceは`release-approved`／`known_gaps: []`です。公開6 assetをsign-in不要で再取得し、全size／SHA-256一致を確認しました。このGOと権利申告はproject ownerによる判断であり、独立した法律事務所のreview、商標登録可能性の判定、第三者意匠clearanceを完了したという意味ではありません。
+
+> **0.8betaの重要な制約:** パーツ化modelの閉立体化はまだ不安定です。同梱DemoDataでは閉立体化と3MF出力に成功していますが、他のmultipart OBJ／GLBでは形状、開口、重なり、非manifold状態により閉立体化または3MF出力に失敗する場合があります。デモ成功は一般的な互換性保証ではなく、この未完成領域が`0.8beta`である理由の一つです。
 
 ## 1. TetGen の扱い
 
@@ -156,9 +159,9 @@ reference画像をowner自身が作成したこと、両fileをChromaMatterのWi
 
 2026-08-24、project ownerは自ら提供した約2分の操作動画を、ChromaMatterのGitHubおよび
 Innovation Fund向け資料へ「シンプルな使い方」として掲載することを明示的に承認しました。
-公開時は個人情報を除去し、音声を外したprivacy確認済みcopyだけを
-`ChromaMatter-simple-workflow-demo.mp4`として使います。Git履歴やsoftware／対応ソースZIPへは
-入れず、GitHub Releaseの独立assetとしてchecksum対象にします。この承認は動画ファイルの
+個人情報を除去し、音声を外したprivacy確認済みcopyだけを
+`ChromaMatter-simple-workflow-demo.mp4`として公開しました。Git履歴やsoftware／対応ソースZIPへは
+入れず、r32.1 GitHub Releaseの独立assetとして公開し、checksumと再取得一致を確認しました。この承認は動画ファイルの
 掲載範囲を記録するものであり、映像内に現れる第三者製品・serviceとの提携や、manifestで
 明示したDemoData以外のモデルをダウンロード再配布する権利を意味しません。
 
@@ -168,15 +171,15 @@ Innovation Fund向け資料へ「シンプルな使い方」として掲載す�
 |---|---|---|
 | r31整理済みソースのみ（previous evidence） | **source-published** | `ChromaMatter_0.8beta-r31-source-public-20260820`のprivacy、license notice、clean build／test、final stage、archive parity、CRC、identity／icon／tooling、Downloads配置、detached checksum照合が完了 |
 | r32公開Release（previous evidence） | **published** | tag `v0.8beta-r32`、commit `86e34b2a9468f81768ee134a680a792b1a83df05`と既存assetを変更しない |
-| r32.1更新 | **pending** | exact regression、clean build、packaged smoke、source／software final stage、DemoData hash／rights gate、archive、privacy、identity、外部detached `SHA256SUMS-r32.1.txt`、GitHub tree一致を実測してから公開判断する |
-| r32.1 EXE・software配布ZIP | 保留 | ownerの公開GOでも第三者license義務は免除されない。実装済みのSBOM／component map／対応ソース／license契約をexact final binaryに対して再生成・監査する |
+| r32.1更新 | **published pre-release** | tag `v0.8beta-r32.1`／固定commitから公開済み。exact regression、clean build、packaged smoke、source／software final stage、DemoData hash／rights gate、archive、privacy、identity、外部detached checksum、公開asset再取得はPASS |
+| r32.1 EXE・software配布ZIP | **published** | SBOM／component map／通知／license原文と`release-approved`／`known_gaps: []`のcomplete corresponding sourceをexact final binaryに対して生成・監査済み。ownerの公開GOでも将来版の第三者license義務は免除されない |
 | 旧 EXE、recovered_pyc、旧アイコン | 除外 | 権利と由来が文書で確認できるまで公開しない |
 | 合成テストデータ | 公開候補 | 自作生成手順とライセンスを明示 |
 | 私有の実モデル・元画像・3MF | 非配布 | manifest固定済みr32.1 DemoData 2 payloadだけを例外とし、その他は動画表示だけでも権利記録を残す |
-| Snapmaker Orca 一貫操作 | 未完了 | 動画チェックリストに沿った実機能確認 |
-| Snapmaker U1 物理造形 | 未完了 | 実フィラメントでの造形、色、寸法、ジョイント評価 |
+| Snapmaker Orca 一貫操作 | 応募用release-bound記録は未完了 | 同一sample／3MF hash／Orca版を動画チェックリストに沿って記録する |
+| Snapmaker U1 物理造形 | matrix未完了 | 公開r32.1と同一sample／profile／filamentへ紐づけ、色、寸法、ジョイントを評価する |
 
-r31の`source-only`公開と公開済みr32 Releaseはprevious evidenceです。r32.1のpublication decisionは、現行bytesのfinal gateが揃うまでpendingです。checksum値は外部detached recordだけを正本とし、canonical source文書には埋め込みません。物理XP-PEN検証とU1造形matrixは未完了evidenceとして残し、r32.1 EXE／software ZIPにはexact binary再配布監査がhard gateとして残ります。
+r31の`source-only`公開と公開済みr32 Releaseはprevious evidenceです。r32.1のpublication decisionとexact binary再配布監査は完了しました。checksum値は外部detached recordを正本とし、公開6 assetの再取得一致も確認済みです。物理XP-PEN検証、U1造形matrix、Innovation Fund submissionは未完了evidenceとして残します。次版のEXE／software ZIPにもexact binary再配布監査をhard gateとして適用します。
 
 ## 7. 一次情報
 
