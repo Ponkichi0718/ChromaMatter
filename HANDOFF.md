@@ -810,3 +810,54 @@ Keep these outside Git and do not copy them to the public release by default:
   and its orchestration-run controls. Preserve them as the successful local
   controlled evidence source, but copy only the exact allowlisted evidence
   through corresponding-source staging; do not commit the local directories.
+
+## 2026-08-24 post-publication documentation checkpoint
+
+### Objective and completed work
+
+- Make the Windows r32.1 ZIP immediately visible from the GitHub landing page.
+- Record the exact published-prerelease evidence instead of the superseded
+  candidate/pending state.
+- State prominently that multipart solidification is still unstable: bundled
+  `DemoData` succeeds, while other multipart files may fail solidification or
+  3MF export. This incomplete compatibility is one reason for `0.8beta`.
+- Align the English/Japanese README aliases, features, provenance, Release
+  notes, publication/legal checklists, Innovation Fund drafts, video checklist,
+  fixed-source README copies, `CURRENT_STATE.json`, and the disclosure test.
+- Correct two nonexistent relative links in the paste-ready Innovation Fund
+  README draft.
+
+### Current state and review path
+
+- Documentation commit `8300a13` is pushed to
+  `origin/codex/demo-data-ui-label-update`.
+- Public review PR: <https://github.com/Ponkichi0718/ChromaMatter/pull/3>.
+- The frozen `v0.8beta-r32.1` tag still resolves to
+  `b575b93d973ed67e7ada986469b10b4490eef4e5`; none of the six Release asset
+  bytes were rebuilt, replaced, or retagged.
+- The live Release body is the only remaining metadata surface to align with
+  `publication/RELEASE_NOTES_r32.1.md`; update it without changing the Release
+  tag, prerelease flag, asset names, asset bytes, sizes, or digests.
+
+### Validation
+
+- `source.fixed_app.test_release_identity`: 12/12 PASS in the fixed dependency
+  environment after the final documentation changes.
+- Release tooling, corresponding-source tooling, and legal notice modules:
+  135/135 PASS in the fixed dependency environment.
+- `CURRENT_STATE.json` parse, README alias parity, local draft-link target
+  existence, added-line privacy review, and `git diff --check`: PASS.
+- A system-Python attempt lacked the `pymeshlab` package and produced 25 setup
+  errors. The same 135 tests passed in the pinned dependency environment, so
+  those errors are not source or documentation failures.
+
+### Next task and prohibitions
+
+- Review and merge PR #3, then synchronize the live r32.1 Release description
+  and verify the six asset digests are unchanged.
+- Do not move either release tag, rebuild r32.1, replace any attached asset, or
+  weaken topology/3MF validation in response to the documented beta limit.
+- Physical XP-PEN validation, a release-bound Orca/U1 reproducibility matrix,
+  the 90-second hero/cover/community post, and the Innovation Fund submission
+  remain future work. Keep all private models, credentials, build roots, and
+  controlled toolchain evidence local-only as listed above.
