@@ -1,7 +1,8 @@
 # ChromaMatter cross-PC handoff
 
 Updated: 2026-08-24
-Branch: `codex/demo-data-ui-label-update`
+Branch: `main` for post-release documentation; the frozen release source remains
+`v0.8beta-r32.1` / `b575b93d973ed67e7ada986469b10b4490eef4e5`
 Release: `v0.8beta-r32.1` is published as a GitHub prerelease from frozen
 commit `b575b93d973ed67e7ada986469b10b4490eef4e5`
 Public version: `0.8beta` (do not change without an explicit owner request)
@@ -829,15 +830,17 @@ Keep these outside Git and do not copy them to the public release by default:
 
 ### Current state and review path
 
-- Documentation commit `8300a13` is pushed to
-  `origin/codex/demo-data-ui-label-update`.
-- Public review PR: <https://github.com/Ponkichi0718/ChromaMatter/pull/3>.
+- Public review PR <https://github.com/Ponkichi0718/ChromaMatter/pull/3> was
+  squash-merged to `main` as
+  `76daf15cd49933cab14839f9535ba4f1d9ef5eba`.
 - The frozen `v0.8beta-r32.1` tag still resolves to
   `b575b93d973ed67e7ada986469b10b4490eef4e5`; none of the six Release asset
   bytes were rebuilt, replaced, or retagged.
-- The live Release body is the only remaining metadata surface to align with
-  `publication/RELEASE_NOTES_r32.1.md`; update it without changing the Release
-  tag, prerelease flag, asset names, asset bytes, sizes, or digests.
+- The live Release body now matches `publication/RELEASE_NOTES_r32.1.md` and
+  includes the Windows direct download plus the multipart beta limitation.
+  An unauthenticated final check confirmed all six asset names, sizes, and
+  SHA-256 digests are unchanged; the Windows direct-download HEAD request
+  returned HTTP 200.
 
 ### Validation
 
@@ -853,8 +856,8 @@ Keep these outside Git and do not copy them to the public release by default:
 
 ### Next task and prohibitions
 
-- Review and merge PR #3, then synchronize the live r32.1 Release description
-  and verify the six asset digests are unchanged.
+- No r32.1 source, binary, tag, asset, or public-metadata work remains for this
+  documentation request.
 - Do not move either release tag, rebuild r32.1, replace any attached asset, or
   weaken topology/3MF validation in response to the documented beta limit.
 - Physical XP-PEN validation, a release-bound Orca/U1 reproducibility matrix,
