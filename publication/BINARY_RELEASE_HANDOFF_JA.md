@@ -4,8 +4,22 @@
 対象リポジトリ: <https://github.com/Ponkichi0718/ChromaMatter>
 作業ブランチ: `codex/demo-data-ui-label-update`
 
-公開済み`v0.8beta-r32`のtag／asset／`SHA256SUMS-r32.txt`は変更しない。r32.1は新しいexact commit、annotated tag、asset名、checksumで公開する。
-Draft PR: <https://github.com/Ponkichi0718/ChromaMatter/pull/1>
+`v0.8beta-r32.1`はcommit `b575b93d973ed67e7ada986469b10b4490eef4e5`に
+固定したGitHub prereleaseとして公開済みです。Windows ZIP、完全対応ソース、SBOM、
+component map、操作動画、`SHA256SUMS-r32.1.txt`の6 assetは、未認証の再取得でも
+size／SHA-256一致を確認済みです。公開済み`v0.8beta-r32`と`v0.8beta-r32.1`の
+tag／assetは変更しません。
+
+Release: <https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.1>
+
+Windows ZIP: <https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.1/ChromaMatter-0.8beta-r32.1-win64.zip>
+
+> **0.8betaの重要な制約:** パーツ化modelの閉立体化はまだ不安定です。同梱
+> `DemoData`では成功していますが、他のmultipart OBJ／GLBでは閉立体化または
+> 3MF出力に失敗することがあります。この互換性の未完成が0.8betaである理由の一つです。
+
+以下は公開前に使った工程と停止条件の履歴です。再配布や次版のreleaseでは同じ
+fail-closed gateを再実行します。
 
 ## 最重要の停止条件
 
@@ -57,13 +71,13 @@ Draft PR: <https://github.com/Ponkichi0718/ChromaMatter/pull/1>
   entryの独立SHA-256再検証に成功した。採用後にsource bytesが変わったため、これは
   previous evidenceであり、最終対応ソースbundleは再生成する。
 
-## 残っている公開ブロッカー
+## 公開前に残っていたブロッカー（完了済み履歴）
 
-公開済みr32のexact final build logはPython 3.13.14のfull regressionで
-`Ran 1270 tests in 236.319s: OK (skipped=3)`、1,267 PASS／3 optional SKIP／0 FAILを記録し、
-clean build、packaged self-test、日英UI smokeもPASSした。これはimmutableなr32 previous
-evidenceであり、r32.1へ流用しない。r32.1のexact regression／clean build／source・software
-stage／fresh-extract監査は未実施で、Windows binaryの公開GOではない。
+公開済みr32の結果はimmutableなprevious evidenceとして分離しました。r32.1ではexact
+tagged sourceに対してfocused 113 PASS、full regression 1,277件中1,274 PASS／
+3 optional SKIP／0 FAIL、clean build、packaged self-test、日英UI smoke、source・software
+stage、fresh-extract監査を新しく実施し、すべて通過しました。以下の番号付き項目は、
+公開時に満たしたgateを将来の再releaseでも省略しないための記録です。
 
 controlled PyTetWild run `20260823-174626-089357844d4b`はcommit
 `5feb198eef3432cdec19a0367d53e1b52bd4a363`で成功し、outbound deny-allとcleanup、

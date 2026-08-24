@@ -1,7 +1,9 @@
 # ChromaMatter 0.8beta 公開準備チェックリスト
 
 更新日: 2026-08-24
-現在の方針: **`v0.8beta-r32`は[GitHub](https://github.com/Ponkichi0718/ChromaMatter)で公開済みのimmutableなprevious evidence。r32.1はexact regression／build／stage／checksumが揃うまでpendingとし、新しいtagと同時asset setで公開する。**
+現在の方針: **[`v0.8beta-r32.1`](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.1)はcommit `b575b93d973ed67e7ada986469b10b4490eef4e5`から公開済みのpre-release。exact regression／build／stage／checksum／対応source／公開asset再取得のgateは完了した。Windows版は[ここから直接downloadできる](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.1/ChromaMatter-0.8beta-r32.1-win64.zip)。**
+
+> **0.8betaの重要な制約:** パーツ化modelの閉立体化はまだ不安定です。同梱DemoDataでは閉立体化と3MF出力に成功していますが、他のmultipart OBJ／GLBでは形状、開口、重なり、非manifold状態により閉立体化または3MF出力に失敗する場合があります。デモ成功は一般的な互換性保証ではなく、この未完成領域が`0.8beta`である理由の一つです。
 
 このチェックリストは、法的助言ではなく、公開事故を減らすための実務管理表です。
 
@@ -10,25 +12,27 @@
 | 項目 | 状態 | 判断 |
 |---|---|---|
 | 表示バージョン | 完了 | 利用者の指定があるまで`0.8beta`に固定 |
-| r32.1 exact release gate | **pending** | functional freeze後のfull regression、clean build、packaged smoke、日英UI smoke、source/software stage、archive、privacy、identity、checksumを実測する。r32以前の結果を流用しない |
+| r32.1 exact release gate | **GO／公開済み** | focused 113 PASS、full 1,277 tests／1,274 PASS／3 optional SKIP／0 FAIL。clean build、packaged self-test、日英UI smoke、source／software stage、archive、privacy、identity、checksumはPASS |
 | r31 preflight技術監査（previous evidence） | **GO** | source 227／226、software 1,404／1,403、fresh archive／extract、privacy、self-test、日英UI smokeを確認 |
 | r31 final source-only restage（previous evidence） | **GO** | source 227／226、folder／archive parity、CRC、privacy、identity／icon／tooling 32 tests、Downloads配置、detached `SHA256SUMS-r31.txt`照合を完了 |
-| public repository | **r32公開済み／r32.1更新pending** | `https://github.com/Ponkichi0718/ChromaMatter`、owner handle `Ponkichi0718`、default branch `main` |
+| public repository | **r32.1公開済み** | repository `https://github.com/Ponkichi0718/ChromaMatter`、[Release](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.1)、owner handle `Ponkichi0718`、default branch `main` |
 | 旧EXEへのビルド依存 | 完了 | 依存を除去。公開候補へ含めない |
 | 復元PYCへの実行依存 | 完了 | 293テストをPYCなしで通過。公開候補へ含めない |
 | ChromaMatterアイコン | **creator declarationでGO** | creatorがオリジナルの架空機体と創作文言であると申告し、公開・再配布を承認。独立した商標／意匠clearanceではない |
 | 個人絶対パス | 完了（自動監査あり） | 公開stageで検出時に失敗 |
 | 既存の私有実モデル・画像・3MF | 完了（配布方針） | 公開stage／ZIPへ含めない |
-| 公開専用デモモデル | **owner権利申告済み／package監査pending** | Hi3D有料planで生成した分割GLBと、owner作成のreference画像。再配布承認、注意事項、SHA-256をDemoData manifestへ記録し、final package bytesと照合する |
+| 公開専用デモモデル | **package監査完了／公開済み** | Hi3D有料planで生成した分割GLBと、owner作成のreference画像。再配布承認、注意事項、SHA-256をDemoData manifestへ記録し、final package bytesと照合済み |
 | 公開テストOBJ | 完了 | CC0の抽象的な合成3パーツOBJを用意 |
 | 一般プロンプト例 | 完了 | CC0。第三者名・作品名・個人情報なし |
 | 混色モデルの来歴 | 完了 | MIT上流コミット、SHA-256、全配列一致、再生成手順を記録 |
-| クリーンクローン検証 | r32 previous evidence／r32.1 pending | r32.1 final source stage作成後、空フォルダーとfresh `.venv`から再測定する |
+| source／fresh-extract検証 | **r32.1 release gate完了** | exact source full regression、公開ZIPの独立fresh extract、packaged self-test、日英UI smokeはPASS。第三者によるclean-clone再現は引き続き募集する |
 | アプリ基礎コードの公開判断 | **owner GO** | project ownerが現在のsourceを自分のprojectとして公開することを2026-08-20に承認。独立したcode provenance法務監査ではない |
 | 公開用ハンドル | **完了** | repository owner handle `Ponkichi0718`をGitHub metadataへ記録 |
-| r32.1 EXEの第三者ライセンス監査 | **現行bytesの最終監査pending** | SBOM／component map／対応ソース／通知／license原文のfail-closed実装は完了。ownerの公開GOでもexact r32.1 binaryに対する再生成・照合は免除されない |
+| r32.1 EXEの第三者ライセンス監査 | **final bytes監査完了／公開済み** | SBOM／component map／通知／license原文とcomplete corresponding sourceをexact binaryに対して再生成・照合。対応sourceは`release-approved`／`known_gaps: []` |
 | Snapmaker Orca一貫操作 | **未完了** | 動画で開く→スライス→保存→再読込を記録 |
 | U1物理造形 | **未完了** | 実際の色、積層、強度、嵌合を記録 |
+| physical XP-PEN検証 | **未完了** | 実機の筆圧、消しゴム、長時間strokeを確認 |
+| Innovation Fund submission | **未完了** | 配布版公開と応募完了を混同せず、cover／hero／community post／release-bound実機証拠を揃えてから送信 |
 
 ## 1. 旧EXE、復元PYC、アイコン、復元コード
 
@@ -69,15 +73,15 @@ OpenAIとの関係では利用者が出力を所有しますが、入力した�
 - [x] build、stage、private validation、temporary geometryを`.gitignore`へ追加した。
 - [x] 公開stageへ過去の検証Markdownとローカルtoolingを入れない。
 - [x] r31／公開済みr32のfinal stageとarchive監査をprevious evidenceとして保持した。
-- [ ] r32.1 final source／software stageのfolder parity、CRC、privacy、manifestを再監査する。
+- [x] r32.1 final source／software stageのfolder parity、CRC、privacy、manifestを再監査した。
 
 ## 3. 配布物を3つに分ける
 
 1. **公開ソース**  
    現行コード、合成テスト、ビルド手順、ライセンス、来歴、合成サンプルだけ。
 
-2. **r32.1 Windows配布候補**
-   EXEと実行に必要なファイル、README、ライセンス、対応ソースへの案内、SHA-256、manifest固定済みDemoDataだけ。その他の私有検証物と応募資料は含めない。現行bytesの全バイナリ監査が終わるまで公開しない。
+2. **r32.1 Windows配布物（公開済み）**
+   EXEと実行に必要なファイル、README、ライセンス、対応ソースへの案内、SHA-256、manifest固定済みDemoDataだけ。その他の私有検証物と応募資料は含めない。Windows packageは1,518 filesで監査済み。
 
 3. **非公開検証保管**  
    実OBJ、元画像、派生3MF、診断画像、元動画素材、スクリーンショット、実モデル検証JSON。Git・公開ZIP・issue添付の対象外。
@@ -100,10 +104,10 @@ TetGenはオープンソースなので利用できますが、「GitHubに何�
 - [x] GEOS、Python、Tcl/Tk、Microsoft runtimeを含むSBOM／component map生成を実装した。
 - [x] 配布EXEと同一commitのrelease-approved対応ソースだけを受け付けるstage契約を実装した。
 - [x] アプリからライセンスとソース入手先へ到達できるUIを実装した。
-- [ ] 上記をexact r32.1 final binary／source bytesに対して再生成し、fresh extractionで照合する。
+- [x] 上記をexact r32.1 final binary／source bytesに対して再生成し、fresh extractionで照合した（compliance inventory 1,455 files／256 native files）。
 - [ ] 必要なら専門家の確認またはWIASの商用ライセンスを検討する。
 
-公開済みr32のsource／binary Releaseはimmutableなprevious evidenceです。r32.1 EXEは、上の契約をexact final bytesへ適用した第三者binary再配布監査が完了するまで保留します。
+公開済みr32のsource／binary Releaseはimmutableなprevious evidenceです。r32.1 EXEは上の契約をexact final bytesへ適用し、complete corresponding sourceを`release-approved`／`known_gaps: []`として同時公開しました。Windows ZIP、対応source、SBOM、component map、workflow video、`SHA256SUMS-r32.1.txt`の公開6 assetはsign-in不要で再取得し、すべてのsize／SHA-256一致を確認済みです。次版でも同じhard gateを繰り返します。
 
 ## 5. 実モデル、動画、プロンプト
 
@@ -114,7 +118,7 @@ TetGenはオープンソースなので利用できますが、「GitHubに何�
 - [x] owner承認済みr32.1 DemoDataの分割GLBとreference画像を選定し、公開・再配布可否を記録した。
 - [x] Hi3D有料planでの生成とowner作成reference画像であることを確認し、canonical publication gateへ記録した。
 - [x] 配布する2 payloadの固定名、size、SHA-256、用途、注意事項をDemoData manifest／README／NOTICEへ記録した。
-- [ ] exact final software stageでpayload bytesとmanifestを照合し、package privacy／archive監査を完了する。
+- [x] exact final software stageでpayload bytesとmanifestを照合し、package privacy／archive監査を完了した。
 - [ ] 生成サービスの条件がCC BY 4.0の場合はCC BY 4.0を維持し、CC0へ変更しない。
 - [ ] 将来Tripo生成物を別途配布する場合は、生成時のTerms／Pricing、plan、入力権利、配布範囲を個別に保存する（今回の2 payload gateとは分離）。
 - [ ] 動画に使う私有素材について、作成者、元画像の権利、生成日、生成時のTripoプラン、モデルIDを非公開台帳へ記録する。
@@ -161,13 +165,13 @@ TetGenはオープンソースなので利用できますが、「GitHubに何�
 - [x] 公開用handle `Ponkichi0718`とrepository URLを記録した。
 - [x] r31 preflight公開stageの監査、full regression、クリーンビルド、fresh extractが成功した（previous evidence）。
 - [x] r31 final source-only artifactをDownloadsへ配置し、detached `SHA256SUMS-r31.txt`を作成・照合した（previous evidence）。
-- [ ] r32.1 exact full regression、clean build、packaged self-test、1920×1080の日英UI smokeを完了した。
-- [ ] r32.1 final source stageのREADME、LICENSE、PROVENANCE、第三者通知、identity／icon／tooling testが一致した。
-- [ ] r32.1 final stage／archiveで許可済みDemoData以外の私有実モデルと個人データが0件であることをprivacy監査した。
-- [ ] r32.1 artifactをDownloadsへ配置し、外部detached `SHA256SUMS-r32.1.txt`を作成・照合した。
-- [ ] 公開専用デモを含める場合、権利記録、再配布条件、適用ライセンス、帰属表示、SHA-256を実ファイルと照合した。
+- [x] r32.1 focused 113 PASS、full 1,277 tests／1,274 PASS／3 optional SKIP／0 FAIL、clean build、packaged self-test、1920×1080の日英UI smokeを完了した。
+- [x] r32.1 final source stageのREADME、LICENSE、PROVENANCE、第三者通知、identity／icon／tooling testが一致した。
+- [x] r32.1 final stage／archiveで許可済みDemoData以外の私有実モデルと個人データが0件であることをprivacy監査した。
+- [x] r32.1 artifactと外部detached `SHA256SUMS-r32.1.txt`を作成・照合し、GitHub公開assetを再取得して一致を確認した。
+- [x] 公開専用DemoDataの権利記録、再配布条件、適用ライセンス、帰属表示、SHA-256を実ファイルと照合した。
 - [x] r32.1はWindows ZIP、完全対応ソース、SBOM、component map、動画、checksumを同時公開する方針とした。
-- [ ] r32.1 EXE／software ZIPのバイナリ配布監査が完了した。
+- [x] r32.1 EXE／software ZIPのバイナリ配布監査が完了した（1,455 files／256 native files、Windows package 1,518 files、対応sourceに既知gapなし）。
 - [x] リポジトリURLとソース入手先を公開した。
 - [ ] issue運用、公開連絡先、セキュリティ連絡先を決めた。
 - [ ] 「公式・認定・提携」と誤解される表現やロゴがない。

@@ -1,11 +1,18 @@
 # 紹介動画・Snapmaker Orca・U1 検証チェックリスト
 
 更新日: 2026-08-24
-対象: ChromaMatter — AI Model Print Studio 0.8beta r32.1候補（公開済みr32動画を同一bytesで再利用）
+対象: 公開済みpre-release [ChromaMatter — AI Model Print Studio 0.8beta r32.1](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.1)
+
+Windows版: [ChromaMatter-0.8beta-r32.1-win64.zip](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.1/ChromaMatter-0.8beta-r32.1-win64.zip)
+
+> **0.8betaの重要な制約:** 同梱`DemoData`は閉立体化と3MF出力に成功していますが、
+> 他のパーツ化OBJ／GLBでは閉立体化または3MF出力に失敗する場合があります。
+> この互換性がまだ不安定であることが、0.8betaとしている理由の一つです。
 
 ## 現在の状態
 
-アプリ内の自動テストと合成データによる検証は進んでいます。一方、次の二つはまだ完了扱いにしません。
+公開済みr32.1のsoftware／package検証は完了しています。一方、次の二つは
+release-boundな再現性記録としてはまだ完了扱いにしません。
 
 | 検証 | 状態 | 完了の条件 |
 |---|---|---|

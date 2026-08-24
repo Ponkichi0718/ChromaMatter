@@ -1,10 +1,14 @@
 # ChromaMatter GitHub公開手順
 
 更新日: 2026-08-24
-対象: ChromaMatter — AI Model Print Studio `0.8beta`の公開記録とr32.1更新手順
-方針: **`v0.8beta-r32`は公開済みで変更しない。r32.1 updateはexact regression／build／stage／checksum完了までpendingとし、新しいtagとasset名で公開する。**
+対象: ChromaMatter — AI Model Print Studio `0.8beta`の公開記録と将来更新手順
+方針: **[`v0.8beta-r32.1`](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.1)はcommit `b575b93d973ed67e7ada986469b10b4490eef4e5`から公開済みのpre-releaseで、既存tag／assetを変更しない。Windows版は[ここから直接downloadできる](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.1/ChromaMatter-0.8beta-r32.1-win64.zip)。次版もexact regression／build／stage／checksumを完了し、新しいtagとasset名で公開する。**
 
-r31 final source-only stageは227 files／226 manifest recordsでfresh archive exact、privacy、identity／icon／tooling 32 tests、Downloads配置、detached `SHA256SUMS-r31.txt`照合まで完了した**previous evidence**です。owner handle `Ponkichi0718`の[public repository](https://github.com/Ponkichi0718/ChromaMatter)へ公開済みで、個人メールを含まない初回公開commitは`a01ba4baa791809a5a6621fac35956dc65479216`です。公開済みr32はtag `v0.8beta-r32`、commit `86e34b2a9468f81768ee134a680a792b1a83df05`に固定された**previous evidence**です。r32.1のfile数、manifest数、commit、hash、GitHub反映はfinal stage完了後に記録します。
+r31 final source-only stageと公開済みr32はimmutableなprevious evidenceです。r32.1はfocused 113 PASS、full 1,277 tests／1,274 PASS／3 optional SKIP／0 FAIL、clean build、packaged self-test、日英UI smokeを完了しました。compliance inventoryは1,455 files／256 native files、Windows packageは1,518 filesです。complete corresponding sourceは`release-approved`／`known_gaps: []`で、Windows ZIP、対応source、SBOM、component map、workflow video、`SHA256SUMS-r32.1.txt`の公開6 assetをsign-in不要で再取得し、すべてのsize／SHA-256一致を確認しました。
+
+> **0.8betaの重要な制約:** パーツ化modelの閉立体化はまだ不安定です。同梱DemoDataでは閉立体化と3MF出力に成功していますが、他のmultipart OBJ／GLBでは形状、開口、重なり、非manifold状態により閉立体化または3MF出力に失敗する場合があります。デモ成功は一般的な互換性保証ではなく、この未完成領域が`0.8beta`である理由の一つです。
+
+配布版の公開はInnovation Fund submissionの完了を意味しません。physical XP-PEN、release-bound U1 matrix、cover／hero／community post、応募送信は引き続き未完了です。
 
 ## 最初に守ること
 
@@ -32,7 +36,7 @@ GitHubへ入れるのは、`tooling/stage_public_source.ps1`で生成した**公
 6. 最初は`Private`としてGitHubへ送る。
 7. Web上とクリーンクローンで再確認する。
 8. 最終チェックがすべて終わった後に`Public`へ変更する。
-9. EXEを含むReleaseは、ライセンス監査と実機確認の後日に行う。
+9. EXEを含むReleaseは、exact binaryのライセンス・対応source・privacy・fresh-extract監査後に行う。r32.1は完了済み。release-bound実機matrixはpre-releaseの既知課題として別に追跡する。
 
 ## 1. 公開名とメールアドレスを決める
 
@@ -72,7 +76,7 @@ Copyright (c) 2026 Ponkichi0718 and ChromaMatter contributors
 
 ```powershell
 .\tooling\stage_public_source.ps1 `
-  -Destination ".\artifacts\ChromaMatter-0.8beta-r32.1-source-public-20260824-candidate-1"
+  -Destination ".\artifacts\ChromaMatter-next-source-public-YYYYMMDD-candidate-1"
 ```
 
 スクリプトは既存フォルダーを上書きしません。内容を変更した場合は`r2`、`r3`のように新しい名前で作り直します。
@@ -109,7 +113,7 @@ Copyright (c) 2026 Ponkichi0718 and ChromaMatter contributors
 
 ## 4. 配布するデモデータの条件と置き場所
 
-プロンプトから生成したモデルでも、権利確認なしで自動的に配布可能になるわけではありません。実用的なプロンプト生成デモは、ソースのGit履歴へ入れず、**別のGitHub Release添付ZIP**として配布します。特にOBJや参照画像が大きい場合、この分離を維持します。
+プロンプトから生成したモデルでも、権利確認なしで自動的に配布可能になるわけではありません。実用的なプロンプト生成デモは、ソースのGit履歴へ入れません。r32.1ではmanifest固定済みのGLBとreference画像だけをWindows ZIPの`DemoData`へ同梱し、workflow videoはGitHub Releaseの独立assetにしました。将来の大きなOBJ／画像／3MFは別のRelease添付ZIPとし、この分離を維持します。
 
 ソースリポジトリには、現在の抽象形状による小さな合成テストだけを残します。実用デモを更新してもソース履歴が肥大化せず、ソースのライセンスとデモ素材の権利条件も分けて表示できます。
 
@@ -239,8 +243,8 @@ $pyTetWildWheel = 'C:\release-inputs\wheel\pytetwild-0.3.0-cp312-abi3-win_amd64.
 - [x] デモ以外の実モデル、画像、3MF、動画を含めていない
 - [x] EXEを含めていない
 - [x] APIキー、トークン、個人メール、個人絶対パスがない
-- [ ] r32.1 exact sourceをfinal restageし、fresh archive／privacy／identity／manifest／外部detached `SHA256SUMS-r32.1.txt`を照合した
-- [ ] r32.1 source差分をGitHubへ反映し、公開treeとfinal stageの一致を確認した
+- [x] r32.1 exact sourceをfinal restageし、fresh archive／privacy／identity／manifest／外部detached `SHA256SUMS-r32.1.txt`を照合した
+- [x] r32.1 source差分をGitHubへ反映し、tag `v0.8beta-r32.1`を固定commitへ置き、公開6 assetの再取得一致を確認した
 
 ## 9. PrivateからPublicへ変更する
 
@@ -276,11 +280,11 @@ GitHub公式の主な制限は次のとおりです。
 
 Git LFSは、共同編集などの理由で大きなファイルをGitの版管理対象にする必要がある場合の選択肢です。今回のデモ配布はRelease添付ZIPを第一選択とするため、通常はGit LFSへ入れません。
 
-## 11. デモReleaseとEXE Releaseは分けて後日行う
+## 11. Release assetをGit履歴から分離する
 
-初回はソースリポジトリの公開までに留めます。プロンプト生成デモのReleaseと`0.8beta`のEXE Releaseは、ソース公開と分けて後日作ります。
+r32.1ではWindows ZIP、complete corresponding source、SBOM、component map、workflow video、checksumを同じpre-releaseへ別assetとして公開しました。大容量payloadやEXEを通常のGit履歴へ入れない原則は次版でも維持します。
 
-### デモデータのRelease
+### 将来追加するデモデータのRelease
 
 デモZIPは、Section 4の権利台帳とファイル構成を満たしてから添付します。
 
@@ -292,7 +296,7 @@ Git LFSは、共同編集などの理由で大きなファイルをGitの版管�
 
 ### EXEのRelease
 
-EXE Releaseを作る条件は次のとおりです。
+EXE Releaseを作る条件は次のとおりです。r32.1ではbinary／対応source／license／privacy／fresh-extract gateを完了して公開しました。Innovation Fund用のrelease-bound U1 matrixとphysical XP-PEN検証は引き続き未完了で、安定版の証拠には流用しません。
 
 - TetGen、PyMeshLab、Qt、PyTetWild、GEOS、Pythonランタイムなどを含むバイナリ全体のライセンス監査
 - 対応ソースとビルド手順の固定
@@ -302,7 +306,7 @@ EXE Releaseを作る条件は次のとおりです。
 - EXE／ZIPのSHA-256記録
 - Release notesへベータ版の制限と既知問題を記載
 
-GitHubがタグから自動生成するソースZIPと、手動添付するEXE／配布ZIPは別物です。バイナリ監査が終わるまでは、EXEを通常のGitにもReleaseにも置きません。
+GitHubがタグから自動生成するソースZIPと、手動添付するEXE／配布ZIPは別物です。r32.1のexact binary監査は完了しましたが、次版も監査が終わるまではEXEを通常のGitにもReleaseにも置きません。
 
 ## 12. 短いCLI代替手順
 
@@ -332,7 +336,7 @@ git remote add origin https://github.com/YOUR_GITHUB_HANDLE/ChromaMatter.git
 git push -u origin main
 ```
 
-上のCLIは今後の再公開時に使うtemplateです。初回r31は`https://github.com/Ponkichi0718/ChromaMatter`の`main`へsource-onlyで公開済みで、個人メールを除いた初回公開commitは`a01ba4baa791809a5a6621fac35956dc65479216`です。r32はcommit `86e34b2a9468f81768ee134a680a792b1a83df05`で公開済みです。r32.1 commitはexact final stageが完了するまでpendingで、値を先に記録しません。
+上のCLIは今後の再公開時に使うtemplateです。初回r31は`https://github.com/Ponkichi0718/ChromaMatter`の`main`へsource-onlyで公開済みで、個人メールを除いた初回公開commitは`a01ba4baa791809a5a6621fac35956dc65479216`です。r32はcommit `86e34b2a9468f81768ee134a680a792b1a83df05`で公開済みです。r32.1はtag `v0.8beta-r32.1`／commit `b575b93d973ed67e7ada986469b10b4490eef4e5`へ固定して公開済みです。
 
 ## GitHub公式資料
 

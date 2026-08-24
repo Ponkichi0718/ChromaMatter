@@ -2,17 +2,17 @@
 
 Updated: 2026-08-24
 Branch: `codex/demo-data-ui-label-update`
-Draft PR: pending; publish only the final reviewed r32.1 branch
+Release: `v0.8beta-r32.1` is published as a GitHub prerelease from frozen
+commit `b575b93d973ed67e7ada986469b10b4490eef4e5`
 Public version: `0.8beta` (do not change without an explicit owner request)
 Current release revision: `r32.1`; Windows numeric version remains `0.8.0.0`
 
 ## Current objective
 
-Prepare a redistributable Windows r32.1 release while retaining TetGen under its
-AGPL route. Keep the ChromaMatter application under `GPL-3.0-or-later`, preserve
-each third-party license, and publish the Windows ZIP only together with a
-single complete corresponding-source bundle containing both the matching
-application source and all required third-party source, plus the SBOM,
+Maintain the published r32.1 prerelease and its documentation while retaining
+TetGen under its AGPL route. Keep the ChromaMatter application under
+`GPL-3.0-or-later`, preserve each third-party license, and keep the Windows ZIP
+paired with the published complete corresponding-source bundle, SBOM,
 component map, notices, relinking instructions, and checksums.
 
 Published `v0.8beta-r32` at commit
@@ -24,6 +24,28 @@ The r32.1 scope changes the preview label to AI Model Color and adds the
 rights-cleared Hi3D multipart GLB/reference demo to the Windows package with
 short instructions, part-name warnings, and mandatory Weak Black guidance.
 The r32 modelling and 3MF contracts remain unchanged.
+
+## Current published state (supersedes historical checkpoints below)
+
+- Release: <https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.1>
+- Direct Windows ZIP: <https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.1/ChromaMatter-0.8beta-r32.1-win64.zip>
+- Focused regression: 113 PASS. Full regression: 1,277 total / 1,274 PASS /
+  3 optional SKIP / 0 FAIL.
+- Packaged self-test, independent fresh-extract self-test, and isolated
+  Japanese/English UI smoke: PASS.
+- Complete corresponding source: `release-approved`, `known_gaps=[]`.
+- All six public assets were downloaded without authentication and matched the
+  frozen sizes and SHA-256 records.
+- The release tag and all attached asset bytes must remain unchanged. Later
+  documentation-only commits may update the default branch and Release body.
+- **0.8beta limitation:** multipart solidification is not universally reliable.
+  The bundled `DemoData` succeeds, but other multipart OBJ/GLB files can fail
+  solidification or 3MF export. This incomplete compatibility is one reason the
+  product remains `0.8beta`.
+
+Sections below preserve engineering history and pre-publication gates. Any
+older statement saying r32.1 is pending or ineligible is historical and is
+superseded by this section and `CURRENT_STATE.json`.
 
 ## Previous r32 engineering handoff
 
