@@ -222,6 +222,10 @@ New-Item -ItemType Directory -Path $releaseAssetRoot | Out-Null
 
 # 採用済みcontrolled runはread-only入力として再利用する。release出力先には使わない。
 $controlledRoot = 'C:\ChromaMatterToolchain\pytetwild-controlled-build-20260823-174626-089357844d4b'
+$sourceCache = 'C:\ChromaMatterToolchain\corresponding-source-cache-r32'
+if (-not (Test-Path -LiteralPath $sourceCache -PathType Container)) {
+  throw "Verified corresponding-source cache is missing: $sourceCache"
+}
 $repairedWheels = @(Get-ChildItem -LiteralPath (Join-Path $controlledRoot 'wheel') `
   -Filter 'pytetwild-0.3.0-cp312-abi3-win_amd64.whl' -File)
 $rawWheels = @(Get-ChildItem -LiteralPath (Join-Path $controlledRoot 'raw-wheel') `
@@ -313,7 +317,7 @@ $sourceArchive = "$sourceStage.zip"
 Get-PSDrive C
 powershell.exe -ExecutionPolicy Bypass -File .\tooling\stage_corresponding_source.ps1 `
   -Destination $sourceStage `
-  -Cache C:\CMR32SourceCache `
+  -Cache $sourceCache `
   -ProjectRepository (Get-Location).Path `
   -ProjectCommit $projectCommit `
   -ExternalArchiveLock .\tooling\meshlab_windows_external_archives.lock.json `
@@ -326,12 +330,13 @@ powershell.exe -ExecutionPolicy Bypass -File .\tooling\stage_corresponding_sourc
   -PyTetWildSourcePatch $sourcePatch `
   -PyTetWildBuildAttestation $buildAttestation `
   -ApplicationRequirementsLock $applicationLock `
+  -Offline `
   -Archive $sourceArchive
 
 $sourceManifest = Join-Path $sourceStage 'COMPONENT_SOURCES.json'
 $sourceSha256 = (Get-FileHash -LiteralPath $sourceArchive -Algorithm SHA256).Hash
 $softwareStage = Join-Path $releaseAssetRoot 'ChromaMatter-0.8beta-r32.2-win64'
-$demoDataPayloadRoot = Join-Path $releaseInputs 'ChromaMatter-r32.2-DemoData-payloads'
+$demoDataPayloadRoot = Join-Path $releaseInputs 'DemoData-payloads'
 $demoDataManifest = Join-Path `
   (Get-Location).Path `
   'source\fixed_app\public_binary\DemoData\DEMO_DATA_MANIFEST.json'

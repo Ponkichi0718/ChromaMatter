@@ -126,7 +126,11 @@ class ReleaseIdentityTests(unittest.TestCase):
             "$buildRoot = Join-Path $releaseRunRoot 'build'",
             "$releaseAssetRoot = Join-Path $releaseRunRoot 'assets'",
             "Release run root already exists; choose a new empty root",
+            "$sourceCache = 'C:\\ChromaMatterToolchain\\corresponding-source-cache-r32'",
+            "-Cache $sourceCache",
+            "-Offline",
             "$demoDataPayloadRoot",
+            "$demoDataPayloadRoot = Join-Path $releaseInputs 'DemoData-payloads'",
             "$demoDataManifest",
             "-DemoDataRoot $demoDataPayloadRoot",
             "-DemoDataManifestPath $demoDataManifest",
@@ -142,6 +146,8 @@ class ReleaseIdentityTests(unittest.TestCase):
             "C:\\release\\",
             r"C:\release-inputs",
             r"C:\CMR32AGPL1",
+            r"C:\CMR32SourceCache",
+            "ChromaMatter-r32.2-DemoData-payloads",
         ):
             with self.subTest(stale_fixed_root=stale_fixed_root):
                 self.assertNotIn(stale_fixed_root, handoff)
