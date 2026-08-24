@@ -13,6 +13,8 @@ ChromaMatter is a Windows desktop application that maps the colours of a vertex-
 
 To try the shortest workflow with the bundled Hi3D multipart GLB, see [DemoData/README_EN.md](DemoData/README_EN.md).
 
+**Important 0.8 beta limitation:** Solidification of multipart models is still unstable. The bundled `DemoData` is a confirmed successful case, but other multipart files may fail to solidify or export as 3MF. This incomplete compatibility is one reason ChromaMatter remains `0.8beta`.
+
 If Windows displays a protection warning, first verify the SHA-256 on the official Release page and any signing information when a signature is provided. Do not bypass a warning for a file whose origin you cannot verify.
 
 ## Scope and limitations

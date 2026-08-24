@@ -12,6 +12,8 @@ ZIPをすべて展開してから`START_CHROMAMATTER.cmd`または`ChromaMatter.
 
 ChromaMatter 0.8beta r32.1は、公開済みr32のmodel処理、分割GLB閉立体化、識別色抑制、manual paint、Full Spectrum 3MF出力契約を維持した更新版です。
 
+**0.8 betaの重要な制限:** パーツ化モデルの閉立体化はまだ不安定です。同梱の`DemoData`は閉立体化・3MF出力の成功を確認していますが、他の分割ファイルでは閉立体化または3MF出力に失敗することがあります。この互換性が未完成であることが、ChromaMatterを`0.8beta`としている理由の一つです。
+
 ### 主な変更
 
 - preview上の「Tripo 元モデル色」を、入力元を限定しない「AIモデル色」へ変更しました。
@@ -41,6 +43,8 @@ ChromaMatter 0.8beta r32.1は、公開済みr32のmodel処理、分割GLB閉立�
 ## English
 
 ChromaMatter 0.8beta r32.1 is a post-r32 update. It retains the published r32 contracts for model processing, multipart GLB solidification, narrow identification-colour suppression, manual paint, and Full Spectrum 3MF export.
+
+**Important 0.8 beta limitation:** Solidification of multipart models is still unstable. The bundled `DemoData` is a confirmed successful case, but other multipart files may fail to solidify or export as 3MF. This incomplete compatibility is one reason ChromaMatter remains `0.8beta`.
 
 ### What changed
 

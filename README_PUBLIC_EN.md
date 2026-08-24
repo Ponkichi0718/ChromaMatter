@@ -12,6 +12,8 @@
 
 Extract the entire ZIP before starting. If the direct download does not open, use the [v0.8beta-r32.1 Release page](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.1) and select the `win64.zip` file under **Assets**.
 
+**Important 0.8 beta limitation:** Solidification of multipart models is still unstable. The bundled `DemoData` is a confirmed successful case, but other multipart files may fail to solidify or export as 3MF. This incomplete compatibility is one reason ChromaMatter remains `0.8beta`.
+
 **Turn AI-generated color OBJ and GLB models into Snapmaker U1 Full Spectrum 3MF projects using four physical filaments.**
 
 <table>

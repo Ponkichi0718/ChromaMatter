@@ -744,6 +744,57 @@ class ReleaseIdentityTests(unittest.TestCase):
         self.assertIn("Hi3D-style multipart GLB support is beta and unofficial", binary_en)
         self.assertIn("Hi3D系分割GLB対応はβ・非公式", binary_ja)
 
+    def test_public_docs_keep_multipart_solidification_beta_disclosure(self):
+        english_markers = (
+            "Solidification of multipart models is still unstable.",
+            "The bundled `DemoData` is a confirmed successful case",
+            "other multipart files may fail to solidify or export as 3MF",
+            "one reason ChromaMatter remains `0.8beta`",
+        )
+        japanese_markers = (
+            "パーツ化モデルの閉立体化はまだ不安定です。",
+            "同梱の`DemoData`は閉立体化・3MF出力の成功を確認しています",
+            "他の分割ファイルでは閉立体化または3MF出力に失敗することがあります",
+            "ChromaMatterを`0.8beta`としている理由の一つです",
+        )
+        demo_root = FIXED_APP / "public_binary" / "DemoData"
+        release_notes = REPO_ROOT / "publication" / "RELEASE_NOTES_r32.1.md"
+        english_docs = (
+            REPO_ROOT / "README.md",
+            FIXED_APP / "public_binary" / "README_EN.md",
+            demo_root / "README_EN.md",
+            demo_root / "NOTICE_EN.md",
+            release_notes,
+        )
+        japanese_docs = (
+            REPO_ROOT / "README_JA.md",
+            FIXED_APP / "public_binary" / "README_JA.md",
+            demo_root / "README_JA.md",
+            demo_root / "NOTICE_JA.md",
+            release_notes,
+        )
+        for path in english_docs:
+            document = read_text(path)
+            for marker in english_markers:
+                with self.subTest(path=path, marker=marker):
+                    self.assertIn(marker, document)
+        for path in japanese_docs:
+            document = read_text(path)
+            for marker in japanese_markers:
+                with self.subTest(path=path, marker=marker):
+                    self.assertIn(marker, document)
+
+        english_landing = read_text(REPO_ROOT / "README.md")
+        self.assertLess(
+            english_landing.index(english_markers[0]),
+            english_landing.index("Turn AI-generated color OBJ and GLB models"),
+        )
+        japanese_landing = read_text(REPO_ROOT / "README_JA.md")
+        self.assertLess(
+            japanese_landing.index(japanese_markers[0]),
+            japanese_landing.index("ChromaMatter — AI Model Print Studioは"),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

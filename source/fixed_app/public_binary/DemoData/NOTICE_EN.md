@@ -21,9 +21,10 @@ The demo files are separate materials from the `GPL-3.0-or-later` ChromaMatter s
 
 ChromaMatter is an independent project. It is not an official, affiliated, or endorsed product of Hi3D, Google, Snapmaker, or any other third party. Product and service names are used only to describe compatibility, provenance, and the workflow.
 
+**Important 0.8 beta limitation:** Solidification of multipart models is still unstable. The bundled `DemoData` is a confirmed successful case, but other multipart files may fail to solidify or export as 3MF. This incomplete compatibility is one reason ChromaMatter remains `0.8beta`.
+
 Hi3D-style multipart GLB support is beta and unofficial. The node names in this GLB do not match the visible body regions, so do not use part names as proof of assembly position or print content. Even after solidification and 3MF export succeed, inspect geometry, materials, tool order, and the slice preview in Snapmaker Orca.
 
 ## Integrity verification
 
 Expected sizes and SHA-256 values for the demo files are recorded in [DEMO_DATA_MANIFEST.json](DEMO_DATA_MANIFEST.json). Use the package-level `SOFTWARE_PACKAGE_SHA256.txt` as well when verifying the complete package.
-

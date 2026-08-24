@@ -22,5 +22,5 @@ This folder contains evaluation data for testing the path from a Hi3D-generated 
 ## Before you begin
 
 - The GLB names `RightLeg`, `LeftLeg`, `RightArm`, `LeftArm`, `Torso`, and `Head` are Hi3D segmentation labels and do not match the visible body regions. Do not rely on an individual 3MF filename alone; inspect its geometry.
-- Hi3D-style multipart GLB support is beta and unofficial. Success with this demo does not guarantee compatibility with every Hi3D output or guarantee printability.
+- **Important 0.8 beta limitation:** Solidification of multipart models is still unstable. The bundled `DemoData` is a confirmed successful case, but other multipart files may fail to solidify or export as 3MF. This incomplete compatibility is one reason ChromaMatter remains `0.8beta`. Hi3D-style support is unofficial, and printability is not guaranteed.
 - Displayed and printed colours are not guaranteed to match. Use a comparison chart or a small test print with the same filaments and settings.
