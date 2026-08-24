@@ -951,3 +951,18 @@ Keep these outside Git and do not copy them to the public release by default:
   corresponding source, SBOM, binary component map, notices/relinking
   materials, checksums, and final fresh-extraction evidence. The published
   r32.2 tag and assets remain unchanged.
+- Source commit `0d768fb6b3a0c68328b3c94b6ed48eff9a80ad13` was pushed to
+  `codex/r32-2-experimental-flat4-large-glb-2d-filter` and tagged
+  `v0.8beta-r32.2-experimental-20260825`. Draft PR
+  [#7](https://github.com/Ponkichi0718/ChromaMatter/pull/7) is open.
+- GitHub Draft Release ID `376019044` stores exactly two owner-review assets:
+  a 117,533,412-byte experimental Windows ZIP and its detached checksum. GitHub
+  reports the ZIP digest as
+  `sha256:686823cdbc6c325b8b281e5820d0b73e9a8911d47b845b515c92a3ed565bbe56`.
+  The Release remains both Draft and Pre-release, so it is not a public
+  download. The published r32.2 Release remains non-draft with its original
+  six assets.
+- The exact tagged source commit completed 1,375 tests in 425.435 seconds with
+  zero failures and three optional skips. A `git archive` public-tree audit
+  passed for 409 files. No later code change was made; the follow-up branch
+  commit only records GitHub draft metadata.

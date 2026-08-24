@@ -1,19 +1,26 @@
 # ChromaMatter 0.8beta r32.2 Experimental Test — Draft Release Notes
 
-Status: **draft experimental test metadata — not published**.
+Status: **GitHub Draft Release created — not published**.
 
 This document defines a separate test channel. It does not replace, retag, or
 modify the immutable Innovation Fund-facing `v0.8beta-r32.2` release or any of
 its assets. The application-visible revision intentionally remains
 `0.8beta (r32.2)`.
 
-## Proposed GitHub identity
+## GitHub identity
 
 - Branch: `codex/r32-2-experimental-flat4-large-glb-2d-filter`
 - Draft tag: `v0.8beta-r32.2-experimental-20260825`
+- Source commit: `0d768fb6b3a0c68328b3c94b6ed48eff9a80ad13`
+- Draft PR: [#7](https://github.com/Ponkichi0718/ChromaMatter/pull/7)
 - Draft title: `ChromaMatter 0.8beta r32.2 Experimental Test — Flat Four / Large GLB / 2D Colour Filter`
 - Release settings: keep as **Draft** during review; if it is later published,
   mark it **Pre-release**.
+- Draft assets:
+  - `ChromaMatter-0.8beta-r32.2-experimental-20260825-win64.zip`
+  - `ChromaMatter-0.8beta-r32.2-experimental-20260825-win64.zip.sha256`
+- Windows ZIP SHA-256:
+  `686823CDBC6C325B8B281E5820D0B73E9A8911D47B845B515C92A3ED565BBE56`
 
 Do not move or recreate `v0.8beta-r32.2`. Test assets must use a new name that
 contains the experimental tag identity and must never reuse an existing r32.2

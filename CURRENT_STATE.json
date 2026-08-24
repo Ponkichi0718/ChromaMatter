@@ -5,7 +5,7 @@
   "edition": "AI Model Print Studio r32.2",
   "artifact_slug": "r32.2-ai-model-print-studio",
   "status": "v0.8beta-r32.2-published-prerelease-exact-tagged-build",
-  "updated": "2026-08-24",
+  "updated": "2026-08-25",
   "version_policy": {
     "pinned_until_explicit_user_request": true,
     "edition_and_artifact_revision_may_advance_independently": true,
@@ -29,8 +29,16 @@
     }
   },
   "experimental_test_workstream": {
-    "publication_status": "experimental-source-branch-prepublication",
+    "publication_status": "draft-experimental-test-channel",
     "published_release_unchanged": "v0.8beta-r32.2",
+    "github": {
+      "branch": "codex/r32-2-experimental-flat4-large-glb-2d-filter",
+      "source_commit": "0d768fb6b3a0c68328b3c94b6ed48eff9a80ad13",
+      "tag": "v0.8beta-r32.2-experimental-20260825",
+      "draft_pull_request": 7,
+      "draft_release": true,
+      "prerelease_when_published": true
+    },
     "project_format": {
       "write_schema": "obj-adjuster.project.v13",
       "read_compatibility": [
@@ -57,9 +65,11 @@
       ]
     },
     "validation": {
-      "status": "local-source-regression-only",
+      "status": "exact-commit-source-regression-and-draft-package-smoke",
+      "full_regression": "1375 tests, 0 failures, 3 optional skips",
+      "public_source_tree_audit": "409 files, pass",
       "public_binary_package_or_physical_evidence": false,
-      "release_note": "This workstream is not included in the published r32.2 Windows package or frozen source tag."
+      "release_note": "The test ZIP and detached checksum are stored only on a GitHub Draft Release. This workstream is not included in the published r32.2 Windows package or frozen source tag."
     }
   },
   "current_features": {
