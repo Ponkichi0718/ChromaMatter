@@ -12,14 +12,29 @@ ChromaMatter — AI Model Print Studioは、AI生成された色付き3Dモデ�
 > 収録しています。exact build、完全対応source、archive、checksum、公開後の未認証
 > 再download検証はすべてPASSしています。
 
+## 見たい内容へ
+
+- [OBJ／GLBの読み込みから3MF出力まで](#model-workflow)
+- [Hi3D系分割GLB対応](#multipart-glb)
+- [オリジナル作品の制作工程と過去の画面](#project-examples)
+- [4本のフィラメントから16／24／32色を作る仕組み](#palette-system)
+- [フィラメント候補ライブラリ](#filament-library)
+- [混色比較チャートと実機黒補正](#calibration)
+- [ブラシ・エアブラシ・塗りつぶし・なじませ・スポイト](#manual-editing)
+- [公開sampleの実機出力結果と分割GLBの記録](https://note.com/ponkichi0718/n/nf6c77165127c)
+- [開発記録・AI利用について](#development-journal)
+- [ブラシ・フィラメント候補を追加した元記事](https://note.com/ponkichi0718/n/n711977c75aa4)
+
 [![ChromaMatterの現行開発画面。4本の基本フィラメント、混色パレット、元モデル色とFull Spectrum変換色を並べて確認できる](https://assets.st-note.com/img/1787193863-DjEUKLdVrxFgauov4mzq7QB9.png?width=1200)](https://note.com/ponkichi0718/n/n711977c75aa4)
 
 *開発中画面。4本の実フィラメントから作る混色パレットと、元モデル色／印刷用変換色を同時に確認できます。*
 
+<a id="model-workflow"></a>
 ## AIモデルから3MFまでを、ひとつの流れに
 
 頂点カラー付きOBJ、または埋め込みbaseColor／`COLOR_0`を持つ静的GLBを読み込めます。TripoAIだけでなく、Hi3D AIのようにGLBを出力するサービスも同じ制作フローへ取り込めます。対応する分割GLBはパーツ構成を保ったまま閉立体化し、結合3MFまたはパーツ別3MFへ出力できます。モデルの処理はローカルで行い、ChromaMatterから外部サーバーへアップロードしません。
 
+<a id="multipart-glb"></a>
 ## Hi3D系分割GLB対応（β・非公式）
 
 ChromaMatterは独立projectであり、Hi3D AIの公式・提携製品ではありません。Hi3Dから出力されるすべてのfileとの互換性を保証するものではありません。対応する静的・埋込assetのGLBに限り、mesh node単位のpartと配置を保って、色変換と3MF出力へ進めます。
@@ -30,6 +45,9 @@ ChromaMatterは独立projectであり、Hi3D AIの公式・提携製品ではあ
 - exactに証明できたseamと、利用者が明示した上限内の微小平面修復だけが対象です。animation、skin、morph、Draco、meshopt、BasisU、外部URI、曖昧または非対応のgeometryはβ対応外です。
 
 [公開sampleの実機結果と分割GLBの開発記録](https://note.com/ponkichi0718/n/nf6c77165127c)では、識別色を本来のbaseColorから分離する必要性と、現在のpart別出力経路を記録しています。
+
+<a id="project-examples"></a>
+## オリジナル作品の制作工程と過去の画面
 
 <table>
   <tr>
@@ -52,6 +70,7 @@ ChromaMatterは独立projectであり、Hi3D AIの公式・提携製品ではあ
 
 *画像は開発記録時点の画面を含みます。Snapmaker Orcaは第三者製品であり、ChromaMatterはSnapmaker、TripoAI、Hi3D AIその他第三者の公式・提携製品ではありません。*
 
+<a id="palette-system"></a>
 ## 4本から、混色を含む最大32色へ
 
 印刷に使う基本色はF1～F4の4本です。ChromaMatterはモデルの色域を見て、実在する同一素材のフィラメントから4本を提案し、その組み合わせで16／24／32色の印刷用パレットを構成します。
@@ -64,6 +83,7 @@ ChromaMatterは独立projectであり、Hi3D AIの公式・提携製品ではあ
 - 1つの印刷ジョブでは、PLAならPLAだけというように4本を同じ素材で揃えます。
 - 異なる素材を混ぜるマルチマテリアル印刷は行いません。
 
+<a id="filament-library"></a>
 ## 実際に入手できるフィラメントで考える
 
 [![メーカー別に製品を探し、色差と仕上げを比較してF1からF4へ割り当てるフィラメント候補ライブラリ](https://assets.st-note.com/img/1787193878-2RMCKirmlunSDIXfhzQgEHpd.png?width=1200)](https://note.com/ponkichi0718/n/n711977c75aa4)
@@ -72,6 +92,7 @@ ChromaMatterは独立projectであり、Hi3D AIの公式・提携製品ではあ
 
 カタログ色は候補を探すための近似値です。同じ製品でもロット、造形条件、表面、照明で見え方が変わるため、実物の色一致を保証するものではありません。特にABSはPLAより収録色が少ないため、目的色が存在しない場合があります。
 
+<a id="calibration"></a>
 ## 混色を見える化し、実機へ近づける
 
 [![画面の混色パレットと同じ順番で並ぶ、番号付きの実機比較チャート](https://assets.st-note.com/img/1787194049-FwXqus5ArK8B4NoU1eIQYzPg.png?width=1200)](https://note.com/ponkichi0718/n/n711977c75aa4)
@@ -80,6 +101,7 @@ ChromaMatterは独立projectであり、Hi3D AIの公式・提携製品ではあ
 
 黒が想定より強く出る場合は、表示色や自動配色を変えず、3MFに記録する黒混色だけを弱める「実機黒補正」を利用できます。これは万能な色校正ではありません。Full Spectrumは物理フィラメントを層ごとに切り替えるため、透過率、壁、傾斜、最上層、プリンタの校正でも結果が変わります。最終判断は比較チャートとSnapmaker Orcaのスライスプレビューで行います。
 
+<a id="manual-editing"></a>
 ## 自動変換のあとを、人が仕上げられる
 
 [![ブラシ、エアブラシ、なじませ、スポイトでオリジナルの赤いロボットを補正するマニュアル修正画面](https://assets.st-note.com/img/1787193923-A1VTIhjR6w07qWedXZloDEFU.png?width=1200)](https://note.com/ponkichi0718/n/n711977c75aa4)
@@ -104,6 +126,7 @@ AI 3D生成は、専門的なモデリング技術がなくても「作りたい
 
 まだ`0.8beta`であり、色再現、対応GLB、処理速度、実機校正には改善の余地があります。だからこそ、ソースを公開し、実際の失敗や調整も共有しながら育てていきます。
 
+<a id="development-journal"></a>
 ## 開発記録とAI利用について
 
 成功例だけでなく、黒の出方に悩んだ失敗、フィラメント選び、キャリブレーション、実機出力まで含む記録を[ponkichiのnote](https://note.com/ponkichi0718)で公開しています。
