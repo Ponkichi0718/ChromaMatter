@@ -4421,7 +4421,7 @@ class SoftwarePackageStageTests(unittest.TestCase):
             REPO_ROOT / "source" / "fixed_app" / "VERSION_POLICY.md"
         ).read_text(encoding="utf-8")
         self.assertIn(
-            "Planned public software artifact: `ChromaMatter-0.8beta-r32.2-win64`",
+            "Published Windows artifact: `ChromaMatter-0.8beta-r32.2-win64.zip`",
             policy,
         )
 

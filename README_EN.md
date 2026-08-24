@@ -1,4 +1,4 @@
-# ChromaMatter — AI Model Print Studio 0.8beta (r32.2 candidate)
+# ChromaMatter — AI Model Print Studio 0.8beta (r32.2)
 
 <p align="center">
   <img src="source/fixed_app/assets/obj_adjuster_icon.png" width="160" alt="ChromaMatter icon">
@@ -8,13 +8,14 @@
 
 ## Download for Windows
 
-**[Download ChromaMatter 0.8beta r32.1 for Windows (ZIP)](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.1/ChromaMatter-0.8beta-r32.1-win64.zip)**
+**[Download ChromaMatter 0.8beta r32.2 for Windows (ZIP)](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2/ChromaMatter-0.8beta-r32.2-win64.zip)**
 
-Extract the entire ZIP before starting. If the direct download does not open, use the [v0.8beta-r32.1 Release page](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.1) and select the `win64.zip` file under **Assets**.
+Extract the entire ZIP before starting. If the direct download does not open, use the [v0.8beta-r32.2 Release page](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2) and select `ChromaMatter-0.8beta-r32.2-win64.zip` under **Assets**.
 
-The default-branch source is now the **local r32.2 release candidate**. It is
-not a published download yet; the link above deliberately remains the frozen
-r32.1 package until every r32.2 build, source, archive, and checksum gate passes.
+`v0.8beta-r32.2` is published as an Innovation Fund preview prerelease. Its
+Windows package, complete corresponding source, SBOM, component map, workflow
+video, and detached checksums were all downloaded without authentication and
+reverified after publication.
 
 **Important 0.8 beta limitation:** Solidification of multipart models is still unstable. The bundled `DemoData` is a confirmed successful case, but other multipart files may fail to solidify or export as 3MF. This incomplete compatibility is one reason ChromaMatter remains `0.8beta`.
 
@@ -39,7 +40,7 @@ r32.1 package until every r32.2 build, source, archive, and checksum gate passes
 
 A public full-body, one-piece sample completed on a Snapmaker U1 in **48 hours** and used about **220 g including the prime tower**. At normal viewing distance, its deliberately graphic shading reads as form and depth. The recorded limitations are rear support scarring, a loose stand, and colour boundaries that can look less clean at close range. See [ChromaMatter Sample Character — Print Results](https://note.com/ponkichi0718/n/nf6c77165127c) for the result and video.
 
-The privacy-reviewed, captioned [Simple Workflow Demo (about two minutes)](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.1/ChromaMatter-simple-workflow-demo.mp4) is published as a separate `v0.8beta-r32.1` asset. It shows the path from a compatible OBJ/GLB through size and geometry preparation, Full Spectrum 3MF export and validation, opening and slicing the project in Snapmaker Orca, and the U1 print. The published copy is 125.33 seconds, 1920 x 1080 H.264, and intentionally has no audio.
+The privacy-reviewed, captioned [Simple Workflow Demo (about two minutes)](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2/ChromaMatter-simple-workflow-demo.mp4) is published as a separate `v0.8beta-r32.2` asset. It shows the path from a compatible OBJ/GLB through size and geometry preparation, Full Spectrum 3MF export and validation, opening and slicing the project in Snapmaker Orca, and the U1 print. The published copy is 125.33 seconds, 1920 x 1080 H.264, and intentionally has no audio.
 
 This is a practical print observation, not a guarantee that every model, filament set, slicer profile, or printer will reproduce the same result. Inspect the generated project and slice preview before printing.
 
@@ -47,16 +48,15 @@ ChromaMatter is an independent Windows desktop project. It is not an official or
 
 ## Current status
 
-- **Current local candidate:** `AI Model Print Studio r32.2`; not built, tagged, or published yet
-- **Published release:** [`v0.8beta-r32.1`](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.1)
-- **Frozen release source:** tag `v0.8beta-r32.1`, commit [`b575b93d973ed67e7ada986469b10b4490eef4e5`](https://github.com/Ponkichi0718/ChromaMatter/commit/b575b93d973ed67e7ada986469b10b4490eef4e5)
+- **Published release:** [`v0.8beta-r32.2`](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2)
+- **Frozen release source:** tag `v0.8beta-r32.2`, commit [`aba20685d2fd6987621b2e1e6624f46ea84912a3`](https://github.com/Ponkichi0718/ChromaMatter/commit/aba20685d2fd6987621b2e1e6624f46ea84912a3)
 - **Published asset set:** Windows ZIP, complete corresponding source, SBOM, component map, workflow video, and detached checksums
-- **Published r32.1 test data:** Rights-cleared Hi3D multipart GLB and reference image are included under `DemoData/`
-- **Planned r32.2 addition:** Seven derived 3MF reference outputs under `DemoData/3MF/`; one combined project and six part-specific projects
+- **Published r32.2 test data:** Rights-cleared Hi3D multipart GLB and reference image are included under `DemoData/`
+- **Published demo outputs:** Seven derived 3MF reference outputs under `DemoData/3MF/`; one combined project and six part-specific projects
 - **Physical U1 validation:** The linked public print completed; it does not prove compatibility with every model or production setup
 - **Version:** `0.8beta`
 
-The documentation on the default branch may receive corrections after publication. For the exact source that produced the downloadable r32.1 files, use the frozen tag and commit above.
+The documentation on the default branch may receive corrections after publication. For the exact source that produced the downloadable r32.2 files, use the frozen tag and commit above.
 
 ## Four things ChromaMatter does
 
@@ -69,7 +69,7 @@ The documentation on the default branch may receive corrections after publicatio
 
 ## Quick Start
 
-Use the published [`v0.8beta-r32.1` Release](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.1) for the matching r32.1 source and Windows package. To run the frozen release source, check out tag `v0.8beta-r32.1` on Windows with Python 3.13:
+Use the published [`v0.8beta-r32.2` Release](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2) for the matching r32.2 source and Windows package. To run the frozen release source, check out tag `v0.8beta-r32.2` on Windows with Python 3.13:
 
 ```powershell
 git clone https://github.com/Ponkichi0718/ChromaMatter.git
@@ -79,7 +79,7 @@ $pyTetWildWheel = "C:\path\to\pytetwild-0.3.0-cp312-abi3-win_amd64.whl"
 .\.venv\Scripts\python.exe .\source\fixed_app\TripoSpectrumMapper_fixed.py
 ```
 
-r32.1 retains the controlled PyTetWild wheel pin by SHA-256, so a bare bootstrap intentionally fails instead of downloading the different historical PyPI wheel. Use the repaired wheel from the published [complete corresponding-source ZIP](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.1/ChromaMatter-0.8beta-r32.1-complete-corresponding-source.zip) at `build-evidence/pytetwild/repaired-wheel/`, or reproduce it with the controlled recipe before passing its local path. `-PyTetWildWheelhouse` is also supported; `-SkipInstall` is only for an already verified environment.
+r32.2 retains the controlled PyTetWild wheel pin by SHA-256, so a bare bootstrap intentionally fails instead of downloading the different historical PyPI wheel. Use the repaired wheel from the published [complete corresponding-source ZIP](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2/ChromaMatter-0.8beta-r32.2-complete-corresponding-source.zip) at `build-evidence/pytetwild/repaired-wheel/`, or reproduce it with the controlled recipe before passing its local path. `-PyTetWildWheelhouse` is also supported; `-SkipInstall` is only for an already verified environment.
 
 Then:
 
@@ -92,11 +92,11 @@ The bootstrap installs pinned build dependencies and runs the test suite. See [B
 
 ## Technical details
 
-The public display version remains pinned to `0.8beta`. The current local
-candidate edition is `AI Model Print Studio r32.2`, with artifact slug
+The public display version remains pinned to `0.8beta`. The published edition
+is `AI Model Print Studio r32.2`, with artifact slug
 `r32.2-ai-model-print-studio`; the Windows numeric version remains `0.8.0.0`.
 
-## AI Model Print Studio r32.2 candidate
+## AI Model Print Studio r32.2
 
 r32.2 keeps the r32.1 application and fail-closed 3MF contracts and adds seven
 derived demo outputs: one combined six-mesh project plus six part-specific
@@ -104,9 +104,9 @@ projects. Hi3D-derived part labels do not match the visible geometry, so inspect
 each project instead of trusting its filename. When regenerating the demo,
 select the F slot that physically holds black and **always apply the Weak Black
 5–25% preset before 3MF export**. Multipart solidification remains unstable;
-the bundled demo is a successful case, not a compatibility guarantee. All r32.2
-build, corresponding-source, package, fresh-extract, and publication gates are
-still pending.
+the bundled demo is a successful case, not a compatibility guarantee. The exact
+tagged build, complete corresponding source, Windows package, fresh extraction,
+checksums, and post-publication downloads all passed their release gates.
 
 ## AI Model Print Studio r32.1
 
@@ -211,9 +211,24 @@ project-folder/
 
 ## Published validation
 
-No r32.2 build, source-stage, software-stage, archive, checksum, or publication
-result has passed yet. The results below are immutable **r32.1 previous
-evidence** and do not validate the current candidate.
+The exact r32.2 release build was produced from commit
+`aba20685d2fd6987621b2e1e6624f46ea84912a3`. Its full regression ran 1,298
+tests: 1,296 passed, 2 optional skips, and 0 failed. Packaged and independently
+fresh-extracted self-tests plus Japanese and English UI smoke tests passed. The
+Windows package contains 1,527 files, including 10 manifest-locked DemoData
+payloads and seven 3MF projects.
+
+The release compliance inventory passed with 1,455 files. The complete
+corresponding-source archive is `release-approved`, contains 42,806 files, and
+has zero known source-closure gaps. All six public r32.2 assets were downloaded
+without authentication after publication and matched their expected sizes and
+SHA-256 checksums. The Windows ZIP SHA-256 is
+`2CEADA98661BAC5D49B759542151C4C484FFF4269D6B5D142EC32FEC544F06D0`; the
+complete corresponding-source ZIP SHA-256 is
+`DCC7EC1AE74F4B790CCAC6B9B18286C7BDAB2829E779F0532E01708727680500`.
+
+The results below are immutable **r32.1 previous evidence** and do not validate
+r32.2.
 
 The exact r32.1 release build was produced from commit `b575b93d973ed67e7ada986469b10b4490eef4e5`. Its focused suite passed 113 tests. Its full regression recorded 1,277 tests: 1,274 passed, 3 optional skips, and 0 failures. Packaged self-test and isolated-profile Japanese and English UI smoke tests passed.
 
@@ -237,10 +252,10 @@ Icon publication-rights status: `passed-by-creator-declaration` (2026-08-20).
 - source and software ZIP structure, manifest equality, path safety, CRC, and privacy: passed
 
 The published r32.1 Release and the r32, r31, r30, and r27 evidence above apply
-only to those older artifacts. They do not approve r32.2. Multipart
-solidification can still fail outside the bundled demo, and physical XP-PEN
-validation remains pending. Icon publication rights and owner legal acceptance
-for the declared asset scope remain recorded.
+only to those older artifacts. Multipart solidification can still fail outside
+the bundled r32.2 demo, and physical XP-PEN validation remains pending. Icon
+publication rights and owner legal acceptance for the declared asset scope
+remain recorded.
 
 See [CURRENT_STATE.json](CURRENT_STATE.json) and [PROVENANCE.md](PROVENANCE.md) for the canonical boundary.
 
@@ -253,7 +268,7 @@ $pyTetWildWheel = "C:\path\to\pytetwild-0.3.0-cp312-abi3-win_amd64.whl"
 .\BOOTSTRAP_WINDOWS.ps1 -PyTetWildWheel $pyTetWildWheel
 ```
 
-`-Build` creates a PyInstaller one-folder build after the full regression. The distributable r32.1 files are the immutable assets on the [`v0.8beta-r32.1` Release page](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.1); local build and staging directories are not release artifacts.
+`-Build` creates a PyInstaller one-folder build after the full regression. The distributable r32.2 files are the immutable assets on the [`v0.8beta-r32.2` Release page](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2); local build and staging directories are not release artifacts.
 
 ## Privacy and licensing
 

@@ -1,26 +1,26 @@
-# r32.1公開済み／r32.2候補 Windows バイナリ公開 引継ぎ
+# r32.2公開済み Windows バイナリ公開記録・再現手順
 
 更新日: 2026-08-24
 対象リポジトリ: <https://github.com/Ponkichi0718/ChromaMatter>
 作業ブランチ: `codex/r32-2-demo-3mf`
 
-`v0.8beta-r32.1`はcommit `b575b93d973ed67e7ada986469b10b4490eef4e5`に
-固定したGitHub prereleaseとして公開済みです。Windows ZIP、完全対応ソース、SBOM、
-component map、操作動画、`SHA256SUMS-r32.1.txt`の6 assetは、未認証の再取得でも
-size／SHA-256一致を確認済みです。公開済み`v0.8beta-r32`と`v0.8beta-r32.1`の
-tag／assetは変更しません。
+`v0.8beta-r32.2`はcommit `aba20685d2fd6987621b2e1e6624f46ea84912a3`に固定した
+GitHub prereleaseとして公開済みです。Windows ZIP、完全対応ソース、SBOM、component
+map、操作動画、`SHA256SUMS-r32.2.txt`の6 assetは、公開後に未認証で再取得し、
+size／SHA-256一致を確認済みです。公開済み`v0.8beta-r32`、`v0.8beta-r32.1`、
+`v0.8beta-r32.2`のtag／assetは変更しません。
 
-Release: <https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.1>
+Release: <https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2>
 
-Windows ZIP: <https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.1/ChromaMatter-0.8beta-r32.1-win64.zip>
+Windows ZIP: <https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2/ChromaMatter-0.8beta-r32.2-win64.zip>
 
-## r32.2ローカル候補（未公開）
+## r32.2公開結果
 
-r32.1の公開assetは変更せず、新しい`v0.8beta-r32.2`候補としてWindows ZIPと完全対応
-ソースを作り直す。表示versionは`0.8beta`、Windows数値versionは`0.8.0.0`のままに
-する。r32.2候補は全release gateが完了するまで公開済みとは記載しない。
+r32.1の公開assetは変更せず、新しい`v0.8beta-r32.2`としてWindows ZIPと完全対応
+ソースを作成・検証・公開しました。表示versionは`0.8beta`、Windows数値versionは
+`0.8.0.0`のままです。
 
-manifestに固定する`DemoData`入力・派生出力は次のとおり。公開payload rootには、この
+manifestに固定した`DemoData`入力・派生出力は次のとおり。公開payload rootには、この
 一覧とcanonical manifestに記載したfile以外を置かない。
 
 - `Original AI model Color.glb`
@@ -29,19 +29,26 @@ manifestに固定する`DemoData`入力・派生出力は次のとおり。公�
 - `3MF/Original AI model Color_FullSpectrum_parts_2/`内の個別3MF 6件
 - `3MF/Original AI model Color_FullSpectrum_parts_2/パーツ別3MF_manifest.json`
 
-manifest外のローカル検証sidecarやその他の生成物は公開payloadに含めない。
-`$demoDataPayloadRoot`と`$demoDataManifest`を指定して
-stageし、manifest外file、hash不一致、危険な3MF member、private path tokenが1件でも
-あればfail closedとする。r32.2の対応ソースURL・SBOM・component map・checksumは、
-exact candidate commitで再生成した値へ差し替える。前記r32.1の公開結果とhashは
-previous evidenceであり、r32.2を検証しない。
+manifest外のローカル検証sidecarやその他の生成物は公開payloadに含めていません。
+`$demoDataPayloadRoot`と`$demoDataManifest`を指定したstageは、manifest外file、hash
+不一致、危険な3MF member、private path tokenをfail closedで拒否し、公開候補で全項目
+PASSしました。r32.1の公開結果とhashはprevious evidenceとして分離しています。
+
+確定assetのSHA-256は次のとおりです。
+
+- Windows ZIP: `2CEADA98661BAC5D49B759542151C4C484FFF4269D6B5D142EC32FEC544F06D0`
+- 完全対応source ZIP: `DCC7EC1AE74F4B790CCAC6B9B18286C7BDAB2829E779F0532E01708727680500`
+- SBOM: `2A1B293BF081ABA9A070F16E97523AF1B72301A6250E8D6BBBF446716DCAACE5`
+- component map: `3620E4597CBBDA83A34F9F15DB3813D417853597DD5EC57EEFEC2245C652D868`
+- 操作動画: `F55F9505EC7385D27A933799F9EEFD1C2499A77B86B0BB1162832320E88FEE61`
+- checksum file: `45D355E2DA9864CA83D314BC63FD3DA5AA5B428706D40491596E12EAB06D1218`
 
 > **0.8betaの重要な制約:** パーツ化modelの閉立体化はまだ不安定です。同梱
 > `DemoData`では成功していますが、他のmultipart OBJ／GLBでは閉立体化または
 > 3MF出力に失敗することがあります。この互換性の未完成が0.8betaである理由の一つです。
 
-以下の工程と停止条件を、r32.2のexact candidate commitと新しい空の出力rootで
-再実行します。記載済みのr32.1結果はprevious evidenceであり、r32.2の代用にしません。
+以下はr32.2公開時に完了した工程と、将来同じ配布を再現するときの停止条件です。
+タグ内の公開assetは差し替えず、再公開時は新しいrevisionで全工程を実行します。
 
 ## 最重要の停止条件
 

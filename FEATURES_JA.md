@@ -6,12 +6,11 @@ ChromaMatter — AI Model Print Studioは、AI生成された色付き3Dモデ�
 
 このプロジェクトが目指しているのは、単なるファイル変換ではありません。AI 3D生成には「実際にカラー造形する出口」を、カラー3Dプリンタには「AIが生み出す多様なモデルという新しい入力」をつくることです。画面の中で完結していた生成モデルと、物を作れる3Dプリンタの間をつなぐことで、双方の利用価値を一段高めます。
 
-> **Windowsプレリリース：** [ChromaMatter 0.8beta r32.1を直接ダウンロード](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.1/ChromaMatter-0.8beta-r32.1-win64.zip)。起動前にZIP全体を展開してください。checksum、対応ソース、同じ版の関連assetは[r32.1プレリリースページ](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.1)で確認できます。
+> **Windowsプレリリース：** [ChromaMatter 0.8beta r32.2を直接ダウンロード](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2/ChromaMatter-0.8beta-r32.2-win64.zip)。起動前にZIP全体を展開してください。checksum、対応ソース、同じ版の関連assetは[r32.2プレリリースページ](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2)で確認できます。
 
-> **r32.2候補：** default branchのsourceでは、結合1件とpart別6件の派生demo
-> 3MFを加えた新packageを準備しています。まだ公開しておらず、exact build、source、
-> archive、checksum gateはすべてpendingのため、上のr32.1が現在のimmutableな
-> downloadです。
+> **r32.2公開済みprerelease：** packageには結合1件とpart別6件の派生demo 3MFを
+> 収録しています。exact build、完全対応source、archive、checksum、公開後の未認証
+> 再download検証はすべてPASSしています。
 
 [![ChromaMatterの現行開発画面。4本の基本フィラメント、混色パレット、元モデル色とFull Spectrum変換色を並べて確認できる](https://assets.st-note.com/img/1787193863-DjEUKLdVrxFgauov4mzq7QB9.png?width=1200)](https://note.com/ponkichi0718/n/n711977c75aa4)
 
@@ -116,10 +115,10 @@ AI 3D生成は、専門的なモデリング技術がなくても「作りたい
 
 > **AI利用について：** ChromaMatterは、企画整理、仕様設計、実装、テスト、文書化、画像制作、GitHub公開作業の各段階でChatGPT／OpenAI CodexなどのAIを活用しています。最終的な仕様、採否、実機検証、公開判断はプロジェクト作者が行っています。AI生成のコード、画像、説明文には、不自然な表現や技術的な誤りが残る可能性があります。重要な印刷設定はソース、生成3MF、スライサープレビュー、ご自身の実機で確認してください。お気づきの点は[GitHub Issues](https://github.com/Ponkichi0718/ChromaMatter/issues)でお知らせください。
 
-公開済み`v0.8beta-r32`はimmutableなprevious evidenceで、tag、asset、checksumを差し替えません。`v0.8beta-r32.1`は現在、評価用の**プレリリース**として公開しています。[Windows ZIPを直接ダウンロード](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.1/ChromaMatter-0.8beta-r32.1-win64.zip)し、同じプレリリースページにある対応ソース、compliance asset、checksumと組み合わせて確認してください。単独で転載されたEXEは正規の配布確認に使わないでください。
+公開済み`v0.8beta-r32`と`v0.8beta-r32.1`はimmutableなprevious evidenceで、tag、asset、checksumを差し替えません。`v0.8beta-r32.2`は現在、評価用の**プレリリース**として公開しています。[Windows ZIPを直接ダウンロード](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2/ChromaMatter-0.8beta-r32.2-win64.zip)し、同じプレリリースページにある対応ソース、compliance asset、checksumと組み合わせて確認してください。単独で転載されたEXEは正規の配布確認に使わないでください。
 
-r32.2はローカルrelease候補です。予定する`DemoData/3MF/`には、公開demo GLBから
-派生した結合project 1件とpart別project 6件を収録します。Hi3D由来のpart labelは
+r32.2は公開済みprereleaseです。`DemoData/3MF/`には、公開demo GLBから
+派生した結合project 1件とpart別project 6件を収録しています。Hi3D由来のpart labelは
 見た目のgeometryと一致しないためfilenameで判断せず、demoを再出力するときは
 **必ず「黒弱め 5〜25%」presetを適用**してください。
 

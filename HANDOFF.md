@@ -1,22 +1,20 @@
 # ChromaMatter cross-PC handoff
 
 Updated: 2026-08-24
-Branch: `codex/r32-2-demo-3mf` for the local r32.2 candidate; the frozen
-published release source remains `v0.8beta-r32.1` /
-`b575b93d973ed67e7ada986469b10b4490eef4e5`
-Previous release: `v0.8beta-r32.1` is published as a GitHub prerelease from frozen
-commit `b575b93d973ed67e7ada986469b10b4490eef4e5`
+Release-development branch: `codex/r32-2-demo-3mf`; the frozen published release
+source is `v0.8beta-r32.2` / `aba20685d2fd6987621b2e1e6624f46ea84912a3`
+Previous release: `v0.8beta-r32.1` remains immutable previous evidence.
 Public version: `0.8beta` (do not change without an explicit owner request)
-Current local candidate revision: `r32.2`; Windows numeric version remains `0.8.0.0`
+Current published prerelease revision: `r32.2`; Windows numeric version remains `0.8.0.0`
 
 ## Current objective
 
-Prepare a separate r32.2 candidate that adds the manifest-locked derived 3MF
-demo outputs without changing the immutable r32.1 prerelease. Retain TetGen
-under its AGPL route. Keep the ChromaMatter application under
-`GPL-3.0-or-later`, preserve each third-party license, and keep the Windows ZIP
-paired with a newly generated complete corresponding-source bundle, SBOM,
-component map, notices, relinking instructions, and checksums.
+Maintain the published r32.2 prerelease and its manifest-locked derived 3MF demo
+outputs without changing any tagged asset. TetGen remains under its AGPL route;
+the ChromaMatter application remains `GPL-3.0-or-later`; each third-party
+license remains preserved. The Windows ZIP is paired with the complete
+corresponding-source bundle, SBOM, component map, notices, relinking
+instructions, workflow video, and detached checksums.
 
 Published `v0.8beta-r32` at commit
 `86e34b2a9468f81768ee134a680a792b1a83df05` is immutable previous evidence.
@@ -30,10 +28,9 @@ The r32 modelling and 3MF contracts remain unchanged.
 
 ## Current published state (supersedes historical checkpoints below)
 
-- Release: <https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.1>
-- Direct Windows ZIP: <https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.1/ChromaMatter-0.8beta-r32.1-win64.zip>
-- Focused regression: 113 PASS. Full regression: 1,277 total / 1,274 PASS /
-  3 optional SKIP / 0 FAIL.
+- Release: <https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2>
+- Direct Windows ZIP: <https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2/ChromaMatter-0.8beta-r32.2-win64.zip>
+- Full regression: 1,298 total / 1,296 PASS / 2 optional SKIP / 0 FAIL.
 - Packaged self-test, independent fresh-extract self-test, and isolated
   Japanese/English UI smoke: PASS.
 - Complete corresponding source: `release-approved`, `known_gaps=[]`.
@@ -47,7 +44,7 @@ The r32 modelling and 3MF contracts remain unchanged.
   product remains `0.8beta`.
 
 Sections below preserve engineering history and pre-publication gates. Any
-older statement saying r32.1 is pending or ineligible is historical and is
+older statement saying r32.1 or r32.2 is pending or ineligible is historical and is
 superseded by this section and `CURRENT_STATE.json`.
 
 ## Previous r32 engineering handoff

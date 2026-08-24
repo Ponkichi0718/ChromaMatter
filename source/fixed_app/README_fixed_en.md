@@ -1,4 +1,4 @@
-# ChromaMatter — AI Model Print Studio 0.8beta (r32.2 source candidate)
+# ChromaMatter — AI Model Print Studio 0.8beta (r32.2 published source)
 
 <p align="center">
   <img src="assets/obj_adjuster_icon.png" width="160" alt="ChromaMatter icon">
@@ -7,33 +7,33 @@
 [Japanese](README_fixed_ja.md)
 
 This directory contains the fixed ChromaMatter — AI Model Print Studio source
-application. The display version is `0.8beta`, the current local candidate
-edition is `AI Model Print Studio r32.2`, and the artifact revision is
+application. The display version is `0.8beta`, the published edition is
+`AI Model Print Studio r32.2`, and the artifact revision is
 `r32.2-ai-model-print-studio`; the Windows numeric version remains `0.8.0.0`.
 
-> **Windows download:** [Download ChromaMatter 0.8beta r32.1 for Windows](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.1/ChromaMatter-0.8beta-r32.1-win64.zip)
+> **Windows download:** [Download ChromaMatter 0.8beta r32.2 for Windows](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2/ChromaMatter-0.8beta-r32.2-win64.zip)
 >
-> **Release page:** [v0.8beta-r32.1](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.1)
+> **Release page:** [v0.8beta-r32.2](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2)
 >
-> The published build and corresponding source are frozen at commit `b575b93d973ed67e7ada986469b10b4490eef4e5`.
+> The published build and corresponding source are frozen at commit `aba20685d2fd6987621b2e1e6624f46ea84912a3`.
 
 > **0.8beta multipart limitation:** the bundled `DemoData/` model is a confirmed successful case, but other multipart models can still fail solidification or 3MF export. Multipart repair is not yet reliable for every input; this is one reason the product is labelled `0.8beta`.
 
 See the [visual feature overview and production flow](../../FEATURES_EN.md) and the [development journal, including experiments, failures, and hardware calibration](https://note.com/ponkichi0718).
 
-## r32.2 release candidate
+## r32.2 published prerelease
 
-r32.2 keeps the r32.1 application and fail-closed 3MF contracts and prepares
+r32.2 keeps the r32.1 application and fail-closed 3MF contracts and includes
 seven derived demo outputs under `DemoData/3MF/`: one combined six-mesh project
 and six part-specific projects. Hi3D-derived part labels can disagree with visible
 geometry, so inspect every part rather than trusting its filename. When
 regenerating the demo, **always apply the Weak Black 5–25% preset before 3MF
-export**. Multipart solidification remains unstable beta compatibility. Exact
-r32.2 build, source, package, fresh-extract, and publication gates are pending.
+export**. Multipart solidification remains unstable beta compatibility. The
+exact build, source, package, fresh extraction, checksums, and publication gates passed.
 
 ## r32.1 published previous evidence
 
-r32.1 preserves the r32 modelling and 3MF contracts, changes the public preview
+r32.1 tag `v0.8beta-r32.1` preserves the r32 modelling and 3MF contracts, changes the public preview
 heading to `AI Model Color`, and packages a rights-cleared Hi3D multipart GLB
 plus reference image under `DemoData/`. Its prerelease is immutable published
 previous evidence and does not validate r32.2.
@@ -110,13 +110,13 @@ python .\TripoSpectrumMapper_fixed.py
 python .\TripoSpectrumMapper_fixed.py --self-test
 ```
 
-Repository-root `BOOTSTRAP_WINDOWS.ps1` is the standard setup and test entry point. r32.1 requires `-PyTetWildWheel C:\path\to\pytetwild-0.3.0-cp312-abi3-win_amd64.whl` (or `-PyTetWildWheelhouse`) because the application lock pins the controlled repaired wheel, not the historical PyPI wheel. The matching official complete corresponding-source release asset stores it under `build-evidence/pytetwild/repaired-wheel/`; `-SkipInstall` is only for an already verified environment.
+Repository-root `BOOTSTRAP_WINDOWS.ps1` is the standard setup and test entry point. r32.2 requires `-PyTetWildWheel C:\path\to\pytetwild-0.3.0-cp312-abi3-win_amd64.whl` (or `-PyTetWildWheelhouse`) because the application lock pins the controlled repaired wheel, not the historical PyPI wheel. The matching official complete corresponding-source release asset stores it under `build-evidence/pytetwild/repaired-wheel/`; `-SkipInstall` is only for an already verified environment.
 
-## r32.2 candidate validation state
+## r32.2 published validation state
 
-- Changed-working-tree focused tests passed 92/92, the full regression passed 1,295 with three optional skips and zero failures, and the manifest-locked DemoData preflight passed.
-- Exact-commit clean build, packaged/fresh-extracted self-test, Japanese/English UI smoke, source/software stage, final archive/privacy/checksum verification, and publication: **pending**.
-- Source publication eligibility: **false**. Binary publication eligibility: **false** until every exact r32.2 gate passes.
+- Exact-tag full regression: 1,298 tests; 1,296 passed, 2 optional skips, 0 failures. The manifest-locked DemoData package contains 10 payloads and seven 3MF projects.
+- Exact-commit clean build, packaged/fresh-extracted self-test, Japanese/English UI smoke, source/software stage, final archive/privacy/checksum verification, publication, and unauthenticated redownload: **passed**.
+- Source publication eligibility: **true**. Binary publication eligibility: **true** for the exact tagged r32.2 assets.
 - The following r32.1 results are immutable previous evidence only.
 
 - Published r32.1 is frozen at commit `b575b93d973ed67e7ada986469b10b4490eef4e5`.
@@ -151,10 +151,10 @@ Repository-root `BOOTSTRAP_WINDOWS.ps1` is the standard setup and test entry poi
 - r27 previous-evidence final ZIP SHA-256: `null`
 - icon publication rights: `passed-by-creator-declaration` (2026-08-20); the project owner accepted publication for that asset scope, without claiming independent legal clearance
 - r31 previous-evidence publication eligibility: true only for its validated `publication_scope=source-only`
-- current r32.2 source publication eligibility: false; exact stage is pending
-- current r32.2 binary publication eligibility: false; exact build/package gates are pending
+- current r32.2 source publication eligibility: true for the exact tagged source asset
+- current r32.2 binary publication eligibility: true for the exact tagged Windows asset
 - public repository: [https://github.com/Ponkichi0718/ChromaMatter](https://github.com/Ponkichi0718/ChromaMatter) (owner handle `Ponkichi0718`)
-- Innovation Fund distribution package: published; physical evidence and submission presentation can continue to evolve without changing the frozen r32.1 artifacts
+- Innovation Fund distribution package: published; physical evidence and submission presentation can continue to evolve without changing the frozen r32.2 artifacts
 - physical XP-PEN validation and physical print: pending disclosed limitations, not source-publication blockers
 
 The published r32.1 and r32 Releases and the r31, r30, r29, r28, and r27
@@ -168,12 +168,12 @@ Creator Studio r26 results are previous evidence as well and do not validate Chr
 
 ## Package identity
 
-- planned candidate corresponding source: `ChromaMatter-0.8beta-r32.2-complete-corresponding-source.zip`
-- planned candidate Windows package: `ChromaMatter-0.8beta-r32.2-win64.zip`
+- published corresponding source: `ChromaMatter-0.8beta-r32.2-complete-corresponding-source.zip`
+- published Windows package: `ChromaMatter-0.8beta-r32.2-win64.zip`
 - published complete corresponding source: `ChromaMatter-0.8beta-r32.1-complete-corresponding-source.zip`
 - published Windows package: `ChromaMatter-0.8beta-r32.1-win64.zip`
 
-The published detached checksum file is `SHA256SUMS-r32.1.txt`; all six downloaded Release assets matched it. Completed `SHA256SUMS-r32.txt` and `SHA256SUMS-r31.txt` apply only to previous evidence. Self-referential ZIP hashes are not embedded in canonical documents.
+The published detached checksum file is `SHA256SUMS-r32.2.txt`; all six downloaded Release assets matched it. Completed `SHA256SUMS-r32.1.txt`, `SHA256SUMS-r32.txt`, and `SHA256SUMS-r31.txt` apply only to previous evidence. Self-referential ZIP hashes are not embedded in canonical documents.
 
 ## Notes
 
