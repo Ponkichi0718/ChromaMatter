@@ -12,6 +12,12 @@
 
 ダウンロード後は、ZIPをすべて展開してから起動してください。直リンクで始まらない場合は、[v0.8beta-r32.2のReleaseページ](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2)を開き、**Assets**内の`ChromaMatter-0.8beta-r32.2-win64.zip`を選んでください。
 
+## 機能・作品を見る
+
+- **[機能・操作を画像で見る](FEATURES_JA.md)** — フィラメント候補、混色、実機補正、ブラシ、エアブラシ、なじませ、スポイト
+- **[オリジナル作品の制作工程・過去画面・実機出力例を見る](FEATURES_JA.md#project-examples)**
+- **[約2分のシンプルな使い方を見る](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2/ChromaMatter-simple-workflow-demo.mp4)**
+
 `v0.8beta-r32.2`はInnovation Fund向けpreviewのGitHub prereleaseとして公開済みです。
 Windows package、完全対応source、SBOM、component map、操作動画、detached checksumの
 6 assetを公開後に未認証で再downloadし、sizeとSHA-256を再確認しています。

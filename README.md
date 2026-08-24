@@ -12,6 +12,13 @@
 
 Extract the entire ZIP before starting. If the direct download does not open, use the [v0.8beta-r32.2 Release page](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2) and select `ChromaMatter-0.8beta-r32.2-win64.zip` under **Assets**.
 
+## Explore ChromaMatter
+
+- **[Features and controls](FEATURES_EN.md)** — filament suggestions, mixed palettes, calibration, Brush, Airbrush, Smudge, and Eyedropper
+- **[Original-model workflow, project examples, and print results](FEATURES_EN.md#project-examples)**
+- **[Simple workflow demo — about two minutes](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2/ChromaMatter-simple-workflow-demo.mp4)**
+- **[日本語の機能・操作案内](FEATURES_JA.md)**
+
 `v0.8beta-r32.2` is published as an Innovation Fund preview prerelease. Its
 Windows package, complete corresponding source, SBOM, component map, workflow
 video, and detached checksums were all downloaded without authentication and

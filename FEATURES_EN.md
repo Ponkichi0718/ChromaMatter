@@ -16,9 +16,24 @@ This is more than a file-format converter. The project gives AI 3D generation a 
 > part-specific derived demo 3MF projects. The exact build, complete source,
 > archives, checksums, and unauthenticated post-publication downloads passed.
 
+## Explore by topic
+
+- [Original-model workflow and project examples](#project-examples)
+- [OBJ / GLB to 3MF workflow](#model-workflow)
+- [Unofficial multipart GLB support](#multipart-glb)
+- [Filament suggestions and the 16 / 24 / 32-colour palette](#filament-library)
+- [Mixed-colour calibration and Weak Black correction](#calibration)
+- [Brush, Airbrush, Fill, Smudge, and Eyedropper](#manual-editing)
+- [Physical U1 result and multipart-GLB record (Japanese)](https://note.com/ponkichi0718/n/nf6c77165127c)
+- [Development process and AI disclosure](#development-journal)
+- [Feature-development article with the original screenshots (Japanese)](https://note.com/ponkichi0718/n/n711977c75aa4)
+
 <a href="https://note.com/ponkichi0718/n/n711977c75aa4"><img src="https://assets.st-note.com/img/1787193863-DjEUKLdVrxFgauov4mzq7QB9.png?width=1200" alt="Current ChromaMatter development UI showing four base filaments, mixed palette, source colour, and Full Spectrum preview"></a>
 
 *Current development UI. Four real filaments, the mixed palette, and source versus converted colour remain visible together.*
+
+<a id="project-examples"></a>
+## Original-model workflow and project examples
 
 <table>
   <tr>
@@ -37,6 +52,7 @@ This is more than a file-format converter. The project gives AI 3D generation a 
 
 These are previously published project images linked from the author's note. A full-body, one-piece U1 result is now documented in [ChromaMatter Sample Character — Print Results](https://note.com/ponkichi0718/n/nf6c77165127c); the exact release-bound sample, hashes, filament records, Orca/U1 profile, and comparison set are still being assembled. The [development journal on note](https://note.com/ponkichi0718) contains the longer experiment history.
 
+<a id="model-workflow"></a>
 ## 1. One local workflow for OBJ and GLB
 
 ChromaMatter accepts:
@@ -46,6 +62,7 @@ ChromaMatter accepts:
 
 Scene and node transforms are applied, supported GLB colour is baked into the existing vertex-colour pipeline, and the source model stays on the local PC. Supported multipart GLB assets retain their part structure through solidification and can be exported as a combined 3MF or one 3MF per print part. Unsupported compression, animation, skinning, external assets, and other ambiguous inputs fail closed instead of being silently approximated.
 
+<a id="multipart-glb"></a>
 ## 2. Limited, unofficial Hi3D-style multipart GLB support (beta)
 
 ChromaMatter is independent and is not an official or affiliated Hi3D AI product. It does not claim compatibility with every file produced by Hi3D. For a supported static GLB with embedded assets, it can preserve mesh-node parts and their placement through the colour and 3MF workflow.
@@ -57,6 +74,7 @@ ChromaMatter is independent and is not an official or affiliated Hi3D AI product
 
 The [public print and multipart-GLB development record](https://note.com/ponkichi0718/n/nf6c77165127c) shows why identification colours must be separated from the intended base colour and records the current per-part export path.
 
+<a id="filament-library"></a>
 ## 3. Four filaments, up to 32 printable colour states
 
 <a href="https://note.com/ponkichi0718/n/n711977c75aa4"><img src="https://assets.st-note.com/img/1787193878-2RMCKirmlunSDIXfhzQgEHpd.png?width=1200" alt="Filament candidate library for assigning real products to F1 through F4"></a>
@@ -67,11 +85,15 @@ The same state order is used in the preview, 3MF, and numbered calibration chart
 
 PLA is the default. ABS and PETG support are beta. A single project does not intentionally mix different material families.
 
+<a id="calibration"></a>
 ## 4. Compare, calibrate, and manually refine
 
 <a href="https://note.com/ponkichi0718/n/n711977c75aa4"><img src="https://assets.st-note.com/img/1787194049-FwXqus5ArK8B4NoU1eIQYzPg.png?width=1200" alt="Numbered physical comparison chart arranged in the same order as the ChromaMatter palette"></a>
 
 The main view places the original model colour beside the Full Spectrum conversion so differences are visible before export. Manual Editing can then correct only the areas that need human judgement.
+
+<a id="manual-editing"></a>
+### Manual Editing tools
 
 <a href="https://note.com/ponkichi0718/n/n711977c75aa4"><img src="https://assets.st-note.com/img/1787193923-A1VTIhjR6w07qWedXZloDEFU.png?width=1200" alt="Manual Editing with Brush, Airbrush, Smudge, and Eyedropper controls"></a>
 
@@ -104,6 +126,7 @@ ChromaMatter is currently `0.8beta`.
 
 The project is independent and is not an official or affiliated product of TripoAI, Hi3D AI, Snapmaker, OpenAI, or any other third party.
 
+<a id="development-journal"></a>
 ## Development process and AI disclosure
 
 ChatGPT, OpenAI Codex, and other AI tools have been used throughout planning, specification, implementation, testing, documentation, image work, and GitHub publication. The project author makes the final decisions about behaviour, acceptance, physical validation, and release.
