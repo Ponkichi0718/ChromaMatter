@@ -39,7 +39,7 @@
       "latest_fix2_source_status": "pushed to the workstream branch and available in Draft PR #7; tag and Draft Release assets unchanged",
       "latest_mode_history_source_commit": "32b03438dbde322b3e2ff8b070356622d6999ad2",
       "latest_mode_history_source_status": "pushed to the workstream branch and available in Draft PR #7; published r32.2 and its assets remain unchanged",
-      "workstream_head_commit": "864c7a8db157f0bf2a7601c8123d89514bef8c88",
+      "workstream_application_readme_checkpoint": "864c7a8db157f0bf2a7601c8123d89514bef8c88",
       "navigation_docs_branch": "docs/experimental-version-navigation",
       "navigation_docs_commit": "5d87c790406ad3a80a7fd3e31c50bd2cee04bfd9",
       "navigation_docs_pull_request": 8,

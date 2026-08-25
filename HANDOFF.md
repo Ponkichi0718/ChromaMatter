@@ -1222,9 +1222,11 @@ overwriting any later manual filament or palette decision.
 - The application correction is committed as
   `32b03438dbde322b3e2ff8b070356622d6999ad2` and pushed on
   `codex/r32-2-experimental-flat4-large-glb-2d-filter`; Draft PR #7 follows it.
-- The workstream HEAD is `864c7a8db157f0bf2a7601c8123d89514bef8c88`.
-  Draft PR #7 is open, remains Draft, is mergeable at the last GitHub readback,
-  and now serves as the authoritative experimental status/testing hub.
+- The application-plus-README checkpoint is
+  `864c7a8db157f0bf2a7601c8123d89514bef8c88`; later commits on the same branch
+  only record the GitHub handoff state. Draft PR #7 is open, remains Draft, was
+  mergeable at the last GitHub readback, and now serves as the authoritative
+  experimental status/testing hub.
 - Documentation-only PR #8 is open and mergeable at the last GitHub readback.
   It contains one commit and changes only the five canonical README variants.
 - No merge into `main`, tag, Release edit, Draft Release asset replacement,
@@ -1262,9 +1264,10 @@ validation of direct Flat versus Full-then-Flat and manual F-slot preservation.
 - Documentation-only branch release-identity tests: 12 tests, zero failures.
 - Canonical English/Japanese README parity checks: PASS.
 - `CURRENT_STATE.json` parse and final `git diff --check`: PASS.
-- GitHub readback after metadata publication: PR #7 open/Draft/unmerged with
-  HEAD `864c7a8`; PR #8 open/non-Draft/unmerged with docs HEAD `5d87c79`; both
-  reported mergeable at that readback.
+- GitHub readback after public PR metadata publication: PR #7 was
+  open/Draft/unmerged at application-plus-README checkpoint `864c7a8`; PR #8
+  was open/non-Draft/unmerged with docs HEAD `5d87c79`; both reported mergeable
+  at that readback. Subsequent PR #7 commits are handoff metadata only.
 - One initial system-Python attempt could not import PyMeshLab. It was an
   environment miss, not a test failure, and was superseded by the repository's
   pinned `.venv` run above.
