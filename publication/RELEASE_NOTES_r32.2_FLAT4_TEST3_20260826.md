@@ -1,27 +1,32 @@
 # ChromaMatter 0.8beta r32.2 — Flat Four Test 3
 
-Status: **publication candidate — not yet tagged or published**.
+Status: **published experimental GitHub prerelease**.
 
-This is a separate experimental Windows prerelease candidate. It does not
+This is a separate experimental Windows prerelease. It does not
 replace, retag, or modify the immutable `v0.8beta-r32.2` release or the frozen
 Flat Four Test 2 assets. The application-visible version remains
-`0.8beta (r32.2)`.
+`0.8beta (r32.2)`. Stable r32.2 remains the preferred production path.
 
-## Planned GitHub identity
+## Published GitHub identity
 
 - Branch: `codex/r32-2-experimental-flat4-large-glb-2d-filter`
-- Planned tag: `v0.8beta-r32.2-flat4-test3`
-- Source commit: pending exact candidate freeze
+- Tag: `v0.8beta-r32.2-flat4-test3`
+- Exact source commit: `beddc110922fdccc4a8c48def286014ad23cd0ed`
+- Release ID: `376762493`
+- Release: <https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2-flat4-test3>
+- Published at: `2026-08-25T22:51:42Z` (`2026-08-26` JST)
 - Draft PR: [#7](https://github.com/Ponkichi0718/ChromaMatter/pull/7)
-- Planned Windows asset:
+- Windows asset:
   `ChromaMatter-0.8beta-r32.2-flat4-test3-win64.zip`
-- Planned complete corresponding source:
+- Direct Windows download:
+  <https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2-flat4-test3/ChromaMatter-0.8beta-r32.2-flat4-test3-win64.zip>
+- Complete corresponding source:
   `ChromaMatter-0.8beta-r32.2-complete-corresponding-source.zip`
-- Planned SBOM:
+- SBOM:
   `ChromaMatter-0.8beta-r32.2-flat4-test3-SBOM.cdx.json`
-- Planned binary component map:
+- Binary component map:
   `ChromaMatter-0.8beta-r32.2-flat4-test3-BINARY_COMPONENT_MAP.json`
-- Planned checksum record: `SHA256SUMS-r32.2-flat4-test3.txt`
+- Checksum record: `SHA256SUMS-r32.2-flat4-test3.txt`
 
 The Test 3 package intentionally contains no bundled `DemoData`. Private
 models, generated previews, and derived 3MF files are not release payloads.
@@ -30,9 +35,9 @@ models, generated previews, and derived 3MF files are not release payloads.
 
 > **Flat Four Test 3 / Windows実験テスト版**
 >
-> これは評価とfeedback収集のための公開候補です。安定版
+> これは評価とfeedback収集のために公開した実験テスト版です。安定版
 > `v0.8beta-r32.2`と、固定済みのFlat Four Test 2 tag／assetは変更しません。
-> 公開後はZIP全体を展開してから起動してください。
+> ZIP全体を展開してから起動してください。
 
 ### Test 3の変更点
 
@@ -63,22 +68,25 @@ models, generated previews, and derived 3MF files are not release payloads.
   一致を保証せず、Windows executableも未署名です。入手元、SHA-256、Orcaのslice
   previewを確認してください。
 
-### 公開前の検証状態
+### 公開・検証状態
 
-- Working-tree full regression: **1,431 tests、失敗0、optional skip 3**。
-- Owner-only clean build、packaged／fresh-extracted self-test、日英UI smoke、binary
-  inventory、archive／privacy検証: PASS。
-- 上記はpreflight evidenceです。公開対象のexact commitからfull regression、clean
-  build、complete corresponding source、SBOM、component map、checksum、fresh-extract
-  監査を再生成・再検証するまで、Test 3を公開済みまたは一般配布可能とは扱いません。
+- Exact commit `beddc110922fdccc4a8c48def286014ad23cd0ed`のfull regression:
+  **1,431 tests／386.390秒、失敗0、optional skip 2**。exact `BUILD_AND_TEST`
+  再実行も382.567秒／optional skip 2でPASSしました。公開前working-tree preflightの
+  398.127秒／optional skip 3は別環境の過去証拠で、公開Releaseのexact結果ではありません。
+- Exact clean build、packaged self-test、日英UI smoke、binary inventory、archive／
+  privacy検証、complete corresponding source、SBOM、component map、checksum: PASS。
+- 公開後に5 assetすべてを未認証で再downloadし、byte sizeとSHA-256の一致を確認しました。
+  公開Windows ZIPを別folderへfresh extractしたself-testと日英UI smokeもPASSしました。
+- このexact Test 3 packageのphysical printer validationは未実施です。
 
 ## GitHub Release body — English
 
 > **Flat Four Test 3 / Experimental Windows build**
 >
-> This is a publication candidate for evaluation and feedback. It does not
+> This is a published experimental build for evaluation and feedback. It does not
 > modify the stable `v0.8beta-r32.2` release or the frozen Flat Four Test 2 tag
-> and assets. After publication, extract the complete ZIP before launching it.
+> and assets. Extract the complete ZIP before launching it.
 
 ### What changed in Test 3
 
@@ -112,13 +120,28 @@ models, generated previews, and derived 3MF files are not release payloads.
   colour is not a print-colour guarantee, and the Windows executable is
   unsigned. Verify the source, SHA-256, and Orca slice preview.
 
-### Pre-publication validation state
+### Publication and validation state
 
-- Working-tree full regression: **1,431 tests, zero failures, three optional
-  skips**.
-- Owner-only clean build, packaged/fresh-extracted self-test, both language UI
-  smokes, binary inventory, archive checks, and privacy checks: PASS.
-- This is preflight evidence only. Test 3 must not be described as published or
-  generally distributable until the exact release commit has regenerated and
-  passed the full regression, clean build, complete corresponding source, SBOM,
-  component map, checksums, fresh-extract audit, and publication checks.
+- Exact commit `beddc110922fdccc4a8c48def286014ad23cd0ed` full regression:
+  **1,431 tests in 386.390 seconds, zero failures, two optional skips**. The
+  exact `BUILD_AND_TEST` rerun also passed in 382.567 seconds with two optional
+  skips. The earlier 398.127-second working-tree preflight with three optional
+  skips is separate historical evidence, not the exact Release result.
+- Exact clean build, packaged self-test, both-language UI smokes, binary
+  inventory, archive/privacy checks, complete corresponding source, SBOM,
+  component map, and checksums: PASS.
+- All five assets were re-downloaded without authentication after publication
+  and matched the frozen byte sizes and SHA-256 values. A separate fresh
+  extraction of the published Windows ZIP also passed self-test and Japanese/
+  English UI smoke.
+- Physical-printer validation of this exact Test 3 package remains pending.
+
+## Published asset record
+
+| Asset | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `ChromaMatter-0.8beta-r32.2-flat4-test3-win64.zip` | 115,090,746 | `C1B83936AE832EFD985951B0973143E4771B1F1FFF9C7F07ADFF9AF0EE0EB239` |
+| `ChromaMatter-0.8beta-r32.2-complete-corresponding-source.zip` | 1,366,029,816 | `A9AE90820D54ED7A9F63ACE2D8915920AE4CBFA496A3256BE2525F06E73ED8EA` |
+| `ChromaMatter-0.8beta-r32.2-flat4-test3-SBOM.cdx.json` | 937,715 | `F50399614D5D70F1528EB02240639341924980A0404A31284DF1771834C1F45F` |
+| `ChromaMatter-0.8beta-r32.2-flat4-test3-BINARY_COMPONENT_MAP.json` | 526,076 | `A1D4A5B0A2C35D243645E00725D3637E60F0CC92F5B34EA8ED1221054C7F5624` |
+| `SHA256SUMS-r32.2-flat4-test3.txt` | 492 | `2A5BF037474550EC57166A078BE215F5B80C92BED9771FFB094E76266C8CA1F8` |

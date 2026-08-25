@@ -1471,3 +1471,75 @@ validation of direct Flat versus Full-then-Flat and manual F-slot preservation.
   preflight; the exact committed and staged public bytes require new gates.
 - Do not add DemoData, private models, derived private 3MF files, or local build
   evidence to the Test 3 software package or Git tree.
+
+## 2026-08-26 Flat Four Test 3 published prerelease
+
+This section supersedes the pending-publication status above while preserving
+that section as the candidate/preflight record.
+
+### Frozen public identity
+
+- Published GitHub prerelease:
+  <https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2-flat4-test3>
+- Release ID: `376762493`
+- Exact tag/source commit: `v0.8beta-r32.2-flat4-test3` /
+  `beddc110922fdccc4a8c48def286014ad23cd0ed`
+- Published at: `2026-08-25T22:51:42Z` (`2026-08-26` JST)
+- Windows direct download:
+  <https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2-flat4-test3/ChromaMatter-0.8beta-r32.2-flat4-test3-win64.zip>
+- The Test 3 Windows package intentionally contains no `DemoData`.
+
+### Exact release validation
+
+- The exact-tag full regression passed 1,431 tests in 386.390 seconds with zero
+  failures and two optional skips. The exact `BUILD_AND_TEST` rerun passed in
+  382.567 seconds with the same two optional skips.
+- Keep this distinct from the earlier working-tree preflight: 1,431 tests in
+  398.127 seconds with three optional skips. That remains valid historical
+  evidence but is not the exact Release result.
+- Exact clean build, corresponding-source/compliance staging, packaged checks,
+  archive/privacy checks, and detached checksum verification: PASS.
+- After publication, all five assets were downloaded again without
+  authentication. Every asset matched its frozen byte size and SHA-256.
+- The published Windows ZIP was independently fresh-extracted. Its packaged
+  self-test and isolated Japanese/English UI smokes passed.
+
+### Frozen five-asset set
+
+- `ChromaMatter-0.8beta-r32.2-flat4-test3-win64.zip`: 115,090,746 bytes,
+  SHA-256 `C1B83936AE832EFD985951B0973143E4771B1F1FFF9C7F07ADFF9AF0EE0EB239`
+- `ChromaMatter-0.8beta-r32.2-complete-corresponding-source.zip`:
+  1,366,029,816 bytes, SHA-256
+  `A9AE90820D54ED7A9F63ACE2D8915920AE4CBFA496A3256BE2525F06E73ED8EA`
+- `ChromaMatter-0.8beta-r32.2-flat4-test3-SBOM.cdx.json`: 937,715 bytes,
+  SHA-256 `F50399614D5D70F1528EB02240639341924980A0404A31284DF1771834C1F45F`
+- `ChromaMatter-0.8beta-r32.2-flat4-test3-BINARY_COMPONENT_MAP.json`:
+  526,076 bytes, SHA-256
+  `A1D4A5B0A2C35D243645E00725D3637E60F0CC92F5B34EA8ED1221054C7F5624`
+- `SHA256SUMS-r32.2-flat4-test3.txt`: 492 bytes, SHA-256
+  `2A5BF037474550EC57166A078BE215F5B80C92BED9771FFB094E76266C8CA1F8`
+
+### Public navigation and remaining limits
+
+- The five canonical root README variants now keep stable r32.2 first and
+  preferred, while selecting Flat Four Test 3 as the current experimental
+  channel with the verified direct Windows ZIP and Release links. English and
+  Japanese aliases must remain byte-identical within their language groups.
+- Documentation-only PR #8 remains open and unmerged; its navigation branch was
+  updated to Test 3 at commit `9d4eb1202cb07a8438fc7e53e05889d2e09ac08c`.
+- Flat Four Test 2 remains frozen historical prerelease evidence. Do not move
+  its tag or replace its five assets.
+- Test 3 does not remove white globally. It preserves eye whites conservatively
+  and absorbs only small, high-confidence baked white/gray highlights on smooth
+  chromatic surfaces. It is topology-based, not semantic recognition; a small
+  intentional white patch can still be misclassified, so manual paint remains
+  authoritative.
+- Retained white below 0.01% does not force a white spool, all four F1-F4 slots
+  remain in the schema, and an output may effectively use only three paint IDs.
+  Full Spectrum remains unchanged.
+- On an open mesh above 500,000 faces without reusable adjacency, only the
+  automatic highlight correction skips fail-closed. Multipart solidification
+  and part-specific 3MF remain input-dependent beta features.
+- Physical-printer validation of this exact Test 3 package remains pending.
+  Do not imply that the successful software/package gates prove a physical
+  colour result or compatibility with every multipart model.

@@ -29,25 +29,25 @@
     }
   },
   "experimental_test_workstream": {
-    "publication_status": "published-experimental-prerelease-flat4-test2",
+    "publication_status": "published-experimental-prerelease-flat4-test3",
     "published_release_unchanged": "v0.8beta-r32.2",
     "github": {
       "branch": "codex/r32-2-experimental-flat4-large-glb-2d-filter",
-      "source_commit": "32769037a9173537beeb8574471f4ec9c040c214",
-      "source_commit_scope": "exact tagged Flat Four Test 2 build and complete corresponding-source commit",
+      "source_commit": "beddc110922fdccc4a8c48def286014ad23cd0ed",
+      "source_commit_scope": "exact tagged Flat Four Test 3 build and complete corresponding-source commit",
       "latest_fix2_source_commit": "0ed8dd404233752fec7b7f63fa13a2a9238e9b38",
       "latest_fix2_source_status": "included in the published Flat Four Test 2 prerelease and retained in Draft PR #7",
       "latest_mode_history_source_commit": "32b03438dbde322b3e2ff8b070356622d6999ad2",
-      "latest_mode_history_source_status": "included in the published Flat Four Test 2 prerelease; published stable r32.2 and its assets remain unchanged",
+      "latest_mode_history_source_status": "included in the published Flat Four Test 2 and Test 3 prereleases; published stable r32.2 and its assets remain unchanged",
       "workstream_application_readme_checkpoint": "864c7a8db157f0bf2a7601c8123d89514bef8c88",
       "navigation_docs_branch": "docs/experimental-version-navigation",
-      "navigation_docs_commit": "5d87c790406ad3a80a7fd3e31c50bd2cee04bfd9",
+      "navigation_docs_commit": "9d4eb1202cb07a8438fc7e53e05889d2e09ac08c",
       "navigation_docs_pull_request": 8,
-      "navigation_docs_status": "open documentation-only PR #8 targeting main; unmerged",
-      "tag": "v0.8beta-r32.2-flat4-test2",
-      "release_id": 376367877,
-      "release_url": "https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2-flat4-test2",
-      "windows_direct_download_url": "https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2-flat4-test2/ChromaMatter-0.8beta-r32.2-flat4-test2-win64.zip",
+      "navigation_docs_status": "open documentation-only PR #8 targeting main; updated to the verified Flat Four Test 3 direct download; unmerged",
+      "tag": "v0.8beta-r32.2-flat4-test3",
+      "release_id": 376762493,
+      "release_url": "https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2-flat4-test3",
+      "windows_direct_download_url": "https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2-flat4-test3/ChromaMatter-0.8beta-r32.2-flat4-test3-win64.zip",
       "draft_pull_request": 7,
       "draft_pull_request_status": "open Draft; source review and experimental follow-up hub; unmerged",
       "draft_release": false,
@@ -75,7 +75,7 @@
         "Applies a Flat-Four-only conservative chromatic-shadow recovery pass: source faces assigned to a neutral physical slot may move to an enabled chromatic F1-F4 slot only when RGB span, Lab chroma, and normalized-RGB margin all retain clear material-colour evidence; near-neutral black remains excluded.",
         "Manual Fill compares Flat Four's visible physical-state projection for connectivity, so connected legacy mixed IDs that appear as the same black region can be repainted together while canonical overrides, Full Spectrum boundaries, part masks, and Undo/Redo remain intact.",
         "For a newly opened model whose automatic palette remains untouched, switching Full Spectrum / Flat Four recomputes the four-filament proposal for the target mode, so the result no longer depends on the mode active at file-open time; any manual filament, recipe, state, output, or palette-inheritance edit disables that refresh and is preserved.",
-        "The Flat Four Test 3 candidate does not remove white globally: meaningful small white targets such as eye whites beside dark linework remain unabsorbed, while only small high-confidence white/gray lighting islands on smooth chromatic surfaces are folded into the chromatic physical slot used around their boundary.",
+        "The published Flat Four Test 3 prerelease does not remove white globally: meaningful small white targets such as eye whites beside dark linework remain unabsorbed, while only small high-confidence white/gray lighting islands on smooth chromatic surfaces are folded into the chromatic physical slot used around their boundary.",
         "Retained white covering at least 0.01% of total printable area reserves a suitable near-white physical filament. White below 0.01% remains unabsorbed but does not by itself force a white spool and may map to the nearest selected F1-F4 colour.",
         "Four physical F1-F4 slots and 3MF state metadata remain present even when an output effectively uses three paint IDs; manual paint remains authoritative and Full Spectrum behavior is unchanged."
       ],
@@ -91,9 +91,9 @@
       ]
     },
     "validation": {
-      "status": "exact-current-head-flat4-test2-published-prerelease-validated",
-      "full_regression": "1389 tests, 0 failures, 2 optional skips in the exact repaired-PyTetWild build environment; the application and regression-test bytes are committed as 0ed8dd404233752fec7b7f63fa13a2a9238e9b38",
-      "focused_regression": "152 tests, 0 failures and 0 skips rerun before the GitHub handoff; compileall, CURRENT_STATE JSON parse, and git diff --check passed",
+      "status": "exact-current-head-flat4-test3-published-prerelease-validated",
+      "full_regression": "1431 tests in 386.390s, 0 failures, 2 optional skips for the exact Flat Four Test 3 source committed and tagged as beddc110922fdccc4a8c48def286014ad23cd0ed; the exact BUILD_AND_TEST rerun completed in 382.567s with the same 2 optional skips",
+      "focused_regression": "Focused 60-test and broader 244-test Test 3 sets passed; py_compile, CURRENT_STATE JSON parse, and git diff --check passed before publication",
       "mode_history_working_tree": {
         "status": "implemented, focused-validated, committed as 32b03438dbde322b3e2ff8b070356622d6999ad2, and pushed to the experimental workstream branch",
         "cause": "The new-model automatic filament recommendation optimizes against mixed states in Full Spectrum but physical F1-F4 only in Flat Four; mode switching previously changed assignment mode without recomputing the four physical filaments.",
@@ -173,11 +173,17 @@
         "pip_direct_url_metadata": 0,
         "publication_status": "local owner-only test artifact; not committed, uploaded, or published; its application-source bytes are now represented by the Fix2 source commit"
       },
-      "flat4_test3_candidate": {
-        "status": "Flat Four Test 3 publication candidate prepared for a dedicated source checkpoint; the commit containing this record is the candidate source once created, while the tag, public artifacts, and publication verification remain pending",
-        "planned_release": {
+      "flat4_test3_public_release": {
+        "status": "published experimental prerelease; exact tagged source, all five public assets, and anonymous post-publication verification passed",
+        "release": {
           "tag": "v0.8beta-r32.2-flat4-test3",
+          "source_commit": "beddc110922fdccc4a8c48def286014ad23cd0ed",
+          "release_id": 376762493,
+          "release_url": "https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2-flat4-test3",
+          "published_at_utc": "2026-08-25T22:51:42Z",
+          "prerelease": true,
           "windows_package": "ChromaMatter-0.8beta-r32.2-flat4-test3-win64.zip",
+          "windows_direct_download_url": "https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2-flat4-test3/ChromaMatter-0.8beta-r32.2-flat4-test3-win64.zip",
           "complete_corresponding_source": "ChromaMatter-0.8beta-r32.2-complete-corresponding-source.zip",
           "sbom": "ChromaMatter-0.8beta-r32.2-flat4-test3-SBOM.cdx.json",
           "binary_component_map": "ChromaMatter-0.8beta-r32.2-flat4-test3-BINARY_COMPONENT_MAP.json",
@@ -193,7 +199,7 @@
           "physical_slots": "four F1-F4 slots and 3MF state metadata are retained even when the final Flat output effectively uses only three paint IDs"
         },
         "fail_closed_and_performance_contract": "part boundaries, hard creases, broad or disconnected white regions, ambiguous topology, and unsupported large open meshes are not absorbed; above 500000 faces without reusable adjacency only this automatic correction is skipped. face_neighbors_partial measured 7.01s before and 0.091s after on 498002 faces with identical 1996 open slots; 1000 randomized/degenerate comparisons matched byte-for-byte. At 3000000 faces helper transient peaks changed from 163.1 MiB to 1.0 MiB and from 91.6 MiB to 4.6 MiB.",
-        "source_validation": "passed: Ran 1431 tests in 398.127s; OK (skipped=3). Focused 60-test and broader 244-test sets, py_compile, and git diff --check also passed.",
+        "source_validation": "working-tree preflight passed 1431 tests in 398.127s with 3 optional skips; exact tagged commit beddc110922fdccc4a8c48def286014ad23cd0ed passed 1431 tests in 386.390s with 2 optional skips, and its exact BUILD_AND_TEST rerun completed in 382.567s with the same 2 optional skips. Focused 60-test and broader 244-test sets, py_compile, and git diff --check also passed.",
         "owner_test_package": {
           "filename": "ChromaMatter-0.8beta-r32.2-Flat4-Highlights-INTERNAL-TEST-20260825-win64.zip",
           "bytes": 117524346,
@@ -211,13 +217,46 @@
           "private_model_payloads": 0,
           "pip_direct_url_metadata": 0
         },
+        "public_assets": {
+          "windows_package": {
+            "filename": "ChromaMatter-0.8beta-r32.2-flat4-test3-win64.zip",
+            "bytes": 115090746,
+            "sha256": "C1B83936AE832EFD985951B0973143E4771B1F1FFF9C7F07ADFF9AF0EE0EB239",
+            "fresh_extract_self_test": "passed",
+            "fresh_extract_ui_smoke": {
+              "ja": "passed",
+              "en": "passed"
+            },
+            "demo_data": "not included"
+          },
+          "complete_corresponding_source": {
+            "filename": "ChromaMatter-0.8beta-r32.2-complete-corresponding-source.zip",
+            "bytes": 1366029816,
+            "sha256": "A9AE90820D54ED7A9F63ACE2D8915920AE4CBFA496A3256BE2525F06E73ED8EA"
+          },
+          "sbom": {
+            "filename": "ChromaMatter-0.8beta-r32.2-flat4-test3-SBOM.cdx.json",
+            "bytes": 937715,
+            "sha256": "F50399614D5D70F1528EB02240639341924980A0404A31284DF1771834C1F45F"
+          },
+          "binary_component_map": {
+            "filename": "ChromaMatter-0.8beta-r32.2-flat4-test3-BINARY_COMPONENT_MAP.json",
+            "bytes": 526076,
+            "sha256": "A1D4A5B0A2C35D243645E00725D3637E60F0CC92F5B34EA8ED1221054C7F5624"
+          },
+          "checksum_record": {
+            "filename": "SHA256SUMS-r32.2-flat4-test3.txt",
+            "bytes": 492,
+            "sha256": "2A5BF037474550EC57166A078BE215F5B80C92BED9771FFB094E76266C8CA1F8"
+          }
+        },
         "known_limitation": "This is not semantic recognition. A tiny white patch smoothly enclosed only by one skin/tan surface, with no dark edge, crease, or part boundary, may be indistinguishable from a baked highlight and be absorbed; manual white paint remains authoritative. Above 500000 faces on an open mesh without reusable adjacency, only this automatic correction is skipped fail-closed.",
         "physical_printer_validation": "pending for the exact Flat Four Test 3 package",
-        "remaining_publication_gates": "use the dedicated candidate source checkpoint; rerun its exact full regression and clean build; regenerate and validate the release-approved complete corresponding source, SBOM, binary component map, software stage, and SHA256SUMS; pass independent fresh-extract, privacy, archive, self-test, and Japanese/English UI smoke; publish under a new tag and verify all assets by unauthenticated redownload",
-        "publication_status": "candidate source record only; no Test 3 tag, upload, or Release publication is represented by this record; published stable r32.2 and Flat Four Test 2 remain unchanged"
+        "post_publication_validation": "all five Release assets were re-downloaded without authentication and matched their frozen byte sizes and SHA-256 hashes; a fresh extraction of the published Windows ZIP passed the packaged self-test and isolated Japanese and English UI smoke tests",
+        "publication_status": "published as GitHub prerelease id 376762493; published stable r32.2 remains the preferred production path and unchanged, while Flat Four Test 2 remains immutable historical prerelease evidence"
       },
       "public_binary_package_or_physical_evidence": true,
-      "release_note": "Flat Four Test 2 is a separate public prerelease built from exact tag v0.8beta-r32.2-flat4-test2 at 32769037a9173537beeb8574471f4ec9c040c214. It includes Fix2, mode-independent automatic Flat Four proposals, Large GLB beta handling, and the 2D Colour Filter. Its five assets passed clean-build, package/source staging, fresh-extraction, hash, and anonymous post-publication redownload gates. Physical printer validation remains pending, and multipart solidification/part-specific 3MF remain input-dependent beta behavior. Published stable r32.2 is unchanged."
+      "release_note": "Flat Four Test 3 is a separate public prerelease built from exact tag v0.8beta-r32.2-flat4-test3 at beddc110922fdccc4a8c48def286014ad23cd0ed. Its five assets passed exact-source/build/compliance gates, anonymous post-publication redownload with byte-size and SHA-256 parity, and fresh-extracted Windows self-test plus Japanese/English UI smoke. It preserves eye whites conservatively while absorbing only small high-confidence baked white/gray highlights; it is not semantic recognition. The Test 3 package contains no DemoData, physical-printer validation remains pending, and multipart solidification/part-specific 3MF remain input-dependent beta behavior. Published stable r32.2 is unchanged and preferred; Flat Four Test 2 remains immutable historical prerelease evidence."
     }
   },
   "current_features": {

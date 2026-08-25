@@ -11,10 +11,10 @@
 | Channel | Best for | Open |
 | --- | --- | --- |
 | **Published r32.2** | The current downloadable Windows build and the documented Full Spectrum workflow | **[Download stable r32.2](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2)** |
-| **Experimental Flat Four Test 2** | Testing Flat Four, its latest colour/3MF/manual-fill fixes, the large-static-GLB path, and the 2D Colour Filter before integration | **[Download the Windows test ZIP](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2-flat4-test2/ChromaMatter-0.8beta-r32.2-flat4-test2-win64.zip)** · [Release notes](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2-flat4-test2) · [Draft PR #7](https://github.com/Ponkichi0718/ChromaMatter/pull/7) |
+| **Experimental Flat Four Test 3** | Testing Flat Four with conservative eye-white preservation and skin-highlight correction, plus the large-static-GLB path and 2D Colour Filter, before integration | **[Download the Windows test ZIP](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2-flat4-test3/ChromaMatter-0.8beta-r32.2-flat4-test3-win64.zip)** · [Release notes](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2-flat4-test3) · [Draft PR #7](https://github.com/Ponkichi0718/ChromaMatter/pull/7) |
 
 The experimental workstream is an integration candidate, not a permanent fork.
-**Flat Four Test 2 is now available as a separate public pre-release.** Extract
+**Flat Four Test 3 is now available as a separate public pre-release.** Extract
 the whole ZIP before starting it. Stable r32.2 below does not contain Flat Four;
 the test Release and Draft PR #7 remain the experimental status hubs.
 
