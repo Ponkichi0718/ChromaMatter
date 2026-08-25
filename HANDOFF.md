@@ -1210,16 +1210,23 @@ overwriting any later manual filament or palette decision.
   `docs/experimental-version-navigation` at
   `5d87c790406ad3a80a7fd3e31c50bd2cee04bfd9` from `origin/main`, so the same
   selector can reach the default branch without merging application code.
+- Opened documentation-only PR #8 from that branch to `main`:
+  <https://github.com/Ponkichi0718/ChromaMatter/pull/8>.
+- Updated Draft PR #7's title and body so it now separates stable r32.2 from the
+  experimental source, links PR #8, lists the current Flat Four corrections and
+  validation evidence, and states that no public experimental Windows ZIP exists:
+  <https://github.com/Ponkichi0718/ChromaMatter/pull/7>.
 
 ### Current state
 
 - The application correction is committed as
   `32b03438dbde322b3e2ff8b070356622d6999ad2` and pushed on
   `codex/r32-2-experimental-flat4-large-glb-2d-filter`; Draft PR #7 follows it.
-- The documentation-only branch is pushed, but creating its PR and replacing
-  Draft PR #7's public title/body require an action-time browser confirmation.
-  The installed GitHub connector returned 403 for PR creation, so no public PR
-  text was changed yet.
+- The workstream HEAD is `864c7a8db157f0bf2a7601c8123d89514bef8c88`.
+  Draft PR #7 is open, remains Draft, is mergeable at the last GitHub readback,
+  and now serves as the authoritative experimental status/testing hub.
+- Documentation-only PR #8 is open and mergeable at the last GitHub readback.
+  It contains one commit and changes only the five canonical README variants.
 - No merge into `main`, tag, Release edit, Draft Release asset replacement,
   binary build, or ZIP replacement was performed.
 - The existing Fix2 owner-only ZIP predates this correction and will still show
@@ -1227,12 +1234,12 @@ overwriting any later manual filament or palette decision.
 
 ### Next exact task
 
-After the required browser action-time confirmation, create a documentation-only
-PR from `docs/experimental-version-navigation` to `main`, then update Draft PR
-#7's title/body to serve as the public experimental status/testing hub. Do not
-merge either PR automatically. A later exact-commit clean owner-only Windows ZIP
-may be created for hands-on validation of direct Flat versus Full-then-Flat and
-manual F-slot preservation.
+Review and, when explicitly approved, merge documentation-only PR #8 so the
+stable-versus-experimental selector appears on the default repository page.
+Keep application PR #7 Draft until exact-current-HEAD regression, packaging and
+compliance checks, Snapmaker Orca checks, and physical U1 validation are complete.
+A later exact-commit clean owner-only Windows ZIP may be created for hands-on
+validation of direct Flat versus Full-then-Flat and manual F-slot preservation.
 
 ### Changed files
 
@@ -1255,6 +1262,9 @@ manual F-slot preservation.
 - Documentation-only branch release-identity tests: 12 tests, zero failures.
 - Canonical English/Japanese README parity checks: PASS.
 - `CURRENT_STATE.json` parse and final `git diff --check`: PASS.
+- GitHub readback after metadata publication: PR #7 open/Draft/unmerged with
+  HEAD `864c7a8`; PR #8 open/non-Draft/unmerged with docs HEAD `5d87c79`; both
+  reported mergeable at that readback.
 - One initial system-Python attempt could not import PyMeshLab. It was an
   environment miss, not a test failure, and was superseded by the repository's
   pinned `.venv` run above.
