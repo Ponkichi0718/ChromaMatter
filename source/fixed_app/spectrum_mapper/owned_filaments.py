@@ -16,6 +16,7 @@ from .filament_materials import (
     normalize_filament_material,
 )
 from .filament_recommender import (
+    _coerce_rgb_samples,
     CATEGORY_PRIMARY,
     DEFAULT_MAX_CANDIDATES,
     FilamentCandidate,
@@ -589,6 +590,7 @@ def _shortlist_owned_products(
     representative_rgb: np.ndarray,
     representative_weights: np.ndarray,
     maximum: int,
+    required_physical_rgb: Sequence[Sequence[float]] | np.ndarray | None = None,
 ) -> tuple[FilamentProduct, ...]:
     """Bound combinations while retaining useful colour-gamut endpoints.
 
@@ -600,8 +602,6 @@ def _shortlist_owned_products(
     """
 
     values = tuple(products)
-    if len(values) <= maximum:
-        return values
     from .engine import srgb_to_lab
 
     candidate_rgb = np.asarray(
@@ -612,6 +612,17 @@ def _shortlist_owned_products(
         dtype=np.float64,
     )
     candidate_lab = srgb_to_lab(candidate_rgb / 255.0)
+    required_lab = None
+    if required_physical_rgb is not None:
+        required_rgb = _coerce_rgb_samples(
+            required_physical_rgb,
+            "required_physical_rgb",
+        )
+        if len(required_rgb) > 4:
+            raise ValueError("required_physical_rgb may contain at most four colours")
+        required_lab = srgb_to_lab(required_rgb / 255.0)
+    if len(values) <= maximum:
+        return values
     target_lab = srgb_to_lab(
         np.asarray(representative_rgb, dtype=np.float64).reshape(-1, 3) / 255.0
     )
@@ -621,8 +632,27 @@ def _shortlist_owned_products(
 
     selected_indices: list[int] = []
     selected_set: set[int] = set()
+    if required_lab is not None:
+        for target in required_lab:
+            delta = candidate_lab - target[None, :]
+            distances = np.sqrt(np.sum(delta * delta, axis=1))
+            ranked_required = sorted(
+                range(len(values)),
+                key=lambda index: (
+                    float(distances[index]),
+                    values[index].product_id.casefold(),
+                    values[index].product_id,
+                ),
+            )
+            for index in ranked_required:
+                if index not in selected_set:
+                    selected_indices.append(index)
+                    selected_set.add(index)
+                    break
     for axis in range(3):
         for index in (int(np.argmin(candidate_lab[:, axis])), int(np.argmax(candidate_lab[:, axis]))):
+            if len(selected_indices) >= maximum:
+                break
             if index not in selected_set:
                 selected_indices.append(index)
                 selected_set.add(index)
@@ -748,6 +778,7 @@ def recommend_from_owned_filaments(
     enabled_states: Sequence[bool] | None = None,
     include_mixed_states: bool = True,
     pink_protection_mask: Sequence[bool] | np.ndarray | None = None,
+    required_physical_rgb: Sequence[Sequence[float]] | np.ndarray | None = None,
     max_candidates: int = DEFAULT_MAX_CANDIDATES,
     max_passes: int = 8,
 ) -> OwnedFilamentRecommendation:
@@ -832,6 +863,7 @@ def recommend_from_owned_filaments(
         shortlist_rgb,
         shortlist_weights,
         max_candidates,
+        required_physical_rgb,
     )
     catalog = tuple(
         FilamentCandidate(
@@ -857,6 +889,7 @@ def recommend_from_owned_filaments(
         include_mixed_states=include_mixed_states,
         alternative_count=OWNED_REFINEMENT_SHORTLIST_SIZE - 1,
         max_candidates=len(catalog),
+        required_physical_rgb=required_physical_rgb,
     )
     # A larger palette is a strict superset of the first sixteen states, but
     # its approximate combination ranking can otherwise discard a good
@@ -879,6 +912,7 @@ def recommend_from_owned_filaments(
             include_mixed_states=True,
             alternative_count=OWNED_REFINEMENT_SHORTLIST_SIZE - 1,
             max_candidates=len(catalog),
+            required_physical_rgb=required_physical_rgb,
         )
     product_lookup = {product.product_id: product for product in unique_products}
     representative_rgb = np.asarray(

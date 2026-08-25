@@ -5,7 +5,7 @@
   "edition": "AI Model Print Studio r32.2",
   "artifact_slug": "r32.2-ai-model-print-studio",
   "status": "v0.8beta-r32.2-published-prerelease-exact-tagged-build",
-  "updated": "2026-08-25",
+  "updated": "2026-08-26",
   "version_policy": {
     "pinned_until_explicit_user_request": true,
     "edition_and_artifact_revision_may_advance_independently": true,
@@ -74,7 +74,10 @@
         "Persists the six deleted automatic F1-F4 pair tombstones used by Snapmaker Orca 2.3.5, preventing its application-wide automatic-gradient preference from recreating six visible 50/50 mixed rows while keeping every printable state in F1-F4.",
         "Applies a Flat-Four-only conservative chromatic-shadow recovery pass: source faces assigned to a neutral physical slot may move to an enabled chromatic F1-F4 slot only when RGB span, Lab chroma, and normalized-RGB margin all retain clear material-colour evidence; near-neutral black remains excluded.",
         "Manual Fill compares Flat Four's visible physical-state projection for connectivity, so connected legacy mixed IDs that appear as the same black region can be repainted together while canonical overrides, Full Spectrum boundaries, part masks, and Undo/Redo remain intact.",
-        "For a newly opened model whose automatic palette remains untouched, switching Full Spectrum / Flat Four recomputes the four-filament proposal for the target mode, so the result no longer depends on the mode active at file-open time; any manual filament, recipe, state, output, or palette-inheritance edit disables that refresh and is preserved."
+        "For a newly opened model whose automatic palette remains untouched, switching Full Spectrum / Flat Four recomputes the four-filament proposal for the target mode, so the result no longer depends on the mode active at file-open time; any manual filament, recipe, state, output, or palette-inheritance edit disables that refresh and is preserved.",
+        "The Flat Four Test 3 candidate does not remove white globally: meaningful small white targets such as eye whites beside dark linework remain unabsorbed, while only small high-confidence white/gray lighting islands on smooth chromatic surfaces are folded into the chromatic physical slot used around their boundary.",
+        "Retained white covering at least 0.01% of total printable area reserves a suitable near-white physical filament. White below 0.01% remains unabsorbed but does not by itself force a white spool and may map to the nearest selected F1-F4 colour.",
+        "Four physical F1-F4 slots and 3MF state metadata remain present even when an output effectively uses three paint IDs; manual paint remains authoritative and Full Spectrum behavior is unchanged."
       ],
       "illustration_filter": [
         "Offers experimental Cel Colour and Shaded Monochrome modes with fixed-front, geometry-aware stepped shading.",
@@ -169,6 +172,49 @@
         "private_model_payloads": 0,
         "pip_direct_url_metadata": 0,
         "publication_status": "local owner-only test artifact; not committed, uploaded, or published; its application-source bytes are now represented by the Fix2 source commit"
+      },
+      "flat4_test3_candidate": {
+        "status": "Flat Four Test 3 publication candidate prepared for a dedicated source checkpoint; the commit containing this record is the candidate source once created, while the tag, public artifacts, and publication verification remain pending",
+        "planned_release": {
+          "tag": "v0.8beta-r32.2-flat4-test3",
+          "windows_package": "ChromaMatter-0.8beta-r32.2-flat4-test3-win64.zip",
+          "complete_corresponding_source": "ChromaMatter-0.8beta-r32.2-complete-corresponding-source.zip",
+          "sbom": "ChromaMatter-0.8beta-r32.2-flat4-test3-SBOM.cdx.json",
+          "binary_component_map": "ChromaMatter-0.8beta-r32.2-flat4-test3-BINARY_COMPONENT_MAP.json",
+          "checksum_record": "SHA256SUMS-r32.2-flat4-test3.txt",
+          "package_demo_data": "not included"
+        },
+        "scope": "Flat Four only; Full Spectrum keeps its established adjacency, smoothing, palette, and assignment behavior",
+        "behavior": {
+          "intentional_white": "small retained near-white details such as eye whites next to dark linework remain white targets rather than being absorbed as highlights",
+          "white_filament_threshold": "retained white reserves a suitable near-white physical filament in standard and owned-filament proposals only when it covers at least 0.01% of total printable area; below that threshold it remains unabsorbed but does not force a white spool and may map to the nearest selected F1-F4 colour",
+          "baked_achromatic_highlights": "high-confidence small white/gray lighting islands on smooth skin or material surfaces are reassigned to the dominant chromatic physical slot used by their boundary",
+          "black_and_manual_paint": "neutral black detail remains excluded from absorption; manual paint remains authoritative",
+          "physical_slots": "four F1-F4 slots and 3MF state metadata are retained even when the final Flat output effectively uses only three paint IDs"
+        },
+        "fail_closed_and_performance_contract": "part boundaries, hard creases, broad or disconnected white regions, ambiguous topology, and unsupported large open meshes are not absorbed; above 500000 faces without reusable adjacency only this automatic correction is skipped. face_neighbors_partial measured 7.01s before and 0.091s after on 498002 faces with identical 1996 open slots; 1000 randomized/degenerate comparisons matched byte-for-byte. At 3000000 faces helper transient peaks changed from 163.1 MiB to 1.0 MiB and from 91.6 MiB to 4.6 MiB.",
+        "source_validation": "passed: Ran 1431 tests in 398.127s; OK (skipped=3). Focused 60-test and broader 244-test sets, py_compile, and git diff --check also passed.",
+        "owner_test_package": {
+          "filename": "ChromaMatter-0.8beta-r32.2-Flat4-Highlights-INTERNAL-TEST-20260825-win64.zip",
+          "bytes": 117524346,
+          "sha256": "0508BC6ACF082FE766F1E4054DBDB82FC999E9E4090A98F18DEBF0F701176F8C",
+          "files": 1457,
+          "runtime_files": 1455,
+          "native_files": 256,
+          "clean_build_and_binary_inventory": "passed; clean one-folder build, packaged self-test, isolated Japanese/English UI smoke, and fail-closed binary inventory all passed",
+          "fresh_extract_path_size_sha256_parity": "passed",
+          "fresh_extract_self_test": "passed",
+          "fresh_extract_ui_smoke": {
+            "ja": "passed",
+            "en": "passed"
+          },
+          "private_model_payloads": 0,
+          "pip_direct_url_metadata": 0
+        },
+        "known_limitation": "This is not semantic recognition. A tiny white patch smoothly enclosed only by one skin/tan surface, with no dark edge, crease, or part boundary, may be indistinguishable from a baked highlight and be absorbed; manual white paint remains authoritative. Above 500000 faces on an open mesh without reusable adjacency, only this automatic correction is skipped fail-closed.",
+        "physical_printer_validation": "pending for the exact Flat Four Test 3 package",
+        "remaining_publication_gates": "use the dedicated candidate source checkpoint; rerun its exact full regression and clean build; regenerate and validate the release-approved complete corresponding source, SBOM, binary component map, software stage, and SHA256SUMS; pass independent fresh-extract, privacy, archive, self-test, and Japanese/English UI smoke; publish under a new tag and verify all assets by unauthenticated redownload",
+        "publication_status": "candidate source record only; no Test 3 tag, upload, or Release publication is represented by this record; published stable r32.2 and Flat Four Test 2 remain unchanged"
       },
       "public_binary_package_or_physical_evidence": true,
       "release_note": "Flat Four Test 2 is a separate public prerelease built from exact tag v0.8beta-r32.2-flat4-test2 at 32769037a9173537beeb8574471f4ec9c040c214. It includes Fix2, mode-independent automatic Flat Four proposals, Large GLB beta handling, and the 2D Colour Filter. Its five assets passed clean-build, package/source staging, fresh-extraction, hash, and anonymous post-publication redownload gates. Physical printer validation remains pending, and multipart solidification/part-specific 3MF remain input-dependent beta behavior. Published stable r32.2 is unchanged."

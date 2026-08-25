@@ -562,11 +562,19 @@ def _shortlist_candidates(
     representative_lab: np.ndarray,
     representative_weights: np.ndarray,
     maximum: int | None,
+    required_candidate_ids: frozenset[str] = frozenset(),
 ) -> list[FilamentCandidate]:
+    unknown_required = required_candidate_ids.difference(
+        candidate.id for candidate in candidates
+    )
+    if unknown_required:
+        raise ValueError("required filament candidate is not eligible")
     if maximum is None:
         return candidates
     if not isinstance(maximum, int) or isinstance(maximum, bool) or maximum < 4:
         raise ValueError("max_candidates must be None or an integer of at least four")
+    if len(required_candidate_ids) > maximum:
+        raise ValueError("required filament candidates exceed max_candidates")
     if len(candidates) <= maximum:
         return candidates
     candidate_rgb = np.asarray([candidate.rgb8 for candidate in candidates])
@@ -581,10 +589,65 @@ def _shortlist_candidates(
             candidates[index].id.casefold(),
             candidates[index].id,
         ),
-    )[:maximum]
-    result = [candidates[index] for index in ranked]
+    )
+    required = [
+        index
+        for index, candidate in enumerate(candidates)
+        if candidate.id in required_candidate_ids
+    ]
+    selected = list(required)
+    selected_set = set(required)
+    for index in ranked:
+        if len(selected) >= maximum:
+            break
+        if index not in selected_set:
+            selected.append(index)
+            selected_set.add(index)
+    result = [candidates[index] for index in selected]
     result.sort(key=lambda candidate: (candidate.id.casefold(), candidate.id))
     return result
+
+
+def _nearest_required_candidate_ids(
+    candidates: Sequence[FilamentCandidate],
+    required_physical_rgb: Sequence[Sequence[float]] | np.ndarray | None,
+) -> frozenset[str]:
+    """Resolve protected physical colours to distinct eligible catalog entries."""
+
+    if required_physical_rgb is None:
+        return frozenset()
+    required_rgb = _coerce_rgb_samples(
+        required_physical_rgb, "required_physical_rgb"
+    )
+    if len(required_rgb) > 4:
+        raise ValueError("required_physical_rgb may contain at most four colours")
+    if len(candidates) < len(required_rgb):
+        raise ValueError("not enough eligible filaments for required physical colours")
+
+    candidate_lab = _rgb255_to_lab(
+        np.asarray([candidate.rgb8 for candidate in candidates], dtype=np.float64)
+    )
+    required_lab = _rgb255_to_lab(required_rgb)
+    selected: list[str] = []
+    selected_ids: set[str] = set()
+    for target_lab in required_lab:
+        delta = candidate_lab - target_lab[None, :]
+        distances = np.sqrt(np.sum(delta * delta, axis=1))
+        ranked = sorted(
+            range(len(candidates)),
+            key=lambda index: (
+                float(distances[index]),
+                candidates[index].id.casefold(),
+                candidates[index].id,
+            ),
+        )
+        for index in ranked:
+            candidate_id = candidates[index].id
+            if candidate_id not in selected_ids:
+                selected.append(candidate_id)
+                selected_ids.add(candidate_id)
+                break
+    return frozenset(selected)
 
 
 def map_catalog_to_curated_basics(
@@ -839,6 +902,7 @@ def recommend_basic_filaments(
     max_candidates: int | None = DEFAULT_MAX_CANDIDATES,
     bins_per_channel: int = DEFAULT_HISTOGRAM_BINS_PER_CHANNEL,
     max_representative_colors: int = DEFAULT_MAX_REPRESENTATIVE_COLORS,
+    required_physical_rgb: Sequence[Sequence[float]] | np.ndarray | None = None,
 ) -> FilamentRecommendation:
     """Recommend four printable basics for one part.
 
@@ -893,8 +957,15 @@ def recommend_basic_filaments(
         # fourth physical colour even though duplicate combinations are later
         # rejected.
         candidates = _unique_hex_candidates(candidates)
+    required_candidate_ids = _nearest_required_candidate_ids(
+        candidates, required_physical_rgb
+    )
     candidates = _shortlist_candidates(
-        candidates, representative_lab, representative_weights, max_candidates
+        candidates,
+        representative_lab,
+        representative_weights,
+        max_candidates,
+        required_candidate_ids,
     )
     mix_specs = (
         palette_mix_specs(
@@ -910,6 +981,10 @@ def recommend_basic_filaments(
 
     evaluations: list[_PaletteEvaluation] = []
     for selected in combinations(candidates, 4):
+        if required_candidate_ids and not required_candidate_ids.issubset(
+            candidate.id for candidate in selected
+        ):
+            continue
         palette_rgb8 = _palette_for_candidates(selected, pair_mixes, mix_specs)
         evaluations.append(
             _evaluate_palette(
@@ -921,6 +996,8 @@ def recommend_basic_filaments(
                 mix_specs,
             )
         )
+    if not evaluations:
+        raise ValueError("no four-filament combination satisfies required colours")
     evaluations.sort(
         key=lambda evaluation: (
             evaluation.score,

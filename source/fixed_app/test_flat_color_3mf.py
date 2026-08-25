@@ -147,6 +147,73 @@ class FlatColor3mfTests(unittest.TestCase):
         self.assertIn("混色stateは0色", guide)
         self.assertIn("色ID 1〜4", guide)
 
+    def test_three_used_colors_keep_four_slot_flat_3mf_contract(self) -> None:
+        prepared = tiny_closed_prepared()
+        palette = PaletteSettings(
+            color_mode=COLOR_MODE_FLAT_FOUR,
+            palette_state_count=32,
+            enabled_states=[True] * 32,
+            output_mix_ratios_b=[25] * 28,
+        )
+        colors = _flat_colors()
+        colors.palette_indices[:] = np.asarray([0, 1, 2, 2], dtype=np.int8)
+        counts = np.bincount(colors.palette_indices, minlength=32).astype(
+            np.int64
+        )
+        colors.palette_face_counts = counts
+        colors.palette_area_fractions = counts.astype(np.float64) / 4.0
+
+        with tempfile.TemporaryDirectory() as folder:
+            destination = Path(folder) / "flat-three-used.3mf"
+            validation = hotfix._write_3mf_atomic_fixed(
+                destination,
+                prepared,
+                colors,
+                100.0,
+                palette,
+            )
+            with ZipFile(destination) as archive:
+                object_xml = archive.read("3D/Objects/object_1.model")
+                project = json.loads(
+                    archive.read("Metadata/project_settings.config")
+                )
+                metadata = json.loads(
+                    archive.read("Metadata/full_spectrum_palette.json")
+                )
+            reloaded = hotfix._validate_3mf_fixed(
+                destination,
+                len(prepared.final.vertices_unit),
+                len(prepared.final.faces),
+                list(palette.physical_hex),
+                project["mixed_filament_definitions"],
+                1,
+            )
+
+        self.assertEqual(validation["active_palette_state_count"], 4)
+        self.assertEqual(validation["portable_palette_state_count"], 4)
+        self.assertEqual(
+            validation["paint_color_state_counts"][:4], [1, 1, 2, 0]
+        )
+        self.assertEqual(
+            validation["portable_material_state_counts"][:4], [1, 1, 2, 0]
+        )
+        self.assertEqual(validation["mixed_definition_active_rows"], 0)
+        self.assertEqual(
+            project["mixed_filament_definitions"],
+            engine.make_auto_mixed_tombstones(),
+        )
+        self.assertEqual(len(project["filament_colour"]), 4)
+        self.assertEqual(metadata["palette_state_count"], 4)
+        self.assertEqual(len(metadata["states"]), 4)
+        self.assertEqual(object_xml.count(b"<base "), 4)
+        self.assertEqual(
+            {int(value) for value in re.findall(rb'\sp1="([0-9]+)"', object_xml)},
+            {0, 1, 2},
+        )
+        self.assertTrue(reloaded["portable_material_faces_match"])
+        self.assertTrue(reloaded["portable_and_orca_states_match"])
+        self.assertEqual(reloaded["portable_palette_state_count"], 4)
+
     def test_flat_writer_projects_a_remaining_mixed_face_without_mutating_source(self) -> None:
         colors = tiny_closed_color_result()
         # State 32 can survive in a project that was painted in the 32-state

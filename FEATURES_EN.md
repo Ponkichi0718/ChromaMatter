@@ -17,14 +17,30 @@ This is more than a file-format converter. The project gives AI 3D generation a 
 > archives, checksums, and unauthenticated post-publication downloads passed.
 
 <a id="experimental-workstream"></a>
-## Experimental test workstream — not in the r32.2 download
+## Flat Four Test 3 candidate — not in the stable r32.2 download
 
-This experimental branch contains three additions without changing the
-published r32.2 package:
+This experimental branch is preparing a separate Test 3 prerelease candidate
+without changing the published stable r32.2 package or the frozen Flat Four
+Test 2 assets:
 
 - **Flat Four** selects four distinct physical filament colours from an
   area-weighted representation of the model. It makes no mixed-colour recipes,
   and its 3MF output uses only F1-F4.
+- Test 3 does **not** remove white globally. Eye whites beside dark linework and
+  other meaningful small white details remain white targets. Only small,
+  high-confidence white/gray lighting patches on a smooth chromatic surface
+  such as skin are folded into the chromatic F slot used around their boundary.
+- Retained white covering at least **0.01%** of total printable area reserves a
+  suitable near-white physical filament. White below 0.01% remains unabsorbed
+  but does not by itself force a white spool, so it can map to the nearest
+  selected F1-F4 colour.
+- All four physical F slots and 3MF state metadata remain present even when the
+  output effectively uses three paint IDs. Manual Editing remains authoritative,
+  and Full Spectrum behaviour is unchanged.
+- This is topology-based filtering, not semantic recognition. A tiny white patch
+  enclosed by one smooth skin/tan surface without a dark edge, crease, or part
+  boundary may be absorbed. On an open mesh above 500,000 faces without reusable
+  adjacency, only this automatic correction is skipped fail-closed.
 - The experimental **2D Colour Filter** provides **Cel Colour** and **Shaded
   Monochrome**. It bakes fixed-front, geometry-aware stepped shading into the
   printable colour targets. It is not an outline generator or PBR renderer;
@@ -39,9 +55,12 @@ published r32.2 package:
   detail.
 
 This workstream writes project schema `obj-adjuster.project.v13`. Schema v12
-remains readable as legacy Full Spectrum data. Validation is currently local
-source regression only; none of these additions inherits r32.2 release or
-physical-print evidence.
+remains readable as legacy Full Spectrum data. The Test 3 candidate working tree
+passed 1,431 tests with zero failures and three optional skips, plus an
+owner-only clean-build/fresh-extract preflight. Public eligibility still requires
+an exact committed rebuild, corresponding source and compliance assets,
+checksums, fresh-extract audit, and publication verification. Physical-printer
+validation of the exact Test 3 package is pending.
 
 ## Explore by topic
 

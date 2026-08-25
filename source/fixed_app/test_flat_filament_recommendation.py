@@ -225,6 +225,38 @@ class OwnedFlatFilamentRecommendationTests(unittest.TestCase):
             1.0,
         )
 
+    def test_small_required_eye_white_survives_final_owned_proposal(self) -> None:
+        owned_products = tuple(
+            product(product_id, color) for product_id, color in FIVE_COLORS
+        )
+        target_rgb = np.asarray(
+            [
+                tuple(
+                    int(color[index : index + 2], 16)
+                    for index in (1, 3, 5)
+                )
+                for _, color in FIVE_COLORS
+            ],
+            dtype=np.uint8,
+        )
+
+        result = recommend_from_owned_filaments(
+            target_rgb,
+            (100.0, 0.1, 80.0, 60.0, 30.0),
+            owned_products=owned_products,
+            include_mixed_states=False,
+            required_physical_rgb=np.asarray(
+                [[245, 245, 245]], dtype=np.uint8
+            ),
+            max_candidates=4,
+            max_passes=1,
+        )
+
+        self.assertEqual(len(result.candidates), 4)
+        self.assertIn("white", result.candidate_ids)
+        self.assertIn("white", result.selection.candidate_ids)
+        self.assertEqual(result.selection.palette_hex, result.physical_hex)
+
 
 if __name__ == "__main__":
     unittest.main()

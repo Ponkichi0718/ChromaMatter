@@ -30,13 +30,24 @@ demoを再出力するときは3MF出力前に**必ず「黒弱め 5〜25%」pre
 パーツ化modelの閉立体化はまだ不安定なbeta互換です。r32.2のexact build、source、
 package、fresh extract、checksum、公開gateはPASSしています。
 
-## 未公開の実験的テストワークストリーム
+## Flat Four Test 3 公開候補
 
-現在のdefault-branch sourceには、公開済みr32.2 Windows packageと固定source tagに
-含まれないローカルtest作業もあります。
+このbranchでは、公開済みr32.2 Windows package／固定source tagと、固定済みFlat
+Four Test 2 assetを変更せず、別のTest 3 prerelease候補を準備しています。
 
 - Flat Fourはモデル表面の面積を加味して重複しない4本の実フィラメントを決定的に
   提案し、混色recipeを作らず、3MFの色経路でもF1～F4だけを書き出します。
+- 白を一律に除去しません。黒い線に隣接する目の白など、意味のある小さな白は白い
+  targetとして保持し、肌などの滑らかな有彩色面に焼き込まれた、小さく確度の高い
+  白／灰色の照明斑だけを、その境界で使われる有彩色F slotへまとめます。
+- 保持された白が印刷対象総面積の0.01%以上なら、白に近い実filamentを1 slot確保
+  します。0.01%未満の白は吸収せずに残しますが、それだけでは白spoolを強制せず、
+  選択済みF1～F4の最寄色へ割り当てられる場合があります。
+- 4つの物理F slotと3MF state情報は維持し、実際のpaint IDが3色だけになる場合も
+  あります。Manual Editingを優先し、Full Spectrumの動作は変更しません。
+- これは意味認識ではありません。暗い線、折り目、part境界のない滑らかな肌色面に
+  囲まれた小さな白は吸収される場合があります。再利用できる隣接情報がない50万面超の
+  open meshでは、この自動補正だけをfail-closedでskipします。
 - 実験的2D彩色フィルターはCel Colour（セル彩色）とShaded Monochrome
   （陰影モノクロ）を提供します。形状を使った固定正面光と段階的陰影を印刷対象色へ
   焼き付けますが、元データにない描線、PBR material、texture細部は生成しません。
@@ -47,8 +58,11 @@ package、fresh extract、checksum、公開gateはPASSしています。
 - 新規projectは`obj-adjuster.project.v13`を使用し、v12は旧来のFull Spectrum
   modeとして引き続き読み込めます。
 
-現時点の証拠はローカルsource回帰testだけです。公開済みr32.2のbinary、package、
-実機出力の検証実績を、この未公開機能の検証として扱いません。
+候補working treeは1,431 test／0 FAIL／3 optional SKIPと、owner-onlyのclean build／
+fresh-extract preflightを通過しています。これは公開Releaseの証拠ではありません。
+Test 3にはexact source commitからのclean rebuild、完全対応source、compliance asset、
+checksum、fresh-extract監査、公開検証が必要です。exact Test 3 packageのphysical
+printer validationは未実施です。
 
 ## r32.1 公開済みprevious evidence
 
@@ -186,6 +200,11 @@ Creator Studio r26の結果も同様にprevious evidenceで、ChromaMatter r31�
 
 ## Package identity
 
+- Test 3予定完全対応source:
+  `ChromaMatter-0.8beta-r32.2-complete-corresponding-source.zip`
+- Test 3予定Windows package:
+  `ChromaMatter-0.8beta-r32.2-flat4-test3-win64.zip`
+- Test 3予定checksum record: `SHA256SUMS-r32.2-flat4-test3.txt`
 - 公開済み完全対応source: `ChromaMatter-0.8beta-r32.2-complete-corresponding-source.zip`
 - 公開済みWindows package: `ChromaMatter-0.8beta-r32.2-win64.zip`
 - 公開済み完全対応ソース: `ChromaMatter-0.8beta-r32.1-complete-corresponding-source.zip`

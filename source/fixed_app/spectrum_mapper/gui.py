@@ -20,10 +20,15 @@ from . import APP_DISPLAY_NAME, APP_NAME, APP_TAGLINE, RELEASE_REVISION, __versi
 from .calibration_chart import generate_palette_calibration_bundle
 from .engine import (
     EngineError,
+    _flat_four_raw_chroma_recovery_enabled,
+    _local_part_neighbors,
     apply_palette_overrides,
     apply_palette_overrides_parts,
     apply_tone_faces,
+    face_rgb_from_vertex_colors,
+    flat_four_required_white_rgb,
     load_vertex_color_model,
+    prepare_flat_four_recommendation_samples,
     prepare_geometry,
     recolor_level,
     recolor_level_parts,
@@ -6950,9 +6955,56 @@ class MapperApp:
                         part_reference_rgb = part_reference.rgb_samples
                         part_reference_confidence = part_reference.confidence
                         used_reference_part_ids.add(part_id)
+                if key == "__global__":
+                    recommendation_rgb = face_rgb
+                    recommendation_areas = prepared.final.areas_unit
+                    recommendation_faces = prepared.final.faces
+                    recommendation_part_ids = face_part_ids
+                else:
+                    recommendation_rgb = face_rgb[selected]
+                    recommendation_areas = prepared.final.areas_unit[selected]
+                    recommendation_faces = prepared.final.faces[selected]
+                    recommendation_part_ids = face_part_ids[selected]
+                required_physical_rgb = None
+                final_neighbors = getattr(prepared.final, "neighbors", None)
+                final_vertices = getattr(
+                    prepared.final, "vertices_unit", None
+                )
+                if (
+                    local_palette.color_mode == COLOR_MODE_FLAT_FOUR
+                    and final_vertices is not None
+                ):
+                    recommendation_neighbors = _local_part_neighbors(
+                        final_neighbors,
+                        selected,
+                        len(prepared.final.faces),
+                    )
+                    recommendation_rgb, _absorbed_faces = (
+                        prepare_flat_four_recommendation_samples(
+                            recommendation_rgb,
+                            recommendation_areas,
+                            recommendation_neighbors,
+                            final_vertices,
+                            recommendation_faces,
+                            source_face_rgb=face_rgb_from_vertex_colors(
+                                prepared.final.vertex_colors,
+                                recommendation_faces,
+                            ),
+                            recover_source_chroma=(
+                                _flat_four_raw_chroma_recovery_enabled(
+                                    settings.tone
+                                )
+                            ),
+                            face_group_ids=recommendation_part_ids,
+                        )
+                    )
+                    required_physical_rgb = flat_four_required_white_rgb(
+                        recommendation_rgb,
+                        recommendation_areas,
+                    )
                 results[key] = recommend_basic_filaments(
-                    face_rgb[selected],
-                    prepared.final.areas_unit[selected],
+                    recommendation_rgb,
+                    recommendation_areas,
                     reference_rgb=part_reference_rgb,
                     reference_confidence=part_reference_confidence,
                     catalog=catalog_for(local_palette.material),
@@ -6961,6 +7013,7 @@ class MapperApp:
                         local_palette.color_mode
                         != COLOR_MODE_FLAT_FOUR
                     ),
+                    required_physical_rgb=required_physical_rgb,
                 )
             return (
                 results,
@@ -7442,6 +7495,55 @@ class MapperApp:
                 faces=prepared.final.faces,
             )
             face_rgb = all_face_rgb[selected_faces]
+            face_areas = prepared.final.areas_unit[selected_faces]
+            final_neighbors = getattr(prepared.final, "neighbors", None)
+            final_vertices = getattr(prepared.final, "vertices_unit", None)
+            required_physical_rgb = None
+            if (
+                active_palette.color_mode == COLOR_MODE_FLAT_FOUR
+                and final_vertices is not None
+            ):
+                selected_triangles = prepared.final.faces[selected_faces]
+                final_part_ids = getattr(
+                    prepared.final,
+                    "face_part_ids",
+                    None,
+                )
+                selected_part_ids = (
+                    np.asarray(final_part_ids)[selected_faces]
+                    if final_part_ids is not None
+                    and np.asarray(final_part_ids).shape
+                    == (len(prepared.final.faces),)
+                    else None
+                )
+                recommendation_neighbors = _local_part_neighbors(
+                    final_neighbors,
+                    selected_faces,
+                    len(prepared.final.faces),
+                )
+                face_rgb, _absorbed_faces = (
+                    prepare_flat_four_recommendation_samples(
+                        face_rgb,
+                        face_areas,
+                        recommendation_neighbors,
+                        final_vertices,
+                        selected_triangles,
+                        source_face_rgb=face_rgb_from_vertex_colors(
+                            prepared.final.vertex_colors,
+                            selected_triangles,
+                        ),
+                        recover_source_chroma=(
+                            _flat_four_raw_chroma_recovery_enabled(
+                                settings.tone
+                            )
+                        ),
+                        face_group_ids=selected_part_ids,
+                    )
+                )
+                required_physical_rgb = flat_four_required_white_rgb(
+                    face_rgb,
+                    face_areas,
+                )
             pink_mask = None
             if settings.tone.pink_protection:
                 pink_score = face_rgb[:, 0] - 0.5 * (
@@ -7450,7 +7552,7 @@ class MapperApp:
                 pink_mask = pink_score > settings.tone.pink_threshold
             return recommend_from_owned_filaments(
                 face_rgb,
-                prepared.final.areas_unit[selected_faces],
+                face_areas,
                 owned_products=products,
                 material=active_palette.material,
                 reference_rgb=part_reference_rgb,
@@ -7463,6 +7565,7 @@ class MapperApp:
                 include_mixed_states=(
                     active_palette.color_mode != COLOR_MODE_FLAT_FOUR
                 ),
+                required_physical_rgb=required_physical_rgb,
             )
 
         def current_inventory_revision() -> tuple[tuple[str, str], ...]:

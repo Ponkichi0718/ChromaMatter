@@ -1,6 +1,6 @@
 # ChromaMatter cross-PC handoff
 
-Updated: 2026-08-25
+Updated: 2026-08-26
 Current worktree branch: `codex/r32-2-experimental-flat4-large-glb-2d-filter`
 Published release-development source: `codex/r32-2-demo-3mf`; the frozen
 published release source is `v0.8beta-r32.2` /
@@ -1363,3 +1363,111 @@ validation of direct Flat versus Full-then-Flat and manual F-slot preservation.
   its five frozen assets; later test builds require a new tag and Release.
 - Keep build roots, fresh-extraction roots, complete-source caches, controlled
   toolchain evidence, and private owner models outside Git.
+
+## 2026-08-26 Flat Four Test 3 eye-white / skin-highlight publication candidate
+
+### Outcome
+
+- Added a Flat-Four-only, topology-aware correction that conservatively absorbs
+  small baked white/gray lighting islands on smooth skin or material surfaces
+  into the surrounding chromatic physical slot.
+- White was not removed globally. Small intentional white details, including eye
+  whites next to dark linework, remain white targets rather than being absorbed
+  as highlights. Black detail is also retained.
+- Retained white reserves a suitable near-white physical filament only when it
+  covers at least 0.01% of total printable area. Below 0.01%, white remains an
+  unabsorbed target but does not by itself force a white spool and can map to the
+  nearest selected F1-F4 colour.
+- Flat Four still keeps four physical F1-F4 slots and 3MF schema/state metadata.
+  When no intentional white remains, an output may effectively use only three
+  paint IDs. Manual paint remains authoritative; Full Spectrum behavior is
+  unchanged.
+- The classifier fails closed at part boundaries, hard creases, broad or
+  disconnected white regions, ambiguous topology, and large unsupported open
+  meshes. A model above 500,000 faces without reusable adjacency skips only this
+  automatic highlight correction; the remaining Flat Four pipeline continues.
+
+### Validation
+
+- Candidate working-tree preflight regression: 1,431 tests in 398.127 seconds, zero
+  failures and three optional skips. Focused 60-test and broader 244-test sets,
+  `py_compile`, and `git diff --check`: PASS.
+- `face_neighbors_partial` on a 498,002-face grid improved from 7.01 seconds to
+  0.091 seconds with the same 1,996 open slots; 1,000 randomized/degenerate
+  comparisons matched the former implementation byte-for-byte. Three-million-
+  face helper probes reduced transient memory from 163.1 MiB to 1.0 MiB and from
+  91.6 MiB to 4.6 MiB.
+- Clean one-folder build, packaged self-test, isolated Japanese/English UI smoke,
+  and fail-closed binary inventory: PASS for 1,455 runtime files and 256 native
+  files.
+- Created local owner-only archive
+  `ChromaMatter-0.8beta-r32.2-Flat4-Highlights-INTERNAL-TEST-20260825-win64.zip`:
+  117,524,346 bytes, 1,457 files, SHA-256
+  `0508BC6ACF082FE766F1E4054DBDB82FC999E9E4090A98F18DEBF0F701176F8C`.
+- Canonical ZIP path/CRC/security/file-list validation, independent fresh-extract
+  path/size/SHA-256 parity, fresh self-test, Japanese/English UI smoke, privacy
+  audit, and pip `direct_url.json` audit: PASS. Private model payloads and actual
+  pip direct-URL metadata were both zero.
+
+### Current state and limitation
+
+- The validated behavior and its publication documentation are now designated
+  the **Flat Four Test 3 publication candidate** on
+  `codex/r32-2-experimental-flat4-large-glb-2d-filter`. The commit containing
+  this record is the candidate source checkpoint once created; its tag, public
+  artifacts, and publication verification are still pending. Stable r32.2 and
+  the published Flat Four Test 2 prerelease remain unchanged.
+- Planned tag and Windows asset are `v0.8beta-r32.2-flat4-test3` and
+  `ChromaMatter-0.8beta-r32.2-flat4-test3-win64.zip`. The matching planned
+  compliance assets are the complete corresponding source, Test 3 SBOM, binary
+  component map, and `SHA256SUMS-r32.2-flat4-test3.txt`. The Test 3 Windows
+  package intentionally contains no `DemoData`.
+- A tiny white patch smoothly enclosed only by one skin/tan surface, with no dark
+  edge, crease, or part boundary, is semantically indistinguishable from a baked
+  highlight and may be absorbed. This is not semantic recognition. Paint
+  intentional white manually when needed; manual white overrides remain
+  authoritative.
+- Physical-printer validation of the exact Test 3 package is pending. The
+  owner-only Highlights ZIP is preflight evidence only and must not be uploaded
+  or renamed into the public Test 3 asset.
+- Canonical root README links remain on the published Test 2 channel at this
+  source-candidate stage. Update them to Test 3 only after the new Release and
+  direct-download URLs exist and have been verified.
+- The ZIP, build/fresh-extraction roots, caches, private models, and generated
+  outputs remain local-only and outside Git.
+
+### Remaining publication gates
+
+1. Use the dedicated candidate source checkpoint without private models,
+   binaries, build output, caches, or personal paths, then rerun its exact full
+   regression and release identity/documentation checks.
+2. Clean-build that commit and regenerate the release-approved complete
+   corresponding source, SBOM, binary component map, software package, and
+   detached checksum record with the final Test 3 source-offer URL.
+3. Pass package/archive/privacy/path/CRC/hash parity, packaged and independent
+   fresh-extract self-test, and isolated Japanese/English UI smoke.
+4. Publish all five assets together under the new Test 3 prerelease tag, then
+   download each without authentication and verify its size and SHA-256.
+5. Only after those gates pass, update `CURRENT_STATE.json`, this handoff, the
+   canonical root README set, and Draft PR #7 with the frozen Test 3 identities.
+
+### Candidate documentation changed
+
+- `publication/RELEASE_NOTES_r32.2_FLAT4_TEST3_20260826.md`
+- `source/fixed_app/public_binary/README_EN.md`
+- `source/fixed_app/public_binary/README_JA.md`
+- `source/fixed_app/README_fixed_en.md`
+- `source/fixed_app/README_fixed_ja.md`
+- `FEATURES_EN.md`
+- `FEATURES_JA.md`
+- `CURRENT_STATE.json`
+- `HANDOFF.md`
+
+### Do not do
+
+- Do not replace the stable r32.2 or Flat Four Test 2 tags or assets, and do not
+  publish Test 3 from the owner-only ZIP.
+- Do not claim Test 3 publication eligibility from the working-tree/owner-only
+  preflight; the exact committed and staged public bytes require new gates.
+- Do not add DemoData, private models, derived private 3MF files, or local build
+  evidence to the Test 3 software package or Git tree.

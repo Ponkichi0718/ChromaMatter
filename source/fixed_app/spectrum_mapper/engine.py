@@ -158,6 +158,34 @@ _FLAT_SHADOW_NEUTRAL_PALETTE_CHROMA_MAX = 8.0
 _FLAT_SHADOW_CHROMATIC_PALETTE_CHROMA_MIN = 18.0
 _FLAT_SHADOW_CHROMATICITY_MARGIN = 0.05
 
+# A generated model can bake a white or grey lighting patch into otherwise
+# chromatic skin (or cloth).  Flat Four must not turn every such patch into a
+# separate filament colour, but a global white-removal rule would also erase
+# eye whites, white clothing, and intentional trim.  The conservative island
+# classifier below therefore requires all of the following evidence: a
+# genuinely achromatic source patch, a closed/small component, a smooth mesh
+# boundary, and one coherent chromatic colour surrounding it.
+_FLAT_ACHROMATIC_SOURCE_CHROMA_MAX = 8.0
+_FLAT_ACHROMATIC_SOURCE_LIGHTNESS_MIN = 38.0
+_FLAT_ACHROMATIC_BOUNDARY_CHROMA_MIN = 10.0
+_FLAT_ACHROMATIC_BOUNDARY_RMS_DELTA_E_MAX = 14.0
+_FLAT_ACHROMATIC_TRANSITION_MEAN_DELTA_E_MAX = 42.0
+_FLAT_ACHROMATIC_TRANSITION_MAX_DELTA_E = 55.0
+_FLAT_ACHROMATIC_SKIN_TRANSITION_MEAN_DELTA_E_MAX = 68.0
+_FLAT_ACHROMATIC_SKIN_TRANSITION_MAX_DELTA_E = 78.0
+_FLAT_ACHROMATIC_COMPONENT_TO_BOUNDARY_AREA_MAX = 3.0
+_FLAT_ACHROMATIC_COMPONENT_AREA_FRACTION_MAX = 0.02
+_FLAT_ACHROMATIC_SMOOTH_ANGLE_DEGREES = 40.0
+_FLAT_ACHROMATIC_DESTINATION_CHROMA_MIN = 10.0
+_FLAT_ACHROMATIC_BOUNDARY_STATE_SHARE_MIN = 0.60
+_FLAT_ACHROMATIC_CANDIDATE_FACE_LIMIT = 500_000
+_FLAT_TOPOLOGY_BUILD_FACE_LIMIT = 500_000
+_FLAT_REQUIRED_WHITE_RGB_MIN = 0.80
+_FLAT_REQUIRED_WHITE_RGB_SPAN_MAX = 0.10
+_FLAT_REQUIRED_WHITE_AREA_FRACTION_MIN = 0.0001
+_FLAT_RAW_CHROMA_RECOVERY_SATURATION_MIN = 0.999999
+_FLAT_RAW_CHROMA_RECOVERY_SATURATION_MAX = 1.000001
+
 
 class EngineError(RuntimeError):
     pass
@@ -1014,14 +1042,33 @@ def face_neighbors_partial(
     face_ids = face_ids[order]
     edge_slots = edge_slots[order]
     _, starts, counts = np.unique(keys, return_index=True, return_counts=True)
-    for start in starts[counts == 2]:
-        left = int(face_ids[start])
-        right = int(face_ids[start + 1])
-        if left == right:
-            continue
-        neighbors[left, int(edge_slots[start])] = right
-        neighbors[right, int(edge_slots[start + 1])] = left
+    paired = starts[counts == 2]
+    left_faces = face_ids[paired]
+    right_faces = face_ids[paired + 1]
+    distinct = left_faces != right_faces
+    paired = paired[distinct]
+    left_faces = left_faces[distinct]
+    right_faces = right_faces[distinct]
+    neighbors[left_faces, edge_slots[paired]] = right_faces
+    neighbors[right_faces, edge_slots[paired + 1]] = left_faces
     return neighbors
+
+
+def flat_four_topology_neighbors(
+    neighbors: np.ndarray | None,
+    faces: np.ndarray,
+    vertex_count: int,
+) -> np.ndarray:
+    """Reuse ordinary adjacency or build partial adjacency for Flat analysis."""
+
+    triangles = np.asarray(faces)
+    if neighbors is not None:
+        raw = np.asarray(neighbors)
+        if raw.shape == (len(triangles), 3) and np.issubdtype(
+            raw.dtype, np.integer
+        ):
+            return raw
+    return face_neighbors_partial(triangles, int(vertex_count))
 
 
 def _orient_unit(vertices: np.ndarray, faces: np.ndarray, up_axis: str, mirror_x: bool) -> tuple[np.ndarray, np.ndarray]:
@@ -3349,6 +3396,31 @@ def lab_to_srgb(lab: np.ndarray) -> np.ndarray:
     )
 
 
+def face_rgb_from_vertex_colors(
+    vertex_rgb: np.ndarray,
+    faces: np.ndarray,
+) -> np.ndarray:
+    """Return per-face RGB means without an unbounded Fx3x3 temporary."""
+
+    colors = np.asarray(vertex_rgb, dtype=np.float64)
+    triangles = np.asarray(faces)
+    if colors.ndim != 2 or colors.shape[1:] != (3,):
+        raise EngineError("面色計算の頂点色が不正です")
+    if triangles.ndim != 2 or triangles.shape[1:] != (3,):
+        raise EngineError("面色計算の面情報が不正です")
+    if not np.issubdtype(triangles.dtype, np.integer):
+        raise EngineError("面色計算の面番号が整数ではありません")
+    if len(triangles) and (
+        int(triangles.min()) < 0 or int(triangles.max()) >= len(colors)
+    ):
+        raise EngineError("面色計算の面番号が頂点範囲外です")
+    result = np.empty((len(triangles), 3), dtype=np.float64)
+    for start in range(0, len(triangles), 100_000):
+        stop = min(start + 100_000, len(triangles))
+        result[start:stop] = colors[triangles[start:stop]].mean(axis=1)
+    return np.ascontiguousarray(result, dtype=np.float64)
+
+
 def _apply_base_tone(
     colors: np.ndarray,
     settings: ToneSettings,
@@ -3657,6 +3729,114 @@ def _effective_manual_state_count(palette: PaletteSettings) -> int:
     return int(palette.palette_state_count)
 
 
+def _flat_four_raw_chroma_recovery_enabled(tone: ToneSettings) -> bool:
+    saturation = float(tone.saturation)
+    return (
+        _FLAT_RAW_CHROMA_RECOVERY_SATURATION_MIN
+        <= saturation
+        <= _FLAT_RAW_CHROMA_RECOVERY_SATURATION_MAX
+        and str(getattr(tone, "illustration_mode", "off"))
+        .strip()
+        .lower()
+        == "off"
+    )
+
+
+def _flat_four_lab_chunks(face_rgb: np.ndarray) -> np.ndarray:
+    """Convert large Flat-Four face buffers without a full float64 peak."""
+
+    rgb = np.asarray(face_rgb, dtype=np.float64)
+    if rgb.ndim != 2 or rgb.shape[1:] != (3,):
+        raise EngineError("Flat 4 Colorsの面RGBが不正です")
+    result = np.empty((len(rgb), 3), dtype=np.float32)
+    for start in range(0, len(rgb), 25_000):
+        stop = min(start + 25_000, len(rgb))
+        result[start:stop] = srgb_to_lab(rgb[start:stop])
+    return result
+
+
+def _flat_four_raw_chroma_mask(
+    tone_face_lab: np.ndarray,
+    source_face_rgb: np.ndarray,
+    source_face_lab: np.ndarray,
+) -> np.ndarray:
+    """Return raw chromatic faces that tone controls clipped to neutral."""
+
+    tone_lab = np.asarray(tone_face_lab)
+    source_rgb = np.asarray(source_face_rgb)
+    source_lab = np.asarray(source_face_lab)
+    if tone_lab.shape != source_rgb.shape or source_lab.shape != source_rgb.shape:
+        raise EngineError("Flat 4 Colorsの元色復元データ数が一致しません")
+    result = np.empty(len(source_rgb), dtype=bool)
+    for start in range(0, len(source_rgb), 25_000):
+        stop = min(start + 25_000, len(source_rgb))
+        tone_chunk = np.asarray(tone_lab[start:stop], dtype=np.float64)
+        source_lab_chunk = np.asarray(source_lab[start:stop], dtype=np.float64)
+        source_rgb_chunk = np.asarray(source_rgb[start:stop], dtype=np.float64)
+        tone_chroma = np.sqrt(
+            np.sum(tone_chunk[:, 1:3] * tone_chunk[:, 1:3], axis=1)
+        )
+        source_chroma = np.sqrt(
+            np.sum(
+                source_lab_chunk[:, 1:3] * source_lab_chunk[:, 1:3],
+                axis=1,
+            )
+        )
+        source_span = np.max(source_rgb_chunk, axis=1) - np.min(
+            source_rgb_chunk, axis=1
+        )
+        result[start:stop] = (
+            (tone_chroma <= _FLAT_ACHROMATIC_SOURCE_CHROMA_MAX)
+            & (source_chroma >= _FLAT_SHADOW_SOURCE_LAB_CHROMA_MIN)
+            & (source_span >= _FLAT_SHADOW_SOURCE_RGB_SPAN_MIN)
+        )
+    return result
+
+
+def flat_four_required_white_rgb(
+    face_rgb: np.ndarray,
+    areas: np.ndarray,
+) -> np.ndarray | None:
+    """Return preserved near-white detail that Flat auto-proposal must keep."""
+
+    rgb = np.asarray(face_rgb)
+    weights = np.asarray(areas)
+    if rgb.ndim != 2 or rgb.shape[1:] != (3,) or weights.shape != (len(rgb),):
+        raise EngineError("Flat 4 Colorsの白ディテール判定データが不正です")
+    total = 0.0
+    selected_weight = 0.0
+    selected_rgb_sum = np.zeros(3, dtype=np.float64)
+    for start in range(0, len(rgb), 25_000):
+        stop = min(start + 25_000, len(rgb))
+        rgb_chunk = np.asarray(rgb[start:stop], dtype=np.float64)
+        weight_chunk = np.asarray(weights[start:stop], dtype=np.float64)
+        if not bool(np.all(np.isfinite(rgb_chunk))) or not bool(
+            np.all(np.isfinite(weight_chunk))
+        ):
+            raise EngineError("Flat 4 Colorsの白ディテール判定値が非有限です")
+        if bool(np.any(weight_chunk < 0.0)):
+            raise EngineError("Flat 4 Colorsの白ディテール面積が負です")
+        total += float(weight_chunk.sum())
+        selected = (
+            (np.min(rgb_chunk, axis=1) >= _FLAT_REQUIRED_WHITE_RGB_MIN)
+            & (
+                np.max(rgb_chunk, axis=1) - np.min(rgb_chunk, axis=1)
+                <= _FLAT_REQUIRED_WHITE_RGB_SPAN_MAX
+            )
+        )
+        if np.any(selected):
+            selected_weights = weight_chunk[selected]
+            selected_weight += float(selected_weights.sum())
+            selected_rgb_sum += rgb_chunk[selected].T @ selected_weights
+    if (
+        total <= 0.0
+        or selected_weight
+        < _FLAT_REQUIRED_WHITE_AREA_FRACTION_MIN * total
+    ):
+        return None
+    return selected_rgb_sum / selected_weight
+
+
 def _recover_flat_four_chromatic_shadows(
     indices: np.ndarray,
     face_rgb: np.ndarray,
@@ -3683,7 +3863,7 @@ def _recover_flat_four_chromatic_shadows(
 
     source_indices = np.asarray(indices)
     rgb = np.asarray(face_rgb, dtype=np.float64)
-    lab = np.asarray(face_lab, dtype=np.float64)
+    lab = np.asarray(face_lab)
     physical_rgb = np.asarray(palette_rgb, dtype=np.float64)[:4]
     physical_lab = np.asarray(palette_lab, dtype=np.float64)[:4]
     enabled = np.asarray(enabled_states, dtype=bool)[:4]
@@ -3691,7 +3871,11 @@ def _recover_flat_four_chromatic_shadows(
         raise EngineError("Flat 4 Colorsの面色状態が1次元ではありません")
     if not np.issubdtype(source_indices.dtype, np.integer):
         raise EngineError("Flat 4 Colorsの面色状態は整数である必要があります")
-    if rgb.shape != (len(source_indices), 3) or lab.shape != rgb.shape:
+    if (
+        rgb.shape != (len(source_indices), 3)
+        or lab.shape != rgb.shape
+        or not np.issubdtype(lab.dtype, np.floating)
+    ):
         raise EngineError("Flat 4 Colorsの面色判定データ数が一致しません")
     if physical_rgb.shape != (4, 3) or physical_lab.shape != (4, 3):
         raise EngineError("Flat 4 Colorsの物理色判定データが不正です")
@@ -3782,6 +3966,670 @@ def _recover_flat_four_chromatic_shadows(
     return result, recovered_count
 
 
+def _flat_four_embedded_achromatic_plan(
+    face_lab: np.ndarray,
+    areas: np.ndarray,
+    neighbors: np.ndarray | None,
+    vertices_unit: np.ndarray,
+    faces: np.ndarray,
+    source_face_lab: np.ndarray | None = None,
+    face_group_ids: np.ndarray | None = None,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray | None]:
+    """Find only high-confidence baked white/grey islands.
+
+    The returned face IDs may be treated as the colour represented by the
+    matching returned boundary Lab row.  Ambiguous regions fail closed: open
+    components, components beside black line work, broad white surfaces,
+    creases, and disconnected parts are left untouched.
+    """
+
+    lab = np.asarray(face_lab)
+    classification_lab = (
+        lab
+        if source_face_lab is None
+        else np.asarray(source_face_lab)
+    )
+    weights = np.asarray(areas, dtype=np.float64)
+    geometry = np.asarray(vertices_unit, dtype=np.float64)
+    triangles = np.asarray(faces)
+    groups = None if face_group_ids is None else np.asarray(face_group_ids)
+    if (
+        lab.ndim != 2
+        or lab.shape[1:] != (3,)
+        or not np.issubdtype(lab.dtype, np.floating)
+    ):
+        raise EngineError("Flat 4 Colorsの無彩色判定Labが不正です")
+    face_count = len(lab)
+    if classification_lab.shape != lab.shape or not bool(
+        np.all(np.isfinite(classification_lab))
+    ):
+        raise EngineError("Flat 4 Colorsの元色Lab数が一致しません")
+    if weights.shape != (face_count,):
+        raise EngineError("Flat 4 Colorsの無彩色判定面積数が一致しません")
+    if not bool(np.all(np.isfinite(lab))) or not bool(
+        np.all(np.isfinite(weights))
+    ):
+        raise EngineError("Flat 4 Colorsの無彩色判定値に非有限値があります")
+    if bool(np.any(weights < 0.0)):
+        raise EngineError("Flat 4 Colorsの無彩色判定面積が負です")
+    if groups is not None:
+        if groups.shape != (face_count,) or not np.issubdtype(
+            groups.dtype, np.integer
+        ):
+            raise EngineError("Flat 4 Colorsの無彩色判定パーツIDが不正です")
+        if len(groups) and int(groups.min()) < 0:
+            raise EngineError("Flat 4 Colorsの無彩色判定パーツIDが負です")
+    if geometry.ndim != 2 or geometry.shape[1:] != (3,):
+        raise EngineError("Flat 4 Colorsの無彩色判定頂点が不正です")
+    if triangles.shape != (face_count, 3) or not np.issubdtype(
+        triangles.dtype, np.integer
+    ):
+        raise EngineError("Flat 4 Colorsの無彩色判定面が不正です")
+    if len(triangles) and (
+        int(triangles.min()) < 0 or int(triangles.max()) >= len(geometry)
+    ):
+        raise EngineError("Flat 4 Colorsの無彩色判定面に範囲外頂点があります")
+    if not face_count:
+        return (
+            np.empty(0, dtype=np.int64),
+            np.empty((0, 3), dtype=np.float64),
+            np.empty(0, dtype=np.int32),
+            None,
+        )
+
+    candidate_mask = np.empty(face_count, dtype=bool)
+    candidate_count = 0
+    for start in range(0, face_count, 25_000):
+        stop = min(start + 25_000, face_count)
+        chroma_values = classification_lab[start:stop, 1:3]
+        source_chroma = np.sqrt(
+            np.sum(chroma_values * chroma_values, axis=1)
+        )
+        chunk_mask = (
+            (source_chroma <= _FLAT_ACHROMATIC_SOURCE_CHROMA_MAX)
+            & (
+                classification_lab[start:stop, 0]
+                >= _FLAT_ACHROMATIC_SOURCE_LIGHTNESS_MIN
+            )
+        )
+        candidate_mask[start:stop] = chunk_mask
+        candidate_count += int(np.count_nonzero(chunk_mask))
+        if candidate_count > _FLAT_ACHROMATIC_CANDIDATE_FACE_LIMIT:
+            break
+    if candidate_count == 0 or candidate_count > _FLAT_ACHROMATIC_CANDIDATE_FACE_LIMIT:
+        return (
+            np.empty(0, dtype=np.int64),
+            np.empty((0, 3), dtype=np.float64),
+            np.empty(0, dtype=np.int32),
+            None,
+        )
+    reusable_neighbors = False
+    if neighbors is not None:
+        raw_neighbors = np.asarray(neighbors)
+        reusable_neighbors = (
+            raw_neighbors.shape == (face_count, 3)
+            and np.issubdtype(raw_neighbors.dtype, np.integer)
+        )
+    if (
+        not reusable_neighbors
+        and face_count > _FLAT_TOPOLOGY_BUILD_FACE_LIMIT
+    ):
+        # A partial edge sort scales with every face, not just the small
+        # highlight candidate set.  Fail closed on an unreduced/open giant
+        # mesh instead of risking another near-gigabyte transient allocation.
+        return (
+            np.empty(0, dtype=np.int64),
+            np.empty((0, 3), dtype=np.float64),
+            np.empty(0, dtype=np.int32),
+            None,
+        )
+    selected = np.flatnonzero(candidate_mask)
+    adjacency = flat_four_topology_neighbors(
+        neighbors,
+        triangles,
+        len(geometry),
+    )
+    if adjacency.shape != (face_count, 3) or not np.issubdtype(
+        adjacency.dtype, np.integer
+    ):
+        return (
+            np.empty(0, dtype=np.int64),
+            np.empty((0, 3), dtype=np.float64),
+            np.empty(0, dtype=np.int32),
+            None,
+        )
+    if (
+        groups is not None
+        and face_count
+        and int(groups.min()) != int(groups.max())
+    ):
+        adjacency = adjacency.copy()
+        for start in range(0, face_count, 100_000):
+            stop = min(start + 100_000, face_count)
+            current = adjacency[start:stop]
+            valid = (current >= 0) & (current < face_count)
+            safe_neighbors = np.where(valid, current, 0)
+            same_group = (
+                groups[safe_neighbors] == groups[start:stop, None]
+            )
+            current[~(valid & same_group)] = -1
+
+    local_lookup = np.full(face_count, -1, dtype=np.int32)
+    local_lookup[selected] = np.arange(len(selected), dtype=np.int32)
+    chosen_neighbors = adjacency[selected]
+    valid_neighbor = (
+        (chosen_neighbors >= 0) & (chosen_neighbors < face_count)
+    )
+    local_neighbors = np.full(chosen_neighbors.shape, -1, dtype=np.int32)
+    local_neighbors[valid_neighbor] = local_lookup[
+        chosen_neighbors[valid_neighbor]
+    ]
+    internal_edges = local_neighbors >= 0
+
+    # SciPy is already a required runtime dependency.  Keep the graph local to
+    # the achromatic candidate set so a multi-million-face model does not need
+    # a full NxN sparse matrix.
+    from scipy.sparse import coo_matrix
+    from scipy.sparse.csgraph import connected_components
+
+    local_rows = np.broadcast_to(
+        np.arange(len(selected), dtype=np.int32)[:, None],
+        local_neighbors.shape,
+    )
+    graph_rows = local_rows[internal_edges]
+    graph_columns = local_neighbors[internal_edges]
+    graph = coo_matrix(
+        (
+            np.ones(len(graph_rows), dtype=np.uint8),
+            (graph_rows, graph_columns),
+        ),
+        shape=(len(selected), len(selected)),
+    ).tocsr()
+    component_count, components = connected_components(
+        graph, directed=False, return_labels=True
+    )
+    components = np.asarray(components, dtype=np.int32)
+
+    component_area = np.bincount(
+        components,
+        weights=weights[selected],
+        minlength=component_count,
+    )
+    component_surface_area = np.full(
+        component_count,
+        max(float(weights.sum()), 1e-12),
+        dtype=np.float64,
+    )
+    component_single_group = np.ones(component_count, dtype=bool)
+    if groups is not None and face_count:
+        group_min = int(groups.min())
+        group_max = int(groups.max())
+        if group_min == group_max:
+            group_ids = np.zeros(face_count, dtype=np.int8)
+        elif group_max < face_count:
+            # Normal prepared models already use compact int16 part IDs.  Keep
+            # that array in its native dtype instead of creating a full int64
+            # copy on multi-million-face GLBs.
+            group_ids = groups
+        else:
+            # A locally selected later part can legitimately retain sparse
+            # global IDs (for example [5, 5, 6, 6]).  Compact only this rare
+            # case before bincount so the IDs cannot request a huge allocation.
+            _unique_groups, group_ids = np.unique(groups, return_inverse=True)
+        group_areas = np.bincount(group_ids, weights=weights)
+        component_group_min = np.full(
+            component_count, np.iinfo(np.int64).max, dtype=np.int64
+        )
+        component_group_max = np.full(component_count, -1, dtype=np.int64)
+        np.minimum.at(component_group_min, components, group_ids[selected])
+        np.maximum.at(component_group_max, components, group_ids[selected])
+        component_single_group = component_group_min == component_group_max
+        component_surface_area = group_areas[
+            np.clip(component_group_min, 0, len(group_areas) - 1)
+        ]
+    open_edges_per_face = np.count_nonzero(~valid_neighbor, axis=1)
+    component_open_edges = np.bincount(
+        components,
+        weights=open_edges_per_face,
+        minlength=component_count,
+    )
+
+    boundary_edges = valid_neighbor & ~internal_edges
+    if not np.any(boundary_edges):
+        return (
+            np.empty(0, dtype=np.int64),
+            np.empty((0, 3), dtype=np.float64),
+            np.empty(0, dtype=np.int32),
+            None,
+        )
+    boundary_local_rows = local_rows[boundary_edges]
+    boundary_owner_faces = selected[boundary_local_rows]
+    boundary_neighbor_faces = chosen_neighbors[boundary_edges]
+    boundary_components = components[boundary_local_rows]
+    boundary_count = np.bincount(
+        boundary_components, minlength=component_count
+    ).astype(np.float64, copy=False)
+    boundary_neighbor_area = np.bincount(
+        boundary_components,
+        weights=weights[boundary_neighbor_faces],
+        minlength=component_count,
+    )
+
+    boundary_target_lab = lab[boundary_neighbor_faces]
+    boundary_classification_lab = classification_lab[
+        boundary_neighbor_faces
+    ]
+    boundary_sums = np.column_stack(
+        [
+            np.bincount(
+                boundary_components,
+                weights=boundary_target_lab[:, channel],
+                minlength=component_count,
+            )
+            for channel in range(3)
+        ]
+    )
+    boundary_mean_lab = np.divide(
+        boundary_sums,
+        boundary_count[:, None],
+        out=np.zeros_like(boundary_sums),
+        where=boundary_count[:, None] > 0.0,
+    )
+    boundary_classification_sums = np.column_stack(
+        [
+            np.bincount(
+                boundary_components,
+                weights=boundary_classification_lab[:, channel],
+                minlength=component_count,
+            )
+            for channel in range(3)
+        ]
+    )
+    boundary_classification_mean = np.divide(
+        boundary_classification_sums,
+        boundary_count[:, None],
+        out=np.zeros_like(boundary_classification_sums),
+        where=boundary_count[:, None] > 0.0,
+    )
+    boundary_squared_norm = np.einsum(
+        "ij,ij->i",
+        boundary_classification_lab,
+        boundary_classification_lab,
+    )
+    boundary_mean_squared_norm = np.divide(
+        np.bincount(
+            boundary_components,
+            weights=boundary_squared_norm,
+            minlength=component_count,
+        ),
+        boundary_count,
+        out=np.zeros(component_count, dtype=np.float64),
+        where=boundary_count > 0.0,
+    )
+    boundary_variance = np.maximum(
+        boundary_mean_squared_norm
+        - np.einsum(
+            "ij,ij->i",
+            boundary_classification_mean,
+            boundary_classification_mean,
+        ),
+        0.0,
+    )
+    boundary_rms_delta_e = np.sqrt(boundary_variance)
+
+    boundary_chroma = np.linalg.norm(
+        boundary_classification_lab[:, 1:3], axis=1
+    )
+    component_min_boundary_chroma = np.full(
+        component_count, np.inf, dtype=np.float64
+    )
+    np.minimum.at(
+        component_min_boundary_chroma,
+        boundary_components,
+        boundary_chroma,
+    )
+    transition_delta_e = np.linalg.norm(
+        classification_lab[boundary_owner_faces]
+        - boundary_classification_lab,
+        axis=1,
+    )
+    component_transition_mean = np.divide(
+        np.bincount(
+            boundary_components,
+            weights=transition_delta_e,
+            minlength=component_count,
+        ),
+        boundary_count,
+        out=np.full(component_count, np.inf, dtype=np.float64),
+        where=boundary_count > 0.0,
+    )
+    component_transition_max = np.zeros(component_count, dtype=np.float64)
+    np.maximum.at(
+        component_transition_max,
+        boundary_components,
+        transition_delta_e,
+    )
+
+    # Calculate only adjacent-pair normals and keep each temporary bounded.
+    # Do not use abs(dot): reversed or back-to-back faces are ambiguous and
+    # must fail closed rather than be mistaken for one smooth surface.
+    component_min_normal_dot = np.ones(component_count, dtype=np.float64)
+
+    def accumulate_normal_minimum(
+        owner_face_ids: np.ndarray,
+        neighbor_face_ids: np.ndarray,
+        edge_components: np.ndarray,
+    ) -> None:
+        for start in range(0, len(owner_face_ids), 25_000):
+            stop = min(start + 25_000, len(owner_face_ids))
+            owner_triangles = geometry[
+                triangles[owner_face_ids[start:stop]]
+            ]
+            neighbor_triangles = geometry[
+                triangles[neighbor_face_ids[start:stop]]
+            ]
+            owner_normals = np.cross(
+                owner_triangles[:, 1] - owner_triangles[:, 0],
+                owner_triangles[:, 2] - owner_triangles[:, 0],
+            )
+            neighbor_normals = np.cross(
+                neighbor_triangles[:, 1] - neighbor_triangles[:, 0],
+                neighbor_triangles[:, 2] - neighbor_triangles[:, 0],
+            )
+            owner_lengths = np.linalg.norm(owner_normals, axis=1)
+            neighbor_lengths = np.linalg.norm(neighbor_normals, axis=1)
+            valid_normals = (owner_lengths > 1e-15) & (
+                neighbor_lengths > 1e-15
+            )
+            normal_dot = np.zeros(stop - start, dtype=np.float64)
+            normal_dot[valid_normals] = np.einsum(
+                "ij,ij->i",
+                owner_normals[valid_normals]
+                / owner_lengths[valid_normals, None],
+                neighbor_normals[valid_normals]
+                / neighbor_lengths[valid_normals, None],
+            )
+            np.minimum.at(
+                component_min_normal_dot,
+                edge_components[start:stop],
+                normal_dot,
+            )
+
+    accumulate_normal_minimum(
+        boundary_owner_faces,
+        boundary_neighbor_faces,
+        boundary_components,
+    )
+    for start in range(0, len(graph_rows), 25_000):
+        stop = min(start + 25_000, len(graph_rows))
+        internal_owner_local = graph_rows[start:stop]
+        internal_neighbor_local = graph_columns[start:stop]
+        accumulate_normal_minimum(
+            selected[internal_owner_local],
+            selected[internal_neighbor_local],
+            components[internal_owner_local],
+        )
+
+    smooth_dot_min = float(
+        np.cos(np.deg2rad(_FLAT_ACHROMATIC_SMOOTH_ANGLE_DEGREES))
+    )
+    # Warm human-skin owners can be much farther from a white baked highlight
+    # than pale peach is.  Relax only the transition distance for that hue;
+    # every topology, boundary-coherence, size, and palette-distance gate
+    # still applies.
+    owner_a = boundary_classification_mean[:, 1]
+    owner_b = boundary_classification_mean[:, 2]
+    warm_skin_owner = (
+        (boundary_classification_mean[:, 0] >= 30.0)
+        & (owner_a >= 4.0)
+        & (owner_b >= 5.0)
+        & (owner_b <= 4.5 * owner_a)
+    )
+    transition_mean_limit = np.where(
+        warm_skin_owner,
+        _FLAT_ACHROMATIC_SKIN_TRANSITION_MEAN_DELTA_E_MAX,
+        _FLAT_ACHROMATIC_TRANSITION_MEAN_DELTA_E_MAX,
+    )
+    transition_max_limit = np.where(
+        warm_skin_owner,
+        _FLAT_ACHROMATIC_SKIN_TRANSITION_MAX_DELTA_E,
+        _FLAT_ACHROMATIC_TRANSITION_MAX_DELTA_E,
+    )
+    accepted_components = (
+        (boundary_count >= 2.0)
+        & component_single_group
+        & (component_open_edges == 0.0)
+        & (
+            component_min_boundary_chroma
+            >= _FLAT_ACHROMATIC_BOUNDARY_CHROMA_MIN
+        )
+        & (
+            boundary_rms_delta_e
+            <= _FLAT_ACHROMATIC_BOUNDARY_RMS_DELTA_E_MAX
+        )
+        & (
+            component_transition_mean
+            <= transition_mean_limit
+        )
+        & (
+            component_transition_max
+            <= transition_max_limit
+        )
+        & (
+            component_area
+            <= _FLAT_ACHROMATIC_COMPONENT_TO_BOUNDARY_AREA_MAX
+            * boundary_neighbor_area
+        )
+        & (
+            component_area
+            <= _FLAT_ACHROMATIC_COMPONENT_AREA_FRACTION_MAX
+            * component_surface_area
+        )
+        & (component_min_normal_dot >= smooth_dot_min)
+    )
+    accepted_local = accepted_components[components]
+    accepted_faces = selected[accepted_local].astype(np.int64, copy=False)
+    if not len(accepted_faces):
+        return (
+            np.empty(0, dtype=np.int64),
+            np.empty((0, 3), dtype=np.float64),
+            np.empty(0, dtype=np.int32),
+            None,
+        )
+    return (
+        accepted_faces,
+        boundary_mean_lab[components[accepted_local]],
+        components[accepted_local].astype(np.int32, copy=False),
+        adjacency,
+    )
+
+
+def prepare_flat_four_recommendation_samples(
+    face_rgb: np.ndarray,
+    areas: np.ndarray,
+    neighbors: np.ndarray | None,
+    vertices_unit: np.ndarray,
+    faces: np.ndarray,
+    *,
+    source_face_rgb: np.ndarray | None = None,
+    recover_source_chroma: bool = True,
+    face_group_ids: np.ndarray | None = None,
+) -> tuple[np.ndarray, int]:
+    """Preserve area while replacing baked neutral islands for recommendation."""
+
+    rgb = np.asarray(face_rgb, dtype=np.float64)
+    if rgb.ndim != 2 or rgb.shape[1:] != (3,):
+        raise EngineError("Flat 4 Colorsの自動提案RGBが不正です")
+    source_rgb = (
+        rgb
+        if source_face_rgb is None
+        else np.asarray(source_face_rgb, dtype=np.float64)
+    )
+    if source_rgb.shape != rgb.shape or not bool(
+        np.all(np.isfinite(source_rgb))
+    ):
+        raise EngineError("Flat 4 Colorsの自動提案元RGB数が一致しません")
+    # Recommendation is allowed on unreduced multi-million-face GLBs.  Keep
+    # Lab conversion temporaries bounded there and retain the stored arrays as
+    # float32; the topology graph itself is separately capped by candidate
+    # count.  This keeps recommendation and final assignment on the same
+    # semantic plan without a >1 GiB float64 peak.
+    if len(rgb) > _FLAT_ACHROMATIC_CANDIDATE_FACE_LIMIT:
+        tone_lab = _flat_four_lab_chunks(rgb)
+        source_lab = (
+            tone_lab
+            if source_face_rgb is None
+            else _flat_four_lab_chunks(source_rgb)
+        )
+    else:
+        tone_lab = srgb_to_lab(rgb)
+        source_lab = (
+            tone_lab if source_face_rgb is None else srgb_to_lab(source_rgb)
+        )
+    adjusted = rgb
+    adjusted_lab = tone_lab
+    recovered_count = 0
+    if recover_source_chroma and source_face_rgb is not None:
+        recovered = _flat_four_raw_chroma_mask(
+            tone_lab,
+            source_rgb,
+            source_lab,
+        )
+        if np.any(recovered):
+            adjusted = rgb.copy()
+            adjusted[recovered] = source_rgb[recovered]
+            adjusted_lab = tone_lab.copy()
+            adjusted_lab[recovered] = source_lab[recovered]
+            recovered_count = int(np.count_nonzero(recovered))
+    selected, boundary_lab, _component_ids, _resolved_neighbors = (
+        _flat_four_embedded_achromatic_plan(
+            adjusted_lab,
+            areas,
+            neighbors,
+            vertices_unit,
+            faces,
+            source_lab,
+            face_group_ids,
+        )
+    )
+    if len(selected):
+        if adjusted is rgb:
+            adjusted = rgb.copy()
+        adjusted[selected] = np.clip(lab_to_srgb(boundary_lab), 0.0, 1.0)
+    return adjusted, recovered_count + int(len(selected))
+
+
+def _absorb_flat_four_embedded_achromatic_islands(
+    indices: np.ndarray,
+    face_lab: np.ndarray,
+    palette_lab: np.ndarray,
+    enabled_states: np.ndarray,
+    areas: np.ndarray,
+    neighbors: np.ndarray | None,
+    vertices_unit: np.ndarray,
+    faces: np.ndarray,
+    source_face_lab: np.ndarray | None = None,
+    face_group_ids: np.ndarray | None = None,
+) -> tuple[np.ndarray, int]:
+    """Map planned baked neutral islands to their surrounding physical colour."""
+
+    source_indices = np.asarray(indices)
+    physical_lab = np.asarray(palette_lab, dtype=np.float64)[:4]
+    enabled = np.asarray(enabled_states, dtype=bool)[:4]
+    if source_indices.ndim != 1 or not np.issubdtype(
+        source_indices.dtype, np.integer
+    ):
+        raise EngineError("Flat 4 Colorsの無彩色補正状態が不正です")
+    if len(source_indices) and (
+        int(source_indices.min()) < 0 or int(source_indices.max()) >= 4
+    ):
+        raise EngineError("Flat 4 Colorsの無彩色補正状態がF1-F4範囲外です")
+    if physical_lab.shape != (4, 3) or enabled.shape != (4,):
+        raise EngineError("Flat 4 Colorsの無彩色補正パレットが不正です")
+    palette_chroma = np.linalg.norm(physical_lab[:, 1:3], axis=1)
+    chromatic_slots = enabled & (
+        palette_chroma >= _FLAT_ACHROMATIC_DESTINATION_CHROMA_MIN
+    )
+    if not np.any(chromatic_slots):
+        return source_indices, 0
+
+    selected, _boundary_lab, component_ids, resolved_neighbors = (
+        _flat_four_embedded_achromatic_plan(
+            face_lab,
+            areas,
+            neighbors,
+            vertices_unit,
+            faces,
+            source_face_lab,
+            face_group_ids,
+        )
+    )
+    if not len(selected):
+        return source_indices, 0
+    if resolved_neighbors is None:
+        return source_indices, 0
+    adjacency = np.asarray(resolved_neighbors)
+    compact_component_ids, compact_for_selected = np.unique(
+        component_ids,
+        return_inverse=True,
+    )
+    component_count = len(compact_component_ids)
+    face_component = np.full(len(source_indices), -1, dtype=np.int32)
+    face_component[selected] = compact_for_selected.astype(
+        np.int32, copy=False
+    )
+    chosen_neighbors = adjacency[selected]
+    valid = (chosen_neighbors >= 0) & (chosen_neighbors < len(source_indices))
+    safe_neighbors = np.where(valid, chosen_neighbors, 0)
+    selected_components = compact_for_selected.astype(np.int32, copy=False)
+    external = valid & (
+        face_component[safe_neighbors] != selected_components[:, None]
+    )
+    if not np.any(external):
+        return source_indices, 0
+    boundary_components = np.broadcast_to(
+        selected_components[:, None],
+        chosen_neighbors.shape,
+    )[external]
+    boundary_slots = source_indices[safe_neighbors[external]].astype(
+        np.int64, copy=False
+    )
+    valid_boundary = chromatic_slots[boundary_slots]
+    if not np.any(valid_boundary):
+        return source_indices, 0
+    boundary_total_counts = np.bincount(
+        boundary_components,
+        minlength=component_count,
+    )
+    flat_counts = np.bincount(
+        boundary_components[valid_boundary] * 4
+        + boundary_slots[valid_boundary],
+        minlength=component_count * 4,
+    ).reshape(component_count, 4)
+    destination_by_component = np.argmax(flat_counts, axis=1)
+    dominant_counts = flat_counts[
+        np.arange(component_count), destination_by_component
+    ]
+    component_eligible = (
+        (boundary_total_counts > 0)
+        & (
+            dominant_counts
+            >= _FLAT_ACHROMATIC_BOUNDARY_STATE_SHARE_MIN
+            * boundary_total_counts
+        )
+        & chromatic_slots[destination_by_component]
+    )
+    accepted = component_eligible[selected_components]
+    if not np.any(accepted):
+        return source_indices, 0
+    result = source_indices.astype(np.int8, copy=True)
+    accepted_faces = selected[accepted]
+    result[accepted_faces] = destination_by_component[
+        selected_components[accepted]
+    ].astype(np.int8, copy=False)
+    return result, int(len(accepted_faces))
+
+
 def _project_indices_to_flat_four(
     palette_indices: np.ndarray,
     face_part_ids: np.ndarray,
@@ -3863,8 +4711,25 @@ def recolor_level(
         vertices_unit=level.vertices_unit,
         faces=level.faces,
     )
-    source_face_rgb = level.vertex_colors[level.faces].mean(axis=1)
+    source_face_rgb = face_rgb_from_vertex_colors(
+        level.vertex_colors, level.faces
+    )
     face_lab = srgb_to_lab(tone_face_rgb)
+    source_face_lab: np.ndarray | None = None
+    flat_plan_lab = face_lab
+    if palette.color_mode == COLOR_MODE_FLAT_FOUR:
+        source_face_lab = _flat_four_lab_chunks(source_face_rgb)
+        if _flat_four_raw_chroma_recovery_enabled(tone):
+            recovered_for_plan = _flat_four_raw_chroma_mask(
+                face_lab,
+                source_face_rgb,
+                source_face_lab,
+            )
+            if np.any(recovered_for_plan):
+                flat_plan_lab = face_lab.astype(np.float32, copy=True)
+                flat_plan_lab[recovered_for_plan] = source_face_lab[
+                    recovered_for_plan
+                ]
     assignment_palette_rgb = assignment_palette_rgb_table(palette)
     assignment_palette_lab = srgb_to_lab(assignment_palette_rgb)
     display_palette_lab = srgb_to_lab(palette_rgb)
@@ -3904,6 +4769,21 @@ def recolor_level(
             assignment_palette_lab,
             enabled,
         )
+        if _flat_four_raw_chroma_recovery_enabled(tone):
+            # white_point/contrast can clip a pale chromatic source to a
+            # neutral display value.  Raw vertex colour is authoritative only
+            # while the user has not intentionally desaturated or stylised it.
+            indices, _flat_clipped_faces = (
+                _recover_flat_four_chromatic_shadows(
+                    indices,
+                    source_face_rgb,
+                    # Flat mode always prepares this bounded float32 buffer.
+                    source_face_lab,
+                    assignment_palette_rgb,
+                    assignment_palette_lab,
+                    enabled,
+                )
+            )
     areas_mm2 = level.areas_unit * float(height_mm) ** 2
     indices, smoothed = _smooth_labels(
         indices,
@@ -3913,6 +4793,27 @@ def recolor_level(
         level.neighbors,
         tone,
     )
+    if palette.color_mode == COLOR_MODE_FLAT_FOUR:
+        face_count = len(level.faces)
+        part_ids = np.asarray(getattr(level, "face_part_ids", np.empty(0)))
+        # Keep the stored topology raw here.  The Flat-only plan applies the
+        # part boundary once after its cheap candidate-count preflight; doing
+        # it here as well would duplicate a full F x 3 adjacency buffer.
+        flat_neighbors = level.neighbors
+        indices, _flat_achromatic_faces = (
+            _absorb_flat_four_embedded_achromatic_islands(
+                indices,
+                flat_plan_lab,
+                assignment_palette_lab,
+                enabled,
+                areas_mm2,
+                flat_neighbors,
+                level.vertices_unit,
+                level.faces,
+                source_face_lab,
+                part_ids if part_ids.shape == (face_count,) else None,
+            )
+        )
     indices, black_free_remapped = _apply_black_free_gradient(
         indices,
         face_lab,
@@ -3949,17 +4850,67 @@ def _local_part_neighbors(
     neighbors: np.ndarray | None,
     selected_faces: np.ndarray,
     face_count: int,
+    face_part_ids: np.ndarray | None = None,
 ) -> np.ndarray | None:
     if neighbors is None:
         return None
     raw = np.asarray(neighbors)
     if raw.shape != (face_count, 3):
         return None
+    selected_faces = np.asarray(selected_faces)
+    identity_selection = (
+        len(selected_faces) == face_count
+        and (
+            face_count == 0
+            or (
+                int(selected_faces[0]) == 0
+                and int(selected_faces[-1]) == face_count - 1
+                and bool(
+                    np.all(
+                        selected_faces[1:]
+                        == selected_faces[:-1] + 1
+                    )
+                )
+            )
+        )
+    )
+    parts = (
+        np.asarray(face_part_ids)
+        if face_part_ids is not None
+        else np.empty(0, dtype=np.int16)
+    )
+    if identity_selection:
+        if parts.shape != (face_count,):
+            return raw
+        if face_count == 0 or int(parts.min()) == int(parts.max()):
+            return raw
+        result = raw.copy()
+        for start in range(0, face_count, 100_000):
+            stop = min(start + 100_000, face_count)
+            current = result[start:stop]
+            valid = (current >= 0) & (current < face_count)
+            safe_neighbors = np.where(valid, current, 0)
+            same_part = (
+                parts[safe_neighbors] == parts[start:stop, None]
+            )
+            current[~(valid & same_part)] = -1
+        return result
     lookup = np.full(face_count, -1, dtype=np.int32)
     lookup[selected_faces] = np.arange(len(selected_faces), dtype=np.int32)
     chosen = raw[selected_faces]
     result = np.full(chosen.shape, -1, dtype=np.int32)
     valid = (chosen >= 0) & (chosen < face_count)
+    if parts.shape == (face_count,):
+        selected_parts = parts[selected_faces]
+        for start in range(0, len(selected_faces), 100_000):
+            stop = min(start + 100_000, len(selected_faces))
+            current_valid = valid[start:stop]
+            safe_neighbors = np.where(
+                current_valid, chosen[start:stop], 0
+            )
+            current_valid &= (
+                parts[safe_neighbors] == selected_parts[start:stop, None]
+            )
     result[valid] = lookup[chosen[valid]]
     return result
 
@@ -3992,7 +4943,16 @@ def recolor_level_parts(
         vertices_unit=level.vertices_unit,
         faces=level.faces,
     )
-    source_face_rgb = level.vertex_colors[level.faces].mean(axis=1)
+    source_face_rgb = face_rgb_from_vertex_colors(
+        level.vertex_colors, level.faces
+    )
+    has_flat_part = any(
+        part_palette.color_mode == COLOR_MODE_FLAT_FOUR
+        for part_palette in palettes
+    )
+    source_face_lab = (
+        _flat_four_lab_chunks(source_face_rgb) if has_flat_part else None
+    )
     face_lab = srgb_to_lab(tone_face_rgb)
     areas_mm2 = level.areas_unit * float(height_mm) ** 2
     indices = np.empty(len(level.faces), dtype=np.int8)
@@ -4022,6 +4982,26 @@ def recolor_level_parts(
             )
         local_lab = face_lab[selected]
         local_rgb = tone_face_rgb[selected]
+        local_areas = areas_mm2[selected]
+        local_faces = level.faces[selected]
+        local_source_rgb: np.ndarray | None = None
+        local_source_lab: np.ndarray | None = None
+        local_plan_lab = local_lab
+        if part_palette.color_mode == COLOR_MODE_FLAT_FOUR:
+            local_source_rgb = source_face_rgb[selected]
+            # ``has_flat_part`` guarantees the source Lab buffer exists here.
+            local_source_lab = source_face_lab[selected]
+            if _flat_four_raw_chroma_recovery_enabled(tone):
+                recovered_for_plan = _flat_four_raw_chroma_mask(
+                    local_lab,
+                    local_source_rgb,
+                    local_source_lab,
+                )
+                if np.any(recovered_for_plan):
+                    local_plan_lab = local_lab.astype(np.float32, copy=True)
+                    local_plan_lab[recovered_for_plan] = local_source_lab[
+                        recovered_for_plan
+                    ]
         assignment_palette_lab = srgb_to_lab(
             assignment_palette_tables[part_id]
         )
@@ -4068,6 +5048,17 @@ def recolor_level_parts(
                 assignment_palette_lab,
                 enabled,
             )
+            if _flat_four_raw_chroma_recovery_enabled(tone):
+                local_indices, _flat_clipped_faces = (
+                    _recover_flat_four_chromatic_shadows(
+                        local_indices,
+                        local_source_rgb,
+                        local_source_lab,
+                        assignment_palette_tables[part_id],
+                        assignment_palette_lab,
+                        enabled,
+                    )
+                )
         local_neighbors = _local_part_neighbors(
             level.neighbors, selected, len(level.faces)
         )
@@ -4075,10 +5066,28 @@ def recolor_level_parts(
             local_indices,
             local_lab,
             assignment_palette_lab,
-            areas_mm2[selected],
+            local_areas,
             local_neighbors,
             tone,
         )
+        if part_palette.color_mode == COLOR_MODE_FLAT_FOUR:
+            # Smoothing is read-only; reuse the already remapped local graph.
+            # The Flat plan lazily fills partial topology itself when this is
+            # None, after its candidate-count safety preflight.
+            local_flat_neighbors = local_neighbors
+            local_indices, _flat_achromatic_faces = (
+                _absorb_flat_four_embedded_achromatic_islands(
+                    local_indices,
+                    local_plan_lab,
+                    assignment_palette_lab,
+                    enabled,
+                    local_areas,
+                    local_flat_neighbors,
+                    level.vertices_unit,
+                    local_faces,
+                    local_source_lab,
+                )
+            )
         local_indices, black_free_remapped = _apply_black_free_gradient(
             local_indices,
             local_lab,
@@ -4093,7 +5102,7 @@ def recolor_level_parts(
         indices[selected] = local_indices
         target_rgb[selected] = palette_tables[part_id, local_indices]
         delta_e[selected] = local_delta
-        weights = areas_mm2[selected]
+        weights = local_areas
         part_metrics.append(
             {
                 "part_id": part_id,

@@ -108,6 +108,49 @@ def _products() -> tuple[FilamentProduct, ...]:
     )
 
 
+def _prepared_with_preserved_eye_white() -> SimpleNamespace:
+    base_vertices = np.asarray(
+        [
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [0.5, 0.8660254, 0.0],
+            [0.5, -0.8660254, 0.0],
+            [1.5, 0.8660254, 0.0],
+            [-0.5, 0.8660254, 0.0],
+        ],
+        dtype=np.float64,
+    )
+    base_faces = np.asarray(
+        [[0, 1, 2], [1, 0, 3], [2, 1, 4], [0, 2, 5]],
+        dtype=np.int32,
+    )
+    face_colors = np.asarray(
+        [
+            [248 / 255, 243 / 255, 238 / 255],
+            [237 / 255, 192 / 255, 157 / 255],
+            [23 / 255, 23 / 255, 23 / 255],
+            [23 / 255, 23 / 255, 23 / 255],
+        ],
+        dtype=np.float64,
+    )
+    vertices = base_vertices[base_faces].reshape(-1, 3)
+    faces = np.arange(12, dtype=np.int32).reshape(-1, 3)
+    final = SimpleNamespace(
+        vertices_unit=vertices,
+        faces=faces,
+        vertex_colors=np.repeat(face_colors, 3, axis=0),
+        areas_unit=np.asarray([0.01, 1.0, 1.0, 1.0], dtype=np.float64),
+        neighbors=np.asarray(
+            [[1, 2, 3], [0, -1, -1], [0, -1, -1], [0, -1, -1]],
+            dtype=np.int32,
+        ),
+        face_part_ids=np.zeros(4, dtype=np.int16),
+        part_keys=["part-0"],
+        part_names=["Head"],
+    )
+    return SimpleNamespace(final=final, preview=SimpleNamespace())
+
+
 class _ProductRepository:
     def __init__(self, products: tuple[FilamentProduct, ...]) -> None:
         self.products = products
@@ -657,6 +700,59 @@ class FilamentCandidateWindowTests(unittest.TestCase):
             app.paint_editor = None
             self._close_app(root, app)
 
+    def test_flat_basic_gui_requires_preserved_eye_white(self) -> None:
+        root, app = self._create_app()
+        products = _products()[:4]
+        recommendation = SimpleNamespace(
+            physical_hex=tuple(product.matched_hex for product in products),
+            primary_ratio_b_percent=33,
+            secondary_ratio_b_percent=67,
+            candidates=products,
+            mean_delta_e76=4.5,
+            coverage_fraction=0.9,
+            confidence=0.85,
+        )
+        try:
+            app.settings.palette = PaletteSettings(
+                color_mode=COLOR_MODE_FLAT_FOUR
+            )
+            app._load_palette_variables(app.settings.palette)
+            app.prepared = _prepared_with_preserved_eye_white()
+            app.prepared_key = ("flat-required-white-standard",)
+
+            def run_synchronously(_label, function, done, **_kwargs):
+                done(function())
+                return True
+
+            with (
+                patch(
+                    "spectrum_mapper.filament_database.FilamentRepository.list_products",
+                    return_value=products,
+                ),
+                patch(
+                    "spectrum_mapper.gui.recommend_basic_filaments",
+                    return_value=recommendation,
+                ) as recommend,
+                patch.object(
+                    app, "_submit_main", side_effect=run_synchronously
+                ),
+                patch.object(app, "_schedule_preview"),
+            ):
+                app._recommend_part_ids((), whole_model=True)
+
+            recommend.assert_called_once()
+            required = np.asarray(
+                recommend.call_args.kwargs["required_physical_rgb"],
+                dtype=np.float64,
+            ).reshape(-1, 3)
+            self.assertEqual(required.shape, (1, 3))
+            self.assertGreaterEqual(float(required.min()), 0.90)
+            self.assertLessEqual(
+                float(required.max() - required.min()), 0.10
+            )
+        finally:
+            self._close_app(root, app)
+
     def test_direct_flat_and_full_then_flat_choose_same_global_and_part_filaments(self) -> None:
         root, app = self._create_app()
         products = _products()
@@ -990,6 +1086,65 @@ class FilamentCandidateWindowTests(unittest.TestCase):
             self.assertIn("F1:", app.recommendation_var.get())
             self.assertIn("F4:", app.recommendation_var.get())
             self.assertIn("product_id=a-red", app.recommendation_var.get())
+        finally:
+            self._close_app(root, app)
+
+    def test_owned_flat_gui_requires_preserved_eye_white(self) -> None:
+        root, app = self._create_app()
+        products = _products()[:4]
+        result = SimpleNamespace(
+            palette_state_count=16,
+            physical_hex=tuple(product.matched_hex for product in products),
+            mix_ratios_b=(21, 32, 43, 54, 65, 76),
+            secondary_mix_ratios_b=(79, 68, 57, 46, 35, 24),
+            candidates=products,
+            before_mean_delta_e76=15.0,
+            mean_delta_e76=7.5,
+            improvement_percent=50.0,
+            ignored_duplicate_color_product_ids=(),
+            special_finish_products=(),
+        )
+        try:
+            app.settings.palette = PaletteSettings(
+                color_mode=COLOR_MODE_FLAT_FOUR
+            )
+            app._load_palette_variables(app.settings.palette)
+            app.prepared = _prepared_with_preserved_eye_white()
+            app.prepared_key = ("flat-required-white-owned",)
+
+            def run_synchronously(_label, function, done, **_kwargs):
+                done(function())
+                return True
+
+            with (
+                patch(
+                    "spectrum_mapper.owned_filaments.recommend_from_owned_filaments",
+                    return_value=result,
+                ) as recommend,
+                patch.object(
+                    app, "_submit_main", side_effect=run_synchronously
+                ),
+                patch.object(app, "_schedule_preview"),
+            ):
+                started = app._configure_from_owned_filaments(
+                    products,
+                    inventory_revision=tuple(
+                        (product.product_id, product.matched_hex)
+                        for product in products
+                    ),
+                )
+
+            self.assertTrue(started)
+            recommend.assert_called_once()
+            required = np.asarray(
+                recommend.call_args.kwargs["required_physical_rgb"],
+                dtype=np.float64,
+            ).reshape(-1, 3)
+            self.assertEqual(required.shape, (1, 3))
+            self.assertGreaterEqual(float(required.min()), 0.90)
+            self.assertLessEqual(
+                float(required.max() - required.min()), 0.10
+            )
         finally:
             self._close_app(root, app)
 
