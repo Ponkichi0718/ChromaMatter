@@ -34,6 +34,9 @@
     "github": {
       "branch": "codex/r32-2-experimental-flat4-large-glb-2d-filter",
       "source_commit": "0d768fb6b3a0c68328b3c94b6ed48eff9a80ad13",
+      "source_commit_scope": "unchanged experimental tag and Draft Release source",
+      "latest_fix2_source_commit": "0ed8dd404233752fec7b7f63fa13a2a9238e9b38",
+      "latest_fix2_source_status": "pushed to the workstream branch and available in Draft PR #7; tag and Draft Release assets unchanged",
       "tag": "v0.8beta-r32.2-experimental-20260825",
       "draft_pull_request": 7,
       "draft_release": true,
@@ -51,7 +54,10 @@
       "flat_four": [
         "Builds a deterministic area-weighted proposal of four distinct physical filament colors from the selected material family.",
         "Creates no mixed-color recipes and writes only physical F1-F4 color states to a Flat Four 3MF.",
-        "Projects legacy mixed manual-paint state at the Flat export boundary without rewriting the caller's canonical color state."
+        "Projects legacy mixed manual-paint state at the Flat export boundary without rewriting the caller's canonical color state.",
+        "Persists the six deleted automatic F1-F4 pair tombstones used by Snapmaker Orca 2.3.5, preventing its application-wide automatic-gradient preference from recreating six visible 50/50 mixed rows while keeping every printable state in F1-F4.",
+        "Applies a Flat-Four-only conservative chromatic-shadow recovery pass: source faces assigned to a neutral physical slot may move to an enabled chromatic F1-F4 slot only when RGB span, Lab chroma, and normalized-RGB margin all retain clear material-colour evidence; near-neutral black remains excluded.",
+        "Manual Fill compares Flat Four's visible physical-state projection for connectivity, so connected legacy mixed IDs that appear as the same black region can be repainted together while canonical overrides, Full Spectrum boundaries, part masks, and Undo/Redo remain intact."
       ],
       "illustration_filter": [
         "Offers experimental Cel Colour and Shaded Monochrome modes with fixed-front, geometry-aware stepped shading.",
@@ -65,11 +71,29 @@
       ]
     },
     "validation": {
-      "status": "exact-commit-source-regression-and-draft-package-smoke",
-      "full_regression": "1375 tests, 0 failures, 3 optional skips",
+      "status": "committed-fix2-source-checkpoint-owner-only-windows-package-validated",
+      "full_regression": "1389 tests, 0 failures, 2 optional skips in the exact repaired-PyTetWild build environment; the application and regression-test bytes are committed as 0ed8dd404233752fec7b7f63fa13a2a9238e9b38",
+      "focused_regression": "152 tests, 0 failures and 0 skips rerun before the GitHub handoff; compileall, CURRENT_STATE JSON parse, and git diff --check passed",
       "public_source_tree_audit": "409 files, pass",
+      "owner_only_internal_test_package": {
+        "filename": "ChromaMatter-0.8beta-r32.2-Flat4-Fix2-INTERNAL-TEST-20260825-win64.zip",
+        "bytes": 117486407,
+        "sha256": "71E7A15A4B3793BB86B3B850D69900CF157E1CCA03FC032A27534B6D53C7E428",
+        "files": 1455,
+        "native_files": 256,
+        "binary_compliance_inventory": "passed",
+        "fresh_extract_path_size_sha256_parity": "passed",
+        "fresh_extract_self_test": "passed",
+        "fresh_extract_ui_smoke": {
+          "ja": "passed",
+          "en": "passed"
+        },
+        "private_model_payloads": 0,
+        "pip_direct_url_metadata": 0,
+        "publication_status": "local owner-only test artifact; not committed, uploaded, or published; its application-source bytes are now represented by the Fix2 source commit"
+      },
       "public_binary_package_or_physical_evidence": false,
-      "release_note": "The test ZIP and detached checksum are stored only on a GitHub Draft Release. This workstream is not included in the published r32.2 Windows package or frozen source tag."
+      "release_note": "The Flat Four mixed-row suppression, chromatic-shadow recovery, and visible-state Manual Fill corrections are committed and pushed on the dedicated workstream branch as 0ed8dd404233752fec7b7f63fa13a2a9238e9b38. The owner-only internal Windows test ZIP passed clean-build, binary-inventory, canonical-archive, fresh-extract parity, self-test, and Japanese/English UI-smoke gates, but remains local. Neither the existing experimental tag/Draft Release ZIP nor the published r32.2 Windows package/frozen source tag contains these corrections."
     }
   },
   "current_features": {

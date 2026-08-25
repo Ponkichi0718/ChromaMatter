@@ -1,8 +1,10 @@
 # ChromaMatter cross-PC handoff
 
-Updated: 2026-08-24
-Release-development branch: `codex/r32-2-demo-3mf`; the frozen published release
-source is `v0.8beta-r32.2` / `aba20685d2fd6987621b2e1e6624f46ea84912a3`
+Updated: 2026-08-25
+Current worktree branch: `codex/r32-2-experimental-flat4-large-glb-2d-filter`
+Published release-development source: `codex/r32-2-demo-3mf`; the frozen
+published release source is `v0.8beta-r32.2` /
+`aba20685d2fd6987621b2e1e6624f46ea84912a3`
 Previous release: `v0.8beta-r32.1` remains immutable previous evidence.
 Public version: `0.8beta` (do not change without an explicit owner request)
 Current published prerelease revision: `r32.2`; Windows numeric version remains `0.8.0.0`
@@ -966,3 +968,207 @@ Keep these outside Git and do not copy them to the public release by default:
   zero failures and three optional skips. A `git archive` public-tree audit
   passed for 409 files. No later code change was made; the follow-up branch
   commit only records GitHub draft metadata.
+
+## 2026-08-25 Flat Four shadow/fill/Orca-mix correction checkpoint
+
+### Current objective
+
+Keep Flat Four physically limited to F1-F4 in Snapmaker Orca, recover strongly
+chromatic armour colours that a dark baked GLB shadow had pulled into physical
+black, and let Manual Fill repaint one visibly connected Flat colour region
+without weakening Full Spectrum state preservation or export validation.
+
+### Completed in this session
+
+- Flat Four 3MF now stores all six automatic F1-F4 pair rows as Orca's own
+  disabled/deleted tombstones. This prevents an enabled application-wide
+  `auto_generate_gradients` preference from recreating the six 50/50 rows;
+  the rows have no virtual filament IDs and no printable recipes.
+- Added a generalized Flat-only chromatic-shadow recovery pass after ordinary
+  CIE76 assignment. A face is reconsidered only after landing on an enabled
+  neutral physical slot and only when its source RGB span, Lab chroma, and
+  normalized-RGB distance retain clear chromatic evidence. Near-neutral black
+  is excluded, and Full Spectrum does not enter this path.
+- Manual Fill now uses the Flat preview's visible F1-F4 projection only for
+  connectivity. Canonical mixed state IDs remain stored, Full Spectrum keeps
+  its original boundaries, selected-part masks remain enforced, and the
+  accelerated/adaptive paths preserve Undo/Redo.
+- Cross-review also fixed capped-history adaptive Fill so one Undo restores the
+  whole operation, made same-visible-colour Fill a complete no-op, and kept
+  compatibility with older `connected_fill_faces` overrides when no Flat map
+  is supplied. The shadow eligibility scan now uses the same fixed 25,000-face
+  chunks as its distance pass instead of holding full-input temporary arrays.
+- Read-only validation on an owner-supplied private high-face-count GLB
+  confirmed the intended aggregate behavior: clearly chromatic shadowed
+  regions recovered to an enabled chromatic physical slot, while near-neutral
+  dark regions stayed on neutral slots. No asset name, path, hash, exact face
+  count, colour-count breakdown, or derived output is recorded publicly.
+
+### Current state
+
+- The application and regression-test changes are committed as
+  `0ed8dd404233752fec7b7f63fa13a2a9238e9b38` on
+  `codex/r32-2-experimental-flat4-large-glb-2d-filter` and pushed for the
+  cross-PC handoff. Draft PR #7 follows that branch automatically.
+- No tag, Release edit, binary upload, Windows package replacement, or `main`
+  merge was performed. The existing experimental tag/Draft Release assets and
+  published r32.2 assets do not contain these corrections.
+- Source-level focused and full regression are green. A newly generated Flat
+  archive is also inspected by tests for four physical filament entries, zero
+  active mixed recipes, exact deleted tombstones, and no printable state above
+  F4.
+
+### Next exact task
+
+On the home PC, fetch and check out
+`codex/r32-2-experimental-flat4-large-glb-2d-filter`, then continue from source
+commit `0ed8dd404233752fec7b7f63fa13a2a9238e9b38` plus the following handoff
+metadata commit. Make an exact-commit experimental clean build. In a fresh
+extraction, load a newly exported Flat Four 3MF in Snapmaker Orca 2.3.5 and
+visually confirm that Color Mixing shows no active mixed rows, the recovered
+armour remains chromatic, and Manual Fill can repaint the connected dark-looking
+region. Only after those checks should the experimental Draft Release asset be
+replaced or promoted.
+
+### Changed files
+
+- `source/fixed_app/spectrum_mapper/engine.py`
+- `source/fixed_app/spectrum_mapper/paint.py`
+- `source/fixed_app/spectrum_mapper/paint_gui.py`
+- `source/fixed_app/spectrum_mapper_hotfix.py`
+- `source/fixed_app/smooth_paint_hotfix.py`
+- `source/fixed_app/test_flat_chromatic_shadows.py`
+- `source/fixed_app/test_flat_color_3mf.py`
+- `source/fixed_app/test_flat_manual_paint.py`
+- `source/fixed_app/test_hotfix.py`
+- `CURRENT_STATE.json`
+- `HANDOFF.md`
+
+### Tests run
+
+- Focused Flat Four, 3MF, paint/hotfix, part export, slicer-safety, output-black,
+  and black-free-gradient regression: 152 tests, zero failures.
+- Full changed-working-tree regression: 1,389 tests in 661.523 seconds, zero
+  failures, three optional skips.
+- `python -B -m compileall -q source/fixed_app`: PASS.
+- `CURRENT_STATE.json` parse, `git diff --check`, and final worktree status are
+  rechecked after this checkpoint edit.
+
+### Do not do
+
+- Do not weaken topology or 3MF fail-closed validation and do not restore Flat
+  active mixed recipes merely to hide an Orca UI symptom.
+- Do not apply the chromatic-shadow recovery path to Full Spectrum or infer a
+  colour from neighbouring red faces alone; true black trim must remain black.
+- Do not collapse canonical Full Spectrum paint IDs when filling a Flat view.
+- Do not merge into `main`, retag r32.2, replace published assets, change
+  `0.8beta`, or make further commits/pushes without a new explicit owner
+  approval.
+
+### Local-only files
+
+- One owner-supplied private GLB was read only for aggregate colour-assignment
+  validation. Its name, path, bytes, and derived preview remain local and must
+  not be committed, packaged, or copied into public documentation.
+- Local Python environments, temporary Orca source research, build folders,
+  caches, and generated diagnostics remain outside the repository.
+
+## 2026-08-25 Flat Four Fix2 owner-only Windows test ZIP
+
+### Current objective
+
+Give the owner a locally testable Windows ZIP whose application-source bytes
+are now represented by the committed Flat Four mixed-row suppression,
+chromatic-shadow recovery, and visible-state Manual Fill corrections, without
+changing the published r32.2 Release or the experimental Draft Release.
+
+### Completed in this session
+
+- The first clean-build candidate correctly stopped at the fail-closed binary
+  inventory. Its runtime contained the excluded historical PyTetWild wrapper,
+  and PyInstaller had also resolved 40 UCRT/API-set binaries from a Windows
+  Performance Toolkit PATH entry. No ZIP was created from that candidate.
+- Verified the current published r32.2 complete corresponding-source ZIP against
+  the GitHub Release API: 1,365,909,916 bytes and SHA-256
+  `DCC7EC1AE74F4B790CCAC6B9B18286C7BDAB2829E779F0532E01708727680500`.
+- Extracted only its unique repaired PyTetWild wheel and verified SHA-256
+  `E3B11AC058266D277B0F83448C6023D5DA98E731D0D016E461DBCE4EBDFD613D`.
+  The installed `PyfTetWildWrapper.pyd` is the approved
+  `26A091B53279407014899C046691958C9DF07E22703576DA6A45D68A9BE22430`.
+- Created a fresh exact Python 3.13.14 dependency environment and removed only
+  the Windows Performance Toolkit entry from the clean-build process PATH.
+  The spec and fail-closed inventory rules were not weakened.
+- Built a new one-folder Windows application. The package has 1,455 files and
+  256 native files; the binary compliance inventory passed with no UCRT/API-set
+  payload and exactly one approved PyTetWild wrapper.
+- Created the canonical owner-only archive
+  `ChromaMatter-0.8beta-r32.2-Flat4-Fix2-INTERNAL-TEST-20260825-win64.zip`:
+  117,486,407 bytes, 1,455 files, SHA-256
+  `71E7A15A4B3793BB86B3B850D69900CF157E1CCA03FC032A27534B6D53C7E428`.
+- Independently extracted the ZIP and confirmed exact relative-path, size, and
+  SHA-256 parity for all 1,455 files. The fresh executable passed `--self-test`
+  and isolated Japanese and English UI smoke tests. The archive contains zero
+  OBJ/GLB/glTF/3MF payloads and zero pip `direct_url.json` files.
+
+### Current state
+
+- The owner-only test ZIP is in the local Downloads folder and is ready for
+  hands-on testing.
+- The source corrections are committed as
+  `0ed8dd404233752fec7b7f63fa13a2a9238e9b38` and pushed on
+  `codex/r32-2-experimental-flat4-large-glb-2d-filter`; Draft PR #7 now exposes
+  that source for the home-PC handoff.
+- No tag, Release edit, binary upload, package replacement, or publication was
+  performed. The existing public r32.2 assets and experimental Draft Release
+  assets remain unchanged.
+
+### Next exact task
+
+Extract the owner-only ZIP to a new folder and test the same representative GLB:
+
+1. Select Flat Four and confirm the chromatic shoulder/armour shadow is assigned
+   to the intended red physical slot while truly neutral black trim stays black.
+2. Use Manual Fill on the connected dark-looking region, then verify Undo and
+   Redo restore the whole fill as one operation.
+3. Export a Flat Four 3MF and open it in Snapmaker Orca 2.3.5. Confirm only F1-F4
+   are printable and Color Mixing contains no active six 50/50 pair rows.
+4. Report screenshots plus the exact source model/output workflow if any result
+   differs; keep the private model outside Git and public issue attachments.
+
+### Changed files
+
+- No additional application or packaging source file was changed to create the
+  internal ZIP.
+- `CURRENT_STATE.json`
+- `HANDOFF.md`
+
+### Tests run
+
+- Exact repaired-PyTetWild environment full regression: 1,389 tests, zero
+  failures, two optional skips.
+- PyInstaller clean one-folder build: PASS.
+- Built-package self-test and isolated Japanese/English UI smoke: PASS.
+- Binary compliance inventory: PASS, 1,455 files and 256 native files.
+- Canonical ZIP path/CRC/security/file-list validation: PASS.
+- Independent fresh-extract relative-path, size, and SHA-256 parity for all
+  1,455 files: PASS.
+- Fresh-extracted self-test and isolated Japanese/English UI smoke: PASS.
+- Package model-payload and pip direct-URL metadata checks: zero findings.
+
+### Do not do
+
+- Do not treat this owner-only archive as public Release evidence; it was built
+  before the source checkpoint commit and has not been uploaded.
+- Do not upload or replace Draft/Public Release assets until the owner finishes
+  the requested Snapmaker Orca and visual model checks.
+- Do not weaken topology, 3MF, binary-inventory, or archive fail-closed gates.
+- Do not use the rejected historical-wrapper build or restore the Windows
+  Performance Toolkit PATH entry during PyInstaller analysis.
+
+### Local-only files
+
+- The internal ZIP, clean/rejected build roots, independent extraction root,
+  repaired-wheel extraction, isolated Python environment, and isolated UI-smoke
+  profiles are local-only and remain outside Git.
+- The owner-supplied private GLB and all outputs derived from it remain local and
+  are not included in the ZIP.
