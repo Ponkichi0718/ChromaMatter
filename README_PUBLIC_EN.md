@@ -11,12 +11,12 @@
 | Channel | Best for | Open |
 | --- | --- | --- |
 | **Published r32.2** | The current downloadable Windows build and the documented Full Spectrum workflow | **[Download stable r32.2](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2)** |
-| **Experimental Flat Four workstream** | Testing Flat Four, its latest colour/3MF/manual-fill fixes, the large-static-GLB path, and the 2D Colour Filter before integration | **[Start at Draft PR #7](https://github.com/Ponkichi0718/ChromaMatter/pull/7)** · [Browse the source branch](https://github.com/Ponkichi0718/ChromaMatter/tree/codex/r32-2-experimental-flat4-large-glb-2d-filter) |
+| **Experimental Flat Four Test 3** | Testing Flat Four, topology-aware white/gray highlight correction, the large-static-GLB path, and the 2D Colour Filter before integration | **[Download the Windows test ZIP](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2-flat4-test3/ChromaMatter-0.8beta-r32.2-flat4-test3-win64.zip)** · [Release notes](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2-flat4-test3) · [Draft PR #7](https://github.com/Ponkichi0718/ChromaMatter/pull/7) |
 
 The experimental workstream is an integration candidate, not a permanent fork.
-It will be folded into the normal version after validation. **There is not yet a
-public experimental Windows ZIP**, so the r32.2 download below does not contain
-Flat Four; PR #7 is the authoritative status and testing hub.
+**Flat Four Test 3 is available as a separate public pre-release.** Extract the
+whole ZIP before starting it. Stable r32.2 below does not contain Flat Four; the
+Test 3 Release and Draft PR #7 remain the experimental status hubs.
 
 ## Download for Windows
 
