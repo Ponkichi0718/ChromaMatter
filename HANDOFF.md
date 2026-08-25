@@ -1287,3 +1287,79 @@ validation of direct Flat versus Full-then-Flat and manual F-slot preservation.
 
 - Existing owner-only ZIPs, private test models, generated outputs, build roots,
   caches, and local environments remain outside Git and public documentation.
+
+## 2026-08-25 Flat Four Test 2 public prerelease
+
+### Outcome
+
+- Published the separate experimental prerelease
+  [`v0.8beta-r32.2-flat4-test2`](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2-flat4-test2)
+  as GitHub Release ID `376367877`. It is non-Draft and marked Pre-release.
+- The annotated tag peels to exact source commit
+  `32769037a9173537beeb8574471f4ec9c040c214`. The latest application change in
+  that history is the mode-independent automatic Flat Four proposal at
+  `32b03438dbde322b3e2ff8b070356622d6999ad2`; the later commits are handoff and
+  navigation documentation only.
+- The stable `v0.8beta-r32.2` tag, Release, and all six stable assets were left
+  unchanged. The older private experimental Draft Release ID `376019044` and
+  its Fix1 review assets were not moved, replaced, or promoted.
+
+### Public assets and frozen identities
+
+- `ChromaMatter-0.8beta-r32.2-flat4-test2-win64.zip`: 115,071,442 bytes,
+  SHA-256 `B367C0D04EAD74FB3C58A01F8EFA89CD70642C8FF013AA65533D9D86B76467F5`.
+- `ChromaMatter-0.8beta-r32.2-complete-corresponding-source.zip`:
+  1,366,000,690 bytes,
+  SHA-256 `B94FBAEB9DCEC170EE356E266BD06FBAE66798FC7039E56AC17BCB872B848686`.
+- `ChromaMatter-0.8beta-r32.2-flat4-test2-SBOM.cdx.json`: 937,715 bytes,
+  SHA-256 `B68B2EE6BDFF9A80B9630F628284D13C67E662BAA3AE572AC1A0A70C040E03FD`.
+- `ChromaMatter-0.8beta-r32.2-flat4-test2-BINARY_COMPONENT_MAP.json`:
+  526,076 bytes,
+  SHA-256 `21A1A028F1F3205DA537636843101F3D8C0CC4CDA37DC75FCB4CEC9B28D1F865`.
+- `SHA256SUMS-r32.2-flat4-test2.txt`: 492 bytes,
+  SHA-256 `2A264D1D9675FD8E19FD1D2BD138C923244CB4B83EEDB222100FC328D85A443C`.
+
+### Validation
+
+- Exact-current-commit full regression and clean one-folder build: PASS.
+- Built-package self-test and isolated Japanese/English UI smoke: PASS.
+- Binary compliance inventory: PASS for 1,455 runtime files and 256 native
+  files.
+- Public software staging, canonical archive checks, privacy checks, and
+  independent fresh extraction: PASS. The fresh package has 1,512 files and a
+  1,511-record manifest; path, size, and SHA-256 parity all passed, followed by
+  fresh self-test and Japanese/English UI smoke.
+- Complete corresponding source: `release-approved`, `known_gaps: []`, and
+  bound to commit `32769037a9173537beeb8574471f4ec9c040c214`. Independent fresh
+  extraction verified 42,814 files against 42,813 manifest records.
+- GitHub reported the same size and digest for all five uploaded assets. After
+  publication, all five were downloaded again without authentication and each
+  local size/SHA-256 matched exactly.
+- Post-publication release-identity, GUI-layout, and release-regression focused
+  set: 29 tests passed with zero failures.
+- `CURRENT_STATE.json` parse, canonical English/Japanese README byte parity,
+  and `git diff --check`: PASS after adding the public download navigation.
+
+### User path and current limitations
+
+- Windows direct download:
+  <https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2-flat4-test2/ChromaMatter-0.8beta-r32.2-flat4-test2-win64.zip>
+- Users must extract the complete ZIP before running `START_CHROMAMATTER.cmd`
+  or `ChromaMatter.exe`.
+- The Release is intentionally experimental and unsigned. Multipart
+  solidification and part-specific 3MF output remain input-dependent and can
+  fail. Large GLB handling remains a narrow fail-closed beta path; the 2D
+  Colour Filter is not line-art generation or a PBR renderer. Physical U1
+  validation of this exact test package remains pending.
+
+### Follow-up state
+
+- The five canonical README variants now link directly to Flat Four Test 2 in
+  the current experimental branch working tree. Commit and push this
+  documentation/state checkpoint, then update Draft PR #7 to point to the
+  Release and Windows direct download.
+- Keep Draft PR #7 unmerged until the experimental application is ready for
+  normal-version integration. Do not move the Flat Four Test 2 tag or replace
+  its five frozen assets; later test builds require a new tag and Release.
+- Keep build roots, fresh-extraction roots, complete-source caches, controlled
+  toolchain evidence, and private owner models outside Git.
