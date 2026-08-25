@@ -388,6 +388,23 @@ class HotfixTests(unittest.TestCase):
         self.assertEqual(len(changed), 0)
         np.testing.assert_array_equal(session.overrides, [-1, -1])
 
+    def test_normal_fill_keeps_legacy_connected_fill_override_compatible(self):
+        class LegacyConnectedFillSession(PaintSession):
+            def connected_fill_faces(self, seed_face):
+                return super().connected_fill_faces(seed_face)
+
+        level = tiny_level()
+        session = LegacyConnectedFillSession(
+            level,
+            100.0,
+            np.asarray([0, 0], dtype=np.int8),
+        )
+
+        changed = session.fill(0, 2)
+
+        np.testing.assert_array_equal(changed, [0, 1])
+        np.testing.assert_array_equal(session.overrides, [2, 2])
+
     def test_incremental_edit_matches_full_color_recalculation(self):
         level = tiny_level()
         palette = PaletteSettings()
@@ -1061,6 +1078,31 @@ class HotfixTests(unittest.TestCase):
 
         np.testing.assert_array_equal(np.sort(selected), np.arange(4_000))
 
+    def test_large_sparse_fill_uses_flat_visible_state_connectivity(self):
+        count = 25_000
+        neighbors = np.full((count, 2), -1, dtype=np.int32)
+        neighbors[1:, 0] = np.arange(count - 1, dtype=np.int32)
+        neighbors[:-1, 1] = np.arange(1, count, dtype=np.int32)
+        labels = np.zeros(count, dtype=np.int8)
+        labels[8_000:16_000] = 5
+        labels[16_000:] = 2
+        state_map = np.arange(mixer.PALETTE_STATE_COUNT, dtype=np.int8)
+        state_map[5] = 0
+        dummy = SimpleNamespace(
+            faces=np.zeros((count, 3), dtype=np.int32),
+            neighbors=neighbors,
+            allowed_face_mask=np.ones(count, dtype=bool),
+            effective_indices=lambda: labels,
+        )
+
+        selected = hotfix._connected_fill_faces_fixed(
+            dummy,
+            0,
+            connectivity_state_map=state_map,
+        )
+
+        np.testing.assert_array_equal(np.sort(selected), np.arange(16_000))
+
     def test_3mf_contains_portable_and_orca_materials(self):
         prepared = tiny_closed_prepared()
         with tempfile.TemporaryDirectory() as folder:
@@ -1620,6 +1662,114 @@ class HotfixTests(unittest.TestCase):
         session.redo()
         self.assertNotIn(0, store)
         self.assertGreaterEqual(owner._hotfix_tree_revision, 3)
+
+    def test_flat_visible_fill_undo_restores_neighbor_adaptive_tree(self):
+        level = tiny_level()
+        session = PaintSession(level, 100.0, np.asarray([0, 5], dtype=np.int8))
+        tree = smooth_paint.PaintNode.branch(
+            tuple(smooth_paint.PaintNode(state) for state in (5, 5, 2, 2))
+        )
+        store = {1: tree}
+        owner = SimpleNamespace(_hotfix_tree_revision=0)
+        session._hotfix_tree_store = store
+        session._hotfix_tree_owner = owner
+        state_map = np.arange(mixer.PALETTE_STATE_COUNT, dtype=np.int8)
+        state_map[5] = 0
+
+        changed = session.fill(
+            0,
+            2,
+            connectivity_state_map=state_map,
+        )
+
+        np.testing.assert_array_equal(changed, [0, 1])
+        np.testing.assert_array_equal(session.overrides, [2, 2])
+        self.assertNotIn(1, store)
+        session.undo()
+        np.testing.assert_array_equal(session.overrides, [-1, -1])
+        self.assertEqual(
+            smooth_paint.encode_paint_color(store[1]),
+            "3C3C0C0C3",
+        )
+        session.redo()
+        np.testing.assert_array_equal(session.overrides, [2, 2])
+        self.assertNotIn(1, store)
+
+    def test_flat_visible_same_color_fill_preserves_canonical_tree(self):
+        level = tiny_level()
+        session = PaintSession(level, 100.0, np.asarray([0, 5], dtype=np.int8))
+        tree = smooth_paint.PaintNode.branch(
+            tuple(smooth_paint.PaintNode(state) for state in (5, 5, 2, 2))
+        )
+        store = {1: tree}
+        owner = SimpleNamespace(_hotfix_tree_revision=0)
+        session._hotfix_tree_store = store
+        session._hotfix_tree_owner = owner
+        state_map = np.arange(mixer.PALETTE_STATE_COUNT, dtype=np.int8)
+        state_map[5] = 0
+
+        changed = session.fill(
+            0,
+            0,
+            connectivity_state_map=state_map,
+        )
+
+        self.assertEqual(len(changed), 0)
+        np.testing.assert_array_equal(session.overrides, [-1, -1])
+        self.assertIs(store[1], tree)
+        self.assertEqual(
+            smooth_paint.encode_paint_color(store[1]),
+            "3C3C0C0C3",
+        )
+        self.assertEqual(session.undo_depth, 0)
+        self.assertEqual(owner._hotfix_tree_revision, 0)
+
+    def test_flat_visible_fill_stays_one_undo_at_history_capacity(self):
+        level = tiny_level()
+        session = PaintSession(
+            level,
+            100.0,
+            np.asarray([0, 5], dtype=np.int8),
+            max_history=2,
+        )
+        session._set_overrides(np.asarray([0], dtype=np.int32), 1, "first")
+        session._set_overrides(np.asarray([0], dtype=np.int32), -1, "second")
+        self.assertEqual(session.undo_depth, 2)
+        np.testing.assert_array_equal(session.overrides, [-1, -1])
+
+        tree = smooth_paint.PaintNode.branch(
+            tuple(smooth_paint.PaintNode(state) for state in (5, 5, 2, 2))
+        )
+        store = {1: tree}
+        owner = SimpleNamespace(_hotfix_tree_revision=0)
+        session._hotfix_tree_store = store
+        session._hotfix_tree_owner = owner
+        state_map = np.arange(mixer.PALETTE_STATE_COUNT, dtype=np.int8)
+        state_map[5] = 0
+
+        changed = session.fill(
+            0,
+            2,
+            connectivity_state_map=state_map,
+        )
+
+        np.testing.assert_array_equal(changed, [0, 1])
+        np.testing.assert_array_equal(session.overrides, [2, 2])
+        self.assertNotIn(1, store)
+        self.assertEqual(session.undo_depth, 2)
+
+        command = session.undo()
+        self.assertIsNotNone(command)
+        np.testing.assert_array_equal(session.overrides, [-1, -1])
+        self.assertEqual(
+            smooth_paint.encode_paint_color(store[1]),
+            "3C3C0C0C3",
+        )
+
+        command = session.redo()
+        self.assertIsNotNone(command)
+        np.testing.assert_array_equal(session.overrides, [2, 2])
+        self.assertNotIn(1, store)
 
 
 if __name__ == "__main__":

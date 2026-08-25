@@ -1085,7 +1085,7 @@ def apply_smooth_paint_hotfix(
 
     def finish_tree_only_command(
         session: Any,
-        undo_size: int,
+        undo_marker: Any,
         keys: set[int],
         before_nodes: dict[int, smooth_paint.PaintNode],
         label: str,
@@ -1097,9 +1097,11 @@ def apply_smooth_paint_hotfix(
         if store is None:
             return
         after_nodes = _clone_store_subset(store, keys)
-        if len(session._undo) > undo_size:
-            command = session._undo[-1]
-        else:
+        # A new command can evict an old one at the history limit, leaving the
+        # list length unchanged.  Object identity still distinguishes it from
+        # the command that was last before this edit began.
+        command = session._undo[-1] if session._undo else None
+        if command is None or command is undo_marker:
             indices = np.asarray(sorted(keys), dtype=np.int32)
             current = np.asarray(session.overrides[indices], dtype=np.int8).copy()
             command = paint_module.PaintCommand(
@@ -1112,25 +1114,64 @@ def apply_smooth_paint_hotfix(
         _attach_tree_history(command, keys, before_nodes, after_nodes)
         _bump_revision(owner)
 
-    def fill_tree_aware(self, seed_face, state):
+    def fill_tree_aware(
+        self,
+        seed_face,
+        state,
+        *,
+        connectivity_state_map=None,
+    ):
+        connectivity_options = (
+            {"connectivity_state_map": connectivity_state_map}
+            if connectivity_state_map is not None
+            else {}
+        )
         store, _owner = session_context(self)
         if not store:
-            return original_fill(self, seed_face, state)
-        faces = np.asarray(self.connected_fill_faces(seed_face), dtype=np.int32)
+            return original_fill(
+                self,
+                seed_face,
+                state,
+                **connectivity_options,
+            )
+        if connectivity_state_map is not None:
+            seed = int(seed_face)
+            requested = int(state)
+            if (
+                0 <= seed < len(self.faces)
+                and 0 <= requested < int(mixer_module.PALETTE_STATE_COUNT)
+            ):
+                labels = self._fill_connectivity_labels(
+                    connectivity_state_map
+                )
+                if int(labels[seed]) == requested:
+                    return np.empty(0, dtype=np.int32)
+        faces = np.asarray(
+            self.connected_fill_faces(
+                seed_face,
+                **connectivity_options,
+            ),
+            dtype=np.int32,
+        )
         keys = {int(face) for face in faces if int(face) in store}
         if not keys:
-            return original_fill(self, seed_face, state)
+            return original_fill(
+                self,
+                seed_face,
+                state,
+                **connectivity_options,
+            )
         before_nodes = _clone_store_subset(store, keys)
         ordered = np.asarray(sorted(keys), dtype=np.int32)
         before_values = np.asarray(self.overrides[ordered], dtype=np.int8).copy()
-        undo_size = len(self._undo)
+        undo_marker = self._undo[-1] if self._undo else None
         changed = self._set_overrides(
             faces, self._validate_state(state), "塗りつぶし"
         )
         for key in keys:
             store.pop(key, None)
         finish_tree_only_command(
-            self, undo_size, keys, before_nodes, "塗りつぶし", before_values
+            self, undo_marker, keys, before_nodes, "塗りつぶし", before_values
         )
         if len(changed) == 0:
             return ordered
@@ -1138,7 +1179,7 @@ def apply_smooth_paint_hotfix(
 
     def smooth_tree_aware(self, *args, **kwargs):
         store, _owner = session_context(self)
-        undo_size = len(self._undo)
+        undo_marker = self._undo[-1] if self._undo else None
         changed = original_smooth(self, *args, **kwargs)
         if not store or len(changed) == 0:
             return changed
@@ -1150,8 +1191,8 @@ def apply_smooth_paint_hotfix(
         before_values = np.asarray(self.overrides[ordered], dtype=np.int8).copy()
         # The root colour was already changed by the original command.  The
         # old override values are stored on that command, when available.
-        if len(self._undo) > undo_size:
-            command = self._undo[-1]
+        command = self._undo[-1] if self._undo else None
+        if command is not None and command is not undo_marker:
             lookup = {int(face): value for face, value in zip(command.indices, command.before)}
             before_values = np.asarray(
                 [lookup.get(int(face), self.overrides[int(face)]) for face in ordered],
@@ -1160,13 +1201,13 @@ def apply_smooth_paint_hotfix(
         for key in keys:
             store.pop(key, None)
         finish_tree_only_command(
-            self, undo_size, keys, before_nodes, "境界ならし", before_values
+            self, undo_marker, keys, before_nodes, "境界ならし", before_values
         )
         return changed
 
     def clear_tree_aware(self):
         store, _owner = session_context(self)
-        undo_size = len(self._undo)
+        undo_marker = self._undo[-1] if self._undo else None
         changed = original_clear(self)
         if not store:
             return changed
@@ -1174,8 +1215,8 @@ def apply_smooth_paint_hotfix(
         before_nodes = _clone_store_subset(store, keys)
         ordered = np.asarray(sorted(keys), dtype=np.int32)
         before_values = np.asarray(self.overrides[ordered], dtype=np.int8).copy()
-        if len(self._undo) > undo_size:
-            command = self._undo[-1]
+        command = self._undo[-1] if self._undo else None
+        if command is not None and command is not undo_marker:
             lookup = {int(face): value for face, value in zip(command.indices, command.before)}
             before_values = np.asarray(
                 [lookup.get(int(face), before_values[index]) for index, face in enumerate(ordered)],
@@ -1183,7 +1224,7 @@ def apply_smooth_paint_hotfix(
             )
         store.clear()
         finish_tree_only_command(
-            self, undo_size, keys, before_nodes, "全修正を解除", before_values
+            self, undo_marker, keys, before_nodes, "全修正を解除", before_values
         )
         if len(changed) == 0:
             return ordered

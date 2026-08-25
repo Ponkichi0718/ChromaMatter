@@ -336,6 +336,41 @@ def _effective_paint_enabled_states(palette: PaletteSettings) -> np.ndarray:
     return enabled
 
 
+def _effective_paint_state_map(
+    palette: PaletteSettings,
+    *,
+    palette_rgb: np.ndarray | None = None,
+) -> np.ndarray:
+    """Map canonical state IDs to the colours currently visible to Fill.
+
+    Full Spectrum uses the identity map.  Flat 4 Colors uses the same
+    non-destructive nearest-physical projection as its manual preview: legacy
+    mixed IDs stay stored, while visually identical connected faces can be
+    filled as one region.
+    """
+
+    mapping = np.arange(PALETTE_STATE_COUNT, dtype=np.int8)
+    if getattr(palette, "color_mode", None) != COLOR_MODE_FLAT_FOUR:
+        return mapping
+    if palette_rgb is None:
+        _palette_hex, palette_rgb = build_palette_rgb(
+            palette.physical_hex,
+            palette.mix_hex_overrides,
+            palette.mix_ratios_b,
+            palette.secondary_mix_ratios_b,
+        )
+    colors = np.asarray(palette_rgb, dtype=np.float64)
+    if colors.shape != (PALETTE_STATE_COUNT, 3) or not np.all(
+        np.isfinite(colors)
+    ):
+        raise ValueError(
+            f"Flat 4 Colors requires a {PALETTE_STATE_COUNT}x3 palette table"
+        )
+    delta = colors[4:, None, :] - colors[None, :4, :]
+    mapping[4:] = np.argmin(np.sum(delta * delta, axis=2), axis=1)
+    return mapping
+
+
 def _effective_paint_state(
     palette: PaletteSettings,
     state: int,
@@ -356,25 +391,17 @@ def _effective_paint_state(
         return selected
     if 0 <= selected < 4:
         return selected
-
-    if palette_rgb is None:
-        _palette_hex, palette_rgb = build_palette_rgb(
-            palette.physical_hex,
-            palette.mix_hex_overrides,
-            palette.mix_ratios_b,
-            palette.secondary_mix_ratios_b,
-        )
-    colors = np.asarray(palette_rgb, dtype=np.float64)
-    if (
-        colors.ndim != 2
-        or colors.shape[1:] != (3,)
-        or len(colors) < 4
-        or selected < 0
-        or selected >= len(colors)
-    ):
+    if selected < 0 or selected >= PALETTE_STATE_COUNT:
         return 0
-    delta = colors[:4] - colors[selected]
-    return int(np.argmin(np.sum(delta * delta, axis=1)))
+    try:
+        return int(
+            _effective_paint_state_map(
+                palette,
+                palette_rgb=palette_rgb,
+            )[selected]
+        )
+    except ValueError:
+        return 0
 
 
 def _editor_palette_if_available(editor: object) -> PaletteSettings | None:
@@ -7863,14 +7890,33 @@ class PaintEditorWindow:
         self._submit("edit", work)
 
     def _queue_fill(self, seed: int) -> None:
+        active_palette = self._active_palette()
         state = _effective_paint_state(
-            self._active_palette(), int(self.paint_state_var.get())
+            active_palette, int(self.paint_state_var.get())
+        )
+        connectivity_state_map = (
+            _effective_paint_state_map(
+                active_palette,
+                palette_rgb=np.asarray(self.palette_rgb, dtype=np.float64),
+            )
+            if getattr(active_palette, "color_mode", None)
+            == COLOR_MODE_FLAT_FOUR
+            else None
+        )
+        fill_options = (
+            {"connectivity_state_map": connectivity_state_map}
+            if connectivity_state_map is not None
+            else {}
         )
 
         def work():
             if self._session is None:
                 raise RuntimeError("色修正の準備中です")
-            changed = self._session.fill(seed, state)
+            changed = self._session.fill(
+                seed,
+                state,
+                **fill_options,
+            )
             return self._worker_refresh_after_edit(
                 f"同じ色でつながった領域を色 {state + 1} へ変更しました", len(changed)
             )

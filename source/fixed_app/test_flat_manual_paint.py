@@ -12,16 +12,21 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import smooth_paint
 import smooth_paint_hotfix
+from spectrum_mapper import engine
 from spectrum_mapper.mixer import build_palette_rgb
 from spectrum_mapper.models import (
     AppSettings,
+    ColorResult,
     COLOR_MODE_FLAT_FOUR,
     COLOR_MODE_FULL_SPECTRUM,
+    MeshLevel,
     PaletteSettings,
 )
+from spectrum_mapper.paint import PaintSession
 from spectrum_mapper.paint_gui import (
     PaintEditorWindow,
     _effective_paint_state,
+    _effective_paint_state_map,
 )
 
 
@@ -61,6 +66,53 @@ def _palette_rgb(palette: PaletteSettings) -> np.ndarray:
         palette.secondary_mix_ratios_b,
     )
     return np.asarray(rgb, dtype=np.float64)
+
+
+def _connected_flat_level() -> MeshLevel:
+    vertices = np.asarray(
+        (
+            (0.0, 0.0, 0.0),
+            (1.0, 0.0, 0.0),
+            (0.0, 1.0, 0.0),
+            (1.0, 1.0, 0.0),
+            (2.0, 0.0, 0.0),
+            (2.0, 1.0, 0.0),
+        ),
+        dtype=np.float64,
+    )
+    faces = np.asarray(
+        ((0, 1, 2), (1, 3, 2), (1, 4, 3), (4, 5, 3)),
+        dtype=np.int32,
+    )
+    return MeshLevel(
+        vertices_unit=vertices,
+        faces=faces,
+        vertex_colors=np.zeros((len(vertices), 3), dtype=np.float64),
+        areas_unit=np.ones(len(faces), dtype=np.float64),
+        neighbors=None,
+        face_part_ids=np.zeros(len(faces), dtype=np.int16),
+        part_names=("body",),
+        part_keys=("part:body",),
+        face_provenance=np.zeros(len(faces), dtype=np.uint8),
+    )
+
+
+def _automatic_black_result(level: MeshLevel, palette: PaletteSettings) -> ColorResult:
+    indices = np.zeros(len(level.faces), dtype=np.int8)
+    rgb = _palette_rgb(palette)
+    counts = np.bincount(indices, minlength=32)
+    return ColorResult(
+        tone_vertex_rgb=np.zeros_like(level.vertex_colors),
+        source_face_rgb=np.zeros((len(level.faces), 3), dtype=np.float64),
+        palette_indices=indices,
+        target_face_rgb=rgb[indices],
+        delta_e=np.zeros(len(level.faces), dtype=np.float64),
+        smoothed_faces=0,
+        palette_face_counts=counts,
+        palette_area_fractions=counts.astype(np.float64) / len(level.faces),
+        pink_area_fraction=0.0,
+        tone_face_rgb=np.zeros((len(level.faces), 3), dtype=np.float64),
+    )
 
 
 class FlatManualPaintStateTests(unittest.TestCase):
@@ -133,8 +185,11 @@ class FlatManualPaintStateTests(unittest.TestCase):
                 ).copy()
                 return np.asarray([0], dtype=np.int32)
 
-            def fill(self, _seed, state):
+            def fill(self, _seed, state, **kwargs):
                 calls["fill"] = int(state)
+                calls["fill_state_map"] = np.asarray(
+                    kwargs["connectivity_state_map"], dtype=np.int8
+                ).copy()
                 return np.asarray([0], dtype=np.int32)
 
             def smudge_stroke(self, _seeds, _radius, _strength, **kwargs):
@@ -170,6 +225,9 @@ class FlatManualPaintStateTests(unittest.TestCase):
         self.assertLess(int(calls["brush"]), 4)
         self.assertLess(int(calls["airbrush"]), 4)
         self.assertLess(int(calls["fill"]), 4)
+        fill_state_map = np.asarray(calls["fill_state_map"], dtype=np.int8)
+        np.testing.assert_array_equal(fill_state_map[:4], np.arange(4))
+        self.assertTrue(np.all(fill_state_map[4:] < 4))
         enabled = np.asarray(calls["airbrush_enabled"], dtype=bool)
         self.assertTrue(np.all(enabled[:4]))
         self.assertFalse(np.any(enabled[4:]))
@@ -195,6 +253,78 @@ class FlatManualPaintStateTests(unittest.TestCase):
         self.assertEqual(combo.state, "disabled")
         self.assertEqual(palette.palette_state_count, 32)
         self.assertEqual(editor.paint_state_var.get(), 0)
+
+    def test_flat_fill_uses_visible_physical_state_and_reaches_preview_export(
+        self,
+    ) -> None:
+        palette = _flat_palette()
+        level = _connected_flat_level()
+        state_map = _effective_paint_state_map(
+            palette,
+            palette_rgb=_palette_rgb(palette),
+        )
+        # These are distinct retained Full Spectrum IDs, but Flat Four shows
+        # all three faces as the same physical black F1.
+        self.assertEqual(state_map[[0, 5, 6]].tolist(), [0, 0, 0])
+        initial_overrides = np.asarray((-1, 5, 6, -1), dtype=np.int8)
+        session = PaintSession(
+            level,
+            100.0,
+            np.zeros(len(level.faces), dtype=np.int8),
+            overrides=initial_overrides,
+        )
+        # Preserve the selected-part guard even though a fourth black face is
+        # geometrically connected to the visible region.
+        session.set_allowed_faces(np.asarray((True, True, True, False)))
+
+        np.testing.assert_array_equal(session.connected_fill_faces(0), [0])
+        changed = session.fill(
+            0,
+            2,
+            connectivity_state_map=state_map,
+        )
+
+        np.testing.assert_array_equal(changed, [0, 1, 2])
+        np.testing.assert_array_equal(session.overrides, [2, 2, 2, -1])
+        undo = session.undo()
+        self.assertIsNotNone(undo)
+        np.testing.assert_array_equal(session.overrides, initial_overrides)
+        redo = session.redo()
+        self.assertIsNotNone(redo)
+        np.testing.assert_array_equal(session.overrides, [2, 2, 2, -1])
+
+        preview = engine.apply_palette_overrides_parts(
+            level,
+            100.0,
+            palette,
+            {},
+            _automatic_black_result(level, palette),
+            session.overrides,
+        )
+        np.testing.assert_array_equal(preview.palette_indices, [2, 2, 2, 0])
+        np.testing.assert_allclose(
+            preview.target_face_rgb[:3],
+            np.repeat(_palette_rgb(palette)[2][None, :], 3, axis=0),
+        )
+        export_indices, projected = engine._project_indices_to_flat_four(
+            preview.palette_indices,
+            level.face_part_ids,
+            (palette,),
+        )
+        np.testing.assert_array_equal(export_indices, [2, 2, 2, 0])
+        self.assertEqual(projected, 0)
+
+    def test_full_spectrum_fill_keeps_canonical_state_boundaries(self) -> None:
+        level = _connected_flat_level()
+        session = PaintSession(
+            level,
+            100.0,
+            np.zeros(len(level.faces), dtype=np.int8),
+            overrides=np.asarray((-1, 5, 6, -1), dtype=np.int8),
+        )
+        changed = session.fill(0, 2)
+        np.testing.assert_array_equal(changed, [0])
+        np.testing.assert_array_equal(session.overrides, [2, 5, 6, -1])
 
 
 class FlatAdaptivePaintRoutingTests(unittest.TestCase):

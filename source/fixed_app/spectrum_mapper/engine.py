@@ -147,6 +147,17 @@ NEUTRAL_STATES = np.asarray(
     dtype=np.int8,
 )
 
+# Flat Four intentionally removes continuous shade levels.  A low-lightness
+# red, blue, or other coloured source patch can therefore be perceptually much
+# closer to physical black in ordinary CIE76 even though it still carries a
+# clear material-colour signal.  These conservative gates recover only that
+# signal: neutral/near-neutral source colours never enter the alternate path.
+_FLAT_SHADOW_SOURCE_RGB_SPAN_MIN = 0.05
+_FLAT_SHADOW_SOURCE_LAB_CHROMA_MIN = 10.0
+_FLAT_SHADOW_NEUTRAL_PALETTE_CHROMA_MAX = 8.0
+_FLAT_SHADOW_CHROMATIC_PALETTE_CHROMA_MIN = 18.0
+_FLAT_SHADOW_CHROMATICITY_MARGIN = 0.05
+
 
 class EngineError(RuntimeError):
     pass
@@ -426,6 +437,31 @@ def _require_exact_black_output_preset_for_surface_shell(
     return darkest
 
 
+def make_auto_mixed_tombstones(stable_id_start: int = 1) -> str:
+    """Suppress Orca's optional auto-generated F1-F4 pair rows.
+
+    Snapmaker Orca owns an application-wide ``auto_generate_gradients``
+    preference.  When it is enabled, loading four physical filaments creates
+    all six 50/50 pairs before the project definitions are restored.  An empty
+    definition string therefore does *not* mean "physical colours only" on
+    every Orca installation.  Persisting the six rows as disabled/deleted
+    auto-row tombstones is Orca's round-trip representation for explicitly
+    removing them.  Tombstones consume no virtual filament IDs and are not
+    printable recipes.
+    """
+
+    first_stable_id = int(stable_id_start)
+    if first_stable_id < 1:
+        raise EngineError("混色tombstoneのstable IDは1以上である必要があります")
+    return ";".join(
+        f"{left + 1},{right + 1},0,0,50,0,g,w,m2,z0,xa0,xb0,d1,o1,u{stable_id}"
+        for stable_id, (left, right) in enumerate(
+            PAIR_INDICES,
+            start=first_stable_id,
+        )
+    )
+
+
 def make_portable_mixed_definitions(
     mix_ratios_b: list[int],
     secondary_mix_ratios_b: list[int] | None = None,
@@ -485,10 +521,9 @@ def make_portable_mixed_definitions(
             rows.append(
                 f"{left + 1},{right + 1},1,1,{ratio_b},0,g,w,m2,z0,xa0,xb0,d0,o0,u{stable_id}"
             )
-    for stable_id, (left, right) in enumerate(PAIR_INDICES, start=len(specs) + 1):
-        rows.append(
-            f"{left + 1},{right + 1},0,0,50,0,g,w,m2,z0,xa0,xb0,d1,o1,u{stable_id}"
-        )
+    rows.extend(
+        make_auto_mixed_tombstones(len(specs) + 1).split(";")
+    )
     return ";".join(rows)
 
 
@@ -3622,6 +3657,131 @@ def _effective_manual_state_count(palette: PaletteSettings) -> int:
     return int(palette.palette_state_count)
 
 
+def _recover_flat_four_chromatic_shadows(
+    indices: np.ndarray,
+    face_rgb: np.ndarray,
+    face_lab: np.ndarray,
+    palette_rgb: np.ndarray,
+    palette_lab: np.ndarray,
+    enabled_states: np.ndarray,
+) -> tuple[np.ndarray, int]:
+    """Recover chromatic material colour hidden by baked dark shading.
+
+    Ordinary CIE76 is still the authoritative first assignment.  This narrow
+    Flat-Four-only pass revisits a face only when that assignment selected a
+    perceptually neutral physical filament, while the source retains both an
+    absolute RGB channel span and CIELAB chroma.  It then compares normalized
+    RGB chromaticity, which is stable under multiplicative darkening, and moves
+    the face only when one enabled chromatic F1-F4 candidate has a clear margin
+    over the selected neutral candidate.
+
+    This deliberately does not use nearby red faces as sufficient evidence:
+    true black trim beside a coloured panel must stay black.  The existing
+    topology-aware smoothing pass that follows this function can still remove
+    isolated recovered specks without crossing its established boundaries.
+    """
+
+    source_indices = np.asarray(indices)
+    rgb = np.asarray(face_rgb, dtype=np.float64)
+    lab = np.asarray(face_lab, dtype=np.float64)
+    physical_rgb = np.asarray(palette_rgb, dtype=np.float64)[:4]
+    physical_lab = np.asarray(palette_lab, dtype=np.float64)[:4]
+    enabled = np.asarray(enabled_states, dtype=bool)[:4]
+    if source_indices.ndim != 1:
+        raise EngineError("Flat 4 Colorsの面色状態が1次元ではありません")
+    if not np.issubdtype(source_indices.dtype, np.integer):
+        raise EngineError("Flat 4 Colorsの面色状態は整数である必要があります")
+    if rgb.shape != (len(source_indices), 3) or lab.shape != rgb.shape:
+        raise EngineError("Flat 4 Colorsの面色判定データ数が一致しません")
+    if physical_rgb.shape != (4, 3) or physical_lab.shape != (4, 3):
+        raise EngineError("Flat 4 Colorsの物理色判定データが不正です")
+    if enabled.shape != (4,):
+        raise EngineError("Flat 4 Colorsの物理色有効状態が不正です")
+    if len(source_indices) and (
+        int(source_indices.min()) < 0 or int(source_indices.max()) >= 4
+    ):
+        raise EngineError("Flat 4 Colorsの自動色状態がF1-F4範囲外です")
+    if not len(source_indices):
+        return source_indices, 0
+
+    palette_chroma = np.linalg.norm(physical_lab[:, 1:3], axis=1)
+    neutral_slots = enabled & (
+        palette_chroma <= _FLAT_SHADOW_NEUTRAL_PALETTE_CHROMA_MAX
+    )
+    chromatic_slots = np.flatnonzero(
+        enabled
+        & (palette_chroma >= _FLAT_SHADOW_CHROMATIC_PALETTE_CHROMA_MIN)
+    )
+    if not len(chromatic_slots) or not np.any(neutral_slots):
+        return source_indices, 0
+
+    def chromaticity(values: np.ndarray) -> np.ndarray:
+        totals = np.sum(values, axis=1, keepdims=True)
+        return np.divide(
+            values,
+            totals,
+            out=np.zeros_like(values, dtype=np.float64),
+            where=totals > 1e-12,
+        )
+
+    physical_chromaticity = chromaticity(physical_rgb)
+    result: np.ndarray | None = None
+    recovered_count = 0
+    # Keep every temporary proportional to this fixed chunk, including the
+    # neutral/colour eligibility scan.  A full-size mask, span, Lab-chroma, and
+    # selected-index set would otherwise add well over 100 MiB at five million
+    # faces before candidate distances were even evaluated.
+    for start in range(0, len(source_indices), 25_000):
+        stop = min(start + 25_000, len(source_indices))
+        chunk_states = source_indices[start:stop]
+        neutral_faces = np.flatnonzero(neutral_slots[chunk_states])
+        if not len(neutral_faces):
+            continue
+        neutral_rgb = rgb[start:stop][neutral_faces]
+        neutral_lab = lab[start:stop][neutral_faces]
+        eligible = (
+            (np.ptp(neutral_rgb, axis=1) >= _FLAT_SHADOW_SOURCE_RGB_SPAN_MIN)
+            & (
+                np.linalg.norm(neutral_lab[:, 1:3], axis=1)
+                >= _FLAT_SHADOW_SOURCE_LAB_CHROMA_MIN
+            )
+        )
+        if not np.any(eligible):
+            continue
+        chunk_faces = start + neutral_faces[eligible]
+        source_chromaticity = chromaticity(rgb[chunk_faces])
+        candidate_delta = (
+            source_chromaticity[:, None, :]
+            - physical_chromaticity[chromatic_slots][None, :, :]
+        )
+        candidate_distances = np.linalg.norm(candidate_delta, axis=2)
+        best_local = np.argmin(candidate_distances, axis=1)
+        best_slots = chromatic_slots[best_local]
+        best_distances = candidate_distances[
+            np.arange(len(chunk_faces)), best_local
+        ]
+        current_slots = source_indices[chunk_faces].astype(
+            np.int64, copy=False
+        )
+        current_distances = np.linalg.norm(
+            source_chromaticity - physical_chromaticity[current_slots],
+            axis=1,
+        )
+        accepted = (
+            best_distances + _FLAT_SHADOW_CHROMATICITY_MARGIN
+            < current_distances
+        )
+        if not np.any(accepted):
+            continue
+        if result is None:
+            result = source_indices.astype(np.int8, copy=True)
+        result[chunk_faces[accepted]] = best_slots[accepted].astype(np.int8)
+        recovered_count += int(np.count_nonzero(accepted))
+    if result is None:
+        return source_indices, 0
+    return result, recovered_count
+
+
 def _project_indices_to_flat_four(
     palette_indices: np.ndarray,
     face_part_ids: np.ndarray,
@@ -3735,6 +3895,15 @@ def recolor_level(
             )
             nearest = np.argmin(np.sum(delta * delta, axis=2), axis=1)
             indices[chunk_indices] = candidates[nearest]
+    if palette.color_mode == COLOR_MODE_FLAT_FOUR:
+        indices, _flat_shadow_faces = _recover_flat_four_chromatic_shadows(
+            indices,
+            tone_face_rgb,
+            face_lab,
+            assignment_palette_rgb,
+            assignment_palette_lab,
+            enabled,
+        )
     areas_mm2 = level.areas_unit * float(height_mm) ** 2
     indices, smoothed = _smooth_labels(
         indices,
@@ -3887,6 +4056,18 @@ def recolor_level_parts(
                     np.sum(differences * differences, axis=2), axis=1
                 )
                 local_indices[chunk] = candidates[nearest]
+        if part_palette.color_mode == COLOR_MODE_FLAT_FOUR:
+            (
+                local_indices,
+                _flat_shadow_faces,
+            ) = _recover_flat_four_chromatic_shadows(
+                local_indices,
+                local_rgb,
+                local_lab,
+                assignment_palette_tables[part_id],
+                assignment_palette_lab,
+                enabled,
+            )
         local_neighbors = _local_part_neighbors(
             level.neighbors, selected, len(level.faces)
         )
@@ -4287,7 +4468,7 @@ def _make_project_settings(palette: PaletteSettings) -> bytes:
         and SURFACE_SHELL_OUTPUT_ENABLED
     )
     definitions = (
-        ""
+        make_auto_mixed_tombstones()
         if flat_four
         else make_portable_mixed_definitions(
             palette.mix_ratios_b,
@@ -5157,7 +5338,7 @@ def write_3mf_atomic(
         palette.secondary_mix_ratios_b,
     )
     definitions = (
-        ""
+        make_auto_mixed_tombstones()
         if flat_four
         else make_portable_mixed_definitions(
             palette.mix_ratios_b,
@@ -7069,8 +7250,11 @@ def validate_3mf(
     definitions = project.get("mixed_filament_definitions", "")
     if definitions != expected_definitions:
         errors.append("混色定義")
-    if palette_mode == COLOR_MODE_FLAT_FOUR and definitions:
-        errors.append("Flat 4 Colors混色定義")
+    if (
+        palette_mode == COLOR_MODE_FLAT_FOUR
+        and definitions != make_auto_mixed_tombstones()
+    ):
+        errors.append("Flat 4 Colors混色抑止定義")
     if project.get("chroma_matter_palette_mode", "full_spectrum") != palette_mode:
         errors.append("カラーモードmetadata")
     shell_metadata = palette_metadata.get("surface_shell")

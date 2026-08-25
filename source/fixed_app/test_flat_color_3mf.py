@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import re
 import tempfile
 import unittest
 from zipfile import ZipFile
@@ -99,7 +100,24 @@ class FlatColor3mfTests(unittest.TestCase):
         self.assertEqual(object_xml.count(b"<base "), 4)
         self.assertIn("Flat 4 Colors", root)
         self.assertIn('plater_name" value="Flat 4 Colors (F1-F4)', model_settings)
-        self.assertEqual(project["mixed_filament_definitions"], "")
+        definitions = project["mixed_filament_definitions"]
+        self.assertEqual(definitions, engine.make_auto_mixed_tombstones())
+        rows = [row.split(",") for row in definitions.split(";")]
+        self.assertEqual(len(rows), 6)
+        self.assertTrue(
+            all(
+                row[2:5] == ["0", "0", "50"]
+                and "d1" in row
+                and "o1" in row
+                for row in rows
+            )
+        )
+        self.assertFalse(
+            any(row[2] == "1" and "d0" in row for row in rows)
+        )
+        self.assertEqual(len(project["filament_colour"]), 4)
+        self.assertEqual(len(project["filament_multi_colors"]), 4)
+        self.assertEqual(len(project["filament_settings_id"]), 4)
         self.assertEqual(
             project["chroma_matter_palette_mode"], COLOR_MODE_FLAT_FOUR
         )
@@ -112,6 +130,20 @@ class FlatColor3mfTests(unittest.TestCase):
             "physical-F1-F4-only",
         )
         self.assertEqual(len(metadata["states"]), 4)
+        self.assertNotIn("print_mix_specs", metadata)
+        self.assertNotIn("output_mix_ratios_b_percent", metadata)
+        self.assertEqual(metadata["mix_ratios_b_percent"], [])
+        self.assertEqual(metadata["secondary_mix_ratios_b_percent"], [])
+        self.assertNotRegex(
+            model_settings,
+            r'extruder" value="(?:[5-9]|[1-9][0-9]+)"',
+        )
+        self.assertFalse(
+            any(
+                int(value) > 3
+                for value in re.findall(rb'\sp1="([0-9]+)"', object_xml)
+            )
+        )
         self.assertIn("混色stateは0色", guide)
         self.assertIn("色ID 1〜4", guide)
 

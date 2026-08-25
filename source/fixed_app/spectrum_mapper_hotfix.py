@@ -983,7 +983,7 @@ def _write_3mf_atomic_fixed(
         and models.SURFACE_SHELL_OUTPUT_ENABLED
     )
     expected_definitions = (
-        ""
+        engine.make_auto_mixed_tombstones()
         if flat_four
         else engine.make_portable_mixed_definitions(
             palette.mix_ratios_b,
@@ -1260,12 +1260,26 @@ paint.PaintSession._set_overrides = _set_overrides_fixed
 _original_connected_fill_faces = paint.PaintSession.connected_fill_faces
 
 
-def _connected_fill_faces_fixed(self, seed_face):
+def _connected_fill_faces_fixed(
+    self,
+    seed_face,
+    *,
+    connectivity_state_map=None,
+):
     """Run large connected fills in SciPy's compiled graph traversal."""
+    connectivity_options = (
+        {"connectivity_state_map": connectivity_state_map}
+        if connectivity_state_map is not None
+        else {}
+    )
     seed = int(seed_face)
     face_count = len(self.faces)
     if seed < 0 or seed >= face_count:
-        return _original_connected_fill_faces(self, seed_face)
+        return _original_connected_fill_faces(
+            self,
+            seed_face,
+            **connectivity_options,
+        )
     allowed_value = getattr(self, "allowed_face_mask", None)
     allowed = (
         np.ones(face_count, dtype=bool)
@@ -1273,14 +1287,25 @@ def _connected_fill_faces_fixed(self, seed_face):
         else np.asarray(allowed_value, dtype=bool)
     )
     if allowed.shape != (face_count,) or not bool(allowed[seed]):
-        return _original_connected_fill_faces(self, seed_face)
+        return _original_connected_fill_faces(
+            self,
+            seed_face,
+            **connectivity_options,
+        )
     if face_count < 20_000:
-        return _original_connected_fill_faces(self, seed_face)
+        return _original_connected_fill_faces(
+            self,
+            seed_face,
+            **connectivity_options,
+        )
     try:
         from scipy.sparse import csr_matrix
         from scipy.sparse.csgraph import breadth_first_order
 
-        labels = self.effective_indices()
+        labels = paint.PaintSession._fill_connectivity_labels(
+            self,
+            connectivity_state_map,
+        )
         target = labels[seed]
         neighbors = np.asarray(self.neighbors, dtype=np.int32)
         sources = np.repeat(np.arange(face_count, dtype=np.int32), neighbors.shape[1])
@@ -1302,7 +1327,11 @@ def _connected_fill_faces_fixed(self, seed_face):
         )
         return np.asarray(selected, dtype=np.int32)
     except Exception:
-        return _original_connected_fill_faces(self, seed_face)
+        return _original_connected_fill_faces(
+            self,
+            seed_face,
+            **connectivity_options,
+        )
 
 
 paint.PaintSession.connected_fill_faces = _connected_fill_faces_fixed
@@ -1311,16 +1340,36 @@ paint.PaintSession.connected_fill_faces = _connected_fill_faces_fixed
 _original_fill = paint.PaintSession.fill
 
 
-def _fill_fixed(self, seed_face, state):
+def _fill_fixed(
+    self,
+    seed_face,
+    state,
+    *,
+    connectivity_state_map=None,
+):
+    connectivity_options = (
+        {"connectivity_state_map": connectivity_state_map}
+        if connectivity_state_map is not None
+        else {}
+    )
     seed = int(seed_face)
     requested = int(state)
     if (
         0 <= seed < len(self.faces)
         and 0 <= requested < mixer.PALETTE_STATE_COUNT
     ):
-        if int(self.effective_indices()[seed]) == requested:
+        labels = paint.PaintSession._fill_connectivity_labels(
+            self,
+            connectivity_state_map,
+        )
+        if int(labels[seed]) == requested:
             return np.empty(0, dtype=np.int32)
-    return _original_fill(self, seed_face, state)
+    return _original_fill(
+        self,
+        seed_face,
+        state,
+        **connectivity_options,
+    )
 
 
 paint.PaintSession.fill = _fill_fixed
