@@ -1172,3 +1172,105 @@ Extract the owner-only ZIP to a new folder and test the same representative GLB:
   profiles are local-only and remain outside Git.
 - The owner-supplied private GLB and all outputs derived from it remain local and
   are not included in the ZIP.
+
+## 2026-08-25 Flat Four file-open mode-history correction
+
+### Current objective
+
+Make a newly opened model's Flat Four result independent of whether Flat Four
+or Full Spectrum happened to be selected when the file was opened, without
+overwriting any later manual filament or palette decision.
+
+### Completed in this session
+
+- Traced the difference to the new-model automatic F1-F4 recommendation. Full
+  Spectrum intentionally optimizes the four physical filaments while considering
+  mixed states, whereas Flat Four intentionally optimizes against F1-F4 only.
+  The old mode switch changed assignment mode but retained the proposal selected
+  under the previous mode.
+- Added runtime-only provenance for a complete new-model automatic palette. If
+  every common/part palette still exactly matches that automatic result, changing
+  modes reruns the recommendation under the target mode.
+- The provenance comparison excludes only `color_mode`. It includes material,
+  F1-F4, product snapshots, enabled states, display/print recipes, assignment
+  snapshots, and correction controls. Any manual change or palette-inheritance
+  change therefore prevents an automatic overwrite.
+- New-file selection and project loading clear the runtime provenance. Saved
+  projects continue to load exactly and are not treated as fresh automatic
+  proposals.
+- Added regressions for automatic Full-to-Flat recomputation, manual-filament
+  preservation, a mode switch when no explicit part palette exists, same-source
+  geometry reprocessing, and direct-Flat versus Full-then-Flat global/part
+  F1-F4 equivalence.
+- Added a compact stable-versus-experimental selector to all canonical English
+  and Japanese repository README variants. It links published r32.2 to its
+  Release and routes Flat Four users to Draft PR #7 and the source branch while
+  stating that the workstream is intended for later integration.
+- Created and pushed documentation-only branch
+  `docs/experimental-version-navigation` at
+  `5d87c790406ad3a80a7fd3e31c50bd2cee04bfd9` from `origin/main`, so the same
+  selector can reach the default branch without merging application code.
+
+### Current state
+
+- The application correction is committed as
+  `32b03438dbde322b3e2ff8b070356622d6999ad2` and pushed on
+  `codex/r32-2-experimental-flat4-large-glb-2d-filter`; Draft PR #7 follows it.
+- The documentation-only branch is pushed, but creating its PR and replacing
+  Draft PR #7's public title/body require an action-time browser confirmation.
+  The installed GitHub connector returned 403 for PR creation, so no public PR
+  text was changed yet.
+- No merge into `main`, tag, Release edit, Draft Release asset replacement,
+  binary build, or ZIP replacement was performed.
+- The existing Fix2 owner-only ZIP predates this correction and will still show
+  the reported file-open mode-history behavior.
+
+### Next exact task
+
+After the required browser action-time confirmation, create a documentation-only
+PR from `docs/experimental-version-navigation` to `main`, then update Draft PR
+#7's title/body to serve as the public experimental status/testing hub. Do not
+merge either PR automatically. A later exact-commit clean owner-only Windows ZIP
+may be created for hands-on validation of direct Flat versus Full-then-Flat and
+manual F-slot preservation.
+
+### Changed files
+
+- `source/fixed_app/spectrum_mapper/gui.py`
+- `source/fixed_app/test_flat_color_mode.py`
+- `source/fixed_app/test_filament_candidate_gui.py`
+- `README.md`
+- `README_EN.md`
+- `README_JA.md`
+- `README_PUBLIC_EN.md`
+- `README_PUBLIC_JA.md`
+- `CURRENT_STATE.json`
+- `HANDOFF.md`
+
+### Tests run
+
+- Repository pinned environment focused regression: 177 tests, zero failures.
+- Earlier focused subsets: 42 and 41 tests, zero failures.
+- `python -m py_compile` for the changed application/test modules: PASS.
+- Documentation-only branch release-identity tests: 12 tests, zero failures.
+- Canonical English/Japanese README parity checks: PASS.
+- `CURRENT_STATE.json` parse and final `git diff --check`: PASS.
+- One initial system-Python attempt could not import PyMeshLab. It was an
+  environment miss, not a test failure, and was superseded by the repository's
+  pinned `.venv` run above.
+
+### Do not do
+
+- Do not make the mode switch always replace F1-F4. The exact automatic-palette
+  guard is required to preserve user-selected filaments, recipes, enabled states,
+  output ratios, product identities, and part inheritance.
+- Do not persist this runtime provenance into project JSON. Project loading must
+  continue to preserve the saved palette rather than silently recomputing it.
+- Do not weaken topology, 3MF, pending-apply, or Flat Four mixed-state guards.
+- Do not merge either PR into `main`, change `0.8beta`, retag, publish a binary,
+  or replace a Release asset without fresh explicit owner approval.
+
+### Local-only files
+
+- Existing owner-only ZIPs, private test models, generated outputs, build roots,
+  caches, and local environments remain outside Git and public documentation.

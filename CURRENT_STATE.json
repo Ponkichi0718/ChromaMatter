@@ -37,6 +37,11 @@
       "source_commit_scope": "unchanged experimental tag and Draft Release source",
       "latest_fix2_source_commit": "0ed8dd404233752fec7b7f63fa13a2a9238e9b38",
       "latest_fix2_source_status": "pushed to the workstream branch and available in Draft PR #7; tag and Draft Release assets unchanged",
+      "latest_mode_history_source_commit": "32b03438dbde322b3e2ff8b070356622d6999ad2",
+      "latest_mode_history_source_status": "pushed to the workstream branch and available in Draft PR #7; published r32.2 and its assets remain unchanged",
+      "navigation_docs_branch": "docs/experimental-version-navigation",
+      "navigation_docs_commit": "5d87c790406ad3a80a7fd3e31c50bd2cee04bfd9",
+      "navigation_docs_status": "pushed from origin/main; PR creation is pending the required browser action-time confirmation after the GitHub connector returned 403",
       "tag": "v0.8beta-r32.2-experimental-20260825",
       "draft_pull_request": 7,
       "draft_release": true,
@@ -57,7 +62,8 @@
         "Projects legacy mixed manual-paint state at the Flat export boundary without rewriting the caller's canonical color state.",
         "Persists the six deleted automatic F1-F4 pair tombstones used by Snapmaker Orca 2.3.5, preventing its application-wide automatic-gradient preference from recreating six visible 50/50 mixed rows while keeping every printable state in F1-F4.",
         "Applies a Flat-Four-only conservative chromatic-shadow recovery pass: source faces assigned to a neutral physical slot may move to an enabled chromatic F1-F4 slot only when RGB span, Lab chroma, and normalized-RGB margin all retain clear material-colour evidence; near-neutral black remains excluded.",
-        "Manual Fill compares Flat Four's visible physical-state projection for connectivity, so connected legacy mixed IDs that appear as the same black region can be repainted together while canonical overrides, Full Spectrum boundaries, part masks, and Undo/Redo remain intact."
+        "Manual Fill compares Flat Four's visible physical-state projection for connectivity, so connected legacy mixed IDs that appear as the same black region can be repainted together while canonical overrides, Full Spectrum boundaries, part masks, and Undo/Redo remain intact.",
+        "For a newly opened model whose automatic palette remains untouched, switching Full Spectrum / Flat Four recomputes the four-filament proposal for the target mode, so the result no longer depends on the mode active at file-open time; any manual filament, recipe, state, output, or palette-inheritance edit disables that refresh and is preserved."
       ],
       "illustration_filter": [
         "Offers experimental Cel Colour and Shaded Monochrome modes with fixed-front, geometry-aware stepped shading.",
@@ -74,6 +80,12 @@
       "status": "committed-fix2-source-checkpoint-owner-only-windows-package-validated",
       "full_regression": "1389 tests, 0 failures, 2 optional skips in the exact repaired-PyTetWild build environment; the application and regression-test bytes are committed as 0ed8dd404233752fec7b7f63fa13a2a9238e9b38",
       "focused_regression": "152 tests, 0 failures and 0 skips rerun before the GitHub handoff; compileall, CURRENT_STATE JSON parse, and git diff --check passed",
+      "mode_history_working_tree": {
+        "status": "implemented, focused-validated, committed as 32b03438dbde322b3e2ff8b070356622d6999ad2, and pushed to the experimental workstream branch",
+        "cause": "The new-model automatic filament recommendation optimizes against mixed states in Full Spectrum but physical F1-F4 only in Flat Four; mode switching previously changed assignment mode without recomputing the four physical filaments.",
+        "behavior": "An untouched new-model automatic proposal is recomputed after a mode change using the target mode, including after same-source geometry reprocessing. Manual palette changes and loaded projects are never replaced by this refresh.",
+        "focused_regression": "177 tests passed with zero failures, including direct-Flat versus Full-then-Flat global/part F1-F4 equivalence; py_compile and git diff --check passed. The system Python attempt lacked PyMeshLab and was superseded by the repository's pinned virtual environment."
+      },
       "public_source_tree_audit": "409 files, pass",
       "owner_only_internal_test_package": {
         "filename": "ChromaMatter-0.8beta-r32.2-Flat4-Fix2-INTERNAL-TEST-20260825-win64.zip",
