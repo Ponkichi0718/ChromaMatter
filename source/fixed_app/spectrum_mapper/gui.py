@@ -747,6 +747,45 @@ def _manual_overrides_signature(
     return tuple(int(value) for value in values.shape), values.dtype.str, digest
 
 
+def _automatic_palette_signature(palette: PaletteSettings) -> tuple[object, ...]:
+    """Return the mode-neutral state of an automatically proposed palette.
+
+    ``color_mode`` is deliberately excluded: changing only Full Spectrum / Flat
+    Four must still be recognised as the untouched automatic proposal.  Every
+    editable palette input is retained so a mode switch can never overwrite a
+    user's filament, recipe, state, or output adjustment.
+    """
+
+    return (
+        palette.material,
+        int(palette.palette_state_count),
+        tuple(normalize_hex(value) for value in palette.physical_hex),
+        tuple(bool(value) for value in palette.enabled_states),
+        tuple(
+            None if value is None else normalize_hex(value)
+            for value in palette.mix_hex_overrides
+        ),
+        tuple(int(value) for value in palette.mix_ratios_b),
+        tuple(int(value) for value in palette.secondary_mix_ratios_b),
+        (
+            None
+            if palette.output_mix_ratios_b is None
+            else tuple(int(value) for value in palette.output_mix_ratios_b)
+        ),
+        (
+            None
+            if palette.assignment_palette_hex is None
+            else tuple(normalize_hex(value) for value in palette.assignment_palette_hex)
+        ),
+        bool(getattr(palette, "surface_shell_enabled", False)),
+        bool(getattr(palette, "black_free_gradient_enabled", False)),
+        int(getattr(palette, "black_free_black_slot", 0)),
+        int(getattr(palette, "black_free_red_slot", 2)),
+        int(getattr(palette, "black_free_brown_slot", 3)),
+        tuple(palette.physical_filament_refs),
+    )
+
+
 def _enabled_manual_mix_states(
     overrides: np.ndarray | None,
     enabled_states: list[bool] | tuple[bool, ...],
@@ -850,6 +889,14 @@ class MapperApp:
         self.part_recommendations: dict[str, FilamentRecommendation] = {}
         self._loading_palette_variables = False
         self._auto_recommend_after_geometry = False
+        # A newly opened model receives one automatic, mode-specific F1-F4
+        # proposal.  Keep a mode-neutral fingerprint so changing Full Spectrum
+        # / Flat Four can recompute that untouched proposal for the target mode
+        # without ever replacing colours or recipes the user has edited.
+        self._automatic_palette_model_token: tuple[str | None] | None = None
+        self._automatic_palette_signatures: dict[
+            str | None, tuple[object, ...]
+        ] = {}
         # A project whose source model moved can be opened before the user
         # locates the mesh again.  The next explicit model selection then
         # restores that project instead of starting a new model.
@@ -4176,6 +4223,78 @@ class MapperApp:
             if sample is not None:
                 sample.grid()
 
+    def _automatic_palette_token(self) -> tuple[str | None] | None:
+        prepared = getattr(self, "prepared", None)
+        if prepared is None:
+            return None
+        source_path = getattr(self, "source_path", None)
+        # New-file selection and project loading explicitly clear provenance.
+        # Keep the token stable when the same source is reprocessed into a new
+        # PreparedGeometry instance; the next target-mode recommendation must
+        # use that current geometry instead of reviving file-open history.
+        return (str(source_path) if source_path is not None else None,)
+
+    def _clear_automatic_palette_provenance(self) -> None:
+        self._automatic_palette_model_token = None
+        self._automatic_palette_signatures = {}
+
+    def _record_automatic_palette_provenance(
+        self,
+        target_keys: tuple[str | None, ...],
+    ) -> None:
+        """Remember palettes produced by the new-model automatic proposal."""
+
+        token = self._automatic_palette_token()
+        if token is None:
+            self._clear_automatic_palette_provenance()
+            return
+        if getattr(self, "_automatic_palette_model_token", None) != token:
+            self._automatic_palette_signatures = {}
+        signatures = getattr(self, "_automatic_palette_signatures", {})
+        for target_key in target_keys:
+            palette = (
+                self.settings.palette
+                if target_key is None
+                else self.settings.part_palettes.get(target_key)
+            )
+            if palette is None:
+                signatures.pop(target_key, None)
+            else:
+                signatures[target_key] = _automatic_palette_signature(palette)
+        self._automatic_palette_model_token = token
+        self._automatic_palette_signatures = signatures
+
+    def _automatic_palette_can_follow_mode(self) -> bool:
+        """Return True only while every model palette is untouched automatic data."""
+
+        token = self._automatic_palette_token()
+        if token is None or token != getattr(
+            self, "_automatic_palette_model_token", None
+        ):
+            return False
+        signatures = getattr(self, "_automatic_palette_signatures", {})
+        try:
+            part_keys = tuple(str(key) for key in self.prepared.final.part_keys)
+        except (AttributeError, TypeError):
+            return False
+        required_keys: set[str | None] = {None, *part_keys}
+        if set(signatures) != required_keys:
+            return False
+        # The initial all-part recommendation creates one explicit palette per
+        # current part.  A missing or extra entry means the user has changed the
+        # inheritance structure and that decision must be preserved.
+        if set(self.settings.part_palettes) != set(part_keys):
+            return False
+        if signatures.get(None) != _automatic_palette_signature(
+            self.settings.palette
+        ):
+            return False
+        return all(
+            signatures.get(key)
+            == _automatic_palette_signature(self.settings.part_palettes[key])
+            for key in part_keys
+        )
+
     def _change_color_mode(self, value: str) -> None:
         """Apply one reversible assignment mode to the common and part palettes."""
 
@@ -4219,8 +4338,13 @@ class MapperApp:
             # selected again.  Genuine physical/ratio edits keep the ordinary
             # invalidation behaviour of `_palette_from_variables`.
             committed_palette.mix_hex_overrides = previous_mix_overrides
+        refresh_automatic_palette = (
+            mode != previous_mode
+            and self._automatic_palette_can_follow_mode()
+        )
         if (
-            self.settings.palette.color_mode == mode
+            previous_mode == mode
+            and self.settings.palette.color_mode == mode
             and all(
                 palette.color_mode == mode
                 for palette in self.settings.part_palettes.values()
@@ -4254,6 +4378,13 @@ class MapperApp:
         self._draw_comparison_canvas()
         self.status_var.set(message)
         self._save_persistent_settings()
+        if refresh_automatic_palette:
+            # Full Spectrum chooses F1-F4 while considering its mixed states;
+            # Flat Four deliberately chooses only against the four physical
+            # colours.  Re-run the untouched new-model proposal so the target
+            # result is independent of which mode happened to be active when
+            # the file was opened.
+            self._recommend_all_parts(automatic=True)
 
     def _commit_active_palette(self) -> PaletteSettings:
         palette = self._palette_from_variables()
@@ -4670,6 +4801,7 @@ class MapperApp:
         self.manual_joint_record = None
         self.pending_manual_joint_record = None
         self.part_recommendations.clear()
+        self._clear_automatic_palette_provenance()
         self._clear_mix_optimization_undo()
         self.part_target_var.set(self.i18n.text("parts.common"))
         self.part_name_var.set("")
@@ -6900,6 +7032,13 @@ class MapperApp:
                     self.settings.part_palettes[key] = palette
                     self.part_recommendations[key] = recommendation
                     self._clear_physical_palette_pending(key)
+            if automatic:
+                self._record_automatic_palette_provenance(
+                    tuple(
+                        None if key == "__global__" else key
+                        for key in results
+                    )
+                )
             if self.active_part_key is None:
                 active_palette = self.settings.palette
                 active_recommendation = results.get("__global__")
@@ -6978,7 +7117,7 @@ class MapperApp:
                     if "__global__" in results and len(results) > 1
                     else f"{len(results)}件の基本フィラメント提案を適用しました"
                 )
-                + ("（モデル読込時の自動判定）" if automatic else "")
+                + ("（選択モードに合わせた自動判定）" if automatic else "")
             )
             self.status_var.set(result_status)
             if flat_mode:
@@ -8216,6 +8355,7 @@ class MapperApp:
         self._large_glb_import_path = None
         self._clear_all_physical_palette_pending()
         self._auto_recommend_after_geometry = False
+        self._clear_automatic_palette_provenance()
         self._project_obj_recovery_pending = False
         self.part_recommendations.clear()
         self._clear_mix_optimization_undo()

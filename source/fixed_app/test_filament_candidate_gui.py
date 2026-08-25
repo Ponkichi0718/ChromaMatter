@@ -19,6 +19,7 @@ from spectrum_mapper.i18n import Translator
 from spectrum_mapper.models import (
     AppSettings,
     COLOR_MODE_FLAT_FOUR,
+    COLOR_MODE_FULL_SPECTRUM,
     PaletteSettings,
 )
 from spectrum_mapper.owned_filaments import OwnedFilamentInventory
@@ -654,6 +655,110 @@ class FilamentCandidateWindowTests(unittest.TestCase):
             )
         finally:
             app.paint_editor = None
+            self._close_app(root, app)
+
+    def test_direct_flat_and_full_then_flat_choose_same_global_and_part_filaments(self) -> None:
+        root, app = self._create_app()
+        products = _products()
+        full_candidates = products[:4]
+        flat_candidates = (products[3], products[1], products[0], products[4])
+
+        def recommendation(candidates):
+            return SimpleNamespace(
+                physical_hex=tuple(item.matched_hex for item in candidates),
+                primary_ratio_b_percent=33,
+                secondary_ratio_b_percent=67,
+                candidates=candidates,
+                mean_delta_e76=4.5,
+                coverage_fraction=0.9,
+                confidence=0.85,
+            )
+
+        full_recommendation = recommendation(full_candidates)
+        flat_recommendation = recommendation(flat_candidates)
+
+        try:
+            app.prepared = SimpleNamespace(
+                final=SimpleNamespace(
+                    vertex_colors=np.asarray(
+                        [[0.9, 0.1, 0.1], [0.8, 0.2, 0.1], [0.7, 0.1, 0.2]],
+                        dtype=np.float64,
+                    ),
+                    faces=np.asarray([[0, 1, 2]], dtype=np.int64),
+                    areas_unit=np.asarray([1.0], dtype=np.float64),
+                    face_part_ids=np.asarray([0], dtype=np.int64),
+                    part_keys=["body"],
+                    part_names=["Body"],
+                ),
+                preview=SimpleNamespace(),
+            )
+            app.prepared_key = ("mode-history-test",)
+            app.source_path = Path("C:/models/mode-history.glb")
+
+            def run_synchronously(_label, function, done, **_kwargs):
+                done(function())
+                return True
+
+            def recommend_for_mode(*_args, **kwargs):
+                return (
+                    full_recommendation
+                    if kwargs["include_mixed_states"]
+                    else flat_recommendation
+                )
+
+            with (
+                patch(
+                    "spectrum_mapper.filament_database.FilamentRepository.list_products",
+                    return_value=products,
+                ),
+                patch(
+                    "spectrum_mapper.gui.recommend_basic_filaments",
+                    side_effect=recommend_for_mode,
+                ) as recommend,
+                patch.object(app, "_submit_main", side_effect=run_synchronously),
+                patch.object(app, "_schedule_preview"),
+                patch.object(app, "_save_persistent_settings"),
+            ):
+                app.settings.palette = PaletteSettings(
+                    color_mode=COLOR_MODE_FLAT_FOUR
+                )
+                app.settings.part_palettes = {}
+                app._load_palette_variables(app.settings.palette)
+                app._clear_automatic_palette_provenance()
+                app._recommend_all_parts(automatic=True)
+                direct_global = tuple(app.settings.palette.physical_hex)
+                direct_part = tuple(
+                    app.settings.part_palettes["body"].physical_hex
+                )
+
+                app.settings.palette = PaletteSettings(
+                    color_mode=COLOR_MODE_FULL_SPECTRUM
+                )
+                app.settings.part_palettes = {}
+                app._load_palette_variables(app.settings.palette)
+                app._clear_automatic_palette_provenance()
+                app._recommend_all_parts(automatic=True)
+                self.assertEqual(
+                    tuple(app.settings.palette.physical_hex),
+                    tuple(full_recommendation.physical_hex),
+                )
+
+                app._change_color_mode(COLOR_MODE_FLAT_FOUR)
+
+            self.assertEqual(tuple(app.settings.palette.physical_hex), direct_global)
+            self.assertEqual(
+                tuple(app.settings.part_palettes["body"].physical_hex),
+                direct_part,
+            )
+            self.assertEqual(recommend.call_count, 6)
+            self.assertEqual(
+                [
+                    call.kwargs["include_mixed_states"]
+                    for call in recommend.call_args_list
+                ],
+                [False, False, True, True, False, False],
+            )
+        finally:
             self._close_app(root, app)
 
     def test_owned_auto_action_names_target_and_prevents_double_start(self) -> None:

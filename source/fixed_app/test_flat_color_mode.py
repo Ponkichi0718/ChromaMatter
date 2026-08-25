@@ -52,6 +52,39 @@ def _one_face_level(rgb: np.ndarray) -> MeshLevel:
     )
 
 
+def _mode_switch_app(
+    common: PaletteSettings,
+    part_palettes: dict[str, PaletteSettings],
+) -> MapperApp:
+    app = MapperApp.__new__(MapperApp)
+    app.settings = AppSettings(
+        palette=common,
+        part_palettes=part_palettes,
+    )
+    app.active_part_key = None
+    app.busy = False
+    app.color_mode_var = _FakeVar(COLOR_MODE_FULL_SPECTRUM)
+    app.part_recommendations = {}
+    app.i18n = Translator("ja")
+    app.status_var = _FakeVar("")
+    app.paint_editor = None
+    app.prepared = SimpleNamespace(
+        final=SimpleNamespace(part_keys=list(part_palettes))
+    )
+    app.source_path = Path("C:/models/mode-history.glb")
+    app._automatic_palette_model_token = None
+    app._automatic_palette_signatures = {}
+    app._commit_active_palette = Mock(return_value=common)
+    app._refresh_color_mode_widgets = Mock()
+    app._refresh_part_tree = Mock()
+    app._note_mix_input_change = Mock()
+    app._schedule_preview = Mock()
+    app._draw_comparison_canvas = Mock()
+    app._save_persistent_settings = Mock()
+    app._recommend_all_parts = Mock()
+    return app
+
+
 class FlatColorModeModelTests(unittest.TestCase):
     def test_full_is_legacy_default_and_flat_round_trips(self) -> None:
         legacy = AppSettings().to_dict()
@@ -323,6 +356,56 @@ class FlatColorModeGuiTests(unittest.TestCase):
         self.assertEqual(app.part_recommendations, {})
         app.paint_editor.reapply_shading_settings.assert_called_once()
         self.assertIn("フラット", app.status_var.get())
+
+    def test_untouched_new_model_auto_palette_is_recomputed_for_flat(self) -> None:
+        common = PaletteSettings(
+            color_mode=COLOR_MODE_FULL_SPECTRUM,
+            physical_hex=["#101010", "#00FF40", "#818184", "#EB3B41"],
+        )
+        part = MapperApp._copy_palette(common)
+        app = _mode_switch_app(common, {"body": part})
+        app._record_automatic_palette_provenance((None, "body"))
+        # Reprocessing the same source replaces PreparedGeometry.  That must
+        # not revive the mode that happened to be active at file-open time.
+        app.prepared = SimpleNamespace(
+            final=SimpleNamespace(part_keys=["body"])
+        )
+
+        self.assertTrue(app._automatic_palette_can_follow_mode())
+        app._change_color_mode(COLOR_MODE_FLAT_FOUR)
+
+        app._recommend_all_parts.assert_called_once_with(automatic=True)
+        self.assertEqual(app.settings.palette.color_mode, COLOR_MODE_FLAT_FOUR)
+        self.assertEqual(
+            app.settings.part_palettes["body"].color_mode,
+            COLOR_MODE_FLAT_FOUR,
+        )
+
+    def test_manual_filament_edit_is_not_overwritten_on_mode_switch(self) -> None:
+        common = PaletteSettings(
+            color_mode=COLOR_MODE_FULL_SPECTRUM,
+            physical_hex=["#101010", "#00FF40", "#818184", "#EB3B41"],
+        )
+        part = MapperApp._copy_palette(common)
+        app = _mode_switch_app(common, {"body": part})
+        app._record_automatic_palette_provenance((None, "body"))
+        common.physical_hex[1] = "#BCBFC2"
+
+        self.assertFalse(app._automatic_palette_can_follow_mode())
+        app._change_color_mode(COLOR_MODE_FLAT_FOUR)
+
+        app._recommend_all_parts.assert_not_called()
+        self.assertEqual(app.settings.palette.physical_hex[1], "#BCBFC2")
+
+    def test_mode_switch_without_part_palettes_still_refreshes_output(self) -> None:
+        common = PaletteSettings(color_mode=COLOR_MODE_FULL_SPECTRUM)
+        app = _mode_switch_app(common, {})
+
+        app._change_color_mode(COLOR_MODE_FLAT_FOUR)
+
+        self.assertEqual(app.settings.palette.color_mode, COLOR_MODE_FLAT_FOUR)
+        app._schedule_preview.assert_called_once_with(immediate=True)
+        app._save_persistent_settings.assert_called_once()
 
 
 if __name__ == "__main__":
