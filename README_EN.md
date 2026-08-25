@@ -6,6 +6,18 @@
 
 [日本語版はこちら](README_JA.md)
 
+## Choose a version
+
+| Channel | Best for | Open |
+| --- | --- | --- |
+| **Published r32.2** | The current downloadable Windows build and the documented Full Spectrum workflow | **[Download stable r32.2](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2)** |
+| **Experimental Flat Four workstream** | Testing Flat Four, its latest colour/3MF/manual-fill fixes, the large-static-GLB path, and the 2D Colour Filter before integration | **[Start at Draft PR #7](https://github.com/Ponkichi0718/ChromaMatter/pull/7)** · [Browse the source branch](https://github.com/Ponkichi0718/ChromaMatter/tree/codex/r32-2-experimental-flat4-large-glb-2d-filter) |
+
+The experimental workstream is an integration candidate, not a permanent fork.
+It will be folded into the normal version after validation. **There is not yet a
+public experimental Windows ZIP**, so the r32.2 download below does not contain
+Flat Four; PR #7 is the authoritative status and testing hub.
+
 ## Download for Windows
 
 **[Download ChromaMatter 0.8beta r32.2 for Windows (ZIP)](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2/ChromaMatter-0.8beta-r32.2-win64.zip)**
