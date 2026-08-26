@@ -19,7 +19,8 @@
 ZIP全体を展開してから起動してください。下の安定版r32.2にはFlat Fourは
 入っていないため、実験版の状況はTest 3 ReleaseとDraft PR #7で確認できます。
 
-**macOSテスター版はまだ配布承認前です。** Apple Silicon上のCIと配布確認が
+**macOSテスター版はまだ配布承認前です。** Apple Silicon上での技術buildと
+application検査は通過しましたが、配布ライセンス監査は継続中です。監査まで
 通った正確な1つのbuildだけを、上の英語ガイドから案内します。`diagnostics`と
 書かれたartifactはapplicationではありません。
 

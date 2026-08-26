@@ -13,7 +13,7 @@ body:
     id: workflow_run
     attributes:
       label: Approved workflow run URL or run ID
-      description: Copy it from the pinned macOS Alpha Testing discussion.
+      description: Copy it from macOS Alpha Testing discussion #9.
       placeholder: https://github.com/Ponkichi0718/ChromaMatter/actions/runs/...
     validations:
       required: true
@@ -81,7 +81,7 @@ body:
     id: checklist
     attributes:
       label: Basic checklist results
-      description: Enter Pass, Fail, or Not tested for each line.
+      description: Enter Pass, Fail, Not tested, or Could not run for each line. Complete only the steps you reached.
       value: |
         Japanese UI:
         English UI:
@@ -95,7 +95,7 @@ body:
         Snapmaker Orca open:
         Project save / reload:
     validations:
-      required: true
+      required: false
 
   - type: input
     id: input_summary
@@ -158,19 +158,17 @@ body:
     id: orca_result
     attributes:
       label: Snapmaker Orca version and result
-      description: Include filaments shown and layer height, or write Not tested.
+      description: Optional. Include filaments shown and layer height, or write Not tested / Could not run.
       placeholder: Orca 2.x; opened; four filaments; 0.08 mm
     validations:
-      required: true
+      required: false
 
   - type: textarea
     id: self_test
     attributes:
       label: Sanitized macOS alpha self-test result
-      description: State whether top-level ok was true. For a failure, drag in the sanitized JSON. Remove personal paths and filenames.
-      placeholder: ok=true, or attach sanitized macos-alpha-self-test.json
-    validations:
-      required: true
+      description: Optional, especially if the app never opened. State whether top-level ok was true. For a failure, drag in the sanitized JSON. Remove personal paths and filenames.
+      placeholder: ok=true, Could not run, or attach sanitized macos-alpha-self-test.json
 
   - type: textarea
     id: sanitized_evidence
