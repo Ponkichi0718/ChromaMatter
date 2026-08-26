@@ -2,6 +2,8 @@ name: macOS Apple Silicon Developer ID unsigned, unnotarized alpha
 
 on:
   push:
+    branches:
+      - "codex/macos-arm64-flat4-test3"
     paths:
       - ".github/ISSUE_TEMPLATE/macos_alpha_report.yml"
       - ".github/workflows/macos-arm64-alpha.yml"
@@ -10,6 +12,7 @@ on:
       - "licenses/MACOS_ALPHA_COMPLIANCE_NOTICE_*.txt"
       - "licenses/macos/**"
       - "publication/MACOS_ALPHA_TESTING_*.md"
+      - "publication/MACOS_ALPHA_TEST_MODEL_EXPECTED.svg"
       - "samples/LICENSE.txt"
       - "samples/MACOS_ALPHA_TEST_MODEL_README.md"
       - "samples/generate_macos_alpha_test_glb.py"
@@ -24,6 +27,7 @@ on:
       - "licenses/MACOS_ALPHA_COMPLIANCE_NOTICE_*.txt"
       - "licenses/macos/**"
       - "publication/MACOS_ALPHA_TESTING_*.md"
+      - "publication/MACOS_ALPHA_TEST_MODEL_EXPECTED.svg"
       - "samples/LICENSE.txt"
       - "samples/MACOS_ALPHA_TEST_MODEL_README.md"
       - "samples/generate_macos_alpha_test_glb.py"
@@ -232,6 +236,7 @@ jobs:
           ditto "$app" "$stage/ChromaMatter-macOS-Alpha.app"
           cp publication/MACOS_ALPHA_TESTING_EN.md "$stage/README_TESTING_EN.md"
           cp publication/MACOS_ALPHA_TESTING_JA.md "$stage/README_TESTING_JA.md"
+          cp publication/MACOS_ALPHA_TEST_MODEL_EXPECTED.svg "$stage/"
           cp licenses/MACOS_ALPHA_COMPLIANCE_NOTICE_EN.txt "$stage/"
           cp licenses/MACOS_ALPHA_COMPLIANCE_NOTICE_JA.txt "$stage/"
           mkdir -p "$stage/COMPLIANCE_EVIDENCE"
