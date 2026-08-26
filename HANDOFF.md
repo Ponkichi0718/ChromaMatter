@@ -1525,8 +1525,9 @@ that section as the candidate/preflight record.
   preferred, while selecting Flat Four Test 3 as the current experimental
   channel with the verified direct Windows ZIP and Release links. English and
   Japanese aliases must remain byte-identical within their language groups.
-- Documentation-only PR #8 remains open and unmerged; its navigation branch was
-  updated to Test 3 at commit `9d4eb1202cb07a8438fc7e53e05889d2e09ac08c`.
+- Documentation-only PR #8 was squash-merged into `main` as
+  `c5032db5af1bdb678b656493080d9061f49af78a`; its reviewed navigation source was
+  Test 3 commit `9d4eb1202cb07a8438fc7e53e05889d2e09ac08c`.
 - Flat Four Test 2 remains frozen historical prerelease evidence. Do not move
   its tag or replace its five assets.
 - Test 3 does not remove white globally. It preserves eye whites conservatively
@@ -1543,3 +1544,74 @@ that section as the candidate/preflight record.
 - Physical-printer validation of this exact Test 3 package remains pending.
   Do not imply that the successful software/package gates prove a physical
   colour result or compatibility with every multipart model.
+
+## 2026-08-26 default-branch Flat Four Test 3 download navigation
+
+### Current objective
+
+Make the already published Flat Four Test 3 Windows package discoverable from
+the default `main` README without merging the experimental application branch
+or placing binary/archive bytes in Git history.
+
+### Completed in this session
+
+- Fetched and inspected the home-PC publication commits. Confirmed that the
+  white/gray highlight correction is exact tagged source commit
+  `beddc110922fdccc4a8c48def286014ad23cd0ed` and that the public Test 3 Release
+  links that commit.
+- Confirmed the anonymous direct Windows download returns HTTP 200 and reports
+  the frozen 115,090,746-byte asset size.
+- Fast-forwarded the local documentation worktree to reviewed PR #8 head
+  `9d4eb1202cb07a8438fc7e53e05889d2e09ac08c` and revalidated its five-README
+  scope.
+- With explicit owner approval, squash-merged documentation-only PR #8 into
+  `main` as `c5032db5af1bdb678b656493080d9061f49af78a`.
+- Confirmed from GitHub and `origin/main` that the default README now shows
+  stable r32.2 first and provides the Flat Four Test 3 direct ZIP, Release, and
+  Draft PR #7 links.
+
+### Current state
+
+- `main` now exposes both download choices. Stable r32.2 remains the recommended
+  Full Spectrum build; Flat Four Test 3 remains a separate unsigned public
+  experimental prerelease.
+- Draft application PR #7 remains open, Draft, mergeable at the final readback,
+  and unmerged. Its application code was not merged into `main`.
+- The Test 3 tag and all five frozen Release assets were not moved, replaced, or
+  rebuilt during this session.
+
+### Next exact task
+
+Use the main README or the Test 3 Release for owner testing in Snapmaker Orca
+and on a small physical print. Keep PR #7 Draft until the experimental behavior
+is ready for normal-version integration.
+
+### Changed files
+
+- `CURRENT_STATE.json`
+- `HANDOFF.md`
+
+### Tests run
+
+- Documentation branch `source.fixed_app.test_release_identity`: 12 tests,
+  zero failures.
+- Canonical English/Japanese README byte parity: PASS.
+- Anonymous Test 3 Windows direct-download HEAD request: HTTP 200; content
+  length 115,090,746 bytes.
+- PR #8 final GitHub readback: merged, non-Draft, head `9d4eb12`, merge commit
+  `c5032db`; `origin/main` contains the Test 3 links.
+- `CURRENT_STATE.json` parse and `git diff --check`: PASS.
+
+### Do not do
+
+- Do not merge Draft PR #7 merely because the download navigation is now on
+  `main`; application integration remains a separate validation decision.
+- Do not commit Release ZIPs or other binary archives to a branch. Keep public
+  binaries as immutable Release assets and link them from source documentation.
+- Do not move or replace the stable r32.2, Flat Four Test 2, or Flat Four Test 3
+  tags/assets.
+
+### Local-only files
+
+- Private models, generated 3MF files, build roots, caches, local environments,
+  and owner-only archives remain outside Git.
