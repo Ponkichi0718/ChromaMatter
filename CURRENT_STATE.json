@@ -263,11 +263,11 @@
   "macos_alpha_workstream": {
     "channel": "public command-based source tester alpha plus immutable public Source-backed App Alpha 1, an in-progress Source-backed App Alpha 2 candidate with stable r32.2 DemoData, and a separately gated self-contained app",
     "target": "Apple Silicon arm64 on macOS 15 or newer",
-    "branch": "codex/macos-app-main-integration (working-tree Alpha 2 candidate; default-branch review and merge pending)",
+    "branch": "codex/macos-app-main-integration (local Alpha 2 preflight commit 83ca52c54f318abbe19eaa2a4010b58667ae64b0; push, pull request, default-branch review, and merge pending)",
     "base_commit": "9c7be309bc2a8268d0fa9a4a0c63ad444759120d",
     "display_version": "0.8beta",
     "bundle_short_version": "0.8.0",
-    "status": "Source-backed App Alpha 1 remains published and exact-tag CI passed; Alpha 2 package work is a local candidate with package audit, exact-commit Apple Silicon CI, review, merge, checksum, and publication still pending; self-contained app distribution remains blocked by 153 unresolved Mach-O source/relink closures",
+    "status": "Source-backed App Alpha 1 remains published and exact-tag CI passed. Alpha 2 local preflight at commit 83ca52c54f318abbe19eaa2a4010b58667ae64b0 passed real stable r32.2 DemoData extraction, staging, independent audit, focused tests, and the full Windows suite; push/PR, exact-commit Apple Silicon CI, main merge, manual artifact validation, Alpha 2 Release publication, and anonymous re-download remain pending. Self-contained app distribution remains blocked by 153 unresolved Mach-O source/relink closures.",
     "windows_release_impact": "none; the published Windows stable and Flat Four test assets remain unchanged",
     "runtime_scope": [
       "Uses the normal macOS Application Support directory while preserving the legacy Windows settings path.",
@@ -299,7 +299,7 @@
       "reproducible_problem_form": ".github/ISSUE_TEMPLATE/macos_alpha_report.yml",
       "basic_test": "10-minute Pass/Fail/Not-tested checklist before optional large-model or physical-print testing",
       "public_test_model": "deterministic CC0 static GLB generated during approved tester staging; 32 vertices, 48 triangles, four watertight bodies, exact red/blue/white/black COLOR_0, no texture or third-party/private metadata",
-      "availability": "Source-backed App Alpha 1 is publicly downloadable from https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-macos-source-app-alpha1 and remains immutable; the earlier command-based Source Tester Alpha 1 remains available; Source-backed App Alpha 2 is only a working-tree candidate and has no approved download; Discussion #9 is the result and setup-question hub",
+      "availability": "Source-backed App Alpha 1 is publicly downloadable from https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-macos-source-app-alpha1 and remains immutable; the earlier command-based Source Tester Alpha 1 remains available; Source-backed App Alpha 2 is a locally validated preflight candidate at commit 83ca52c54f318abbe19eaa2a4010b58667ae64b0 and has no approved download; Discussion #9 is the result and setup-question hub",
       "source_tester_release": {
         "tag": "v0.8beta-macos-source-alpha1",
         "source_commit": "41d57d8960191f6fb2182461b620a044a0d3966a",
@@ -331,10 +331,11 @@
         "scope": "Finder-launchable source-backed app only; unsigned and unnotarized, with runtime setup on the tester Mac; not the self-contained frozen app"
       },
       "source_backed_app_alpha2_candidate": {
-        "status": "working-tree candidate only; not packaged from a frozen commit, CI-validated, reviewed, merged, tagged, checksummed, uploaded, or released",
+        "status": "local exact-source preflight candidate only; real stable r32.2 DemoData extraction, staging, independent audit, focused tests, and full Windows regression passed at commit 83ca52c54f318abbe19eaa2a4010b58667ae64b0, but the commit is not pushed, PR-reviewed, Apple Silicon CI-validated, merged to main, manually artifact-validated, released, or anonymously re-downloaded",
         "candidate_zip": "ChromaMatter-0.8beta-macos-source-app-alpha2.zip",
         "candidate_root": "ChromaMatter-0.8beta-macos-source-app-alpha2",
         "exact_source_commit": null,
+        "local_preflight_source_commit": "83ca52c54f318abbe19eaa2a4010b58667ae64b0",
         "top_level_contract": [
           "ChromaMatter Source Alpha.app",
           "README_INSTALL_AND_TEST_EN.md",
@@ -418,12 +419,40 @@
         "anonymous_release_redownload": "passed with exact 5608874-byte ZIP and SHA-256 271D65D330A97C3DE45FEFDC4F891990BDDFEAA77C223B5B39420FFF1729879E"
       },
       "source_backed_app_alpha2_candidate": {
-        "status": "pending",
-        "package_stage_and_fresh_audit": "pending against an exact committed source identity",
-        "macos_ci": "pending",
+        "status": "local preflight passed; remote, Apple Silicon, merge, artifact, and Release gates remain pending",
+        "source_commit": "83ca52c54f318abbe19eaa2a4010b58667ae64b0",
+        "real_stable_r32_2_demo_data": {
+          "result": "passed local extraction, staging, and independent audit",
+          "files": 15,
+          "manifest_payloads": 10,
+          "payload_bytes": 236274418
+        },
+        "focused_windows_tests": {
+          "result": "passed",
+          "tests": 40,
+          "elapsed_seconds": 136.241,
+          "platform_skips": 3
+        },
+        "full_windows_regression": {
+          "result": "passed",
+          "tests": 1538,
+          "elapsed_seconds": 587.876,
+          "platform_skips": 7
+        },
+        "security_review_fixes": [
+          "Exact Git byte parity is enforced for staged source-backed app files.",
+          "Symlinks and special files are rejected by an early recursive scan before package inputs are read.",
+          "Unicode-confusable, normalization-colliding, and control-character paths are rejected.",
+          "The workflow independently verifies SOFTWARE_PACKAGE_SHA256.txt with shasum rather than relying only on the package auditor."
+        ],
+        "package_stage_and_fresh_audit": "passed locally against the exact preflight commit and real stable r32.2 DemoData; this is not Apple Silicon CI or Release evidence",
+        "push_and_pull_request": "pending",
+        "macos_ci": "pending on Apple Silicon/macOS 15 for the exact pushed commit",
         "pull_request_review_and_default_branch_merge": "pending",
-        "archive_and_detached_checksum": "pending",
+        "manual_alpha2_artifact": "pending; no Alpha 2 artifact is approved or published",
+        "archive_and_detached_checksum": "pending as a Release gate",
         "owner_publication_approval": "pending",
+        "anonymous_release_redownload": "pending",
         "public_release": false
       },
       "latest_successful_ci_run": {
@@ -484,10 +513,10 @@
       "source_backed_app_distribution": true,
       "source_backed_app_distribution_scope": "exact tagged Finder .app with source/data only, no bundled runtime/native binaries, a complete SHA-256 manifest, and verified runtime setup on the tester's own Mac",
       "source_backed_app_alpha2_distribution": false,
-      "source_backed_app_alpha2_distribution_scope": "candidate package only; its stable r32.2 DemoData allowlist and source-backed app contract do not become release evidence until exact-commit staging, fresh audit, Apple Silicon CI, review, checksum, and owner publication gates pass",
+      "source_backed_app_alpha2_distribution_scope": "local preflight candidate only; exact-commit staging and independent audit with the canonical stable r32.2 DemoData passed locally, but this does not become Release evidence until push/PR, Apple Silicon CI, main merge, manual artifact validation, detached Release checksum, owner publication approval, and anonymous re-download gates pass",
       "owner_approval": false
     },
-    "next_exact_task": "Finish and review the Alpha 2 outer-package stager and tests, commit the exact candidate source, stage and independently audit ChromaMatter-0.8beta-macos-source-app-alpha2 with the canonical 15-file stable r32.2 DemoData set, then run exact-commit Apple Silicon CI. Keep Alpha 1 immutable and do not claim an Alpha 2 merge or release before PR, checksum, anonymous redownload, and owner publication gates pass. Separately keep the 153-gap self-contained-app gate blocked."
+    "next_exact_task": "Push local preflight commit 83ca52c54f318abbe19eaa2a4010b58667ae64b0, open the Alpha 2 pull request, and run that exact pushed commit through Apple Silicon/macOS 15 CI. After review and main merge, validate an explicitly requested manual artifact before any new Alpha 2 tag or Release; publish only with owner approval and a detached Release checksum, then anonymously re-download and verify the public assets. Keep Alpha 1 immutable and the separate 153-gap self-contained-app gate blocked."
   },
   "current_features": {
     "public_main_window": [
@@ -906,7 +935,7 @@
     "testing_board": "https://github.com/Ponkichi0718/ChromaMatter/discussions/9",
     "download": "https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-macos-source-app-alpha1",
     "alpha2_candidate_zip": "ChromaMatter-0.8beta-macos-source-app-alpha2.zip",
-    "alpha2_candidate_status": "working-tree only; exact-commit packaging, audit, CI, review, merge, checksum, owner approval, and publication are pending",
+    "alpha2_candidate_status": "local preflight commit 83ca52c54f318abbe19eaa2a4010b58667ae64b0 passed real stable r32.2 DemoData extraction/stage/audit and Windows validation; push/PR, Apple Silicon CI, main merge, manual artifact validation, Alpha 2 Release, and anonymous re-download are pending",
     "english_guide": "publication/MACOS_SOURCE_APP_TESTING_EN.md",
     "issue_form": ".github/ISSUE_TEMPLATE/macos_alpha_report.yml",
     "display_version": "0.8beta",
@@ -919,7 +948,7 @@
     "Run a physical printer matrix and confirm exported projects in Snapmaker Orca slice preview.",
     "Complete and review exact macOS source/build/relink closure for the 153 unresolved Mach-O files.",
     "Collect the published macOS Source-backed App Alpha 1 compatibility matrix through Discussion #9 and the macOS Issue form; keep private models out of reports.",
-    "Complete the Source-backed App Alpha 2 exact-commit stage, canonical 15-file DemoData audit, Apple Silicon CI, review/merge, archive/checksum, owner approval, publication, and anonymous redownload gates without changing Alpha 1.",
+    "Push Source-backed App Alpha 2 preflight commit 83ca52c54f318abbe19eaa2a4010b58667ae64b0, open/review its PR, pass exact-commit Apple Silicon CI, merge main, validate a manual artifact, and complete the checksum, owner approval, new Alpha 2 Release, and anonymous redownload gates without changing Alpha 1.",
     "Publish no self-contained macOS app until the 153 native source/build/relink closures pass the separate exact-commit distribution gate and owner approval is explicit.",
     "Complete the Innovation Fund submission materials and community post using the published immutable v0.8beta-r32.2 prerelease.",
     "Improve multipart solidification coverage: the bundled DemoData succeeds, but other multipart files may still fail solidification or 3MF export.",

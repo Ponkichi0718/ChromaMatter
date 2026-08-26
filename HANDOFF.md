@@ -2366,10 +2366,15 @@ preserve every Alpha 1 tag and Release asset byte-for-byte.
 ### Current state
 
 - Alpha 1 remains the only published source-backed Finder app and is immutable.
-- Alpha 2 is a working-tree candidate only. It has not been frozen to an exact
-  source commit, packaged and independently audited, run through exact-commit
-  Apple Silicon CI, reviewed, merged, tagged, checksummed, uploaded, published,
-  or anonymously re-downloaded.
+- Alpha 2 has a completed local preflight at exact local commit
+  `83ca52c54f318abbe19eaa2a4010b58667ae64b0`. Real stable r32.2 DemoData
+  extraction, package staging, independent audit, focused tests, and the full
+  Windows suite passed locally.
+- That commit has not been pushed or opened as an Alpha 2 pull request. It has
+  not run through exact-commit Apple Silicon/macOS 15 CI, been reviewed or
+  merged to main, produced and validated an approved manual artifact, been
+  published as an Alpha 2 Release, or been anonymously re-downloaded. No CI or
+  Release success is claimed.
 - The English install/test guide now records the exact Alpha 2 tree, the quick
   and extended test paths, the Full Spectrum-only status of the included 3MFs,
   and all mandatory warnings. Existing README aliases were not changed for
@@ -2380,20 +2385,18 @@ preserve every Alpha 1 tag and Release asset byte-for-byte.
 
 ### Next exact task
 
-1. Finish and review the outer-package stager and focused tests without changing
-   workflow, application, or stable DemoData bytes.
-2. Commit an exact candidate source, stage the Finder app and quick GLB, and
-   copy only the ten manifest-listed stable payloads plus five canonical
-   DemoData documents from verified out-of-tree inputs.
-3. Audit the staged tree, create a fresh ZIP, extract it independently, and
-   repeat the outer/app/DemoData manifest, source-identity, path, hash, archive,
-   privacy, native-binary, launcher, and Japanese/English smoke checks.
-4. Run the exact commit on Apple Silicon/macOS 15 CI. Then obtain PR review,
-   default-branch merge and explicit owner publication approval before creating
-   any new tag or Release.
-5. Publish only under a new Alpha 2 identity with a detached checksum, then
-   anonymously re-download and compare all bytes before updating navigation to
-   call Alpha 2 available.
+1. Push exact local preflight commit
+   `83ca52c54f318abbe19eaa2a4010b58667ae64b0` and open the Alpha 2 pull
+   request.
+2. Run that exact pushed commit through Apple Silicon/macOS 15 CI, inspect the
+   diagnostics, and obtain review before merging to `main`.
+3. After the merge, explicitly request, download, and independently validate a
+   manual Alpha 2 artifact. Do not substitute a diagnostics artifact.
+4. With explicit owner publication approval, create a new Alpha 2 tag and
+   Release with its detached checksum; never alter Alpha 1.
+5. Anonymously re-download the published Alpha 2 assets and verify their sizes,
+   hashes, extraction, manifests, source identity, paths, privacy, and native
+   exclusions before calling Alpha 2 available.
 
 ### Documentation/state files changed
 
@@ -2409,10 +2412,22 @@ simultaneous 32-state coverage, so no additional Alpha 2 edit is required there.
 ### Validation at this checkpoint
 
 - `CURRENT_STATE.json` parse: PASS.
-- Final `git diff --check` and combined focused tests remain to be rerun after
-  the concurrent Alpha 2 stager/test files settle.
-- No package build, macOS CI, PR review, merge, tag, checksum, upload, or
-  publication result is claimed at this checkpoint.
+- Exact local preflight source commit:
+  `83ca52c54f318abbe19eaa2a4010b58667ae64b0`.
+- Real stable r32.2 DemoData extraction, staging, and independent audit: PASS;
+  exactly 15 files, 10 manifest payloads, and 236,274,418 payload bytes.
+- Focused Windows validation: 40 tests in 136.241 seconds, OK, with three
+  platform skips.
+- Full Windows regression: 1,538 tests in 587.876 seconds, OK, with seven
+  platform skips.
+- Security review fixes are present and covered by the local validation: exact
+  Git-byte parity for staged app content; an early recursive symlink and
+  special-file scan; rejection of control-character, Unicode-confusable, and
+  normalization-colliding paths; and independent `shasum` verification of
+  `SOFTWARE_PACKAGE_SHA256.txt`.
+- Push/PR, Apple Silicon CI, main merge, approved manual artifact validation,
+  Alpha 2 Release publication, and anonymous public re-download remain pending.
+  No macOS CI or Release success is claimed at this checkpoint.
 
 ### Do not do
 
