@@ -1920,19 +1920,22 @@ can be approved.
   four-box GLB and the 10-minute checklist; no private or complex model is
   needed.
 - Apple Silicon technical CI run
-  <https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32946348725>
+  <https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32947038458>
   succeeded from exact source commit
-  `495b1d86ca6c924a46770a3915fe5c0e514045dc`.
+  `9404926a6aadbb918ade7855f4141e263c3aafba`.
 - Source tests, native probes, app packaging, packaged native/rendering
   self-test, and Japanese/English UI smoke passed. The run uploaded diagnostics
   only; all tester ZIP steps remained skipped.
 - The deterministic app inventory recorded 859 regular files, 207 symlinks,
   317 arm64 Mach-O files, and 20 packaged Python distributions. Its SHA-256 is
-  `6159B1BD1855C58A7B5BEB2EA5B0B3B445D14C9D4AEEC42B6F8F01CCA8E9D6C6`.
+  `59113A39C8C7BACB566DD3D23E8374CA56973F1D6DB3A472FDDFBF0EAEE45D22`.
 - The fail-closed source-coverage audit maps all 317 Mach-O files uniquely and
   reports 253 with unresolved source/build/relink evidence. Its SHA-256 is
-  `C55E8058A617EB0DC9638A81D3AC1DF782F6C5B6F35ADDA7F526B0684A17C80C`;
+  `73907E2E4C5C95E5893F995E7FC74C557DF57E79A7E6131F80021F2545720DAB`;
   `engineering_gate_passed=false` and `legal_conclusion=false`.
+- Automatic Mac CI now runs once for a relevant source-branch push. The
+  redundant pull-request event was removed because it rebuilt the same exact
+  head for documentation-only PR synchronization events.
 - Draft PR #12 remains the separate macOS source/review workspace and is not a
   tester download.
 
@@ -1979,8 +1982,8 @@ no-download status and PR #12 as Draft until those steps pass.
 - Independent adversarial review confirmed input/output overwrite protection,
   exact archive/git-source binding, case/Unicode/path collision rejection, and
   non-legal engineering-gate terminology.
-- Final Apple Silicon CI run #32946348725: success; source commit in both
-  `CI_ENVIRONMENT.txt` and the coverage report exactly matches `495b1d8...`.
+- Final Apple Silicon CI run #32947038458: success; source commit in both
+  `CI_ENVIRONMENT.txt` and the coverage report exactly matches `9404926...`.
 - Final diagnostics privacy and false-approval scan: passed.
 
 ### Do not do

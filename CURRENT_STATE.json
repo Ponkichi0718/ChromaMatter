@@ -279,6 +279,7 @@
       "workflow": ".github/workflows/macos-arm64-alpha.yml",
       "runner": "macos-15 arm64",
       "python": "CPython 3.13.14 arm64 with exact hash-locked wheels",
+      "automatic_trigger": "one push run on codex/macos-arm64-flat4-test3 when build, package, guide, sample, source, or audit inputs change; no duplicate pull-request run",
       "default_output": "seven-day diagnostics only; no app archive",
       "tester_archive": "fail-closed until the exact source commit and macOS compliance evidence are explicitly approved"
     },
@@ -305,8 +306,8 @@
       "mac_lock_dry_run": "all 23 exact macOS 15 arm64 CPython 3.13 wheels resolved with hash enforcement and no source distributions",
       "mac_actual_build": "The latest Apple Silicon run completed app packaging and all technical checks successfully; diagnostics only were uploaded and no tester application was distributed.",
       "latest_successful_ci_run": {
-        "url": "https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32946348725",
-        "source_commit": "495b1d86ca6c924a46770a3915fe5c0e514045dc",
+        "url": "https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32947038458",
+        "source_commit": "9404926a6aadbb918ade7855f4141e263c3aafba",
         "result": "success",
         "source_tests": "passed",
         "native_dependency_probe": "passed",
@@ -317,12 +318,12 @@
         },
         "published_artifact": "diagnostics only",
         "tester_artifact": false,
-        "inventory_sha256": "6159B1BD1855C58A7B5BEB2EA5B0B3B445D14C9D4AEEC42B6F8F01CCA8E9D6C6",
-        "source_coverage_report_sha256": "C55E8058A617EB0DC9638A81D3AC1DF782F6C5B6F35ADDA7F526B0684A17C80C"
+        "inventory_sha256": "59113A39C8C7BACB566DD3D23E8374CA56973F1D6DB3A472FDDFBF0EAEE45D22",
+        "source_coverage_report_sha256": "73907E2E4C5C95E5893F995E7FC74C557DF57E79A7E6131F80021F2545720DAB"
       },
       "source_closure_audit": {
-        "inventory_run": "https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32946348725",
-        "inventory_source_commit": "495b1d86ca6c924a46770a3915fe5c0e514045dc",
+        "inventory_run": "https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32947038458",
+        "inventory_source_commit": "9404926a6aadbb918ade7855f4141e263c3aafba",
         "mach_o_total": 317,
         "mach_o_mapped": 317,
         "mach_o_unresolved_source_or_relink_closure": 253,
