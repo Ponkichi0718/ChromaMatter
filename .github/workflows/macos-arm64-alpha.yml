@@ -21,26 +21,6 @@ on:
       - "tooling/generate_macos_app_inventory.py"
       - "tooling/macos_source_coverage_plan.json"
       - "tooling/stage_macos_corresponding_source.py"
-  pull_request:
-    branches:
-      - "codex/r32-2-experimental-flat4-large-glb-2d-filter"
-    paths:
-      - ".github/ISSUE_TEMPLATE/macos_alpha_report.yml"
-      - ".github/workflows/macos-arm64-alpha.yml"
-      - "AUDIT_MACOS_APP.sh"
-      - "BUILD_MACOS_ARM64.sh"
-      - "licenses/MACOS_ALPHA_COMPLIANCE_NOTICE_*.txt"
-      - "licenses/macos/**"
-      - "publication/MACOS_ALPHA_TESTING_*.md"
-      - "publication/MACOS_ALPHA_TEST_MODEL_EXPECTED.svg"
-      - "samples/LICENSE.txt"
-      - "samples/MACOS_ALPHA_TEST_MODEL_README.md"
-      - "samples/generate_macos_alpha_test_glb.py"
-      - "source/fixed_app/**"
-      - "tooling/audit_macos_source_coverage.py"
-      - "tooling/generate_macos_app_inventory.py"
-      - "tooling/macos_source_coverage_plan.json"
-      - "tooling/stage_macos_corresponding_source.py"
   workflow_dispatch:
     inputs:
       upload_tester_alpha:
@@ -53,7 +33,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: macos-arm64-alpha-${{ github.event.pull_request.head.sha || github.sha }}
+  group: macos-arm64-alpha-${{ github.sha }}
   cancel-in-progress: true
 
 jobs:
@@ -66,14 +46,14 @@ jobs:
       PIP_DISABLE_PIP_VERSION_CHECK: "1"
       PIP_NO_CACHE_DIR: "1"
       PYTHONDONTWRITEBYTECODE: "1"
-      SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+      SOURCE_COMMIT: ${{ github.sha }}
 
     steps:
       - name: Check out exact source
         uses: actions/checkout@v4
         with:
           persist-credentials: false
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.sha }}
 
       - name: Set up CPython 3.13.14 arm64
         uses: actions/setup-python@v7

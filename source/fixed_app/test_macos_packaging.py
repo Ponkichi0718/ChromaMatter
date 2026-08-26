@@ -158,10 +158,10 @@ class MacOSAlphaAutomationTests(unittest.TestCase):
     def test_workflow_is_ci_only_and_tester_zip_upload_is_opt_in(self) -> None:
         text = WORKFLOW.read_text(encoding="utf-8")
         self.assertIn("runs-on: macos-15", text)
-        self.assertEqual(text.count('"tooling/generate_macos_app_inventory.py"'), 2)
+        self.assertEqual(text.count('"tooling/generate_macos_app_inventory.py"'), 1)
         self.assertIn("uses: actions/setup-python@v7", text)
         self.assertIn("  push:\n", text)
-        self.assertIn("  pull_request:\n", text)
+        self.assertNotIn("  pull_request:\n", text)
         self.assertIn('python-version: "3.13.14"', text)
         self.assertIn("architecture: arm64", text)
         self.assertIn("upload_tester_alpha:", text)
@@ -172,11 +172,8 @@ class MacOSAlphaAutomationTests(unittest.TestCase):
         self.assertGreaterEqual(text.count("inputs.upload_tester_alpha"), 3)
         self.assertIn("MACOS_ALPHA_TESTER_DISTRIBUTION_APPROVED", text)
         self.assertIn("MACOS_ALPHA_APPROVED_SOURCE_COMMIT", text)
-        self.assertIn(
-            "SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}",
-            text,
-        )
-        self.assertIn("ref: ${{ github.event.pull_request.head.sha || github.sha }}", text)
+        self.assertIn("SOURCE_COMMIT: ${{ github.sha }}", text)
+        self.assertIn("ref: ${{ github.sha }}", text)
         self.assertNotIn("$GITHUB_SHA", text)
         self.assertIn("DISTRIBUTION_APPROVAL.json", text)
         self.assertIn("BINARY_COMPONENT_MAP.json", text)
