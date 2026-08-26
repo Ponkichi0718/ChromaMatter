@@ -1999,3 +1999,122 @@ no-download status and PR #12 as Draft until those steps pass.
 - Downloaded diagnostic ZIPs, extracted inventory/coverage reports, exact wheel
   inspection caches, generated GLB copies, app bundles, and any tester ZIP stay
   outside Git.
+
+## 2026-08-26 macOS Source Tester Alpha 1 publication (current)
+
+### Current objective
+
+Let Apple Silicon/macOS 15+ volunteers run the current ChromaMatter source with
+one guided launcher now, without representing or bypassing the separately
+blocked prebuilt-app distribution gate.
+
+### Completed in this session
+
+- Created branch `codex/macos-arm64-tester-alpha` in a clean worktree because
+  the owner's primary worktree contained unresolved conflicts that were left
+  untouched.
+- Added executable `START_MACOS_SOURCE_ALPHA.command`. It checks Apple Silicon
+  and macOS 15+, verifies the official CPython 3.13.14 installer URL, SHA-256,
+  and macOS signature, creates a private Application Support virtual
+  environment, installs only runtime packages from an exact hash lock,
+  generates the deterministic CC0 four-colour GLB, runs the PyTetWild,
+  PyMeshLab, and ModernGL gate, and opens the source GUI only after success.
+- The launcher does not use `sudo`, invoke the installer CLI, disable
+  Gatekeeper, remove quarantine attributes, or consume the prebuilt-app gate.
+- Added `.github/workflows/macos-source-alpha.yml`. Exact branch commit
+  `41d57d8960191f6fb2182461b620a044a0d3966a` passed run
+  <https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32953820494>.
+  The exact tag passed again in run
+  <https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32953920272>,
+  including runtime lock installation, public GLB generation, native/render
+  self-test, and Japanese/English UI smoke.
+- Published prerelease
+  <https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-macos-source-alpha1>
+  from tag `v0.8beta-macos-source-alpha1` at the exact source commit above.
+  The source ZIP is 4,926,388 bytes with SHA-256
+  `a28d7723957e7cafda1e7db2638fd4fc5e9cb52aa5eca870c81bb48bd292942a`.
+  `SHA256SUMS-macos-source-alpha1.txt` is 111 bytes with SHA-256
+  `a232cc261b740fdd01f3bb76dae3625f3e56b6eb34a53cca348ce76eff3e8695`.
+- Redownloaded both assets without authentication and reverified byte size,
+  SHA-256, the 456-file inventory, case-fold path uniqueness, absence of
+  packaged native/app payloads, LF launcher bytes, and executable mode 100755.
+- Updated Discussion #9 to the public source tester route and added the result
+  template. Draft PR #17 is the source-review delta against the prior Mac
+  branch and remains distinct from the release tag.
+- Merged documentation-only PR #18 to default branch commit
+  `2297bc21932a2bf55bc8b250d3827f74080c80c1`. The public English and Japanese
+  READMEs now expose the direct ZIP, Release/checksum, bilingual test hubs, and
+  Issue form while preserving the blocked prebuilt-app warning.
+- Hardened a future opt-in prebuilt-app workflow so its source-coverage audit
+  requires the engineering gate to pass whenever a tester ZIP is requested.
+
+### Current state
+
+- Apple Silicon/macOS 15+ testers have a public, fixed, source-based download
+  that was verified on the exact tag. It is not a prebuilt, signed, notarized,
+  or generally supported app.
+- The prebuilt `.app` remains blocked. The last packaged-app inventory still
+  has 253 unresolved source/build/relink closures, and diagnostics artifacts
+  are not tester applications.
+- Published Windows stable r32.2 and Flat Four Test 3 assets are unchanged.
+
+### Next exact task
+
+Collect Source Tester Alpha results through Discussion #9 and one reproducible
+defect per macOS Issue form. In parallel, resolve the 253 native closure gaps
+before any prebuilt app ZIP can be separately approved. Do not infer prebuilt
+app eligibility from source tester success.
+
+### Changed files
+
+- `.gitattributes`, `.gitignore`
+- `.github/workflows/macos-source-alpha.yml`
+- `.github/workflows/macos-arm64-alpha.yml`
+- `.github/ISSUE_TEMPLATE/macos_alpha_report.yml`
+- `START_MACOS_SOURCE_ALPHA.command`
+- `source/fixed_app/requirements-runtime-macos-arm64.lock`
+- `source/fixed_app/test_macos_source_launcher.py`
+- `source/fixed_app/test_macos_packaging.py`
+- `README.md`, `README_EN.md`, `README_JA.md`, `README_PUBLIC_EN.md`,
+  `README_PUBLIC_JA.md`
+- `publication/MACOS_ALPHA_HUB_EN.md`,
+  `publication/MACOS_ALPHA_HUB_JA.md`,
+  `publication/MACOS_ALPHA_TESTING_EN.md`, and
+  `publication/MACOS_ALPHA_TESTING_JA.md`
+- `CURRENT_STATE.json` and `HANDOFF.md`
+
+### Tests run
+
+- Windows focused macOS launcher/packaging/CLI/source-coverage/compliance set:
+  52 passed, one bash-only syntax check skipped on Windows.
+- YAML parsing: both workflows and the macOS Issue form passed; Issue-form IDs
+  are unique.
+- README parity: three English variants and two Japanese variants are exact.
+- Documentation: 174 Markdown links inspected, including 54 local links with
+  zero missing targets in the default-branch documentation set.
+- Generated public GLB: 1,524 bytes and exact SHA-256
+  `1b6092448e62a93f5e29a9c6dda1265a7a2179c2eacd293f7d8f02d1f268c563`.
+- Exact-tag Apple Silicon/macOS 15 arm64 Actions run #32953920272: all launcher,
+  dependency, native/render, public-fixture, and Japanese/English UI steps
+  passed.
+- Public assets: anonymous redownload and SHA-256/archive audit passed.
+- `git diff --check`, `git diff --cached --check`, and JSON parse passed before
+  the source implementation commit; rerun for this state-only follow-up before
+  commit.
+
+### Do not do
+
+- Do not describe the Source Tester Alpha ZIP as a `.app`, signed application,
+  notarized build, or evidence that the prebuilt-app gate passed.
+- Do not distribute a `diagnostics` artifact as the app.
+- Do not attach private, purchased, customer, confidential, or third-party
+  models to public reports.
+- Do not weaken topology, 3MF, palette-state, or source-closure gates to turn a
+  failure into a pass.
+
+### Local-only files
+
+- Release staging and anonymous redownload copies are under
+  `C:\Dev\ChromaMatter-macos-source-alpha-release` and remain outside Git.
+- The temporary generated GLB and temporary YAML parser installation are not
+  repository inputs or release payloads.
