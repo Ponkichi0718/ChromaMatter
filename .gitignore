@@ -84,6 +84,9 @@ tooling/*
 !tooling/generate_macos_app_inventory.py
 !tooling/generate_macos_compliance_evidence.py
 !tooling/macos_compliance_components.json
+!tooling/audit_macos_source_coverage.py
+!tooling/macos_source_coverage_plan.json
+!tooling/stage_macos_corresponding_source.py
 !tooling/generate_pytetwild_rebuild_lock.py
 !tooling/pytetwild_static_closure_contract.py
 !tooling/pymeshlab_audited_native_identities.json

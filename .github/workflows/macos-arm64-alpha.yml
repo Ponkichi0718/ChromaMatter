@@ -17,7 +17,10 @@ on:
       - "samples/MACOS_ALPHA_TEST_MODEL_README.md"
       - "samples/generate_macos_alpha_test_glb.py"
       - "source/fixed_app/**"
+      - "tooling/audit_macos_source_coverage.py"
       - "tooling/generate_macos_app_inventory.py"
+      - "tooling/macos_source_coverage_plan.json"
+      - "tooling/stage_macos_corresponding_source.py"
   pull_request:
     branches:
       - "codex/r32-2-experimental-flat4-large-glb-2d-filter"
@@ -34,7 +37,10 @@ on:
       - "samples/MACOS_ALPHA_TEST_MODEL_README.md"
       - "samples/generate_macos_alpha_test_glb.py"
       - "source/fixed_app/**"
+      - "tooling/audit_macos_source_coverage.py"
       - "tooling/generate_macos_app_inventory.py"
+      - "tooling/macos_source_coverage_plan.json"
+      - "tooling/stage_macos_corresponding_source.py"
   workflow_dispatch:
     inputs:
       upload_tester_alpha:
@@ -47,7 +53,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: macos-arm64-alpha-${{ github.ref }}
+  group: macos-arm64-alpha-${{ github.event.pull_request.head.sha || github.sha }}
   cancel-in-progress: true
 
 jobs:
@@ -173,6 +179,15 @@ jobs:
             --output-root "$RUNNER_TEMP/chromamatter-macos-arm64" \
             --ui-smoke required
 
+      - name: Record fail-closed corresponding-source coverage
+        shell: bash
+        run: |
+          set -euo pipefail
+          python tooling/audit_macos_source_coverage.py \
+            --inventory "$RUNNER_TEMP/chromamatter-macos-arm64/validation/MACOS_ALPHA_APP_INVENTORY.json" \
+            --source-commit "$GITHUB_SHA" \
+            --output "$RUNNER_TEMP/chromamatter-macos-arm64/validation/MACOS_SOURCE_COVERAGE_REPORT.json"
+
       - name: Record diagnostic bundle information
         if: always()
         shell: bash
@@ -201,6 +216,10 @@ jobs:
           app_inventory="$RUNNER_TEMP/chromamatter-macos-arm64/validation/MACOS_ALPHA_APP_INVENTORY.json"
           if [[ -f "$app_inventory" ]]; then
             cp "$app_inventory" "$diagnostic/"
+          fi
+          source_coverage="$RUNNER_TEMP/chromamatter-macos-arm64/validation/MACOS_SOURCE_COVERAGE_REPORT.json"
+          if [[ -f "$source_coverage" ]]; then
+            cp "$source_coverage" "$diagnostic/"
           fi
           for gate_json in "$RUNNER_TEMP/chromamatter-macos-arm64/validation/"MACOS_ALPHA_*_SELF_TEST.json; do
             if [[ -f "$gate_json" ]]; then
