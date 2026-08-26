@@ -7,8 +7,9 @@ prerelease. The displayed product version remains `0.8beta`.
 
 ## Current availability
 
-**Approved tester download: not available yet.** The first real Apple Silicon
-CI build and its dependency/compliance review are still in progress. A
+**Approved tester download: not available yet.** The Apple Silicon app now
+passes the technical CI checks, but distribution remains blocked while
+source/relink closure evidence is unresolved for 253 packaged Mach-O files. A
 diagnostics artifact is not an application and cannot be launched. Do not use
 an unreviewed ZIP sent through a comment, mirror, or file-sharing service.
 
