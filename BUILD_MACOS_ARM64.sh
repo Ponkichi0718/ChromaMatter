@@ -281,6 +281,13 @@ PYTHON_BIN="$PYTHON_BIN" bash "$SCRIPT_DIR/AUDIT_MACOS_APP.sh" \
     "$APP_BUNDLE" \
     "$VALIDATION_PATH/MACOS_ALPHA_APP_AUDIT.txt"
 
+# Preserve deterministic observed-bundle facts after the structural audit.
+# This JSON is diagnostic input for the later component/SBOM/source reviews;
+# it is not itself a distribution approval or ownership mapping.
+"$PYTHON_BIN" "$SCRIPT_DIR/tooling/generate_macos_app_inventory.py" \
+    --app-bundle "$APP_BUNDLE" \
+    --output "$VALIDATION_PATH/MACOS_ALPHA_APP_INVENTORY.json"
+
 "$APP_EXECUTABLE" --self-test
 run_macos_alpha_gate \
     "Packaged macOS alpha native/render self-test" \
@@ -355,6 +362,7 @@ Python: $PYTHON_VERSION arm64
 macOS: $(sw_vers -productVersion)
 Source tests: $SOURCE_TEST_STATUS
 Native dependency probe: passed
+Observed app inventory: MACOS_ALPHA_APP_INVENTORY.json generated after app audit
 Packaged self-test: passed
 macOS alpha native/render self-test (source and packaged): passed
 Packaged UI smoke (Japanese): $UI_SMOKE_JA

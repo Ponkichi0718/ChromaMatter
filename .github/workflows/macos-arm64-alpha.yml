@@ -14,6 +14,7 @@ on:
       - "samples/MACOS_ALPHA_TEST_MODEL_README.md"
       - "samples/generate_macos_alpha_test_glb.py"
       - "source/fixed_app/**"
+      - "tooling/generate_macos_app_inventory.py"
   pull_request:
     paths:
       - ".github/ISSUE_TEMPLATE/macos_alpha_report.yml"
@@ -27,6 +28,7 @@ on:
       - "samples/MACOS_ALPHA_TEST_MODEL_README.md"
       - "samples/generate_macos_alpha_test_glb.py"
       - "source/fixed_app/**"
+      - "tooling/generate_macos_app_inventory.py"
   workflow_dispatch:
     inputs:
       upload_tester_alpha:
@@ -190,6 +192,10 @@ jobs:
           if [[ -f "$app_audit" ]]; then
             cp "$app_audit" "$diagnostic/"
           fi
+          app_inventory="$RUNNER_TEMP/chromamatter-macos-arm64/validation/MACOS_ALPHA_APP_INVENTORY.json"
+          if [[ -f "$app_inventory" ]]; then
+            cp "$app_inventory" "$diagnostic/"
+          fi
           for gate_json in "$RUNNER_TEMP/chromamatter-macos-arm64/validation/"MACOS_ALPHA_*_SELF_TEST.json; do
             if [[ -f "$gate_json" ]]; then
               cp "$gate_json" "$diagnostic/"
@@ -242,6 +248,7 @@ jobs:
           cp source/fixed_app/requirements-build-macos-arm64.lock "$stage/"
           cp "$RUNNER_TEMP/chromamatter-macos-arm64/validation/MACOS_ALPHA_BUILD_REPORT.txt" "$stage/"
           cp "$RUNNER_TEMP/chromamatter-macos-arm64/validation/MACOS_ALPHA_APP_AUDIT.txt" "$stage/"
+          cp "$RUNNER_TEMP/chromamatter-macos-arm64/validation/MACOS_ALPHA_APP_INVENTORY.json" "$stage/"
           cp "$RUNNER_TEMP/chromamatter-macos-arm64/validation/MACOS_ALPHA_SOURCE_SELF_TEST.json" "$stage/"
           cp "$RUNNER_TEMP/chromamatter-macos-arm64/validation/MACOS_ALPHA_PACKAGED_SELF_TEST.json" "$stage/"
           python samples/generate_macos_alpha_test_glb.py \

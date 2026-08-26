@@ -11,6 +11,7 @@ LOCK = FIXED_APP / "requirements-build-macos-arm64.lock"
 SPEC = FIXED_APP / "TripoSpectrumMapper_macos_arm64.spec"
 BUILD_SCRIPT = REPOSITORY / "BUILD_MACOS_ARM64.sh"
 AUDIT_SCRIPT = REPOSITORY / "AUDIT_MACOS_APP.sh"
+INVENTORY_TOOL = REPOSITORY / "tooling" / "generate_macos_app_inventory.py"
 WORKFLOW = REPOSITORY / ".github" / "workflows" / "macos-arm64-alpha.yml"
 ISSUE_TEMPLATE = (
     REPOSITORY / ".github" / "ISSUE_TEMPLATE" / "macos_alpha_report.yml"
@@ -122,6 +123,13 @@ class MacOSAlphaAutomationTests(unittest.TestCase):
         self.assertIn('[[ "$PYTHON_VERSION" == "3.13.14" ]]', build)
         self.assertIn("--require-hashes", WORKFLOW.read_text(encoding="utf-8"))
         self.assertIn("AUDIT_MACOS_APP.sh", build)
+        self.assertTrue(INVENTORY_TOOL.is_file())
+        self.assertIn("generate_macos_app_inventory.py", build)
+        self.assertIn("MACOS_ALPHA_APP_INVENTORY.json", build)
+        self.assertLess(
+            build.index("AUDIT_MACOS_APP.sh"),
+            build.index("generate_macos_app_inventory.py"),
+        )
         self.assertIn("--self-test", build)
         self.assertIn("run_macos_alpha_gate", build)
         self.assertIn('payload.get("ok") is not True', build)
@@ -148,6 +156,7 @@ class MacOSAlphaAutomationTests(unittest.TestCase):
     def test_workflow_is_ci_only_and_tester_zip_upload_is_opt_in(self) -> None:
         text = WORKFLOW.read_text(encoding="utf-8")
         self.assertIn("runs-on: macos-15", text)
+        self.assertEqual(text.count('"tooling/generate_macos_app_inventory.py"'), 2)
         self.assertIn("uses: actions/setup-python@v7", text)
         self.assertIn("  push:\n", text)
         self.assertIn("  pull_request:\n", text)
@@ -188,6 +197,7 @@ class MacOSAlphaAutomationTests(unittest.TestCase):
         self.assertIn("GITHUB_STEP_SUMMARY", text)
         self.assertIn("TESTER ZIP CREATED", text)
         self.assertIn("DIAGNOSTICS ONLY", text)
+        self.assertGreaterEqual(text.count("MACOS_ALPHA_APP_INVENTORY.json"), 2)
         self.assertIn("discussions/9", text)
         self.assertNotIn("gh release", text.casefold())
         self.assertNotIn("softprops/action-gh-release", text.casefold())
