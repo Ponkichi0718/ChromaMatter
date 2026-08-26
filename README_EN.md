@@ -29,6 +29,10 @@ source/build/relink closure evidence. A `diagnostics` artifact is not the app.
 See [Discussion #9](https://github.com/Ponkichi0718/ChromaMatter/discussions/9)
 for results and setup questions.
 
+The default branch includes the same source-backed Finder app implementation
+as the public alpha tag. The stable Windows r32.2 binaries and the separate
+self-contained macOS build gate are unchanged.
+
 ## Download for Windows
 
 **[Download ChromaMatter 0.8beta r32.2 for Windows (ZIP)](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2/ChromaMatter-0.8beta-r32.2-win64.zip)**
@@ -94,6 +98,32 @@ Snapmaker, OpenAI, Apple, or any other third party.
 - **Version:** `0.8beta`
 
 The documentation on the default branch may receive corrections after publication. For the exact source that produced the downloadable r32.2 files, use the frozen tag and commit above.
+
+## Experimental test workstream — not included in r32.2
+
+This experimental branch contains the following additions for a separate test
+channel. They are **not** present in the r32.2 Windows download or its frozen
+source tag:
+
+- **Flat Four** makes a deterministic, area-weighted proposal of four distinct
+  physical filament colours. It creates no mixed-colour recipes, and a Flat
+  Four 3MF uses only F1-F4.
+- The experimental **2D Colour Filter** offers **Cel Colour** and **Shaded
+  Monochrome**. It bakes a fixed-front, geometry-aware stepped light into
+  printable colour targets; it is not a screen-space renderer and cannot
+  recreate authored line art, PBR materials, or texture detail absent from the
+  mesh colours.
+- The normal static-GLB limits remain 512 MiB, three million vertices, and
+  three million triangles. A separate beta path can admit a static
+  `TRIANGLES` scene with 3,000,001-5,000,000 triangles only after explicit
+  confirmation and with face-count adjustment enabled; it must produce a
+  working model of at most 450,000 faces. Unsupported or ambiguous input fails
+  closed, and reduction can remove fine geometry and baked texture detail.
+- This workstream writes project schema `obj-adjuster.project.v13`; schema v12
+  remains readable and defaults to the legacy Full Spectrum mode.
+
+These additions have local source-level regression coverage only. They do not
+inherit the published r32.2 binary, package, or physical-print validation.
 
 ## Four things ChromaMatter does
 

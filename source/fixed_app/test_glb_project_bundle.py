@@ -28,7 +28,7 @@ from test_project_bundle import prepared_geometry
 
 def _payload() -> dict[str, object]:
     return {
-        "schema": "obj-adjuster.project.v12",
+        "schema": "obj-adjuster.project.v13",
         "settings": {"geometry": {}, "palette": {}, "tone": {}},
         "obj_path": r"C:\private\robot.glb",
         "parts": [],

@@ -1196,13 +1196,54 @@ class PaintSession:
         )
         return self._set_overrides(faces, -1, "自動色へ戻す")
 
-    def connected_fill_faces(self, seed_face: int) -> np.ndarray:
+    def _fill_connectivity_labels(
+        self,
+        connectivity_state_map: np.ndarray | None = None,
+    ) -> np.ndarray:
+        """Return the labels used only to decide where Fill may traverse.
+
+        Manual overrides retain their canonical Full Spectrum state IDs.  A
+        display mode may nevertheless show several of those IDs as the same
+        printable colour.  ``connectivity_state_map`` lets that mode compare
+        the displayed states without rewriting the saved overrides or the
+        automatic assignment.  The returned labels are never committed.
+        """
+
+        labels = self.effective_indices()
+        if connectivity_state_map is None:
+            return labels
+        mapping = np.asarray(connectivity_state_map)
+        if (
+            mapping.shape != (PALETTE_STATE_COUNT,)
+            or not np.issubdtype(mapping.dtype, np.integer)
+        ):
+            raise PaintError(
+                f"塗りつぶし表示色マップは{PALETTE_STATE_COUNT}個の整数で指定してください"
+            )
+        if len(mapping) and (
+            int(mapping.min()) < 0
+            or int(mapping.max()) >= PALETTE_STATE_COUNT
+        ):
+            raise PaintError(
+                f"塗りつぶし表示色マップは0～{PALETTE_STATE_COUNT - 1}で指定してください"
+            )
+        return mapping[labels].astype(np.int8, copy=False)
+
+    def connected_fill_faces(
+        self,
+        seed_face: int,
+        *,
+        connectivity_state_map: np.ndarray | None = None,
+    ) -> np.ndarray:
         seed = int(seed_face)
         if seed < 0 or seed >= len(self.faces):
             raise PaintError("クリックした面がモデル範囲外です")
         if not bool(self.allowed_face_mask[seed]):
             return np.empty(0, dtype=np.int32)
-        labels = self.effective_indices()
+        labels = PaintSession._fill_connectivity_labels(
+            self,
+            connectivity_state_map,
+        )
         target = int(labels[seed])
         visited = np.zeros(len(self.faces), dtype=bool)
         visited[seed] = True
@@ -1224,8 +1265,20 @@ class PaintSession:
                 pending.append(neighbor)
         return np.asarray(selected, dtype=np.int32)
 
-    def fill(self, seed_face: int, state: int) -> np.ndarray:
-        faces = self.connected_fill_faces(seed_face)
+    def fill(
+        self,
+        seed_face: int,
+        state: int,
+        *,
+        connectivity_state_map: np.ndarray | None = None,
+    ) -> np.ndarray:
+        if connectivity_state_map is None:
+            faces = self.connected_fill_faces(seed_face)
+        else:
+            faces = self.connected_fill_faces(
+                seed_face,
+                connectivity_state_map=connectivity_state_map,
+            )
         return self._set_overrides(faces, self._validate_state(state), "塗りつぶし")
 
     def smooth_boundary(

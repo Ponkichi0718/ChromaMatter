@@ -20,6 +20,7 @@ from spectrum_mapper.i18n import Translator
 from spectrum_mapper.models import AppSettings, GeometrySettings
 from spectrum_mapper.paint import encode_manual_overrides, mesh_fingerprint
 from spectrum_mapper.project_bundle import (
+    PreparedGeometrySnapshotWorkload,
     ProjectLoadResult,
     inspect_project_path,
     save_project_bundle_in_parent,
@@ -72,7 +73,7 @@ def manual_project_payload(
     obj_path: Path,
 ) -> dict[str, object]:
     return {
-        "schema": "obj-adjuster.project.v12",
+        "schema": "obj-adjuster.project.v13",
         "settings": settings.to_dict(),
         "obj_path": str(obj_path.resolve()),
         "reference_path": r"C:\private\reference.png",
@@ -679,6 +680,164 @@ class ProjectBundleGuiContractTests(unittest.TestCase):
         self.assertIsNone(app.obj_path)
         self.assertIsNone(app.prepared)
         self.assertIsNone(app.manual_overrides)
+
+    def test_large_obj_exact_snapshot_requires_consent_before_array_decode(self) -> None:
+        # A project source suffix is not a security boundary.  A large exact
+        # snapshot renamed to OBJ must receive the same admission check as GLB.
+        source = self.root / "renamed_large.obj"
+        source.write_bytes(self.source.read_bytes())
+        prepared = prepared_geometry(source)
+        fingerprint = mesh_fingerprint(prepared.final)
+        payload = manual_project_payload(
+            self.settings,
+            fingerprint,
+            self.overrides,
+            obj_path=source,
+        )
+        saved = save_project_bundle_in_parent(
+            self.root,
+            source,
+            payload,
+            project_folder_name="large_exact_project",
+            prepared_geometry=prepared,
+            prepared_geometry_key=self.geometry_key,
+        )
+        app = bare_load_app()
+        calls: dict[str, object] = {}
+
+        def capture_submit(label, function, done, *, on_error=None) -> bool:
+            calls.update(
+                label=label,
+                function=function,
+                done=done,
+                on_error=on_error,
+            )
+            return True
+
+        app._submit_main = capture_submit
+        workload = PreparedGeometrySnapshotWorkload(
+            asset_vertex_count=2_500_000,
+            asset_face_count=5_000_000,
+            final_face_count=450_000,
+        )
+        with patch.object(
+            ProjectLoadResult,
+            "inspect_prepared_geometry_workload",
+            return_value=workload,
+        ):
+            app._load_project_path(saved.folder)
+            validated_load = calls["function"]()
+
+        self.assertEqual(validated_load[0], "exact_large_confirmation")
+        with patch("spectrum_mapper.gui.messagebox.askyesno", return_value=False):
+            calls["done"](validated_load)
+        self.assertIsNone(app.prepared)
+
+        app._load_project_path = Mock()
+        with patch("spectrum_mapper.gui.messagebox.askyesno", return_value=True):
+            calls["done"](validated_load)
+        app._load_project_path.assert_called_once_with(
+            saved.folder,
+            allow_large_snapshot=True,
+        )
+
+        accepted_app = bare_load_app()
+        accepted_calls: dict[str, object] = {}
+
+        def capture_accepted(label, function, done, *, on_error=None) -> bool:
+            accepted_calls.update(
+                label=label,
+                function=function,
+                done=done,
+                on_error=on_error,
+            )
+            return True
+
+        accepted_app._submit_main = capture_accepted
+        with patch.object(
+            ProjectLoadResult,
+            "inspect_prepared_geometry_workload",
+            return_value=workload,
+        ):
+            accepted_app._load_project_path(
+                saved.folder,
+                allow_large_snapshot=True,
+            )
+            accepted_load = accepted_calls["function"]()
+
+        self.assertEqual(accepted_load[0], "exact")
+        accepted_settings = accepted_load[3]
+        self.assertTrue(accepted_settings.geometry.adjust_face_count)
+        self.assertEqual(accepted_settings.geometry.target_faces, 450_000)
+
+    def test_exact_snapshot_hard_limits_do_not_depend_on_source_suffix(self) -> None:
+        source = self.root / "renamed_oversized.obj"
+        source.write_bytes(self.source.read_bytes())
+        prepared = prepared_geometry(source)
+        fingerprint = mesh_fingerprint(prepared.final)
+        payload = manual_project_payload(
+            self.settings,
+            fingerprint,
+            self.overrides,
+            obj_path=source,
+        )
+        saved = save_project_bundle_in_parent(
+            self.root,
+            source,
+            payload,
+            project_folder_name="renamed_oversized_project",
+            prepared_geometry=prepared,
+            prepared_geometry_key=self.geometry_key,
+        )
+
+        workloads = (
+            PreparedGeometrySnapshotWorkload(
+                asset_vertex_count=3_000_001,
+                asset_face_count=3_000_000,
+                final_face_count=3_000_000,
+            ),
+            PreparedGeometrySnapshotWorkload(
+                asset_vertex_count=2_500_000,
+                asset_face_count=5_000_001,
+                final_face_count=450_000,
+            ),
+            PreparedGeometrySnapshotWorkload(
+                asset_vertex_count=2_500_000,
+                asset_face_count=3_000_001,
+                final_face_count=450_001,
+            ),
+        )
+
+        for workload in workloads:
+            with self.subTest(workload=workload):
+                app = bare_load_app()
+                calls: dict[str, object] = {}
+
+                def capture_submit(
+                    label, function, done, *, on_error=None
+                ) -> bool:
+                    calls.update(
+                        label=label,
+                        function=function,
+                        done=done,
+                        on_error=on_error,
+                    )
+                    return True
+
+                app._submit_main = capture_submit
+                with patch.object(
+                    ProjectLoadResult,
+                    "inspect_prepared_geometry_workload",
+                    return_value=workload,
+                ):
+                    app._load_project_path(
+                        saved.folder,
+                        allow_large_snapshot=True,
+                    )
+                    validated_load = calls["function"]()
+
+                self.assertEqual(validated_load[0], "exact_large_unsupported")
+                self.assertIsNone(app.prepared)
 
 
 if __name__ == "__main__":

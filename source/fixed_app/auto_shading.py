@@ -306,6 +306,7 @@ def generate_auto_shading(
     *,
     options: AutoShadingOptions | None = None,
     face_mask: np.ndarray | Iterable[bool] | None = None,
+    tone_face_rgb: np.ndarray | None = None,
 ) -> AutoShadingResult:
     """Generate sparse Orca paint trees for intra-triangle colour changes.
 
@@ -333,9 +334,16 @@ def generate_auto_shading(
         raise AutoShadingError("faces contain an out-of-range vertex index")
 
     tone_rgb = _as_rgb(tone_vertex_rgb, "tone_vertex_rgb")
+    flat_face_rgb = (
+        None
+        if tone_face_rgb is None
+        else _as_rgb(tone_face_rgb, "tone_face_rgb")
+    )
     palette = _as_rgb(palette_rgb, "palette_rgb")
     if len(tone_rgb) != len(vertex_values):
         raise AutoShadingError("tone_vertex_rgb count must match vertices")
+    if flat_face_rgb is not None and len(flat_face_rgb) != len(face_values):
+        raise AutoShadingError("tone_face_rgb count must match faces")
     if len(palette) < 1 or len(palette) > smooth_paint.STATE_COUNT:
         raise AutoShadingError(
             f"palette_rgb must contain 1..{smooth_paint.STATE_COUNT} states"
@@ -382,13 +390,23 @@ def generate_auto_shading(
         if not bool(np.any(local_scope)):
             continue
         local_faces = face_values[start:stop]
-        face_rgb = tone_rgb[local_faces]
-        probe_rgb = np.einsum(
-            "pk,fkc->fpc",
-            _PROBE_BARYCENTRIC,
-            face_rgb,
-            optimize=True,
-        )
+        if flat_face_rgb is None:
+            face_rgb = tone_rgb[local_faces]
+            probe_rgb = np.einsum(
+                "pk,fkc->fpc",
+                _PROBE_BARYCENTRIC,
+                face_rgb,
+                optimize=True,
+            )
+        else:
+            # Illustration filtering is deliberately discontinuous at face
+            # boundaries.  Its vertex colours are only an OBJ/display
+            # approximation, so interpolating them here would invent a new
+            # intra-face gradient that is absent from the printable face tone.
+            probe_rgb = np.broadcast_to(
+                flat_face_rgb[start:stop, None, :],
+                (stop - start, len(_PROBE_BARYCENTRIC), 3),
+            )
         probe_lab = srgb_to_lab(probe_rgb)
         probe_states = _nearest_states(probe_lab, active_lab, active_ids)
         state_boundary = np.min(probe_states, axis=1) != np.max(probe_states, axis=1)
@@ -462,13 +480,19 @@ def generate_auto_shading(
         leaf_count = len(barycentric)
         for start in range(0, len(depth_faces), batch):
             current_faces = depth_faces[start : start + batch]
-            face_rgb = tone_rgb[face_values[current_faces]]
-            leaf_rgb = np.einsum(
-                "lk,fkc->flc",
-                barycentric,
-                face_rgb,
-                optimize=True,
-            )
+            if flat_face_rgb is None:
+                face_rgb = tone_rgb[face_values[current_faces]]
+                leaf_rgb = np.einsum(
+                    "lk,fkc->flc",
+                    barycentric,
+                    face_rgb,
+                    optimize=True,
+                )
+            else:
+                leaf_rgb = np.broadcast_to(
+                    flat_face_rgb[current_faces, None, :],
+                    (len(current_faces), leaf_count, 3),
+                )
             leaf_lab = srgb_to_lab(leaf_rgb)
             if dither_active:
                 leaf_states = _dithered_states(

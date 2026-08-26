@@ -14,7 +14,9 @@ does not call Codex, a network API, or a generative model.
 from __future__ import annotations
 
 from collections import Counter
+import ctypes
 from dataclasses import dataclass
+import importlib.machinery
 import importlib.util
 import os
 from pathlib import Path
@@ -90,29 +92,78 @@ def _load_tetwild_wrapper():
         )
 
     checked: list[str] = []
+    load_errors: list[str] = []
     for package_directory in package_directories:
         checked.append(str(package_directory))
         if not package_directory.is_dir():
             continue
-        library_directory = package_directory.parent / "pytetwild.libs"
-        if library_directory.is_dir() and hasattr(os, "add_dll_directory"):
-            _DLL_HANDLES.append(os.add_dll_directory(str(library_directory)))
-        extensions = sorted(package_directory.glob("PyfTetWildWrapper*.pyd"))
+        library_directories = (
+            package_directory.parent / "pytetwild.libs",
+            package_directory / ".dylibs",
+        )
+        for library_directory in library_directories:
+            if not library_directory.is_dir():
+                continue
+            if sys.platform.startswith("win") and hasattr(
+                os, "add_dll_directory"
+            ):
+                _DLL_HANDLES.append(
+                    os.add_dll_directory(str(library_directory))
+                )
+            elif sys.platform == "darwin":
+                for library in sorted(
+                    (
+                        *library_directory.glob("*.dylib"),
+                        *library_directory.glob("*.so"),
+                    ),
+                    key=lambda value: value.name,
+                ):
+                    try:
+                        _DLL_HANDLES.append(
+                            ctypes.CDLL(
+                                str(library),
+                                mode=getattr(ctypes, "RTLD_GLOBAL", 0),
+                            )
+                        )
+                    except OSError as exc:
+                        # A correctly repaired wheel can resolve the same
+                        # library through @loader_path when the extension is
+                        # imported.  Keep the preload diagnostic and let that
+                        # authoritative import decide whether loading succeeds.
+                        load_errors.append(f"{library.name}: {exc}")
+        extension_suffixes = tuple(importlib.machinery.EXTENSION_SUFFIXES)
+        extensions = sorted(
+            (
+                candidate
+                for candidate in package_directory.iterdir()
+                if candidate.is_file()
+                and candidate.name.startswith("PyfTetWildWrapper")
+                and candidate.name.endswith(extension_suffixes)
+            ),
+            key=lambda value: value.name,
+        )
         if not extensions:
             continue
-        module_spec = importlib.util.spec_from_file_location(
-            "PyfTetWildWrapper", extensions[0]
-        )
-        if module_spec is None or module_spec.loader is None:
-            continue
-        module = importlib.util.module_from_spec(module_spec)
-        module_spec.loader.exec_module(module)
-        _TETWILD_WRAPPER = module
-        return module
+        for extension in extensions:
+            try:
+                module_spec = importlib.util.spec_from_file_location(
+                    "PyfTetWildWrapper", extension
+                )
+                if module_spec is None or module_spec.loader is None:
+                    load_errors.append(f"{extension.name}: loader unavailable")
+                    continue
+                module = importlib.util.module_from_spec(module_spec)
+                module_spec.loader.exec_module(module)
+            except Exception as exc:
+                load_errors.append(f"{extension.name}: {exc}")
+                continue
+            _TETWILD_WRAPPER = module
+            return module
     raise VolumePartitionError(
         "曲面境界用のfTetWild実行モジュールを読み込めません。"
         "アプリを配布フォルダーごと再展開してください"
         + (f"（確認先: {', '.join(checked)}）" if checked else "")
+        + (f"（読込詳細: {'; '.join(load_errors)}）" if load_errors else "")
     )
 
 

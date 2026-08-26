@@ -75,6 +75,7 @@ def _copy_palette(palette: PaletteSettings) -> PaletteSettings:
     return PaletteSettings(
         material=palette.material,
         palette_state_count=int(palette.palette_state_count),
+        color_mode=palette.color_mode,
         physical_hex=list(palette.physical_hex),
         enabled_states=list(palette.enabled_states),
         mix_hex_overrides=list(palette.mix_hex_overrides),
@@ -1180,6 +1181,13 @@ def _inspect_3mf(
 
 def _font(size: int, *, bold: bool = False) -> ImageFont.ImageFont:
     candidates = (
+        Path(
+            "/System/Library/Fonts/ヒラギノ角ゴシック W6.ttc"
+            if bold
+            else "/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc"
+        ),
+        Path("/System/Library/Fonts/ヒラギノ丸ゴ ProN W4.ttc"),
+        Path("/System/Library/Fonts/Supplemental/Arial Unicode.ttf"),
         Path("C:/Windows/Fonts/meiryob.ttc")
         if bold
         else Path("C:/Windows/Fonts/meiryo.ttc"),

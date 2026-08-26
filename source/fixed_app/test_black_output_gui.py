@@ -274,7 +274,7 @@ class BlackOutputGuiLogicTests(unittest.TestCase):
 
         payload = app._project_payload_for_save(app.settings, None)
 
-        self.assertEqual(payload["schema"], "obj-adjuster.project.v12")
+        self.assertEqual(payload["schema"], "obj-adjuster.project.v13")
         self.assertEqual(
             payload["settings"]["palette"]["output_mix_ratios_b"],
             app.settings.palette.output_mix_ratios_b,

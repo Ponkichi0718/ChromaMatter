@@ -16,6 +16,7 @@ from .filament_materials import (
     normalize_filament_material,
 )
 from .filament_recommender import (
+    _coerce_rgb_samples,
     CATEGORY_PRIMARY,
     DEFAULT_MAX_CANDIDATES,
     FilamentCandidate,
@@ -34,6 +35,7 @@ from .mixer import (
     coerce_palette_state_count,
     optimize_global_mix_ratios,
 )
+from .platform_runtime import application_data_directory
 
 
 OWNED_FILAMENT_INVENTORY_FILENAME = "owned_filaments.json"
@@ -64,9 +66,9 @@ def resolve_owned_filament_inventory_path(
 
     if explicit_path is not None:
         return Path(explicit_path).expanduser().resolve()
-    app_data = os.environ.get("APPDATA")
-    base = Path(app_data) if app_data else Path.home() / "AppData" / "Roaming"
-    return (base / "TripoSpectrumMapper" / OWNED_FILAMENT_INVENTORY_FILENAME).resolve()
+    return (
+        application_data_directory() / OWNED_FILAMENT_INVENTORY_FILENAME
+    ).resolve()
 
 
 def _product_preference_key(product: FilamentProduct) -> tuple[object, ...]:
@@ -589,6 +591,7 @@ def _shortlist_owned_products(
     representative_rgb: np.ndarray,
     representative_weights: np.ndarray,
     maximum: int,
+    required_physical_rgb: Sequence[Sequence[float]] | np.ndarray | None = None,
 ) -> tuple[FilamentProduct, ...]:
     """Bound combinations while retaining useful colour-gamut endpoints.
 
@@ -600,8 +603,6 @@ def _shortlist_owned_products(
     """
 
     values = tuple(products)
-    if len(values) <= maximum:
-        return values
     from .engine import srgb_to_lab
 
     candidate_rgb = np.asarray(
@@ -612,6 +613,17 @@ def _shortlist_owned_products(
         dtype=np.float64,
     )
     candidate_lab = srgb_to_lab(candidate_rgb / 255.0)
+    required_lab = None
+    if required_physical_rgb is not None:
+        required_rgb = _coerce_rgb_samples(
+            required_physical_rgb,
+            "required_physical_rgb",
+        )
+        if len(required_rgb) > 4:
+            raise ValueError("required_physical_rgb may contain at most four colours")
+        required_lab = srgb_to_lab(required_rgb / 255.0)
+    if len(values) <= maximum:
+        return values
     target_lab = srgb_to_lab(
         np.asarray(representative_rgb, dtype=np.float64).reshape(-1, 3) / 255.0
     )
@@ -621,8 +633,27 @@ def _shortlist_owned_products(
 
     selected_indices: list[int] = []
     selected_set: set[int] = set()
+    if required_lab is not None:
+        for target in required_lab:
+            delta = candidate_lab - target[None, :]
+            distances = np.sqrt(np.sum(delta * delta, axis=1))
+            ranked_required = sorted(
+                range(len(values)),
+                key=lambda index: (
+                    float(distances[index]),
+                    values[index].product_id.casefold(),
+                    values[index].product_id,
+                ),
+            )
+            for index in ranked_required:
+                if index not in selected_set:
+                    selected_indices.append(index)
+                    selected_set.add(index)
+                    break
     for axis in range(3):
         for index in (int(np.argmin(candidate_lab[:, axis])), int(np.argmax(candidate_lab[:, axis]))):
+            if len(selected_indices) >= maximum:
+                break
             if index not in selected_set:
                 selected_indices.append(index)
                 selected_set.add(index)
@@ -746,17 +777,21 @@ def recommend_from_owned_filaments(
     initial_ratios_b: Sequence[int] | None = None,
     secondary_ratios_b: Sequence[int] | None = None,
     enabled_states: Sequence[bool] | None = None,
+    include_mixed_states: bool = True,
     pink_protection_mask: Sequence[bool] | np.ndarray | None = None,
+    required_physical_rgb: Sequence[Sequence[float]] | np.ndarray | None = None,
     max_candidates: int = DEFAULT_MAX_CANDIDATES,
     max_passes: int = 8,
 ) -> OwnedFilamentRecommendation:
-    """Choose four owned products and jointly fit both six-ratio ramps.
+    """Choose four owned products and optionally fit both six-ratio ramps.
 
     Candidate search is capped before the O(n choose 4) evaluation so a large
     personal inventory cannot freeze the UI.  Same-HEX spools remain visible in
     the inventory but only one representative participates in automatic search.
     The final ratio fit uses the exact 16/24/32 active-state boundary supplied
-    by the caller and the same mixer model as normal conversion.
+    by the caller and the same mixer model as normal conversion.  When
+    ``include_mixed_states`` is false, all four physical slots are evaluated
+    and every mixed state is excluded; the stored ratios remain unchanged.
     """
 
     selected_material = normalize_filament_material(material)
@@ -796,6 +831,14 @@ def recommend_from_owned_filaments(
         )
     state_count = coerce_palette_state_count(palette_state_count)
     enabled = _coerce_enabled_for_state_count(enabled_states, state_count)
+    if not isinstance(include_mixed_states, (bool, np.bool_)):
+        raise ValueError("include_mixed_states must be a boolean")
+    include_mixed_states = bool(include_mixed_states)
+    if not include_mixed_states:
+        # Flat mode proposes four printable spools, so all four physical slots
+        # participate in its score regardless of stale per-state switches from
+        # a preceding Full Spectrum session.  Mixed states remain unavailable.
+        enabled = tuple(index < 4 for index in range(len(enabled)))
     initial = tuple(_DEFAULT_PRIMARY_RATIOS if initial_ratios_b is None else initial_ratios_b)
     secondary = tuple(
         _DEFAULT_SECONDARY_RATIOS if secondary_ratios_b is None else secondary_ratios_b
@@ -821,6 +864,7 @@ def recommend_from_owned_filaments(
         shortlist_rgb,
         shortlist_weights,
         max_candidates,
+        required_physical_rgb,
     )
     catalog = tuple(
         FilamentCandidate(
@@ -843,8 +887,10 @@ def recommend_from_owned_filaments(
         catalog=catalog,
         in_stock_only=False,
         palette_state_count=state_count,
+        include_mixed_states=include_mixed_states,
         alternative_count=OWNED_REFINEMENT_SHORTLIST_SIZE - 1,
         max_candidates=len(catalog),
+        required_physical_rgb=required_physical_rgb,
     )
     # A larger palette is a strict superset of the first sixteen states, but
     # its approximate combination ranking can otherwise discard a good
@@ -854,7 +900,7 @@ def recommend_from_owned_filaments(
     # count.  Only the final fixed-size refinement shortlist is optimised, so
     # this does not increase the expensive optimiser ceiling.
     legacy_selection = None
-    if state_count > DEFAULT_PALETTE_STATE_COUNT:
+    if include_mixed_states and state_count > DEFAULT_PALETTE_STATE_COUNT:
         legacy_selection = recommend_basic_filaments(
             object_rgb,
             object_area_weights,
@@ -864,8 +910,10 @@ def recommend_from_owned_filaments(
             catalog=catalog,
             in_stock_only=False,
             palette_state_count=DEFAULT_PALETTE_STATE_COUNT,
+            include_mixed_states=True,
             alternative_count=OWNED_REFINEMENT_SHORTLIST_SIZE - 1,
             max_candidates=len(catalog),
+            required_physical_rgb=required_physical_rgb,
         )
     product_lookup = {product.product_id: product for product in unique_products}
     representative_rgb = np.asarray(
@@ -1009,7 +1057,7 @@ def recommend_from_owned_filaments(
             unrestricted_state_mask=optimization_unrestricted_mask,
             histogram_bins_per_channel=32,
             max_passes=max_passes,
-            optimize_secondary_ratios=True,
+            optimize_secondary_ratios=include_mixed_states,
         )
         refined.append(
             (

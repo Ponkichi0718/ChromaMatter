@@ -4,8 +4,6 @@ import hashlib
 import json
 import os
 import queue
-import shutil
-import subprocess
 import sys
 import traceback
 from concurrent.futures import Future, ThreadPoolExecutor
@@ -20,10 +18,15 @@ from . import APP_DISPLAY_NAME, APP_NAME, APP_TAGLINE, RELEASE_REVISION, __versi
 from .calibration_chart import generate_palette_calibration_bundle
 from .engine import (
     EngineError,
+    _flat_four_raw_chroma_recovery_enabled,
+    _local_part_neighbors,
     apply_palette_overrides,
     apply_palette_overrides_parts,
-    apply_tone,
+    apply_tone_faces,
+    face_rgb_from_vertex_colors,
+    flat_four_required_white_rgb,
     load_vertex_color_model,
+    prepare_flat_four_recommendation_samples,
     prepare_geometry,
     recolor_level,
     recolor_level_parts,
@@ -68,6 +71,8 @@ from .manual_joints import ManualJointError, replay_manual_joint
 from .manual_joint_state import ManualJointStateError, remap_manual_overrides
 from .models import (
     AppSettings,
+    COLOR_MODE_FLAT_FOUR,
+    COLOR_MODE_FULL_SPECTRUM,
     ColorDepthSettings,
     FilamentSnapshotRef,
     GeometrySettings,
@@ -75,6 +80,7 @@ from .models import (
     PreparedGeometry,
     RadialSettings,
     ToneSettings,
+    normalize_color_mode,
 )
 from .i18n import (
     LANGUAGE_DISPLAY_NAMES,
@@ -113,7 +119,23 @@ from .freehand_split import (
     inherit_explicit_part_palette,
 )
 from .generated_surface_color import existing_tree_face_mask
+from .gltf_import import (
+    GLTF_NORMAL_SOURCE_FACE_LIMIT,
+    GLTF_REDUCED_SOURCE_FACE_LIMIT,
+    GLTF_SOURCE_VERTEX_LIMIT,
+    GltfImportError,
+    GltfImportPlan,
+    LARGE_GLTF_REDUCTION_TARGET_FACES,
+    inspect_gltf_asset,
+)
 from .paint_gui import PaintEditorWindow
+from .platform_runtime import (
+    application_data_directory,
+    application_window_title,
+    find_snapmaker_orca,
+    launch_snapmaker_orca,
+    open_folder,
+)
 from .reference_parts import (
     ReferencePartMatch,
     extract_corner_foreground,
@@ -284,15 +306,15 @@ def _radial_error_reason(i18n: Translator, exc: Exception) -> str:
     )
 
 def _configuration_dir() -> Path:
-    base = Path(os.environ.get("APPDATA", Path.home()))
-    return base / "TripoSpectrumMapper"
+    return application_data_directory()
 
 
 _PREFERENCES_SCHEMA = "obj-adjuster.preferences.v5-developer-features"
-_PROJECT_SCHEMA = "obj-adjuster.project.v12"
+_PROJECT_SCHEMA = "obj-adjuster.project.v13"
 _COLOR_DEPTH_TRUSTED_PROJECT_SCHEMAS = {
     "obj-adjuster.project.v10",
     "obj-adjuster.project.v11",
+    "obj-adjuster.project.v12",
     _PROJECT_SCHEMA,
 }
 
@@ -335,12 +357,23 @@ def _persistent_preferences_from_mapping(value: object) -> AppSettings:
         palette_state_count = 16
     if palette_state_count not in SUPPORTED_PALETTE_STATE_COUNTS:
         palette_state_count = 16
+    color_mode_value = raw.get(
+        "color_mode",
+        legacy_palette.get("color_mode", COLOR_MODE_FULL_SPECTRUM),
+    )
+    try:
+        color_mode = normalize_color_mode(color_mode_value)
+    except ValueError:
+        color_mode = COLOR_MODE_FULL_SPECTRUM
     return _sanitize_public_settings(AppSettings.from_dict(
         {
             "geometry": raw.get("geometry", {}),
             "color_depth": raw.get("color_depth", {}),
             "radial": raw.get("radial", {}),
-            "palette": {"palette_state_count": palette_state_count},
+            "palette": {
+                "palette_state_count": palette_state_count,
+                "color_mode": color_mode,
+            },
             "manual_orbit_inverted": raw.get(
                 "manual_orbit_inverted", False
             ),
@@ -381,6 +414,7 @@ def _persistent_preferences_payload(
             ),
         },
         "palette_state_count": int(settings.palette.palette_state_count),
+        "color_mode": settings.palette.color_mode,
         "manual_orbit_inverted": bool(settings.manual_orbit_inverted),
     }
 
@@ -437,6 +471,8 @@ def _project_settings_from_mapping(
     fields, loading it must not silently enable an uncalibrated export path.
     v10 and later are trusted ColorDepth opt-ins.  v12 adds the explicit
     PLA/ABS/PETG material field; missing material in v11 and earlier is PLA.
+    v13 adds the public Full Spectrum / Flat Four colour-mode field while v12
+    remains readable as the legacy Full Spectrum default.
     """
 
     data = dict(value) if isinstance(value, dict) else {}
@@ -452,6 +488,12 @@ def _project_settings_from_mapping(
     # a project itself can never reveal or authorize the hidden feature.
     if schema != _PROJECT_SCHEMA or developer_features_enabled is not True:
         _enforce_black_free_gradient_developer_gate(settings, False)
+    # The public selector is intentionally global.  Older or hand-edited
+    # project data may carry a different mode on an individual part; normalize
+    # that at the project boundary so the preview and export cannot disagree
+    # with the single mode shown in the UI.
+    for part_palette in settings.part_palettes.values():
+        part_palette.color_mode = settings.palette.color_mode
     return _sanitize_public_settings(settings)
 
 
@@ -463,7 +505,8 @@ def _fresh_settings_for_new_obj(settings: AppSettings) -> AppSettings:
         tone=ToneSettings(),
         palette=PaletteSettings(
             material=settings.palette.material,
-            palette_state_count=settings.palette.palette_state_count
+            palette_state_count=settings.palette.palette_state_count,
+            color_mode=settings.palette.color_mode,
         ),
         color_depth=ColorDepthSettings(
             # ColorDepth is a retained research implementation without a
@@ -646,7 +689,12 @@ def _mix_optimizer_settings_key(settings: AppSettings) -> tuple[object, ...]:
         bool(tone.smoothing),
         float(tone.smoothing_max_area_mm2),
         float(tone.smoothing_delta_e_slack),
+        str(getattr(tone, "illustration_mode", "off")),
+        float(getattr(tone, "illustration_strength", 0.78)),
+        int(getattr(tone, "illustration_bands", 4)),
+        str(getattr(tone, "illustration_light", "front_left")),
         palette.material,
+        palette.color_mode,
         tuple(str(value).upper() for value in palette.physical_hex),
         tuple(bool(value) for value in palette.enabled_states),
         tuple(int(value) for value in palette.mix_ratios_b),
@@ -670,6 +718,7 @@ def _mix_optimizer_settings_key(settings: AppSettings) -> tuple[object, ...]:
             (
                 key,
                 value.material,
+                value.color_mode,
                 tuple(value.physical_hex),
                 tuple(value.enabled_states),
                 tuple(value.mix_ratios_b),
@@ -707,6 +756,45 @@ def _manual_overrides_signature(
     return tuple(int(value) for value in values.shape), values.dtype.str, digest
 
 
+def _automatic_palette_signature(palette: PaletteSettings) -> tuple[object, ...]:
+    """Return the mode-neutral state of an automatically proposed palette.
+
+    ``color_mode`` is deliberately excluded: changing only Full Spectrum / Flat
+    Four must still be recognised as the untouched automatic proposal.  Every
+    editable palette input is retained so a mode switch can never overwrite a
+    user's filament, recipe, state, or output adjustment.
+    """
+
+    return (
+        palette.material,
+        int(palette.palette_state_count),
+        tuple(normalize_hex(value) for value in palette.physical_hex),
+        tuple(bool(value) for value in palette.enabled_states),
+        tuple(
+            None if value is None else normalize_hex(value)
+            for value in palette.mix_hex_overrides
+        ),
+        tuple(int(value) for value in palette.mix_ratios_b),
+        tuple(int(value) for value in palette.secondary_mix_ratios_b),
+        (
+            None
+            if palette.output_mix_ratios_b is None
+            else tuple(int(value) for value in palette.output_mix_ratios_b)
+        ),
+        (
+            None
+            if palette.assignment_palette_hex is None
+            else tuple(normalize_hex(value) for value in palette.assignment_palette_hex)
+        ),
+        bool(getattr(palette, "surface_shell_enabled", False)),
+        bool(getattr(palette, "black_free_gradient_enabled", False)),
+        int(getattr(palette, "black_free_black_slot", 0)),
+        int(getattr(palette, "black_free_red_slot", 2)),
+        int(getattr(palette, "black_free_brown_slot", 3)),
+        tuple(palette.physical_filament_refs),
+    )
+
+
 def _enabled_manual_mix_states(
     overrides: np.ndarray | None,
     enabled_states: list[bool] | tuple[bool, ...],
@@ -726,6 +814,11 @@ def _enabled_manual_mix_states(
 def _mix_optimization_preflight(
     settings: AppSettings,
 ) -> tuple[str, str] | None:
+    if settings.palette.color_mode == COLOR_MODE_FLAT_FOUR:
+        return (
+            "フラット4色では混色しません",
+            "混色比率の最適化はFull Spectrum（混色）で使用できます。",
+        )
     enabled = tuple(bool(value) for value in settings.palette.enabled_states)
     if len(enabled) != PALETTE_STATE_COUNT:
         return (
@@ -755,7 +848,7 @@ class MapperApp:
         initial_project: Path | None = None,
     ) -> None:
         self.root = root
-        self.root.title(APP_TITLE)
+        self.root.title(application_window_title(APP_TITLE))
         self.root.geometry("1540x920")
         self.root.minsize(1180, 740)
         self.root.configure(bg=BG)
@@ -772,6 +865,8 @@ class MapperApp:
         self._developer_features_enabled_committed = False
         _enforce_black_free_gradient_developer_gate(self.settings, False)
         self.source_path: Path | None = None
+        self._large_glb_import_plan: GltfImportPlan | None = None
+        self._large_glb_import_path: Path | None = None
         self.reference_path: Path | None = None
         self.reference_image: Image.Image | None = None
         self.asset = None
@@ -803,6 +898,14 @@ class MapperApp:
         self.part_recommendations: dict[str, FilamentRecommendation] = {}
         self._loading_palette_variables = False
         self._auto_recommend_after_geometry = False
+        # A newly opened model receives one automatic, mode-specific F1-F4
+        # proposal.  Keep a mode-neutral fingerprint so changing Full Spectrum
+        # / Flat Four can recompute that untouched proposal for the target mode
+        # without ever replacing colours or recipes the user has edited.
+        self._automatic_palette_model_token: tuple[str | None] | None = None
+        self._automatic_palette_signatures: dict[
+            str | None, tuple[object, ...]
+        ] = {}
         # A project whose source model moved can be opened before the user
         # locates the mesh again.  The next explicit model selection then
         # restores that project instead of starting a new model.
@@ -846,8 +949,30 @@ class MapperApp:
         self._draw_comparison_canvas()
         self.poll_after_id: str | None = self.root.after(80, self._poll_queue)
         if smoke_test:
-            self.root.withdraw()
-            self.root.after(700, self._on_close)
+            # A packaged smoke must prove that Tk can map and update a real
+            # window on the target desktop, not merely construct withdrawn
+            # widgets. Model/OpenGL workflow validation remains a separate
+            # native gate and volunteer test responsibility.
+            self.root.update_idletasks()
+            self.root.update()
+            smoke_metrics = {
+                "mapped": int(self.root.winfo_ismapped()),
+                "width": int(self.root.winfo_width()),
+                "height": int(self.root.winfo_height()),
+                "screen_width": int(self.root.winfo_screenwidth()),
+                "screen_height": int(self.root.winfo_screenheight()),
+            }
+            if (
+                smoke_metrics["mapped"] != 1
+                or smoke_metrics["width"] <= 1
+                or smoke_metrics["height"] <= 1
+                or smoke_metrics["screen_width"] < 800
+                or smoke_metrics["screen_height"] < 600
+            ):
+                raise RuntimeError(
+                    f"Packaged UI smoke window is invalid: {smoke_metrics}"
+                )
+            self.root.after(900, self._on_close)
         elif initial_project is not None:
             self.root.after(180, lambda: self._load_project_path(initial_project))
 
@@ -1026,6 +1151,10 @@ class MapperApp:
         )
         self.physical_vars = [tk.StringVar() for _ in range(4)]
         self.material_var = tk.StringVar(value=MATERIAL_PLA)
+        self.color_mode_var = tk.StringVar(value=COLOR_MODE_FULL_SPECTRUM)
+        self.color_mode_help_var = tk.StringVar(
+            value=tr("palette.mode_full_help")
+        )
         self.enabled_vars = [tk.BooleanVar() for _ in range(PALETTE_STATE_COUNT)]
         self.palette_state_count_var = tk.IntVar(value=16)
         self.extended_palette_var = tk.BooleanVar(value=True)
@@ -1496,6 +1625,18 @@ class MapperApp:
         state_count_label = getattr(self, "palette_state_count_label", None)
         if state_count_label is not None:
             state_count_label.configure(text=self.i18n.text("palette.state_count"))
+        color_mode_label = getattr(self, "color_mode_label", None)
+        if color_mode_label is not None:
+            color_mode_label.configure(text=self.i18n.text("palette.color_mode"))
+        mode_buttons = getattr(self, "color_mode_buttons", {})
+        for mode, key in (
+            (COLOR_MODE_FULL_SPECTRUM, "palette.mode_full"),
+            (COLOR_MODE_FLAT_FOUR, "palette.mode_flat"),
+        ):
+            button = mode_buttons.get(mode)
+            if button is not None:
+                button.configure(text=self.i18n.text(key))
+        self._refresh_color_mode_widgets()
         reprocess_geometry = getattr(self, "reprocess_geometry_button", None)
         if reprocess_geometry is not None:
             reprocess_geometry.configure(text=self.i18n.text("geometry.reprocess"))
@@ -1863,12 +2004,50 @@ class MapperApp:
         tab.columnconfigure(0, weight=0, minsize=330)
         tab.columnconfigure(1, weight=1, minsize=520)
 
+        mode_bar = ttk.Frame(tab, style="Panel.TFrame")
+        mode_bar.grid(
+            row=0,
+            column=0,
+            columnspan=2,
+            sticky="ew",
+            pady=(0, 5),
+        )
+        mode_bar.columnconfigure(3, weight=1)
+        self.color_mode_label = ttk.Label(
+            mode_bar,
+            text=self.i18n.text("palette.color_mode"),
+            style="Panel.TLabel",
+        )
+        self.color_mode_label.grid(row=0, column=0, sticky="w", padx=(0, 7))
+        self.color_mode_buttons: dict[str, ttk.Button] = {}
+        for column, (mode, key) in enumerate(
+            (
+                (COLOR_MODE_FULL_SPECTRUM, "palette.mode_full"),
+                (COLOR_MODE_FLAT_FOUR, "palette.mode_flat"),
+            ),
+            start=1,
+        ):
+            button = ttk.Button(
+                mode_bar,
+                text=self.i18n.text(key),
+                command=lambda value=mode: self._change_color_mode(value),
+            )
+            button.grid(row=0, column=column, sticky="w", padx=(0, 5))
+            self.color_mode_buttons[mode] = button
+        self.color_mode_help_label = ttk.Label(
+            mode_bar,
+            textvariable=self.color_mode_help_var,
+            style="PanelMuted.TLabel",
+        )
+        self.color_mode_help_label.grid(row=0, column=3, sticky="w", padx=(7, 0))
+
         physical = ttk.LabelFrame(
             tab,
             text=self.i18n.text("palette.base_group"),
             padding=(6, 4),
         )
-        physical.grid(row=0, column=0, sticky="nsew", padx=(0, 5))
+        self.physical_palette_group = physical
+        physical.grid(row=1, column=0, sticky="nsew", padx=(0, 5))
         physical.columnconfigure(3, weight=1)
 
         material_bar = ttk.Frame(physical, style="Panel.TFrame")
@@ -1895,6 +2074,7 @@ class MapperApp:
             self.material_buttons[material] = button
 
         sample = ttk.Frame(physical, style="Panel.TFrame")
+        self.palette_sample_frame = sample
         sample.grid(row=1, column=0, columnspan=5, sticky="ew", pady=(0, 3))
         sample.columnconfigure(2, weight=1)
         self.eyedropper_button = ttk.Button(
@@ -1980,7 +2160,7 @@ class MapperApp:
             tab, text=self.i18n.text("palette.mix_group"), padding=(7, 4)
         )
         self.mixed_palette_group = mixed
-        mixed.grid(row=0, column=1, sticky="nsew", padx=(5, 0))
+        mixed.grid(row=1, column=1, sticky="nsew", padx=(5, 0))
         mixed.columnconfigure(1, weight=1)
         selector = ttk.Frame(mixed, style="Panel.TFrame")
         selector.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 3))
@@ -2376,6 +2556,7 @@ class MapperApp:
         )
         self._refresh_developer_feature_visibility()
         self._refresh_color_depth_widgets()
+        self._refresh_color_mode_widgets()
 
     def _layout_mix_family_cells(self) -> None:
         """Lay out mixed states with the chart's single shared order map."""
@@ -2628,6 +2809,18 @@ class MapperApp:
         recipe.grid_remove()
 
     def _set_recipe_panel_visible(self, visible: bool) -> None:
+        if visible:
+            variable = getattr(self, "color_mode_var", None)
+            try:
+                current_mode = normalize_color_mode(
+                    variable.get()
+                    if variable is not None
+                    else self.settings.palette.color_mode
+                )
+            except (AttributeError, ValueError, tk.TclError):
+                current_mode = COLOR_MODE_FULL_SPECTRUM
+            if current_mode == COLOR_MODE_FLAT_FOUR:
+                visible = False
         variable = getattr(self, "recipe_panel_visible_var", None)
         if variable is not None:
             variable.set(bool(visible))
@@ -3666,6 +3859,7 @@ class MapperApp:
         return PaletteSettings(
             material=palette.material,
             palette_state_count=palette.palette_state_count,
+            color_mode=palette.color_mode,
             physical_hex=list(palette.physical_hex),
             enabled_states=list(palette.enabled_states),
             mix_hex_overrides=list(palette.mix_hex_overrides),
@@ -3757,7 +3951,15 @@ class MapperApp:
         previous_physical = [
             normalize_hex(value) for value in previous.physical_hex
         ]
-        if assignment_palette_hex is None and physical != previous_physical:
+        if (
+            previous.color_mode == COLOR_MODE_FLAT_FOUR
+            and physical != previous_physical
+        ):
+            # Flat mode is the direct, simple four-colour workflow.  A manual
+            # F1-F4 edit must immediately reassign faces against those four new
+            # colours instead of retaining the Full Spectrum routing snapshot.
+            assignment_palette_hex = None
+        elif assignment_palette_hex is None and physical != previous_physical:
             assignment_palette_hex = self._palette_state_hex_snapshot(previous)
         output_ratios: list[int] | None = None
         if bool(self.black_output_enabled_var.get()):
@@ -3785,12 +3987,26 @@ class MapperApp:
                     if list(previous_output) == previous_preset
                     else list(previous_output)
                 )
+        color_mode_var = getattr(self, "color_mode_var", None)
+        try:
+            color_mode = normalize_color_mode(
+                color_mode_var.get()
+                if color_mode_var is not None
+                else previous.color_mode
+            )
+        except (AttributeError, ValueError, tk.TclError):
+            color_mode = previous.color_mode
         palette = PaletteSettings(
             material=previous.material,
             palette_state_count=int(self.palette_state_count_var.get()),
+            color_mode=color_mode,
             physical_hex=physical,
             enabled_states=[bool(variable.get()) for variable in self.enabled_vars],
-            mix_hex_overrides=[None] * 6,
+            mix_hex_overrides=(
+                list(previous.mix_hex_overrides)
+                if color_mode == COLOR_MODE_FLAT_FOUR
+                else [None] * 6
+            ),
             mix_ratios_b=ratios,
             secondary_mix_ratios_b=secondary_ratios,
             output_mix_ratios_b=output_ratios,
@@ -3831,6 +4047,30 @@ class MapperApp:
             return None
         return ref if ref is not None and ref.matched_hex == color else None
 
+    def _refresh_flat_palette_after_change(
+        self,
+        target_key: str | None,
+        palette: PaletteSettings,
+        *,
+        status: str | None = None,
+    ) -> bool:
+        """Immediately reassign and refresh one changed Flat Four palette."""
+
+        if palette.color_mode != COLOR_MODE_FLAT_FOUR:
+            return False
+        message = status or self.i18n.text(
+            "palette.flat_physical_applied",
+            target=self._physical_palette_target_label(target_key),
+        )
+        editor = getattr(self, "paint_editor", None)
+        reapply = getattr(editor, "reapply_palette_settings", None)
+        if callable(reapply):
+            reapply(target_key, self._copy_palette(palette), message=message)
+        self._clear_physical_palette_pending(target_key)
+        self._schedule_preview(immediate=True)
+        self.status_var.set(message)
+        return True
+
     def _set_physical_filament_product(
         self, slot_index: int, product: object
     ) -> bool:
@@ -3854,14 +4094,19 @@ class MapperApp:
                 parent=self.root,
             )
             return False
-        if palette.assignment_palette_hex is None:
+        if (
+            palette.color_mode != COLOR_MODE_FLAT_FOUR
+            and palette.assignment_palette_hex is None
+        ):
             palette.assignment_palette_hex = self._palette_state_hex_snapshot(
                 previous
             )
         palette.physical_hex[int(slot_index)] = ref.matched_hex
         palette.physical_filament_refs[int(slot_index)] = ref
         palette.enabled_states[int(slot_index)] = True
-        if self._palette_state_hex_snapshot(palette) == palette.assignment_palette_hex:
+        if palette.color_mode == COLOR_MODE_FLAT_FOUR:
+            palette.assignment_palette_hex = None
+        elif self._palette_state_hex_snapshot(palette) == palette.assignment_palette_hex:
             palette.assignment_palette_hex = None
         self._assign_active_palette(palette)
         self._load_palette_variables(palette)
@@ -3870,6 +4115,11 @@ class MapperApp:
         self._refresh_part_tree()
         if self.active_part_key is not None:
             self.part_recommendations.pop(self.active_part_key, None)
+        if self._refresh_flat_palette_after_change(
+            self.active_part_key,
+            palette,
+        ):
+            return True
         self._mark_physical_palette_pending(self.active_part_key)
         self.status_var.set(self.i18n.text("palette.apply_physical_pending"))
         return True
@@ -3880,6 +4130,9 @@ class MapperApp:
             material_var = getattr(self, "material_var", None)
             if material_var is not None:
                 material_var.set(palette.material)
+            color_mode_var = getattr(self, "color_mode_var", None)
+            if color_mode_var is not None:
+                color_mode_var.set(palette.color_mode)
             for variable, value in zip(
                 self.physical_vars, palette.physical_hex, strict=True
             ):
@@ -3936,6 +4189,7 @@ class MapperApp:
         self._refresh_black_output_widgets(palette)
         self._refresh_surface_shell_widgets(palette)
         self._refresh_material_mode_buttons(palette.material)
+        self._refresh_color_mode_widgets()
 
     def _refresh_material_mode_buttons(self, material: str) -> None:
         selected = normalize_filament_material(material)
@@ -3950,6 +4204,218 @@ class MapperApp:
                 style="Accent.TButton" if value == selected else "TButton",
                 state="disabled" if bool(getattr(self, "busy", False)) else "normal",
             )
+
+    def _refresh_color_mode_widgets(self) -> None:
+        """Keep the global mode selector and its compact dependent UI in sync."""
+
+        variable = getattr(self, "color_mode_var", None)
+        try:
+            mode = normalize_color_mode(
+                variable.get() if variable is not None else self.settings.palette.color_mode
+            )
+        except (AttributeError, ValueError, tk.TclError):
+            mode = COLOR_MODE_FULL_SPECTRUM
+        if variable is not None:
+            try:
+                variable.set(mode)
+            except tk.TclError:
+                pass
+        busy = bool(getattr(self, "busy", False))
+        for value, button in getattr(self, "color_mode_buttons", {}).items():
+            button.configure(
+                style="Accent.TButton" if value == mode else "TButton",
+                state="disabled" if busy else "normal",
+            )
+        help_var = getattr(self, "color_mode_help_var", None)
+        if help_var is not None:
+            help_var.set(
+                self.i18n.text(
+                    "palette.mode_flat_help"
+                    if mode == COLOR_MODE_FLAT_FOUR
+                    else "palette.mode_full_help"
+                )
+            )
+
+        physical = getattr(self, "physical_palette_group", None)
+        mixed = getattr(self, "mixed_palette_group", None)
+        if physical is None or mixed is None:
+            return
+        if mode == COLOR_MODE_FLAT_FOUR:
+            mixed.grid_remove()
+            physical.grid_configure(column=0, columnspan=2, padx=(0, 0))
+            self._set_recipe_panel_visible(False)
+            sample = getattr(self, "palette_sample_frame", None)
+            if sample is not None:
+                sample.grid_remove()
+        else:
+            physical.grid_configure(column=0, columnspan=1, padx=(0, 5))
+            mixed.grid()
+            sample = getattr(self, "palette_sample_frame", None)
+            if sample is not None:
+                sample.grid()
+
+    def _automatic_palette_token(self) -> tuple[str | None] | None:
+        prepared = getattr(self, "prepared", None)
+        if prepared is None:
+            return None
+        source_path = getattr(self, "source_path", None)
+        # New-file selection and project loading explicitly clear provenance.
+        # Keep the token stable when the same source is reprocessed into a new
+        # PreparedGeometry instance; the next target-mode recommendation must
+        # use that current geometry instead of reviving file-open history.
+        return (str(source_path) if source_path is not None else None,)
+
+    def _clear_automatic_palette_provenance(self) -> None:
+        self._automatic_palette_model_token = None
+        self._automatic_palette_signatures = {}
+
+    def _record_automatic_palette_provenance(
+        self,
+        target_keys: tuple[str | None, ...],
+    ) -> None:
+        """Remember palettes produced by the new-model automatic proposal."""
+
+        token = self._automatic_palette_token()
+        if token is None:
+            self._clear_automatic_palette_provenance()
+            return
+        if getattr(self, "_automatic_palette_model_token", None) != token:
+            self._automatic_palette_signatures = {}
+        signatures = getattr(self, "_automatic_palette_signatures", {})
+        for target_key in target_keys:
+            palette = (
+                self.settings.palette
+                if target_key is None
+                else self.settings.part_palettes.get(target_key)
+            )
+            if palette is None:
+                signatures.pop(target_key, None)
+            else:
+                signatures[target_key] = _automatic_palette_signature(palette)
+        self._automatic_palette_model_token = token
+        self._automatic_palette_signatures = signatures
+
+    def _automatic_palette_can_follow_mode(self) -> bool:
+        """Return True only while every model palette is untouched automatic data."""
+
+        token = self._automatic_palette_token()
+        if token is None or token != getattr(
+            self, "_automatic_palette_model_token", None
+        ):
+            return False
+        signatures = getattr(self, "_automatic_palette_signatures", {})
+        try:
+            part_keys = tuple(str(key) for key in self.prepared.final.part_keys)
+        except (AttributeError, TypeError):
+            return False
+        required_keys: set[str | None] = {None, *part_keys}
+        if set(signatures) != required_keys:
+            return False
+        # The initial all-part recommendation creates one explicit palette per
+        # current part.  A missing or extra entry means the user has changed the
+        # inheritance structure and that decision must be preserved.
+        if set(self.settings.part_palettes) != set(part_keys):
+            return False
+        if signatures.get(None) != _automatic_palette_signature(
+            self.settings.palette
+        ):
+            return False
+        return all(
+            signatures.get(key)
+            == _automatic_palette_signature(self.settings.part_palettes[key])
+            for key in part_keys
+        )
+
+    def _change_color_mode(self, value: str) -> None:
+        """Apply one reversible assignment mode to the common and part palettes."""
+
+        mode = normalize_color_mode(value)
+        if bool(getattr(self, "busy", False)):
+            self.color_mode_var.set(self.settings.palette.color_mode)
+            self._refresh_color_mode_widgets()
+            messagebox.showinfo(
+                self.i18n.text("dialog.busy.title"),
+                self.i18n.text("dialog.busy.message"),
+                parent=self.root,
+            )
+            return
+        previous_palette = self._active_palette_for_controls()
+        previous_mode = previous_palette.color_mode
+        previous_mix_inputs = (
+            list(previous_palette.physical_hex),
+            list(previous_palette.mix_ratios_b),
+            list(previous_palette.secondary_mix_ratios_b),
+        )
+        previous_mix_overrides = list(previous_palette.mix_hex_overrides)
+        try:
+            committed_palette = self._commit_active_palette()
+        except (ValueError, tk.TclError) as exc:
+            self.color_mode_var.set(self.settings.palette.color_mode)
+            self._refresh_color_mode_widgets()
+            messagebox.showerror(
+                self.i18n.text("dialog.settings.title"),
+                str(exc),
+                parent=self.root,
+            )
+            return
+        committed_mix_inputs = (
+            list(committed_palette.physical_hex),
+            list(committed_palette.mix_ratios_b),
+            list(committed_palette.secondary_mix_ratios_b),
+        )
+        if mode != previous_mode and committed_mix_inputs == previous_mix_inputs:
+            # A mode-only Full -> Flat switch must not erase explicit mixed
+            # colour snapshots that remain dormant and are needed when Full is
+            # selected again.  Genuine physical/ratio edits keep the ordinary
+            # invalidation behaviour of `_palette_from_variables`.
+            committed_palette.mix_hex_overrides = previous_mix_overrides
+        refresh_automatic_palette = (
+            mode != previous_mode
+            and self._automatic_palette_can_follow_mode()
+        )
+        if (
+            previous_mode == mode
+            and self.settings.palette.color_mode == mode
+            and all(
+                palette.color_mode == mode
+                for palette in self.settings.part_palettes.values()
+            )
+        ):
+            self.color_mode_var.set(mode)
+            self._refresh_color_mode_widgets()
+            return
+
+        self.settings.palette.color_mode = mode
+        for palette in self.settings.part_palettes.values():
+            palette.color_mode = mode
+        self.color_mode_var.set(mode)
+        self.part_recommendations.clear()
+        self._note_mix_input_change()
+        self._refresh_color_mode_widgets()
+        self._refresh_part_tree()
+        message = self.i18n.text(
+            "palette.mode_changed",
+            mode=self.i18n.text(
+                "palette.mode_flat"
+                if mode == COLOR_MODE_FLAT_FOUR
+                else "palette.mode_full"
+            ),
+        )
+        editor = getattr(self, "paint_editor", None)
+        reapply = getattr(editor, "reapply_shading_settings", None)
+        if callable(reapply):
+            reapply(self.settings, message=message)
+        self._schedule_preview(immediate=True)
+        self._draw_comparison_canvas()
+        self.status_var.set(message)
+        self._save_persistent_settings()
+        if refresh_automatic_palette:
+            # Full Spectrum chooses F1-F4 while considering its mixed states;
+            # Flat Four deliberately chooses only against the four physical
+            # colours.  Re-run the untouched new-model proposal so the target
+            # result is independent of which mode happened to be active when
+            # the file was opened.
+            self._recommend_all_parts(automatic=True)
 
     def _commit_active_palette(self) -> PaletteSettings:
         palette = self._palette_from_variables()
@@ -4096,6 +4562,25 @@ class MapperApp:
                 smoothing=bool(self.smoothing_var.get()),
                 smoothing_max_area_mm2=float(self.smoothing_area_var.get()),
                 smoothing_delta_e_slack=float(self.smoothing_slack_var.get()),
+                # The experimental illustration controls live in Manual
+                # Editing.  Preserve their parent-approved values when the
+                # compact main panel updates ordinary tone sliders.
+                illustration_mode=str(
+                    getattr(self.settings.tone, "illustration_mode", "off")
+                ),
+                illustration_strength=float(
+                    getattr(self.settings.tone, "illustration_strength", 0.78)
+                ),
+                illustration_bands=int(
+                    getattr(self.settings.tone, "illustration_bands", 4)
+                ),
+                illustration_light=str(
+                    getattr(
+                        self.settings.tone,
+                        "illustration_light",
+                        "front_left",
+                    )
+                ),
             )
             if tone.white_point <= tone.black_point + 0.005:
                 raise ValueError("白点は黒点より十分大きくしてください")
@@ -4125,6 +4610,15 @@ class MapperApp:
             else:
                 global_palette = self._copy_palette(self.settings.palette)
                 part_palettes[self.active_part_key] = edited_palette
+            color_mode_var = getattr(self, "color_mode_var", None)
+            color_mode = normalize_color_mode(
+                color_mode_var.get()
+                if color_mode_var is not None
+                else global_palette.color_mode
+            )
+            global_palette.color_mode = color_mode
+            for palette in part_palettes.values():
+                palette.color_mode = color_mode
             self.settings = AppSettings(
                 geometry=geometry,
                 tone=tone,
@@ -4248,13 +4742,65 @@ class MapperApp:
                 parent=self.root,
             )
             return
+        large_glb_reduced = False
+        import_plan: GltfImportPlan | None = None
+        if selected_source.suffix.lower() == ".glb":
+            try:
+                import_plan = inspect_gltf_asset(selected_source)
+            except GltfImportError as exc:
+                messagebox.showerror(
+                    self.i18n.text("dialog.large_glb.inspect_title"),
+                    str(exc),
+                    parent=self.root,
+                )
+                return
+            if import_plan.requires_reduced_mode:
+                if not import_plan.supports_reduced_mode:
+                    messagebox.showerror(
+                        self.i18n.text("dialog.large_glb.unsupported_title"),
+                        self.i18n.text(
+                            "dialog.large_glb.unsupported_message",
+                            faces=f"{import_plan.triangle_count:,}",
+                            vertices=(
+                                f"{import_plan.vertex_count_upper_bound:,}"
+                            ),
+                        ),
+                        parent=self.root,
+                    )
+                    return
+                if not messagebox.askyesno(
+                    self.i18n.text("dialog.large_glb.confirm_title"),
+                    self.i18n.text(
+                        "dialog.large_glb.confirm_message",
+                        faces=f"{import_plan.triangle_count:,}",
+                        target=f"{LARGE_GLTF_REDUCTION_TARGET_FACES:,}",
+                    ),
+                    parent=self.root,
+                ):
+                    return
+                large_glb_reduced = True
+        self._large_glb_import_plan = (
+            import_plan if large_glb_reduced else None
+        )
+        self._large_glb_import_path = (
+            selected_source if large_glb_reduced else None
+        )
         self._cancel_eyedropper()
         self._note_mix_input_change()
         restoring_project_obj = bool(self._project_obj_recovery_pending)
         if restoring_project_obj:
             # Keep the project-owned tone, global/per-part palettes, names and
-            # fingerprint-protected pending edits.  Geometry options must also
-            # stay untouched so the saved face topology can be reconstructed.
+            # fingerprint-protected pending edits.  A newly admitted large GLB
+            # cannot recreate an unsafe full-resolution topology, so apply the
+            # exact reduction ceiling described by the confirmation dialog.
+            if large_glb_reduced:
+                self.adjust_face_count_var.set(True)
+                self.target_faces_var.set(
+                    min(
+                        int(self.target_faces_var.get()),
+                        LARGE_GLTF_REDUCTION_TARGET_FACES,
+                    )
+                )
             self.active_part_key = None
             self._auto_recommend_after_geometry = False
             self.source_path = selected_source
@@ -4286,6 +4832,7 @@ class MapperApp:
         self.manual_joint_record = None
         self.pending_manual_joint_record = None
         self.part_recommendations.clear()
+        self._clear_automatic_palette_provenance()
         self._clear_mix_optimization_undo()
         self.part_target_var.set(self.i18n.text("parts.common"))
         self.part_name_var.set("")
@@ -4301,7 +4848,16 @@ class MapperApp:
         # A newly selected source starts at full clean resolution.  Projects
         # loaded through _load_project_path keep their saved legacy/default
         # face-adjustment setting instead.
-        self.adjust_face_count_var.set(False)
+        if large_glb_reduced:
+            self.adjust_face_count_var.set(True)
+            self.target_faces_var.set(
+                min(
+                    int(self.target_faces_var.get()),
+                    LARGE_GLTF_REDUCTION_TARGET_FACES,
+                )
+            )
+        else:
+            self.adjust_face_count_var.set(False)
         self._manual_high_face_warning_key = None
         self.source_path = selected_source
         self.obj_name_var.set(self._source_display_text())
@@ -4763,12 +5319,32 @@ class MapperApp:
                 return False
 
         def work():
+            admitted_large_plan = getattr(
+                self, "_large_glb_import_plan", None
+            )
+            admitted_large_path = getattr(
+                self, "_large_glb_import_path", None
+            )
+            large_reduction_admitted = bool(
+                isinstance(admitted_large_plan, GltfImportPlan)
+                and admitted_large_path == self.source_path
+                and self.source_path.suffix.lower() == ".glb"
+                and settings.geometry.adjust_face_count
+                and settings.geometry.target_faces
+                <= LARGE_GLTF_REDUCTION_TARGET_FACES
+            )
             asset = (
                 self.asset
                 if reuse_asset and self.asset is not None
                 else load_vertex_color_model(
                     self.source_path,
                     self._thread_progress,
+                    allow_large_reduced_source=large_reduction_admitted,
+                    expected_gltf_plan=(
+                        admitted_large_plan
+                        if large_reduction_admitted
+                        else None
+                    ),
                 )
             )
             prepared = prepare_geometry(asset, settings.geometry, self._thread_progress)
@@ -5053,6 +5629,18 @@ class MapperApp:
             smoothing=bool(tone.smoothing),
             smoothing_max_area_mm2=float(tone.smoothing_max_area_mm2),
             smoothing_delta_e_slack=float(tone.smoothing_delta_e_slack),
+            illustration_mode=str(
+                getattr(tone, "illustration_mode", "off")
+            ),
+            illustration_strength=float(
+                getattr(tone, "illustration_strength", 0.78)
+            ),
+            illustration_bands=int(
+                getattr(tone, "illustration_bands", 4)
+            ),
+            illustration_light=str(
+                getattr(tone, "illustration_light", "front_left")
+            ),
         )
 
     def _sync_tone_variables(self, tone: ToneSettings) -> ToneSettings:
@@ -5384,6 +5972,7 @@ class MapperApp:
         self._refresh_surface_shell_widgets()
         self._refresh_developer_feature_visibility()
         self._refresh_color_depth_widgets()
+        self._refresh_color_mode_widgets()
 
         def runner() -> None:
             try:
@@ -5430,6 +6019,7 @@ class MapperApp:
                     self._refresh_material_mode_buttons(
                         self._active_palette_for_controls().material
                     )
+                    self._refresh_color_mode_widgets()
                     try:
                         done(value)
                     except Exception as exc:
@@ -5470,6 +6060,7 @@ class MapperApp:
                     self._refresh_material_mode_buttons(
                         self._active_palette_for_controls().material
                     )
+                    self._refresh_color_mode_widgets()
                     self.status_var.set(f"エラー: {exc}")
                     handled = False
                     if callable(on_error):
@@ -5519,12 +6110,13 @@ class MapperApp:
             self.poll_after_id = self.root.after(80, self._poll_queue)
 
     def _on_physical_palette_changed(self) -> None:
-        """Stage F1-F4 while preserving the last automatic state routing."""
+        """Refresh Flat Four immediately; stage Full while preserving its routing."""
 
         if self._loading_palette_variables:
             return
+        palette: PaletteSettings | None = None
         try:
-            self._commit_active_palette()
+            palette = self._commit_active_palette()
             valid = True
             if self.active_part_key is not None:
                 self.part_recommendations.pop(self.active_part_key, None)
@@ -5538,7 +6130,17 @@ class MapperApp:
         self._refresh_part_tree()
         if self.sample_rgb is not None:
             self._update_recipe_candidates()
-        if valid:
+        if valid and palette is not None:
+            if palette.color_mode == COLOR_MODE_FLAT_FOUR:
+                # Flat Four has no hidden mixed routing to stage.  Commit the
+                # edited spool colour, reassign with F1-F4, and refresh both the
+                # main preview and any open manual editor immediately.
+                self._assign_active_palette(palette)
+                self._refresh_flat_palette_after_change(
+                    self.active_part_key,
+                    palette,
+                )
+                return
             self._mark_physical_palette_pending(self.active_part_key)
             self.status_var.set(
                 self.i18n.text("palette.apply_physical_pending")
@@ -6160,20 +6762,51 @@ class MapperApp:
         black_free_black_slot: int = 0,
         black_free_red_slot: int = 2,
         black_free_brown_slot: int = 3,
+        color_mode: str = COLOR_MODE_FULL_SPECTRUM,
+        existing_palette: PaletteSettings | None = None,
     ) -> PaletteSettings:
         candidates = tuple(getattr(recommendation, "candidates", ()))
         refs = [FilamentSnapshotRef.from_product(item) for item in candidates[:4]]
         refs.extend([None] * (4 - len(refs)))
+        flat_mode = (
+            color_mode == COLOR_MODE_FLAT_FOUR
+            and existing_palette is not None
+        )
         return PaletteSettings(
             material=material,
-            palette_state_count=palette_state_count,
+            palette_state_count=(
+                existing_palette.palette_state_count
+                if flat_mode
+                else palette_state_count
+            ),
+            color_mode=color_mode,
             physical_hex=list(recommendation.physical_hex),
-            enabled_states=[True] * PALETTE_STATE_COUNT,
-            mix_hex_overrides=[None] * 6,
-            mix_ratios_b=[recommendation.primary_ratio_b_percent] * 6,
-            secondary_mix_ratios_b=[
-                recommendation.secondary_ratio_b_percent
-            ] * 6,
+            enabled_states=(
+                [True] * 4 + list(existing_palette.enabled_states[4:])
+                if flat_mode
+                else [True] * PALETTE_STATE_COUNT
+            ),
+            mix_hex_overrides=(
+                list(existing_palette.mix_hex_overrides)
+                if flat_mode
+                else [None] * 6
+            ),
+            mix_ratios_b=(
+                list(existing_palette.mix_ratios_b)
+                if flat_mode
+                else [recommendation.primary_ratio_b_percent] * 6
+            ),
+            secondary_mix_ratios_b=(
+                list(existing_palette.secondary_mix_ratios_b)
+                if flat_mode
+                else [recommendation.secondary_ratio_b_percent] * 6
+            ),
+            output_mix_ratios_b=(
+                None
+                if not flat_mode or existing_palette.output_mix_ratios_b is None
+                else list(existing_palette.output_mix_ratios_b)
+            ),
+            assignment_palette_hex=None,
             surface_shell_enabled=False,
             black_free_gradient_enabled=black_free_gradient_enabled,
             black_free_black_slot=black_free_black_slot,
@@ -6228,10 +6861,12 @@ class MapperApp:
             )
 
         def work():
-            tone_vertices = apply_tone(
-                prepared.final.vertex_colors, settings.tone
+            face_rgb = apply_tone_faces(
+                prepared.final.vertex_colors,
+                settings.tone,
+                vertices_unit=getattr(prepared.final, "vertices_unit", None),
+                faces=prepared.final.faces,
             )
-            face_rgb = tone_vertices[prepared.final.faces].mean(axis=1)
             face_part_ids = np.asarray(prepared.final.face_part_ids)
             results: dict[str, FilamentRecommendation] = {}
             catalogs: dict[str, tuple[FilamentCandidate, ...]] = {}
@@ -6346,13 +6981,65 @@ class MapperApp:
                         part_reference_rgb = part_reference.rgb_samples
                         part_reference_confidence = part_reference.confidence
                         used_reference_part_ids.add(part_id)
+                if key == "__global__":
+                    recommendation_rgb = face_rgb
+                    recommendation_areas = prepared.final.areas_unit
+                    recommendation_faces = prepared.final.faces
+                    recommendation_part_ids = face_part_ids
+                else:
+                    recommendation_rgb = face_rgb[selected]
+                    recommendation_areas = prepared.final.areas_unit[selected]
+                    recommendation_faces = prepared.final.faces[selected]
+                    recommendation_part_ids = face_part_ids[selected]
+                required_physical_rgb = None
+                final_neighbors = getattr(prepared.final, "neighbors", None)
+                final_vertices = getattr(
+                    prepared.final, "vertices_unit", None
+                )
+                if (
+                    local_palette.color_mode == COLOR_MODE_FLAT_FOUR
+                    and final_vertices is not None
+                ):
+                    recommendation_neighbors = _local_part_neighbors(
+                        final_neighbors,
+                        selected,
+                        len(prepared.final.faces),
+                    )
+                    recommendation_rgb, _absorbed_faces = (
+                        prepare_flat_four_recommendation_samples(
+                            recommendation_rgb,
+                            recommendation_areas,
+                            recommendation_neighbors,
+                            final_vertices,
+                            recommendation_faces,
+                            source_face_rgb=face_rgb_from_vertex_colors(
+                                prepared.final.vertex_colors,
+                                recommendation_faces,
+                            ),
+                            recover_source_chroma=(
+                                _flat_four_raw_chroma_recovery_enabled(
+                                    settings.tone
+                                )
+                            ),
+                            face_group_ids=recommendation_part_ids,
+                        )
+                    )
+                    required_physical_rgb = flat_four_required_white_rgb(
+                        recommendation_rgb,
+                        recommendation_areas,
+                    )
                 results[key] = recommend_basic_filaments(
-                    face_rgb[selected],
-                    prepared.final.areas_unit[selected],
+                    recommendation_rgb,
+                    recommendation_areas,
                     reference_rgb=part_reference_rgb,
                     reference_confidence=part_reference_confidence,
                     catalog=catalog_for(local_palette.material),
                     palette_state_count=local_palette.palette_state_count,
+                    include_mixed_states=(
+                        local_palette.color_mode
+                        != COLOR_MODE_FLAT_FOUR
+                    ),
+                    required_physical_rgb=required_physical_rgb,
                 )
             return (
                 results,
@@ -6414,6 +7101,8 @@ class MapperApp:
                     black_free_brown_slot=int(
                         getattr(current_palette, "black_free_brown_slot", 3)
                     ),
+                    color_mode=current_palette.color_mode,
+                    existing_palette=current_palette,
                 )
                 if key == "__global__":
                     self.settings.palette = palette
@@ -6422,6 +7111,13 @@ class MapperApp:
                     self.settings.part_palettes[key] = palette
                     self.part_recommendations[key] = recommendation
                     self._clear_physical_palette_pending(key)
+            if automatic:
+                self._record_automatic_palette_provenance(
+                    tuple(
+                        None if key == "__global__" else key
+                        for key in results
+                    )
+                )
             if self.active_part_key is None:
                 active_palette = self.settings.palette
                 active_recommendation = results.get("__global__")
@@ -6430,8 +7126,9 @@ class MapperApp:
                     self.settings, self.active_part_key
                 )
                 active_recommendation = results.get(self.active_part_key)
+            flat_mode = active_palette.color_mode == COLOR_MODE_FLAT_FOUR
             self._load_palette_variables(active_palette)
-            self._refresh_palette_widgets(schedule_preview=True)
+            self._refresh_palette_widgets(schedule_preview=not flat_mode)
             self._refresh_part_tree()
             chosen = (
                 active_recommendation
@@ -6493,14 +7190,21 @@ class MapperApp:
                 f"{material_metric}\n"
                 f"{reference_note}"
             )
-            self.status_var.set(
+            result_status = (
                 (
                     f"{len(results) - 1}パーツと全体共通の提案を適用しました"
                     if "__global__" in results and len(results) > 1
                     else f"{len(results)}件の基本フィラメント提案を適用しました"
                 )
-                + ("（モデル読込時の自動判定）" if automatic else "")
+                + ("（選択モードに合わせた自動判定）" if automatic else "")
             )
+            self.status_var.set(result_status)
+            if flat_mode:
+                editor = getattr(self, "paint_editor", None)
+                reapply = getattr(editor, "reapply_shading_settings", None)
+                if callable(reapply):
+                    reapply(self.settings, message=result_status)
+                self._schedule_preview(immediate=True)
             if (
                 chosen_material in {MATERIAL_ABS, MATERIAL_PETG}
                 and float(chosen.mean_delta_e76)
@@ -6810,11 +7514,62 @@ class MapperApp:
                 if part_reference is not None and part_reference.sample_count:
                     part_reference_rgb = part_reference.rgb_samples
                     part_reference_confidence = part_reference.confidence
-            tone_vertices = apply_tone(
+            all_face_rgb = apply_tone_faces(
                 prepared.final.vertex_colors,
                 settings.tone,
+                vertices_unit=getattr(prepared.final, "vertices_unit", None),
+                faces=prepared.final.faces,
             )
-            face_rgb = tone_vertices[prepared.final.faces[selected_faces]].mean(axis=1)
+            face_rgb = all_face_rgb[selected_faces]
+            face_areas = prepared.final.areas_unit[selected_faces]
+            final_neighbors = getattr(prepared.final, "neighbors", None)
+            final_vertices = getattr(prepared.final, "vertices_unit", None)
+            required_physical_rgb = None
+            if (
+                active_palette.color_mode == COLOR_MODE_FLAT_FOUR
+                and final_vertices is not None
+            ):
+                selected_triangles = prepared.final.faces[selected_faces]
+                final_part_ids = getattr(
+                    prepared.final,
+                    "face_part_ids",
+                    None,
+                )
+                selected_part_ids = (
+                    np.asarray(final_part_ids)[selected_faces]
+                    if final_part_ids is not None
+                    and np.asarray(final_part_ids).shape
+                    == (len(prepared.final.faces),)
+                    else None
+                )
+                recommendation_neighbors = _local_part_neighbors(
+                    final_neighbors,
+                    selected_faces,
+                    len(prepared.final.faces),
+                )
+                face_rgb, _absorbed_faces = (
+                    prepare_flat_four_recommendation_samples(
+                        face_rgb,
+                        face_areas,
+                        recommendation_neighbors,
+                        final_vertices,
+                        selected_triangles,
+                        source_face_rgb=face_rgb_from_vertex_colors(
+                            prepared.final.vertex_colors,
+                            selected_triangles,
+                        ),
+                        recover_source_chroma=(
+                            _flat_four_raw_chroma_recovery_enabled(
+                                settings.tone
+                            )
+                        ),
+                        face_group_ids=selected_part_ids,
+                    )
+                )
+                required_physical_rgb = flat_four_required_white_rgb(
+                    face_rgb,
+                    face_areas,
+                )
             pink_mask = None
             if settings.tone.pink_protection:
                 pink_score = face_rgb[:, 0] - 0.5 * (
@@ -6823,7 +7578,7 @@ class MapperApp:
                 pink_mask = pink_score > settings.tone.pink_threshold
             return recommend_from_owned_filaments(
                 face_rgb,
-                prepared.final.areas_unit[selected_faces],
+                face_areas,
                 owned_products=products,
                 material=active_palette.material,
                 reference_rgb=part_reference_rgb,
@@ -6833,6 +7588,10 @@ class MapperApp:
                 secondary_ratios_b=active_palette.secondary_mix_ratios_b,
                 enabled_states=active_palette.enabled_states,
                 pink_protection_mask=pink_mask,
+                include_mixed_states=(
+                    active_palette.color_mode != COLOR_MODE_FLAT_FOUR
+                ),
+                required_physical_rgb=required_physical_rgb,
             )
 
         def current_inventory_revision() -> tuple[tuple[str, str], ...]:
@@ -6869,23 +7628,54 @@ class MapperApp:
             # One atomic palette replacement.  Variable traces are suppressed
             # while all four physical colours and all twelve ratios are loaded,
             # so no half-updated preview can be committed.
+            flat_mode = active_palette.color_mode == COLOR_MODE_FLAT_FOUR
             palette = PaletteSettings(
                 material=active_palette.material,
-                palette_state_count=int(result.palette_state_count),
+                palette_state_count=(
+                    active_palette.palette_state_count
+                    if flat_mode
+                    else int(result.palette_state_count)
+                ),
+                color_mode=active_palette.color_mode,
                 physical_hex=list(result.physical_hex),
-                enabled_states=list(active_palette.enabled_states),
-                mix_hex_overrides=[None] * 6,
-                mix_ratios_b=list(result.mix_ratios_b),
-                secondary_mix_ratios_b=list(result.secondary_mix_ratios_b),
+                enabled_states=(
+                    [True] * 4 + list(active_palette.enabled_states[4:])
+                    if flat_mode
+                    else list(active_palette.enabled_states)
+                ),
+                mix_hex_overrides=(
+                    list(active_palette.mix_hex_overrides)
+                    if flat_mode
+                    else [None] * 6
+                ),
+                mix_ratios_b=(
+                    list(active_palette.mix_ratios_b)
+                    if flat_mode
+                    else list(result.mix_ratios_b)
+                ),
+                secondary_mix_ratios_b=(
+                    list(active_palette.secondary_mix_ratios_b)
+                    if flat_mode
+                    else list(result.secondary_mix_ratios_b)
+                ),
                 output_mix_ratios_b=(
-                    None
-                    if active_palette.output_mix_ratios_b is None
-                    else black_output_ratio_preset(
-                        self._infer_black_output_slot(active_palette),
-                        result.mix_ratios_b,
-                        result.secondary_mix_ratios_b,
+                    (
+                        None
+                        if active_palette.output_mix_ratios_b is None
+                        else list(active_palette.output_mix_ratios_b)
+                    )
+                    if flat_mode
+                    else (
+                        None
+                        if active_palette.output_mix_ratios_b is None
+                        else black_output_ratio_preset(
+                            self._infer_black_output_slot(active_palette),
+                            result.mix_ratios_b,
+                            result.secondary_mix_ratios_b,
+                        )
                     )
                 ),
+                assignment_palette_hex=None,
                 surface_shell_enabled=False,
                 black_free_gradient_enabled=bool(
                     getattr(active_palette, "black_free_gradient_enabled", False)
@@ -6911,11 +7701,13 @@ class MapperApp:
                 self.part_recommendations.pop(target_key, None)
             self._clear_physical_palette_pending(target_key)
             self._load_palette_variables(palette)
-            self._commit_active_palette()
+            if not flat_mode:
+                self._commit_active_palette()
             self._note_mix_input_change()
             self._refresh_palette_widgets(schedule_preview=False)
             self._refresh_part_tree()
-            self._schedule_preview(immediate=True)
+            if not self._refresh_flat_palette_after_change(target_key, palette):
+                self._schedule_preview(immediate=True)
 
             product_names = "\n".join(
                 (
@@ -7006,6 +7798,9 @@ class MapperApp:
 
     def _reset_tone(self) -> None:
         tone = ToneSettings()
+        # The 2D-colour style is edited in the Manual Editing shading ribbon,
+        # so reset the saved snapshot itself in addition to visible sliders.
+        self.settings.tone = tone
         self.black_point_var.set(tone.black_point)
         self.white_point_var.set(tone.white_point)
         self.gamma_var.set(tone.gamma)
@@ -7077,9 +7872,13 @@ class MapperApp:
                 settings.palette,
                 settings.part_palettes,
             )
-            face_rgb = colors.tone_vertex_rgb[
-                prepared.final.faces[selected_faces]
-            ].mean(axis=1)
+            stored_tone_faces = getattr(colors, "tone_face_rgb", None)
+            if stored_tone_faces is None:
+                face_rgb = colors.tone_vertex_rgb[
+                    prepared.final.faces[selected_faces]
+                ].mean(axis=1)
+            else:
+                face_rgb = np.asarray(stored_tone_faces)[selected_faces]
             pink_mask = None
             if settings.tone.pink_protection:
                 pink_score = face_rgb[:, 0] - 0.5 * (
@@ -7279,10 +8078,18 @@ class MapperApp:
         panel_height = max(240, height - margin * 2 - title_height)
         canvas.delete("all")
         canvas.create_rectangle(0, 0, width, height, fill="#090C11", outline="")
+        try:
+            color_mode = normalize_color_mode(self.color_mode_var.get())
+        except (AttributeError, ValueError, tk.TclError):
+            color_mode = COLOR_MODE_FULL_SPECTRUM
         labels = (
             self.i18n.text("preview.reference"),
             self.i18n.text("preview.source"),
-            self.i18n.text("preview.target"),
+            self.i18n.text(
+                "preview.target_flat"
+                if color_mode == COLOR_MODE_FLAT_FOUR
+                else "preview.target"
+            ),
         )
         sources: list[Image.Image] = []
         sources.append(
@@ -7480,6 +8287,18 @@ class MapperApp:
         return self.i18n.text("recipe.difficult")
 
     def _apply_selected_recipe(self) -> None:
+        try:
+            color_mode = normalize_color_mode(self.color_mode_var.get())
+        except (AttributeError, ValueError, tk.TclError):
+            color_mode = COLOR_MODE_FULL_SPECTRUM
+        if color_mode == COLOR_MODE_FLAT_FOUR:
+            self._set_recipe_panel_visible(False)
+            messagebox.showinfo(
+                self.i18n.text("palette.mode_flat"),
+                self.i18n.text("palette.mode_flat_help"),
+                parent=self.root,
+            )
+            return
         selection = self.recipe_tree.selection()
         if not selection or not self.recipes:
             messagebox.showinfo(
@@ -7661,8 +8480,11 @@ class MapperApp:
         ignored_features: tuple[str, ...],
     ) -> None:
         self.settings = settings
+        self._large_glb_import_plan = None
+        self._large_glb_import_path = None
         self._clear_all_physical_palette_pending()
         self._auto_recommend_after_geometry = False
+        self._clear_automatic_palette_provenance()
         self._project_obj_recovery_pending = False
         self.part_recommendations.clear()
         self._clear_mix_optimization_undo()
@@ -7764,9 +8586,19 @@ class MapperApp:
         )
         self._schedule_preview(immediate=True)
 
-    def _load_project_path(self, path: Path) -> None:
+    def _load_project_path(
+        self,
+        path: Path,
+        *,
+        allow_large_snapshot: bool = False,
+    ) -> None:
         if self.paint_editor is not None:
-            self.paint_editor.close(after_close=lambda: self._load_project_path(path))
+            self.paint_editor.close(
+                after_close=lambda: self._load_project_path(
+                    path,
+                    allow_large_snapshot=allow_large_snapshot,
+                )
+            )
             return
         if self.busy:
             messagebox.showinfo(
@@ -7796,10 +8628,44 @@ class MapperApp:
                     reference_image = ImageOps.exif_transpose(opened).convert("RGBA")
 
             if result.prepared_geometry_snapshot is not None and result.source_ready:
+                snapshot_workload = result.inspect_prepared_geometry_workload()
+                large_exact_snapshot = bool(
+                    snapshot_workload.asset_face_count
+                    > GLTF_NORMAL_SOURCE_FACE_LIMIT
+                )
+                unsupported_large_snapshot = bool(
+                    snapshot_workload.asset_vertex_count
+                    > GLTF_SOURCE_VERTEX_LIMIT
+                    or snapshot_workload.asset_face_count
+                    > GLTF_REDUCED_SOURCE_FACE_LIMIT
+                    or (
+                        large_exact_snapshot
+                        and snapshot_workload.final_face_count
+                        > LARGE_GLTF_REDUCTION_TARGET_FACES
+                    )
+                )
+                if unsupported_large_snapshot:
+                    return (
+                        "exact_large_unsupported",
+                        result,
+                        snapshot_workload,
+                    )
+                if large_exact_snapshot and not allow_large_snapshot:
+                    return (
+                        "exact_large_confirmation",
+                        result,
+                        snapshot_workload,
+                    )
                 expected_key = tuple(_geometry_key(loaded_settings.geometry))
                 snapshot = result.load_exact_prepared_geometry(
                     expected_geometry_key=expected_key
                 )
+                if large_exact_snapshot:
+                    loaded_settings.geometry.adjust_face_count = True
+                    loaded_settings.geometry.target_faces = min(
+                        int(loaded_settings.geometry.target_faces),
+                        LARGE_GLTF_REDUCTION_TARGET_FACES,
+                    )
                 current_fingerprint = mesh_fingerprint(snapshot.prepared.final)
                 result.verify_prepared_mesh_fingerprint(current_fingerprint)
                 manual_payload = data.get("manual_paint")
@@ -7842,6 +8708,37 @@ class MapperApp:
         def done(validated_load) -> None:
             mode = validated_load[0]
             result = validated_load[1]
+            if mode in {
+                "exact_large_confirmation",
+                "exact_large_unsupported",
+            }:
+                snapshot_workload = validated_load[2]
+                if mode == "exact_large_unsupported":
+                    messagebox.showerror(
+                        self.i18n.text("dialog.large_model.unsupported_title"),
+                        self.i18n.text(
+                            "dialog.large_model.snapshot_unsupported_message",
+                            faces=f"{snapshot_workload.asset_face_count:,}",
+                            vertices=f"{snapshot_workload.asset_vertex_count:,}",
+                            final_faces=f"{snapshot_workload.final_face_count:,}",
+                        ),
+                        parent=self.root,
+                    )
+                    return
+                if messagebox.askyesno(
+                    self.i18n.text("dialog.large_model.confirm_title"),
+                    self.i18n.text(
+                        "dialog.large_model.snapshot_confirm_message",
+                        faces=f"{snapshot_workload.asset_face_count:,}",
+                        target=f"{LARGE_GLTF_REDUCTION_TARGET_FACES:,}",
+                    ),
+                    parent=self.root,
+                ):
+                    self._load_project_path(
+                        path,
+                        allow_large_snapshot=True,
+                    )
+                return
             data = validated_load[2]
             loaded_settings = validated_load[3]
             reference_path = validated_load[4]
@@ -7894,12 +8791,66 @@ class MapperApp:
                     )
                     selected_source = None
 
+            large_project_source = False
+            project_import_plan: GltfImportPlan | None = None
+            if (
+                selected_source is not None
+                and selected_source.suffix.lower() == ".glb"
+            ):
+                try:
+                    project_import_plan = inspect_gltf_asset(selected_source)
+                except GltfImportError as exc:
+                    messagebox.showerror(
+                        self.i18n.text("dialog.large_glb.inspect_title"),
+                        str(exc),
+                        parent=self.root,
+                    )
+                    return
+                if project_import_plan.requires_reduced_mode:
+                    if not project_import_plan.supports_reduced_mode:
+                        messagebox.showerror(
+                            self.i18n.text(
+                                "dialog.large_glb.unsupported_title"
+                            ),
+                            self.i18n.text(
+                                "dialog.large_glb.unsupported_message",
+                                faces=f"{project_import_plan.triangle_count:,}",
+                                vertices=(
+                                    f"{project_import_plan.vertex_count_upper_bound:,}"
+                                ),
+                            ),
+                            parent=self.root,
+                        )
+                        return
+                    if not messagebox.askyesno(
+                        self.i18n.text("dialog.large_glb.confirm_title"),
+                        self.i18n.text(
+                            "dialog.large_glb.confirm_message",
+                            faces=f"{project_import_plan.triangle_count:,}",
+                            target=f"{LARGE_GLTF_REDUCTION_TARGET_FACES:,}",
+                        ),
+                        parent=self.root,
+                    ):
+                        return
+                    large_project_source = True
+            if large_project_source:
+                loaded_settings.geometry.adjust_face_count = True
+                loaded_settings.geometry.target_faces = min(
+                    int(loaded_settings.geometry.target_faces),
+                    LARGE_GLTF_REDUCTION_TARGET_FACES,
+                )
             self._apply_project_payload(
                 data,
                 loaded_settings,
                 reference_path=reference_path,
                 reference_image=reference_image,
                 ignored_features=result.ignored_features,
+            )
+            self._large_glb_import_plan = (
+                project_import_plan if large_project_source else None
+            )
+            self._large_glb_import_path = (
+                selected_source if large_project_source else None
             )
             if selected_source is not None:
                 self.source_path = selected_source
@@ -8012,7 +8963,7 @@ class MapperApp:
                     folder=folder,
                 )
             )
-            open_folder = messagebox.askyesno(
+            should_open_folder = messagebox.askyesno(
                 self.i18n.text("dialog.calibration_done.title"),
                 self.i18n.text(
                     "dialog.calibration_done.message",
@@ -8021,11 +8972,11 @@ class MapperApp:
                 ),
                 parent=self.root,
             )
-            if not open_folder:
+            if not should_open_folder:
                 return
             try:
-                os.startfile(result.folder)  # type: ignore[attr-defined]
-            except (AttributeError, OSError) as exc:
+                open_folder(result.folder)
+            except OSError as exc:
                 messagebox.showerror(
                     self.i18n.text("dialog.calibration_folder_error.title"),
                     self.i18n.text(
@@ -8170,7 +9121,7 @@ class MapperApp:
                 collapsed = sum(
                     len(group) for group in result.collapsed_target_groups
                 )
-                open_folder = messagebox.askyesno(
+                should_open_folder = messagebox.askyesno(
                     self.i18n.text("color_depth.done_title"),
                     self.i18n.text(
                         "color_depth.done_message",
@@ -8181,10 +9132,10 @@ class MapperApp:
                     ),
                     parent=self.root,
                 )
-                if open_folder:
+                if should_open_folder:
                     try:
-                        os.startfile(result.model_path.parent)  # type: ignore[attr-defined]
-                    except (AttributeError, OSError):
+                        open_folder(result.model_path.parent)
+                    except OSError:
                         pass
 
             def convert_error(exc: Exception, _details: str) -> bool:
@@ -8312,7 +9263,7 @@ class MapperApp:
             collapsed = sum(
                 len(group) for group in result.collapsed_target_groups
             )
-            open_folder = messagebox.askyesno(
+            should_open_folder = messagebox.askyesno(
                 self.i18n.text("color_depth.done_title"),
                 self.i18n.text(
                     "color_depth.done_message",
@@ -8323,10 +9274,10 @@ class MapperApp:
                 ),
                 parent=self.root,
             )
-            if open_folder:
+            if should_open_folder:
                 try:
-                    os.startfile(result.model_path.parent)  # type: ignore[attr-defined]
-                except (AttributeError, OSError):
+                    open_folder(result.model_path.parent)
+                except OSError:
                     pass
 
         def on_error(exc: Exception, _details: str) -> bool:
@@ -8412,7 +9363,7 @@ class MapperApp:
 
         def done(result) -> None:
             self.status_var.set(str(result.model_path))
-            open_folder = messagebox.askyesno(
+            should_open_folder = messagebox.askyesno(
                 self.i18n.text("radial.done_title"),
                 self.i18n.text(
                     "radial.done_message",
@@ -8422,10 +9373,10 @@ class MapperApp:
                 ),
                 parent=self.root,
             )
-            if open_folder:
+            if should_open_folder:
                 try:
-                    os.startfile(result.model_path.parent)  # type: ignore[attr-defined]
-                except (AttributeError, OSError):
+                    open_folder(result.model_path.parent)
+                except OSError:
                     pass
 
         def on_error(exc: Exception, _details: str) -> bool:
@@ -8656,7 +9607,7 @@ class MapperApp:
                     "パーツ別4色は1回で印刷できません",
                     f"現在は{len(grouping.groups)}種類の基本フィラメント構成があります。\n\n"
                     "Snapmaker U1へ同時装填できる物理フィラメントは4本なので、"
-                    "異なる構成を1つのFull Spectrumジョブへ正しく記録できません。\n\n"
+                    "異なる構成を1つの4色印刷ジョブへ正しく記録できません。\n\n"
                     "モデルの印刷パーツ構造と個別設定メタデータは保持したまま、"
                     "印刷色だけ［全体共通］の4色へ統合して出力しますか？\n"
                     + part_export_note
@@ -8682,7 +9633,11 @@ class MapperApp:
         value = filedialog.asksaveasfilename(
             parent=self.root,
             title=self.i18n.text("filedialog.save_3mf"),
-            initialfile=f"{self.source_path.stem}_FullSpectrum.3mf",
+            initialfile=(
+                f"{self.source_path.stem}_Flat4.3mf"
+                if settings.palette.color_mode == COLOR_MODE_FLAT_FOUR
+                else f"{self.source_path.stem}_FullSpectrum.3mf"
+            ),
             defaultextension=".3mf",
             filetypes=(("3MF", "*.3mf"),),
         )
@@ -8815,23 +9770,20 @@ class MapperApp:
                     if result.individual_only
                     else result.model_path.parent
                 )
-                os.startfile(output_folder)  # type: ignore[attr-defined]
+                open_folder(output_folder)
 
         self._submit_main("3MFを書き出しています", work, done)
 
     def _launch_orca(self) -> None:
-        candidates = [
-            Path(os.environ.get("ProgramFiles", r"C:\Program Files")) / "Snapmaker_Orca" / "snapmaker-orca.exe",
-            Path(os.environ.get("ProgramFiles", r"C:\Program Files")) / "Snapmaker Orca" / "Snapmaker Orca.exe",
-            Path(os.environ.get("LOCALAPPDATA", "")) / "Programs" / "Snapmaker Orca" / "Snapmaker Orca.exe",
-            Path(os.environ.get("LOCALAPPDATA", "")) / "Snapmaker Orca" / "Snapmaker Orca.exe",
-        ]
-        for name in ("Snapmaker Orca.exe", "snapmaker-orca.exe", "Snapmaker_Orca.exe"):
-            found = shutil.which(name)
-            if found:
-                candidates.insert(0, Path(found))
-        executable = next((path for path in candidates if path.is_file()), None)
+        executable = find_snapmaker_orca()
         if executable is None:
+            if sys.platform == "darwin":
+                messagebox.showinfo(
+                    self.i18n.text("dialog.orca_macos_manual.title"),
+                    self.i18n.text("dialog.orca_macos_manual.message"),
+                    parent=self.root,
+                )
+                return
             value = filedialog.askopenfilename(
                 parent=self.root,
                 title=self.i18n.text("filedialog.select_orca"),
@@ -8843,7 +9795,7 @@ class MapperApp:
                 return
             executable = Path(value)
         try:
-            subprocess.Popen([str(executable)], cwd=str(executable.parent))
+            launch_snapmaker_orca(executable)
             self.status_var.set("Snapmaker Orcaを起動しました。3MFはプロジェクトとして開いてください")
         except OSError as exc:
             messagebox.showerror(

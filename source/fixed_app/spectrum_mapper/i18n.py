@@ -6,6 +6,8 @@ import os
 from pathlib import Path
 from typing import Any, Iterable
 
+from .platform_runtime import application_data_directory
+
 
 DEFAULT_LANGUAGE = "ja"
 SUPPORTED_LANGUAGES = ("ja", "en")
@@ -288,6 +290,27 @@ CATALOG: dict[str, dict[str, str]] = {
         "en": "Click the reference image to show mix recipes",
     },
     "palette.base_group": {"ja": "基本フィラメント4色", "en": "Four Base Filaments"},
+    "palette.color_mode": {"ja": "カラーモード", "en": "Color Mode"},
+    "palette.mode_full": {
+        "ja": "Full Spectrum（混色）",
+        "en": "Full Spectrum (Mixed)",
+    },
+    "palette.mode_flat": {
+        "ja": "フラットカラー（4色）",
+        "en": "Flat 4 Colors",
+    },
+    "palette.mode_full_help": {
+        "ja": "F1〜F4と混色で、なめらかな色変化を再現",
+        "en": "Use F1-F4 and mixed states for smooth color changes",
+    },
+    "palette.mode_flat_help": {
+        "ja": "F1〜F4だけで、広い面をシンプルに塗り分け",
+        "en": "Use only F1-F4 for simple, broad color regions",
+    },
+    "palette.mode_changed": {
+        "ja": "カラーモードを{mode}へ変更しました。自動提案もこのモードで計算されます",
+        "en": "Changed color mode to {mode}. Automatic suggestions now use this mode",
+    },
     "palette.material_pla": {"ja": "PLAで混色", "en": "Mix with PLA"},
     "palette.material_abs": {"ja": "ABSで混色 β", "en": "Mix with ABS β"},
     "palette.material_petg": {"ja": "PETGで混色 β", "en": "Mix with PETG β"},
@@ -452,6 +475,10 @@ CATALOG: dict[str, dict[str, str]] = {
     "palette.apply_physical_done": {
         "ja": "{target}の色番号を保ったまま、現在のF1〜F4を変換プレビューと3MFへ反映しました",
         "en": "Applied the current F1-F4 to the {target} preview and 3MF palette without changing its color IDs",
+    },
+    "palette.flat_physical_applied": {
+        "ja": "{target}のF1〜F4を更新し、フラット4色で再割当しました",
+        "en": "Updated the {target} F1-F4 colors and reassigned the Flat Four preview",
     },
     "palette.apply_physical_required_title": {
         "ja": "基本4色がまだ反映されていません",
@@ -1169,6 +1196,24 @@ CATALOG: dict[str, dict[str, str]] = {
     "tone.smoothing": {"ja": "微小な色飛びを近傍へ統合", "en": "Merge tiny color islands into neighbors"},
     "tone.smoothing_area": {"ja": "統合面積 mm²", "en": "Merge Area mm²"},
     "tone.delta_e": {"ja": "許容 ΔE", "en": "Allowed ΔE"},
+    "tone.illustration_off": {"ja": "オフ", "en": "Off"},
+    "tone.illustration_cel": {"ja": "セル彩色", "en": "Cel Colour"},
+    "tone.illustration_noir": {
+        "ja": "陰影モノクロ",
+        "en": "Shaded Monochrome",
+    },
+    "tone.illustration_strength": {
+        "ja": "陰影強度",
+        "en": "Shade Strength",
+    },
+    "tone.illustration_bands": {"ja": "階調", "en": "Bands"},
+    "tone.illustration_light": {
+        "ja": "光（固定正面）",
+        "en": "Light (Fixed Front)",
+    },
+    "tone.light_front_left": {"ja": "左上", "en": "Upper Left"},
+    "tone.light_front": {"ja": "正面", "en": "Front"},
+    "tone.light_front_right": {"ja": "右上", "en": "Upper Right"},
     "tone.optimize_help": {
         "ja": "現在の基本4色を使い、モデルの陰影に合う混色比率を求めます。",
         "en": "Find mixing ratios that reproduce the model shading using the current four base colors.",
@@ -1327,6 +1372,7 @@ CATALOG: dict[str, dict[str, str]] = {
     "preview.reference": {"ja": "元画像（スポイト対象）", "en": "Reference (Eyedropper)"},
     "preview.source": {"ja": "AIモデル色", "en": "AI Model Color"},
     "preview.target": {"ja": "Full Spectrum 変換色", "en": "Full Spectrum Color"},
+    "preview.target_flat": {"ja": "フラット4色", "en": "Flat 4 Colors"},
     "preview.open_reference": {"ja": "元画像を開いてください", "en": "Open a reference image"},
     "preview.process_obj": {"ja": "モデルを処理すると表示されます", "en": "Shown after processing a model"},
     "preview.target_placeholder": {"ja": "変換色プレビュー", "en": "Converted Color Preview"},
@@ -1375,6 +1421,46 @@ CATALOG: dict[str, dict[str, str]] = {
     "dialog.busy.open_obj": {"ja": "現在の処理が終わってから別のモデルを開いてください。", "en": "Wait for the current operation to finish before opening another model."},
     "dialog.source_format.title": {"ja": "対応していないモデル形式です", "en": "Unsupported Model Format"},
     "dialog.source_format.message": {"ja": "現在読み込める形式は、頂点カラーOBJとGLBです。", "en": "The supported source formats are vertex-color OBJ and GLB."},
+    "dialog.large_glb.inspect_title": {
+        "ja": "GLBを確認できません",
+        "en": "Could Not Inspect GLB",
+    },
+    "dialog.large_glb.confirm_title": {
+        "ja": "大規模GLBを開きますか？",
+        "en": "Open Large GLB?",
+    },
+    "dialog.large_glb.confirm_message": {
+        "ja": "このGLBは {faces} 三角形です。\n\n元データを保持したまま、編集用モデルを {target} 面以下へ調整して開きます。処理には数分かかる場合があります。閉立体化では、元データの同一座標継ぎ目を先に検証してから面数を調整します。\n\n続けますか？",
+        "en": "This GLB contains {faces} triangles.\n\nChromaMatter will retain the source data and open an editable working model reduced to at most {target} faces. Processing may take several minutes. Solidification validates coincident source seams before face reduction.\n\nContinue?",
+    },
+    "dialog.large_glb.unsupported_title": {
+        "ja": "GLBが大きすぎます",
+        "en": "GLB Is Too Large",
+    },
+    "dialog.large_glb.unsupported_message": {
+        "ja": "選択したsceneは {faces} 三角形 / {vertices} 頂点です。現在の大規模モデル読込は、静的TRIANGLESで500万面・300万頂点まで対応します。元モデルのメッシュ密度を下げてください。",
+        "en": "The selected scene contains {faces} triangles / {vertices} vertices. Large-model import currently supports static TRIANGLES up to 5 million faces and 3 million vertices. Reduce the source mesh density and try again.",
+    },
+    "dialog.large_glb.snapshot_unsupported_message": {
+        "ja": "保存済みの大規模GLB作業モデルを安全に復元できません。元データは {faces} 面 / {vertices} 頂点、保存済み編集モデルは {final_faces} 面です。元データは500万面・300万頂点以下、編集モデルは45万面以下にしてください。",
+        "en": "The saved large-GLB working model cannot be restored safely. The source contains {faces} faces / {vertices} vertices and the saved editable model contains {final_faces} faces. Keep the source at or below 5 million faces / 3 million vertices and the editable model at or below 450,000 faces.",
+    },
+    "dialog.large_model.confirm_title": {
+        "ja": "大規模モデルを復元しますか？",
+        "en": "Restore Large Model?",
+    },
+    "dialog.large_model.snapshot_confirm_message": {
+        "ja": "保存された元モデルは {faces} 三角形です。編集用モデルを {target} 面以下に制限して復元します。処理には数分かかる場合があります。\n\n続けますか？",
+        "en": "The saved source model contains {faces} triangles. ChromaMatter will restore its editable working model with a limit of {target} faces. Processing may take several minutes.\n\nContinue?",
+    },
+    "dialog.large_model.unsupported_title": {
+        "ja": "保存済みモデルが大きすぎます",
+        "en": "Saved Model Is Too Large",
+    },
+    "dialog.large_model.snapshot_unsupported_message": {
+        "ja": "保存済みの大規模作業モデルを安全に復元できません。元データは {faces} 面 / {vertices} 頂点、保存済み編集モデルは {final_faces} 面です。元データは500万面・300万頂点以下、編集モデルは45万面以下にしてください。",
+        "en": "The saved large-model working geometry cannot be restored safely. The source contains {faces} faces / {vertices} vertices and the saved editable model contains {final_faces} faces. Keep the source at or below 5 million faces / 3 million vertices and the editable model at or below 450,000 faces.",
+    },
     "dialog.no_sample.title": {"ja": "色が未取得です", "en": "No Color Sampled"},
     "dialog.no_sample.message": {"ja": "スポイトで元画像の色をクリックしてください。", "en": "Use the eyedropper to click a color in the reference image."},
     "dialog.no_recipe.title": {"ja": "候補がありません", "en": "No Recipe Available"},
@@ -1495,7 +1581,7 @@ CATALOG: dict[str, dict[str, str]] = {
         "ja": "公開版では分割・ジョイント編集を廃止したため、その記録は安全のため適用していません。元モデル・色設定・手塗りは引き続き読み込みます。",
         "en": "Split and joint editing was retired from the public edition, so those records were not applied. The source model, color settings, and manual paint are still loaded.",
     },
-    "filedialog.save_3mf": {"ja": "Snapmaker Full Spectrum用3MFを保存", "en": "Save 3MF for Snapmaker Full Spectrum"},
+    "filedialog.save_3mf": {"ja": "印刷用3MFを保存", "en": "Save Print 3MF"},
     "filedialog.save_radial_3mf": {
         "ja": "完全ラジアル実験3MFを保存",
         "en": "Save Full-Radial Laboratory 3MF",
@@ -1517,6 +1603,14 @@ CATALOG: dict[str, dict[str, str]] = {
         "en": "Choose a Folder for the Physical Comparison Chart",
     },
     "filedialog.select_orca": {"ja": "Snapmaker Orcaの実行ファイルを選択", "en": "Select the Snapmaker Orca Executable"},
+    "dialog.orca_macos_manual.title": {
+        "ja": "Snapmaker Orcaを自動検出できません",
+        "en": "Snapmaker Orca Was Not Detected",
+    },
+    "dialog.orca_macos_manual.message": {
+        "ja": "Macの標準ApplicationsフォルダーからSnapmaker Orcaを検出できませんでした。3MFを書き出し、Snapmaker Orca側で「プロジェクトとして開く」を選んでください。",
+        "en": "Snapmaker Orca was not found in the standard macOS Applications folders. Export the 3MF, then use Open as project from Snapmaker Orca.",
+    },
     # Paint editor (the editor inherits the selected app language when opened)
     "paint.title": {"ja": "マニュアル修正", "en": "Manual Editing"},
     "paint.orbit": {"ja": "回転", "en": "Orbit"},
@@ -1756,6 +1850,10 @@ CATALOG: dict[str, dict[str, str]] = {
     "paint.shading_global_group": {
         "ja": "1  全体の陰影・色調",
         "en": "1  Global Shading & Tone",
+    },
+    "paint.shading_illustration_group": {
+        "ja": "試験  2D彩色フィルター",
+        "en": "Experimental  2D Colour Filter",
     },
     "paint.shading_mix_group": {
         "ja": "2  混色比率を陰影に合わせる",
@@ -2316,8 +2414,7 @@ class Translator:
 
 
 def default_preferences_path() -> Path:
-    base = Path(os.environ.get("APPDATA", Path.home()))
-    return base / "TripoSpectrumMapper" / "ui_preferences.json"
+    return application_data_directory() / "ui_preferences.json"
 
 
 def load_language(path: Path | None = None) -> str:

@@ -21,7 +21,14 @@ from spectrum_mapper.engine import (
 )
 from spectrum_mapper.gui import MapperApp
 from spectrum_mapper.i18n import Translator
-from spectrum_mapper.models import AppSettings, MeshLevel, PaletteSettings, ToneSettings
+from spectrum_mapper.models import (
+    AppSettings,
+    COLOR_MODE_FLAT_FOUR,
+    COLOR_MODE_FULL_SPECTRUM,
+    MeshLevel,
+    PaletteSettings,
+    ToneSettings,
+)
 from spectrum_mapper.parts import palette_identity, print_palette_identity
 from smooth_paint import PaintNode
 
@@ -153,6 +160,80 @@ class ManualPaletteEngineTests(unittest.TestCase):
         np.testing.assert_allclose(
             applied.target_face_rgb[1], before.target_face_rgb[1]
         )
+
+    def test_flat_ignores_saved_full_assignment_for_global_and_part_then_restores_it(
+        self,
+    ) -> None:
+        global_physical = ["#FF0000", "#00FF00", "#FFFF00", "#000000"]
+        part_physical = ["#FFFF00", "#FF00FF", "#0000FF", "#FFFFFF"]
+        global_assignment = [
+            "#000000",
+            "#FF0000",
+            "#00FF00",
+            "#0000FF",
+        ] + ["#808080"] * 28
+        part_assignment = [
+            "#000000",
+            "#FFFF00",
+            "#FF00FF",
+            "#0000FF",
+        ] + ["#808080"] * 28
+        settings = AppSettings(
+            palette=PaletteSettings(
+                color_mode=COLOR_MODE_FLAT_FOUR,
+                physical_hex=global_physical,
+                enabled_states=[True] * 32,
+                assignment_palette_hex=global_assignment,
+            ),
+            part_palettes={
+                "accent": PaletteSettings(
+                    color_mode=COLOR_MODE_FLAT_FOUR,
+                    physical_hex=part_physical,
+                    enabled_states=[True] * 32,
+                    assignment_palette_hex=part_assignment,
+                )
+            },
+        )
+        level = level_for_face_colors(
+            [rgb("#FF0000"), rgb("#0000FF")],
+            part_keys=("body", "accent"),
+            face_part_ids=np.asarray([0, 1], dtype=np.int16),
+        )
+
+        # Project serialization must retain the pending Full Spectrum routing
+        # snapshot while Flat uses the current physical F1-F4 colours.
+        restored = AppSettings.from_dict(
+            json.loads(json.dumps(settings.to_dict()))
+        )
+        flat = recolor_level_parts(
+            level,
+            100.0,
+            IDENTITY_TONE,
+            restored.palette,
+            restored.part_palettes,
+        )
+
+        np.testing.assert_array_equal(flat.palette_indices, [0, 2])
+        self.assertEqual(
+            restored.palette.assignment_palette_hex, global_assignment
+        )
+        self.assertEqual(
+            restored.part_palettes["accent"].assignment_palette_hex,
+            part_assignment,
+        )
+
+        # Returning to Full reactivates the saved assignment IDs without any
+        # destructive rewrite during the Flat round trip.
+        restored.palette.color_mode = COLOR_MODE_FULL_SPECTRUM
+        restored.part_palettes["accent"].color_mode = COLOR_MODE_FULL_SPECTRUM
+        full = recolor_level_parts(
+            level,
+            100.0,
+            IDENTITY_TONE,
+            restored.palette,
+            restored.part_palettes,
+        )
+        np.testing.assert_array_equal(full.palette_indices, [1, 3])
 
     def test_manual_override_and_black_correction_keep_state_ids(self) -> None:
         baseline, locked = locked_replacement(32)
@@ -350,6 +431,114 @@ class ManualPaletteGuiTests(unittest.TestCase):
             self.assertIsNotNone(applied_palette.assignment_palette_hex)
             np.testing.assert_array_equal(app.manual_overrides, manual)
             self.assertEqual(editor._hotfix_tree_store[2].state, 7)
+        finally:
+            self._close(root, app)
+
+    def test_flat_f1_hex_edit_reassigns_and_refreshes_preview_immediately(self) -> None:
+        root, app = self._app()
+        mix_overrides = ["#123456", None, "#345678", None, None, "#56789A"]
+        primary = [12, 23, 34, 45, 56, 67]
+        secondary = [78, 69, 58, 47, 36, 25]
+        output = [20 + index for index in range(28)]
+        assignment = palette_snapshot(
+            PaletteSettings(
+                palette_state_count=32,
+                physical_hex=list(SCREENSHOT_BASE),
+                mix_ratios_b=primary,
+                secondary_mix_ratios_b=secondary,
+            )
+        )
+        try:
+            app.settings.palette = PaletteSettings(
+                palette_state_count=32,
+                color_mode=COLOR_MODE_FLAT_FOUR,
+                physical_hex=list(SCREENSHOT_BASE),
+                enabled_states=[True] * 32,
+                mix_hex_overrides=mix_overrides,
+                mix_ratios_b=primary,
+                secondary_mix_ratios_b=secondary,
+                output_mix_ratios_b=output,
+                assignment_palette_hex=assignment,
+            )
+            app._load_palette_variables(app.settings.palette)
+            editor = SimpleNamespace(
+                settings=AppSettings(),
+                reapply_palette_settings=Mock(),
+                mix_optimization_undo_button=None,
+            )
+            app.paint_editor = editor
+            app._schedule_preview = Mock()
+
+            # StringVar.write is the same event path used by typing a complete
+            # #RRGGBB value into the F1 entry.
+            app.physical_vars[0].set("#D04030")
+
+            palette = app.settings.palette
+            self.assertEqual(palette.color_mode, COLOR_MODE_FLAT_FOUR)
+            self.assertEqual(palette.physical_hex[0], "#D04030")
+            self.assertIsNone(palette.assignment_palette_hex)
+            self.assertEqual(palette.mix_hex_overrides, mix_overrides)
+            self.assertEqual(palette.mix_ratios_b, primary)
+            self.assertEqual(palette.secondary_mix_ratios_b, secondary)
+            self.assertEqual(palette.output_mix_ratios_b, output)
+            self.assertEqual(app._pending_physical_palette_targets, set())
+            app._schedule_preview.assert_called_once_with(immediate=True)
+            editor.reapply_palette_settings.assert_called_once()
+            target_key, editor_palette = editor.reapply_palette_settings.call_args.args
+            self.assertIsNone(target_key)
+            self.assertEqual(editor_palette.physical_hex[0], "#D04030")
+            self.assertIsNone(editor_palette.assignment_palette_hex)
+        finally:
+            self._close(root, app)
+
+    def test_flat_same_hex_reentry_ignores_but_preserves_full_assignment(self) -> None:
+        root, app = self._app()
+        current_physical = ["#FF0000", "#00FF00", "#0000FF", "#FFFFFF"]
+        assignment = [
+            "#000000",
+            "#FF0000",
+            "#00FF00",
+            "#0000FF",
+        ] + ["#808080"] * 28
+        try:
+            app.settings.palette = PaletteSettings(
+                color_mode=COLOR_MODE_FLAT_FOUR,
+                physical_hex=current_physical,
+                enabled_states=[True] * 32,
+                assignment_palette_hex=assignment,
+            )
+            app._load_palette_variables(app.settings.palette)
+            editor = SimpleNamespace(
+                settings=AppSettings(),
+                reapply_palette_settings=Mock(),
+                mix_optimization_undo_button=None,
+            )
+            app.paint_editor = editor
+            app._schedule_preview = Mock()
+
+            # Re-entering the already-stored HEX still follows the immediate
+            # Flat trace path, but must not need to destroy the dormant Full
+            # assignment snapshot in order to render against current F1-F4.
+            app.physical_vars[0].set(current_physical[0])
+
+            palette = app.settings.palette
+            self.assertEqual(palette.assignment_palette_hex, assignment)
+            self.assertEqual(app._pending_physical_palette_targets, set())
+            app._schedule_preview.assert_called_once_with(immediate=True)
+            editor.reapply_palette_settings.assert_called_once()
+            editor_palette = editor.reapply_palette_settings.call_args.args[1]
+            self.assertEqual(editor_palette.assignment_palette_hex, assignment)
+
+            recolored = recolor_level(
+                level_for_face_colors([rgb(current_physical[0])]),
+                100.0,
+                IDENTITY_TONE,
+                palette,
+            )
+            self.assertEqual(int(recolored.palette_indices[0]), 0)
+            np.testing.assert_allclose(
+                recolored.target_face_rgb[0], rgb(current_physical[0])
+            )
         finally:
             self._close(root, app)
 

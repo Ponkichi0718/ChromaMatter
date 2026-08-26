@@ -31,6 +31,48 @@ regenerating the demo, **always apply the Weak Black 5–25% preset before 3MF
 export**. Multipart solidification remains unstable beta compatibility. The
 exact build, source, package, fresh extraction, checksums, and publication gates passed.
 
+## Flat Four Test 3 publication candidate
+
+This branch is preparing a separate Test 3 prerelease candidate without
+changing the published r32.2 Windows package, its frozen source tag, or the
+frozen Flat Four Test 2 assets:
+
+- Flat Four derives a deterministic, area-weighted proposal of four distinct
+  physical filament colours, creates no mixed recipes, and writes only F1-F4
+  into its 3MF colour path.
+- White is not removed globally. Eye whites beside dark linework and other
+  meaningful small white details remain white targets, while only small,
+  high-confidence white/gray lighting patches on a smooth chromatic surface
+  such as skin are folded into the chromatic F slot used around their boundary.
+- Retained white covering at least 0.01% of total printable area reserves one
+  suitable near-white physical filament. Below 0.01%, white remains unabsorbed
+  but does not by itself force a white spool and can map to the nearest selected
+  F1-F4 colour.
+- Four physical F slots and 3MF state metadata are retained even when an output
+  effectively uses three paint IDs. Manual Editing remains authoritative, and
+  Full Spectrum behaviour is unchanged.
+- This is not semantic recognition. A tiny white patch enclosed by one smooth
+  skin/tan surface without a dark edge, crease, or part boundary may be absorbed.
+  Above 500,000 faces on an open mesh without reusable adjacency, only this
+  automatic correction is skipped fail-closed.
+- The experimental 2D Colour Filter offers Cel Colour and Shaded Monochrome.
+  It bakes fixed-front, geometry-aware stepped shading into printable colour;
+  it does not create missing line art, PBR material response, or texture detail.
+- Normal static-GLB limits remain 512 MiB, three million vertices, and three
+  million triangles. A separate fail-closed beta path can admit a static
+  `TRIANGLES` scene with 3,000,001-5,000,000 triangles only after explicit
+  confirmation and with face-count adjustment enabled, producing a working
+  model of at most 450,000 faces. Reduction can remove fine detail.
+- New projects use `obj-adjuster.project.v13`; v12 remains readable and defaults
+  to legacy Full Spectrum mode.
+
+The candidate working tree passed 1,431 tests with zero failures and three
+optional skips, plus an owner-only clean-build/fresh-extract preflight. That
+preflight is not public Release evidence: Test 3 still requires an exact source
+commit, clean rebuild, complete corresponding source, compliance assets,
+checksums, fresh-extract audit, and publication verification. Physical-printer
+validation of the exact Test 3 package is pending.
+
 ## r32.1 published previous evidence
 
 r32.1 tag `v0.8beta-r32.1` preserves the r32 modelling and 3MF contracts, changes the public preview
@@ -168,6 +210,11 @@ Creator Studio r26 results are previous evidence as well and do not validate Chr
 
 ## Package identity
 
+- planned Test 3 corresponding source:
+  `ChromaMatter-0.8beta-r32.2-complete-corresponding-source.zip`
+- planned Test 3 Windows package:
+  `ChromaMatter-0.8beta-r32.2-flat4-test3-win64.zip`
+- planned Test 3 checksum record: `SHA256SUMS-r32.2-flat4-test3.txt`
 - published corresponding source: `ChromaMatter-0.8beta-r32.2-complete-corresponding-source.zip`
 - published Windows package: `ChromaMatter-0.8beta-r32.2-win64.zip`
 - published complete corresponding source: `ChromaMatter-0.8beta-r32.1-complete-corresponding-source.zip`

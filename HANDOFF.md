@@ -1,8 +1,10 @@
 # ChromaMatter cross-PC handoff
 
-Updated: 2026-08-24
-Release-development branch: `codex/r32-2-demo-3mf`; the frozen published release
-source is `v0.8beta-r32.2` / `aba20685d2fd6987621b2e1e6624f46ea84912a3`
+Updated: 2026-08-26
+Current worktree branch: `codex/r32-2-experimental-flat4-large-glb-2d-filter`
+Published release-development source: `codex/r32-2-demo-3mf`; the frozen
+published release source is `v0.8beta-r32.2` /
+`aba20685d2fd6987621b2e1e6624f46ea84912a3`
 Previous release: `v0.8beta-r32.1` remains immutable previous evidence.
 Public version: `0.8beta` (do not change without an explicit owner request)
 Current published prerelease revision: `r32.2`; Windows numeric version remains `0.8.0.0`
@@ -919,63 +921,1528 @@ Keep these outside Git and do not copy them to the public release by default:
   build, packaged/fresh-extracted smoke, complete corresponding-source stage,
   final archive, and checksum gates remain pending.
 
-## 2026-08-26 macOS volunteer navigation documentation
+## 2026-08-25 experimental Flat Four / Large GLB / 2D colour workstream
+
+- The owner approved publishing the source changes on a dedicated experimental
+  branch and keeping them separate from the immutable Innovation Fund r32.2
+  release. The intended branch is
+  `codex/r32-2-experimental-flat4-large-glb-2d-filter`; do not merge or retag
+  r32.2 as part of this workstream.
+- The workstream combines three related beta features: a conditional reduced
+  working-model path for supported static GLBs above the normal triangle
+  ceiling, a fixed-front 2D Colour Filter (Cel Colour and Shaded Monochrome),
+  and an area-weighted Flat Colour mode that proposes and exports exactly four
+  physical F1-F4 colours without mixed recipes.
+- Flat export projects dormant Full Spectrum face states to the nearest current
+  F1-F4 only at the output boundary. It does not mutate saved Full Spectrum
+  assignments. Manual F1-F4 edits and filament recommendations update the Flat
+  preview immediately. Project schema v13 stores the new state and continues
+  to read trusted v12 projects.
+- Multipart solidification and part-specific 3MF output remain input-dependent
+  beta behavior. The conditional large-GLB path remains fail-closed and does
+  not claim support for arbitrary damaged, open, skinned, animated, or
+  compressed models.
+- Final local validation of the changed source completed 1,375 tests in
+  379.271 seconds with zero failures and three optional skips. The one-folder
+  Windows package passed its self-test and isolated Japanese and English UI
+  smoke tests, and an independently extracted copy passed the same checks.
+  `git diff --check`, archive path/CRC checks, file-by-file extraction parity,
+  and privacy/content audits passed.
+- Any GitHub binary test entry must remain a separate draft/experimental
+  prerelease until an exact-commit clean rebuild supplies complete
+  corresponding source, SBOM, binary component map, notices/relinking
+  materials, checksums, and final fresh-extraction evidence. The published
+  r32.2 tag and assets remain unchanged.
+- Source commit `0d768fb6b3a0c68328b3c94b6ed48eff9a80ad13` was pushed to
+  `codex/r32-2-experimental-flat4-large-glb-2d-filter` and tagged
+  `v0.8beta-r32.2-experimental-20260825`. Draft PR
+  [#7](https://github.com/Ponkichi0718/ChromaMatter/pull/7) is open.
+- GitHub Draft Release ID `376019044` stores exactly two owner-review assets:
+  a 117,533,412-byte experimental Windows ZIP and its detached checksum. GitHub
+  reports the ZIP digest as
+  `sha256:686823cdbc6c325b8b281e5820d0b73e9a8911d47b845b515c92a3ed565bbe56`.
+  The Release remains both Draft and Pre-release, so it is not a public
+  download. The published r32.2 Release remains non-draft with its original
+  six assets.
+- The exact tagged source commit completed 1,375 tests in 425.435 seconds with
+  zero failures and three optional skips. A `git archive` public-tree audit
+  passed for 409 files. No later code change was made; the follow-up branch
+  commit only records GitHub draft metadata.
+
+## 2026-08-25 Flat Four shadow/fill/Orca-mix correction checkpoint
 
 ### Current objective
 
-Expose a clear, tester-first macOS path from the default README without merging
-the separate Mac application workstream or implying that a download is already
-approved.
+Keep Flat Four physically limited to F1-F4 in Snapmaker Orca, recover strongly
+chromatic armour colours that a dark baked GLB shadow had pulled into physical
+black, and let Manual Fill repaint one visibly connected Flat colour region
+without weakening Full Spectrum state preservation or export validation.
 
 ### Completed in this session
 
-- Added the Apple Silicon/macOS 15+ alpha row to the English and Japanese
-  default README aliases.
-- Added the English ten-minute volunteer guide, companion Japanese guide, and
-  English Discussion hub source.
-- Added a dedicated reproducible-problem Issue form and the Discussion #9
-  contact link. Successful results and setup questions go to Discussion #9;
-  one reproducible defect goes to the form.
-- Kept the stable Windows r32.2 download first and left all frozen Release
-  assets unchanged.
+- Flat Four 3MF now stores all six automatic F1-F4 pair rows as Orca's own
+  disabled/deleted tombstones. This prevents an enabled application-wide
+  `auto_generate_gradients` preference from recreating the six 50/50 rows;
+  the rows have no virtual filament IDs and no printable recipes.
+- Added a generalized Flat-only chromatic-shadow recovery pass after ordinary
+  CIE76 assignment. A face is reconsidered only after landing on an enabled
+  neutral physical slot and only when its source RGB span, Lab chroma, and
+  normalized-RGB distance retain clear chromatic evidence. Near-neutral black
+  is excluded, and Full Spectrum does not enter this path.
+- Manual Fill now uses the Flat preview's visible F1-F4 projection only for
+  connectivity. Canonical mixed state IDs remain stored, Full Spectrum keeps
+  its original boundaries, selected-part masks remain enforced, and the
+  accelerated/adaptive paths preserve Undo/Redo.
+- Cross-review also fixed capped-history adaptive Fill so one Undo restores the
+  whole operation, made same-visible-colour Fill a complete no-op, and kept
+  compatibility with older `connected_fill_faces` overrides when no Flat map
+  is supplied. The shadow eligibility scan now uses the same fixed 25,000-face
+  chunks as its distance pass instead of holding full-input temporary arrays.
+- Read-only validation on an owner-supplied private high-face-count GLB
+  confirmed the intended aggregate behavior: clearly chromatic shadowed
+  regions recovered to an enabled chromatic physical slot, while near-neutral
+  dark regions stayed on neutral slots. No asset name, path, hash, exact face
+  count, colour-count breakdown, or derived output is recorded publicly.
 
 ### Current state
 
-- GitHub Discussions is enabled and Discussion #9 exists.
-- No macOS application is approved for download. The README and guide say so
-  explicitly; diagnostics must not be presented as an app.
-- This documentation branch contains no application port, `.app`, ZIP, GLB
-  binary, generated 3MF, or private model.
+- The application and regression-test changes are committed as
+  `0ed8dd404233752fec7b7f63fa13a2a9238e9b38` on
+  `codex/r32-2-experimental-flat4-large-glb-2d-filter` and pushed for the
+  cross-PC handoff. Draft PR #7 follows that branch automatically.
+- No tag, Release edit, binary upload, Windows package replacement, or `main`
+  merge was performed. The existing experimental tag/Draft Release assets and
+  published r32.2 assets do not contain these corrections.
+- Source-level focused and full regression are green. A newly generated Flat
+  archive is also inspected by tests for four physical filament entries, zero
+  active mixed recipes, exact deleted tombstones, and no printable state above
+  F4.
 
 ### Next exact task
 
-Publish this documentation-only branch through a pull request to `main`. Update
-Discussion #9 only after one exact Mac CI build and its distribution evidence
-pass; do not replace the no-download notice before then.
+On the home PC, fetch and check out
+`codex/r32-2-experimental-flat4-large-glb-2d-filter`, then continue from source
+commit `0ed8dd404233752fec7b7f63fa13a2a9238e9b38` plus the following handoff
+metadata commit. Make an exact-commit experimental clean build. In a fresh
+extraction, load a newly exported Flat Four 3MF in Snapmaker Orca 2.3.5 and
+visually confirm that Color Mixing shows no active mixed rows, the recovered
+armour remains chromatic, and Manual Fill can repaint the connected dark-looking
+region. Only after those checks should the experimental Draft Release asset be
+replaced or promoted.
 
 ### Changed files
 
-- README English/Japanese canonical aliases, `.gitignore`,
-  `.github/ISSUE_TEMPLATE/config.yml`,
-  `.github/ISSUE_TEMPLATE/macos_alpha_report.yml`,
-  `publication/MACOS_ALPHA_TESTING_EN.md`,
-  `publication/MACOS_ALPHA_TESTING_JA.md`,
-  `publication/MACOS_ALPHA_HUB_EN.md`, `CURRENT_STATE.json`, and `HANDOFF.md`.
+- `source/fixed_app/spectrum_mapper/engine.py`
+- `source/fixed_app/spectrum_mapper/paint.py`
+- `source/fixed_app/spectrum_mapper/paint_gui.py`
+- `source/fixed_app/spectrum_mapper_hotfix.py`
+- `source/fixed_app/smooth_paint_hotfix.py`
+- `source/fixed_app/test_flat_chromatic_shadows.py`
+- `source/fixed_app/test_flat_color_3mf.py`
+- `source/fixed_app/test_flat_manual_paint.py`
+- `source/fixed_app/test_hotfix.py`
+- `CURRENT_STATE.json`
+- `HANDOFF.md`
 
 ### Tests run
 
-- `source.fixed_app.test_release_identity`: 12 tests, zero failures.
-- Issue/config YAML parse and dropdown-string validation: PASS.
-- README canonical English/Japanese byte parity and `git diff --check`: PASS.
+- Focused Flat Four, 3MF, paint/hotfix, part export, slicer-safety, output-black,
+  and black-free-gradient regression: 152 tests, zero failures.
+- Full changed-working-tree regression: 1,389 tests in 661.523 seconds, zero
+  failures, three optional skips.
+- `python -B -m compileall -q source/fixed_app`: PASS.
+- `CURRENT_STATE.json` parse, `git diff --check`, and final worktree status are
+  rechecked after this checkpoint edit.
 
 ### Do not do
 
-- Do not merge the Mac application branch merely to expose documentation.
-- Do not advertise an Actions diagnostics artifact as a runnable app.
-- Do not commit or distribute private models, generated binaries, or incomplete
-  3MF outputs.
+- Do not weaken topology or 3MF fail-closed validation and do not restore Flat
+  active mixed recipes merely to hide an Orca UI symptom.
+- Do not apply the chromatic-shadow recovery path to Full Spectrum or infer a
+  colour from neighbouring red faces alone; true black trim must remain black.
+- Do not collapse canonical Full Spectrum paint IDs when filling a Flat view.
+- Do not merge into `main`, retag r32.2, replace published assets, change
+  `0.8beta`, or make further commits/pushes without a new explicit owner
+  approval.
 
 ### Local-only files
 
-- Mac app builds, diagnostics, test ZIPs, generated GLBs, and user models remain
-  outside this documentation branch.
+- One owner-supplied private GLB was read only for aggregate colour-assignment
+  validation. Its name, path, bytes, and derived preview remain local and must
+  not be committed, packaged, or copied into public documentation.
+- Local Python environments, temporary Orca source research, build folders,
+  caches, and generated diagnostics remain outside the repository.
+
+## 2026-08-25 Flat Four Fix2 owner-only Windows test ZIP
+
+### Current objective
+
+Give the owner a locally testable Windows ZIP whose application-source bytes
+are now represented by the committed Flat Four mixed-row suppression,
+chromatic-shadow recovery, and visible-state Manual Fill corrections, without
+changing the published r32.2 Release or the experimental Draft Release.
+
+### Completed in this session
+
+- The first clean-build candidate correctly stopped at the fail-closed binary
+  inventory. Its runtime contained the excluded historical PyTetWild wrapper,
+  and PyInstaller had also resolved 40 UCRT/API-set binaries from a Windows
+  Performance Toolkit PATH entry. No ZIP was created from that candidate.
+- Verified the current published r32.2 complete corresponding-source ZIP against
+  the GitHub Release API: 1,365,909,916 bytes and SHA-256
+  `DCC7EC1AE74F4B790CCAC6B9B18286C7BDAB2829E779F0532E01708727680500`.
+- Extracted only its unique repaired PyTetWild wheel and verified SHA-256
+  `E3B11AC058266D277B0F83448C6023D5DA98E731D0D016E461DBCE4EBDFD613D`.
+  The installed `PyfTetWildWrapper.pyd` is the approved
+  `26A091B53279407014899C046691958C9DF07E22703576DA6A45D68A9BE22430`.
+- Created a fresh exact Python 3.13.14 dependency environment and removed only
+  the Windows Performance Toolkit entry from the clean-build process PATH.
+  The spec and fail-closed inventory rules were not weakened.
+- Built a new one-folder Windows application. The package has 1,455 files and
+  256 native files; the binary compliance inventory passed with no UCRT/API-set
+  payload and exactly one approved PyTetWild wrapper.
+- Created the canonical owner-only archive
+  `ChromaMatter-0.8beta-r32.2-Flat4-Fix2-INTERNAL-TEST-20260825-win64.zip`:
+  117,486,407 bytes, 1,455 files, SHA-256
+  `71E7A15A4B3793BB86B3B850D69900CF157E1CCA03FC032A27534B6D53C7E428`.
+- Independently extracted the ZIP and confirmed exact relative-path, size, and
+  SHA-256 parity for all 1,455 files. The fresh executable passed `--self-test`
+  and isolated Japanese and English UI smoke tests. The archive contains zero
+  OBJ/GLB/glTF/3MF payloads and zero pip `direct_url.json` files.
+
+### Current state
+
+- The owner-only test ZIP is in the local Downloads folder and is ready for
+  hands-on testing.
+- The source corrections are committed as
+  `0ed8dd404233752fec7b7f63fa13a2a9238e9b38` and pushed on
+  `codex/r32-2-experimental-flat4-large-glb-2d-filter`; Draft PR #7 now exposes
+  that source for the home-PC handoff.
+- No tag, Release edit, binary upload, package replacement, or publication was
+  performed. The existing public r32.2 assets and experimental Draft Release
+  assets remain unchanged.
+
+### Next exact task
+
+Extract the owner-only ZIP to a new folder and test the same representative GLB:
+
+1. Select Flat Four and confirm the chromatic shoulder/armour shadow is assigned
+   to the intended red physical slot while truly neutral black trim stays black.
+2. Use Manual Fill on the connected dark-looking region, then verify Undo and
+   Redo restore the whole fill as one operation.
+3. Export a Flat Four 3MF and open it in Snapmaker Orca 2.3.5. Confirm only F1-F4
+   are printable and Color Mixing contains no active six 50/50 pair rows.
+4. Report screenshots plus the exact source model/output workflow if any result
+   differs; keep the private model outside Git and public issue attachments.
+
+### Changed files
+
+- No additional application or packaging source file was changed to create the
+  internal ZIP.
+- `CURRENT_STATE.json`
+- `HANDOFF.md`
+
+### Tests run
+
+- Exact repaired-PyTetWild environment full regression: 1,389 tests, zero
+  failures, two optional skips.
+- PyInstaller clean one-folder build: PASS.
+- Built-package self-test and isolated Japanese/English UI smoke: PASS.
+- Binary compliance inventory: PASS, 1,455 files and 256 native files.
+- Canonical ZIP path/CRC/security/file-list validation: PASS.
+- Independent fresh-extract relative-path, size, and SHA-256 parity for all
+  1,455 files: PASS.
+- Fresh-extracted self-test and isolated Japanese/English UI smoke: PASS.
+- Package model-payload and pip direct-URL metadata checks: zero findings.
+
+### Do not do
+
+- Do not treat this owner-only archive as public Release evidence; it was built
+  before the source checkpoint commit and has not been uploaded.
+- Do not upload or replace Draft/Public Release assets until the owner finishes
+  the requested Snapmaker Orca and visual model checks.
+- Do not weaken topology, 3MF, binary-inventory, or archive fail-closed gates.
+- Do not use the rejected historical-wrapper build or restore the Windows
+  Performance Toolkit PATH entry during PyInstaller analysis.
+
+### Local-only files
+
+- The internal ZIP, clean/rejected build roots, independent extraction root,
+  repaired-wheel extraction, isolated Python environment, and isolated UI-smoke
+  profiles are local-only and remain outside Git.
+- The owner-supplied private GLB and all outputs derived from it remain local and
+  are not included in the ZIP.
+
+## 2026-08-25 Flat Four file-open mode-history correction
+
+### Current objective
+
+Make a newly opened model's Flat Four result independent of whether Flat Four
+or Full Spectrum happened to be selected when the file was opened, without
+overwriting any later manual filament or palette decision.
+
+### Completed in this session
+
+- Traced the difference to the new-model automatic F1-F4 recommendation. Full
+  Spectrum intentionally optimizes the four physical filaments while considering
+  mixed states, whereas Flat Four intentionally optimizes against F1-F4 only.
+  The old mode switch changed assignment mode but retained the proposal selected
+  under the previous mode.
+- Added runtime-only provenance for a complete new-model automatic palette. If
+  every common/part palette still exactly matches that automatic result, changing
+  modes reruns the recommendation under the target mode.
+- The provenance comparison excludes only `color_mode`. It includes material,
+  F1-F4, product snapshots, enabled states, display/print recipes, assignment
+  snapshots, and correction controls. Any manual change or palette-inheritance
+  change therefore prevents an automatic overwrite.
+- New-file selection and project loading clear the runtime provenance. Saved
+  projects continue to load exactly and are not treated as fresh automatic
+  proposals.
+- Added regressions for automatic Full-to-Flat recomputation, manual-filament
+  preservation, a mode switch when no explicit part palette exists, same-source
+  geometry reprocessing, and direct-Flat versus Full-then-Flat global/part
+  F1-F4 equivalence.
+- Added a compact stable-versus-experimental selector to all canonical English
+  and Japanese repository README variants. It links published r32.2 to its
+  Release and routes Flat Four users to Draft PR #7 and the source branch while
+  stating that the workstream is intended for later integration.
+- Created and pushed documentation-only branch
+  `docs/experimental-version-navigation` at
+  `5d87c790406ad3a80a7fd3e31c50bd2cee04bfd9` from `origin/main`, so the same
+  selector can reach the default branch without merging application code.
+- Opened documentation-only PR #8 from that branch to `main`:
+  <https://github.com/Ponkichi0718/ChromaMatter/pull/8>.
+- Updated Draft PR #7's title and body so it now separates stable r32.2 from the
+  experimental source, links PR #8, lists the current Flat Four corrections and
+  validation evidence, and states that no public experimental Windows ZIP exists:
+  <https://github.com/Ponkichi0718/ChromaMatter/pull/7>.
+
+### Current state
+
+- The application correction is committed as
+  `32b03438dbde322b3e2ff8b070356622d6999ad2` and pushed on
+  `codex/r32-2-experimental-flat4-large-glb-2d-filter`; Draft PR #7 follows it.
+- The application-plus-README checkpoint is
+  `864c7a8db157f0bf2a7601c8123d89514bef8c88`; later commits on the same branch
+  only record the GitHub handoff state. Draft PR #7 is open, remains Draft, was
+  mergeable at the last GitHub readback, and now serves as the authoritative
+  experimental status/testing hub.
+- Documentation-only PR #8 is open and mergeable at the last GitHub readback.
+  It contains one commit and changes only the five canonical README variants.
+- No merge into `main`, tag, Release edit, Draft Release asset replacement,
+  binary build, or ZIP replacement was performed.
+- The existing Fix2 owner-only ZIP predates this correction and will still show
+  the reported file-open mode-history behavior.
+
+### Next exact task
+
+Review and, when explicitly approved, merge documentation-only PR #8 so the
+stable-versus-experimental selector appears on the default repository page.
+Keep application PR #7 Draft until exact-current-HEAD regression, packaging and
+compliance checks, Snapmaker Orca checks, and physical U1 validation are complete.
+A later exact-commit clean owner-only Windows ZIP may be created for hands-on
+validation of direct Flat versus Full-then-Flat and manual F-slot preservation.
+
+### Changed files
+
+- `source/fixed_app/spectrum_mapper/gui.py`
+- `source/fixed_app/test_flat_color_mode.py`
+- `source/fixed_app/test_filament_candidate_gui.py`
+- `README.md`
+- `README_EN.md`
+- `README_JA.md`
+- `README_PUBLIC_EN.md`
+- `README_PUBLIC_JA.md`
+- `CURRENT_STATE.json`
+- `HANDOFF.md`
+
+### Tests run
+
+- Repository pinned environment focused regression: 177 tests, zero failures.
+- Earlier focused subsets: 42 and 41 tests, zero failures.
+- `python -m py_compile` for the changed application/test modules: PASS.
+- Documentation-only branch release-identity tests: 12 tests, zero failures.
+- Canonical English/Japanese README parity checks: PASS.
+- `CURRENT_STATE.json` parse and final `git diff --check`: PASS.
+- GitHub readback after public PR metadata publication: PR #7 was
+  open/Draft/unmerged at application-plus-README checkpoint `864c7a8`; PR #8
+  was open/non-Draft/unmerged with docs HEAD `5d87c79`; both reported mergeable
+  at that readback. Subsequent PR #7 commits are handoff metadata only.
+- One initial system-Python attempt could not import PyMeshLab. It was an
+  environment miss, not a test failure, and was superseded by the repository's
+  pinned `.venv` run above.
+
+### Do not do
+
+- Do not make the mode switch always replace F1-F4. The exact automatic-palette
+  guard is required to preserve user-selected filaments, recipes, enabled states,
+  output ratios, product identities, and part inheritance.
+- Do not persist this runtime provenance into project JSON. Project loading must
+  continue to preserve the saved palette rather than silently recomputing it.
+- Do not weaken topology, 3MF, pending-apply, or Flat Four mixed-state guards.
+- Do not merge either PR into `main`, change `0.8beta`, retag, publish a binary,
+  or replace a Release asset without fresh explicit owner approval.
+
+### Local-only files
+
+- Existing owner-only ZIPs, private test models, generated outputs, build roots,
+  caches, and local environments remain outside Git and public documentation.
+
+## 2026-08-25 Flat Four Test 2 public prerelease
+
+### Outcome
+
+- Published the separate experimental prerelease
+  [`v0.8beta-r32.2-flat4-test2`](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2-flat4-test2)
+  as GitHub Release ID `376367877`. It is non-Draft and marked Pre-release.
+- The annotated tag peels to exact source commit
+  `32769037a9173537beeb8574471f4ec9c040c214`. The latest application change in
+  that history is the mode-independent automatic Flat Four proposal at
+  `32b03438dbde322b3e2ff8b070356622d6999ad2`; the later commits are handoff and
+  navigation documentation only.
+- The stable `v0.8beta-r32.2` tag, Release, and all six stable assets were left
+  unchanged. The older private experimental Draft Release ID `376019044` and
+  its Fix1 review assets were not moved, replaced, or promoted.
+
+### Public assets and frozen identities
+
+- `ChromaMatter-0.8beta-r32.2-flat4-test2-win64.zip`: 115,071,442 bytes,
+  SHA-256 `B367C0D04EAD74FB3C58A01F8EFA89CD70642C8FF013AA65533D9D86B76467F5`.
+- `ChromaMatter-0.8beta-r32.2-complete-corresponding-source.zip`:
+  1,366,000,690 bytes,
+  SHA-256 `B94FBAEB9DCEC170EE356E266BD06FBAE66798FC7039E56AC17BCB872B848686`.
+- `ChromaMatter-0.8beta-r32.2-flat4-test2-SBOM.cdx.json`: 937,715 bytes,
+  SHA-256 `B68B2EE6BDFF9A80B9630F628284D13C67E662BAA3AE572AC1A0A70C040E03FD`.
+- `ChromaMatter-0.8beta-r32.2-flat4-test2-BINARY_COMPONENT_MAP.json`:
+  526,076 bytes,
+  SHA-256 `21A1A028F1F3205DA537636843101F3D8C0CC4CDA37DC75FCB4CEC9B28D1F865`.
+- `SHA256SUMS-r32.2-flat4-test2.txt`: 492 bytes,
+  SHA-256 `2A264D1D9675FD8E19FD1D2BD138C923244CB4B83EEDB222100FC328D85A443C`.
+
+### Validation
+
+- Exact-current-commit full regression and clean one-folder build: PASS.
+- Built-package self-test and isolated Japanese/English UI smoke: PASS.
+- Binary compliance inventory: PASS for 1,455 runtime files and 256 native
+  files.
+- Public software staging, canonical archive checks, privacy checks, and
+  independent fresh extraction: PASS. The fresh package has 1,512 files and a
+  1,511-record manifest; path, size, and SHA-256 parity all passed, followed by
+  fresh self-test and Japanese/English UI smoke.
+- Complete corresponding source: `release-approved`, `known_gaps: []`, and
+  bound to commit `32769037a9173537beeb8574471f4ec9c040c214`. Independent fresh
+  extraction verified 42,814 files against 42,813 manifest records.
+- GitHub reported the same size and digest for all five uploaded assets. After
+  publication, all five were downloaded again without authentication and each
+  local size/SHA-256 matched exactly.
+- Post-publication release-identity, GUI-layout, and release-regression focused
+  set: 29 tests passed with zero failures.
+- `CURRENT_STATE.json` parse, canonical English/Japanese README byte parity,
+  and `git diff --check`: PASS after adding the public download navigation.
+
+### User path and current limitations
+
+- Windows direct download:
+  <https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2-flat4-test2/ChromaMatter-0.8beta-r32.2-flat4-test2-win64.zip>
+- Users must extract the complete ZIP before running `START_CHROMAMATTER.cmd`
+  or `ChromaMatter.exe`.
+- The Release is intentionally experimental and unsigned. Multipart
+  solidification and part-specific 3MF output remain input-dependent and can
+  fail. Large GLB handling remains a narrow fail-closed beta path; the 2D
+  Colour Filter is not line-art generation or a PBR renderer. Physical U1
+  validation of this exact test package remains pending.
+
+### Follow-up state
+
+- The five canonical README variants now link directly to Flat Four Test 2 in
+  the current experimental branch working tree. Commit and push this
+  documentation/state checkpoint, then update Draft PR #7 to point to the
+  Release and Windows direct download.
+- Keep Draft PR #7 unmerged until the experimental application is ready for
+  normal-version integration. Do not move the Flat Four Test 2 tag or replace
+  its five frozen assets; later test builds require a new tag and Release.
+- Keep build roots, fresh-extraction roots, complete-source caches, controlled
+  toolchain evidence, and private owner models outside Git.
+
+## 2026-08-26 Flat Four Test 3 eye-white / skin-highlight publication candidate
+
+### Outcome
+
+- Added a Flat-Four-only, topology-aware correction that conservatively absorbs
+  small baked white/gray lighting islands on smooth skin or material surfaces
+  into the surrounding chromatic physical slot.
+- White was not removed globally. Small intentional white details, including eye
+  whites next to dark linework, remain white targets rather than being absorbed
+  as highlights. Black detail is also retained.
+- Retained white reserves a suitable near-white physical filament only when it
+  covers at least 0.01% of total printable area. Below 0.01%, white remains an
+  unabsorbed target but does not by itself force a white spool and can map to the
+  nearest selected F1-F4 colour.
+- Flat Four still keeps four physical F1-F4 slots and 3MF schema/state metadata.
+  When no intentional white remains, an output may effectively use only three
+  paint IDs. Manual paint remains authoritative; Full Spectrum behavior is
+  unchanged.
+- The classifier fails closed at part boundaries, hard creases, broad or
+  disconnected white regions, ambiguous topology, and large unsupported open
+  meshes. A model above 500,000 faces without reusable adjacency skips only this
+  automatic highlight correction; the remaining Flat Four pipeline continues.
+
+### Validation
+
+- Candidate working-tree preflight regression: 1,431 tests in 398.127 seconds, zero
+  failures and three optional skips. Focused 60-test and broader 244-test sets,
+  `py_compile`, and `git diff --check`: PASS.
+- `face_neighbors_partial` on a 498,002-face grid improved from 7.01 seconds to
+  0.091 seconds with the same 1,996 open slots; 1,000 randomized/degenerate
+  comparisons matched the former implementation byte-for-byte. Three-million-
+  face helper probes reduced transient memory from 163.1 MiB to 1.0 MiB and from
+  91.6 MiB to 4.6 MiB.
+- Clean one-folder build, packaged self-test, isolated Japanese/English UI smoke,
+  and fail-closed binary inventory: PASS for 1,455 runtime files and 256 native
+  files.
+- Created local owner-only archive
+  `ChromaMatter-0.8beta-r32.2-Flat4-Highlights-INTERNAL-TEST-20260825-win64.zip`:
+  117,524,346 bytes, 1,457 files, SHA-256
+  `0508BC6ACF082FE766F1E4054DBDB82FC999E9E4090A98F18DEBF0F701176F8C`.
+- Canonical ZIP path/CRC/security/file-list validation, independent fresh-extract
+  path/size/SHA-256 parity, fresh self-test, Japanese/English UI smoke, privacy
+  audit, and pip `direct_url.json` audit: PASS. Private model payloads and actual
+  pip direct-URL metadata were both zero.
+
+### Current state and limitation
+
+- The validated behavior and its publication documentation are now designated
+  the **Flat Four Test 3 publication candidate** on
+  `codex/r32-2-experimental-flat4-large-glb-2d-filter`. The commit containing
+  this record is the candidate source checkpoint once created; its tag, public
+  artifacts, and publication verification are still pending. Stable r32.2 and
+  the published Flat Four Test 2 prerelease remain unchanged.
+- Planned tag and Windows asset are `v0.8beta-r32.2-flat4-test3` and
+  `ChromaMatter-0.8beta-r32.2-flat4-test3-win64.zip`. The matching planned
+  compliance assets are the complete corresponding source, Test 3 SBOM, binary
+  component map, and `SHA256SUMS-r32.2-flat4-test3.txt`. The Test 3 Windows
+  package intentionally contains no `DemoData`.
+- A tiny white patch smoothly enclosed only by one skin/tan surface, with no dark
+  edge, crease, or part boundary, is semantically indistinguishable from a baked
+  highlight and may be absorbed. This is not semantic recognition. Paint
+  intentional white manually when needed; manual white overrides remain
+  authoritative.
+- Physical-printer validation of the exact Test 3 package is pending. The
+  owner-only Highlights ZIP is preflight evidence only and must not be uploaded
+  or renamed into the public Test 3 asset.
+- Canonical root README links remain on the published Test 2 channel at this
+  source-candidate stage. Update them to Test 3 only after the new Release and
+  direct-download URLs exist and have been verified.
+- The ZIP, build/fresh-extraction roots, caches, private models, and generated
+  outputs remain local-only and outside Git.
+
+### Remaining publication gates
+
+1. Use the dedicated candidate source checkpoint without private models,
+   binaries, build output, caches, or personal paths, then rerun its exact full
+   regression and release identity/documentation checks.
+2. Clean-build that commit and regenerate the release-approved complete
+   corresponding source, SBOM, binary component map, software package, and
+   detached checksum record with the final Test 3 source-offer URL.
+3. Pass package/archive/privacy/path/CRC/hash parity, packaged and independent
+   fresh-extract self-test, and isolated Japanese/English UI smoke.
+4. Publish all five assets together under the new Test 3 prerelease tag, then
+   download each without authentication and verify its size and SHA-256.
+5. Only after those gates pass, update `CURRENT_STATE.json`, this handoff, the
+   canonical root README set, and Draft PR #7 with the frozen Test 3 identities.
+
+### Candidate documentation changed
+
+- `publication/RELEASE_NOTES_r32.2_FLAT4_TEST3_20260826.md`
+- `source/fixed_app/public_binary/README_EN.md`
+- `source/fixed_app/public_binary/README_JA.md`
+- `source/fixed_app/README_fixed_en.md`
+- `source/fixed_app/README_fixed_ja.md`
+- `FEATURES_EN.md`
+- `FEATURES_JA.md`
+- `CURRENT_STATE.json`
+- `HANDOFF.md`
+
+### Do not do
+
+- Do not replace the stable r32.2 or Flat Four Test 2 tags or assets, and do not
+  publish Test 3 from the owner-only ZIP.
+- Do not claim Test 3 publication eligibility from the working-tree/owner-only
+  preflight; the exact committed and staged public bytes require new gates.
+- Do not add DemoData, private models, derived private 3MF files, or local build
+  evidence to the Test 3 software package or Git tree.
+
+## 2026-08-26 Flat Four Test 3 published prerelease
+
+This section supersedes the pending-publication status above while preserving
+that section as the candidate/preflight record.
+
+### Frozen public identity
+
+- Published GitHub prerelease:
+  <https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2-flat4-test3>
+- Release ID: `376762493`
+- Exact tag/source commit: `v0.8beta-r32.2-flat4-test3` /
+  `beddc110922fdccc4a8c48def286014ad23cd0ed`
+- Published at: `2026-08-25T22:51:42Z` (`2026-08-26` JST)
+- Windows direct download:
+  <https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2-flat4-test3/ChromaMatter-0.8beta-r32.2-flat4-test3-win64.zip>
+- The Test 3 Windows package intentionally contains no `DemoData`.
+
+### Exact release validation
+
+- The exact-tag full regression passed 1,431 tests in 386.390 seconds with zero
+  failures and two optional skips. The exact `BUILD_AND_TEST` rerun passed in
+  382.567 seconds with the same two optional skips.
+- Keep this distinct from the earlier working-tree preflight: 1,431 tests in
+  398.127 seconds with three optional skips. That remains valid historical
+  evidence but is not the exact Release result.
+- Exact clean build, corresponding-source/compliance staging, packaged checks,
+  archive/privacy checks, and detached checksum verification: PASS.
+- After publication, all five assets were downloaded again without
+  authentication. Every asset matched its frozen byte size and SHA-256.
+- The published Windows ZIP was independently fresh-extracted. Its packaged
+  self-test and isolated Japanese/English UI smokes passed.
+
+### Frozen five-asset set
+
+- `ChromaMatter-0.8beta-r32.2-flat4-test3-win64.zip`: 115,090,746 bytes,
+  SHA-256 `C1B83936AE832EFD985951B0973143E4771B1F1FFF9C7F07ADFF9AF0EE0EB239`
+- `ChromaMatter-0.8beta-r32.2-complete-corresponding-source.zip`:
+  1,366,029,816 bytes, SHA-256
+  `A9AE90820D54ED7A9F63ACE2D8915920AE4CBFA496A3256BE2525F06E73ED8EA`
+- `ChromaMatter-0.8beta-r32.2-flat4-test3-SBOM.cdx.json`: 937,715 bytes,
+  SHA-256 `F50399614D5D70F1528EB02240639341924980A0404A31284DF1771834C1F45F`
+- `ChromaMatter-0.8beta-r32.2-flat4-test3-BINARY_COMPONENT_MAP.json`:
+  526,076 bytes, SHA-256
+  `A1D4A5B0A2C35D243645E00725D3637E60F0CC92F5B34EA8ED1221054C7F5624`
+- `SHA256SUMS-r32.2-flat4-test3.txt`: 492 bytes, SHA-256
+  `2A5BF037474550EC57166A078BE215F5B80C92BED9771FFB094E76266C8CA1F8`
+
+### Public navigation and remaining limits
+
+- The five canonical root README variants now keep stable r32.2 first and
+  preferred, while selecting Flat Four Test 3 as the current experimental
+  channel with the verified direct Windows ZIP and Release links. English and
+  Japanese aliases must remain byte-identical within their language groups.
+- Documentation-only PR #8 was squash-merged into `main` as
+  `c5032db5af1bdb678b656493080d9061f49af78a`; its reviewed navigation source was
+  Test 3 commit `9d4eb1202cb07a8438fc7e53e05889d2e09ac08c`.
+- Flat Four Test 2 remains frozen historical prerelease evidence. Do not move
+  its tag or replace its five assets.
+- Test 3 does not remove white globally. It preserves eye whites conservatively
+  and absorbs only small, high-confidence baked white/gray highlights on smooth
+  chromatic surfaces. It is topology-based, not semantic recognition; a small
+  intentional white patch can still be misclassified, so manual paint remains
+  authoritative.
+- Retained white below 0.01% does not force a white spool, all four F1-F4 slots
+  remain in the schema, and an output may effectively use only three paint IDs.
+  Full Spectrum remains unchanged.
+- On an open mesh above 500,000 faces without reusable adjacency, only the
+  automatic highlight correction skips fail-closed. Multipart solidification
+  and part-specific 3MF remain input-dependent beta features.
+- Physical-printer validation of this exact Test 3 package remains pending.
+  Do not imply that the successful software/package gates prove a physical
+  colour result or compatibility with every multipart model.
+
+## 2026-08-26 default-branch Flat Four Test 3 download navigation
+
+### Current objective
+
+Make the already published Flat Four Test 3 Windows package discoverable from
+the default `main` README without merging the experimental application branch
+or placing binary/archive bytes in Git history.
+
+### Completed in this session
+
+- Fetched and inspected the home-PC publication commits. Confirmed that the
+  white/gray highlight correction is exact tagged source commit
+  `beddc110922fdccc4a8c48def286014ad23cd0ed` and that the public Test 3 Release
+  links that commit.
+- Confirmed the anonymous direct Windows download returns HTTP 200 and reports
+  the frozen 115,090,746-byte asset size.
+- Fast-forwarded the local documentation worktree to reviewed PR #8 head
+  `9d4eb1202cb07a8438fc7e53e05889d2e09ac08c` and revalidated its five-README
+  scope.
+- With explicit owner approval, squash-merged documentation-only PR #8 into
+  `main` as `c5032db5af1bdb678b656493080d9061f49af78a`.
+- Confirmed from GitHub and `origin/main` that the default README now shows
+  stable r32.2 first and provides the Flat Four Test 3 direct ZIP, Release, and
+  Draft PR #7 links.
+
+### Current state
+
+- `main` now exposes both download choices. Stable r32.2 remains the recommended
+  Full Spectrum build; Flat Four Test 3 remains a separate unsigned public
+  experimental prerelease.
+- Draft application PR #7 remains open, Draft, mergeable at the final readback,
+  and unmerged. Its application code was not merged into `main`.
+- The Test 3 tag and all five frozen Release assets were not moved, replaced, or
+  rebuilt during this session.
+
+### Next exact task
+
+Use the main README or the Test 3 Release for owner testing in Snapmaker Orca
+and on a small physical print. Keep PR #7 Draft until the experimental behavior
+is ready for normal-version integration.
+
+### Changed files
+
+- `CURRENT_STATE.json`
+- `HANDOFF.md`
+
+### Tests run
+
+- Documentation branch `source.fixed_app.test_release_identity`: 12 tests,
+  zero failures.
+- Canonical English/Japanese README byte parity: PASS.
+- Anonymous Test 3 Windows direct-download HEAD request: HTTP 200; content
+  length 115,090,746 bytes.
+- PR #8 final GitHub readback: merged, non-Draft, head `9d4eb12`, merge commit
+  `c5032db`; `origin/main` contains the Test 3 links.
+- `CURRENT_STATE.json` parse and `git diff --check`: PASS.
+
+### Do not do
+
+- Do not merge Draft PR #7 merely because the download navigation is now on
+  `main`; application integration remains a separate validation decision.
+- Do not commit Release ZIPs or other binary archives to a branch. Keep public
+  binaries as immutable Release assets and link them from source documentation.
+- Do not move or replace the stable r32.2, Flat Four Test 2, or Flat Four Test 3
+  tags/assets.
+
+### Local-only files
+
+- Private models, generated 3MF files, build roots, caches, local environments,
+  and owner-only archives remain outside Git.
+
+## 2026-08-26 Apple Silicon macOS 15+ separate alpha source port
+
+### Current objective
+
+Port the current ChromaMatter source to a clearly separate Apple Silicon macOS
+15+ alpha without changing the published Windows releases, weakening topology
+or 3MF fail-closed validation, or implying that a Mac build has already been
+tested on hardware.
+
+### Completed in this session
+
+- Created local branch `codex/macos-arm64-flat4-test3` from exact source commit
+  `9c7be309bc2a8268d0fa9a4a0c63ad444759120d`.
+- Added a shared platform runtime for the macOS Application Support directory,
+  Finder folder opening, Snapmaker Orca discovery/launch, and a manual
+  Snapmaker Orca `Open as project` fallback. The existing Windows settings path
+  and launch behavior remain intact.
+- Made PyTetWild wrapper discovery understand the packaged macOS `.so` and
+  `.dylibs` layout as well as the existing Windows `.pyd` and DLL layout.
+- Added a strict hidden macOS alpha self-test. It requires Darwin arm64 and
+  executes a real PyTetWild tetrahedralization, the required PyMeshLab filters,
+  and a real ModernGL OpenGL 3.3 framebuffer draw/read in both source and
+  packaged-app gates.
+- Added a separate PyInstaller app spec, exact hash-locked Apple Silicon wheel
+  set, macOS build script, fail-closed bundle/native audit, Japanese/English
+  compliance notices, volunteer testing guides, and a structured private-data-
+  safe issue form.
+- Added a `macos-15` GitHub Actions workflow using CPython 3.13.14 arm64.
+  Ordinary push and pull-request runs upload diagnostics only.
+- Added a deliberately closed external-tester gate. A tester ZIP cannot be
+  uploaded unless the exact commit is approved and the macOS binary component
+  map, SPDX SBOM, corresponding-source manifest, relinking documents, source
+  status, and bilingual notices all pass.
+- Kept the in-app display version at `0.8beta`; the Apple bundle uses numeric
+  version `0.8.0`, alpha bundle identifier
+  `io.github.ponkichi0718.chromamatter.alpha`, ad-hoc signing, and no Developer
+  ID signing or Apple notarization.
+
+### Current state
+
+- The source-level port and Windows-hosted validation are complete locally.
+  No macOS app, ZIP, GitHub artifact, commit, push, or Release was created.
+- A Mac host is not available in this environment. The first real app build,
+  native-library audit, OpenGL check, and Japanese/English packaged UI smoke
+  therefore remain pending for GitHub Actions on `macos-15`.
+- The volunteer testing route is prepared in documentation and CI, but binary
+  distribution remains fail-closed because macOS-specific compliance evidence
+  is not complete.
+- Published Windows stable r32.2 and Flat Four Test assets are unchanged.
+
+### Next exact task
+
+After explicit owner approval, commit and push
+`codex/macos-arm64-flat4-test3`. Let the normal diagnostics-only macOS workflow
+perform the first build, inspect every uploaded diagnostic, and fix any Mac-only
+failure. Do not run the opt-in tester upload until all compliance evidence files
+exist, are reviewed for the exact commit, and the gate passes without overrides.
+
+### Changed files
+
+- Runtime and application:
+  `source/fixed_app/TripoSpectrumMapper_fixed.py`,
+  `source/fixed_app/spectrum_mapper/platform_runtime.py`,
+  `source/fixed_app/spectrum_mapper/cli.py`,
+  `source/fixed_app/spectrum_mapper/gui.py`,
+  `source/fixed_app/spectrum_mapper/calibration_chart.py`,
+  `source/fixed_app/spectrum_mapper/i18n.py`,
+  `source/fixed_app/spectrum_mapper/owned_filaments.py`,
+  `source/fixed_app/spectrum_mapper/renderer.py`,
+  `source/fixed_app/spectrum_mapper/volume_partition.py`, and
+  `source/fixed_app/spectrum_mapper_hotfix.py`.
+- macOS packaging and CI:
+  `source/fixed_app/TripoSpectrumMapper_macos_arm64.spec`,
+  `source/fixed_app/requirements-build-macos-arm64.lock`,
+  `BUILD_MACOS_ARM64.sh`, `AUDIT_MACOS_APP.sh`,
+  `.github/workflows/macos-arm64-alpha.yml`, and `.gitignore`.
+- Tests:
+  `source/fixed_app/test_platform_runtime.py`,
+  `source/fixed_app/test_macos_alpha_cli.py`,
+  `source/fixed_app/test_macos_packaging.py`, and
+  `source/fixed_app/test_calibration_chart_gui.py`.
+- Tester/compliance guidance:
+  `.github/ISSUE_TEMPLATE/macos_alpha_report.yml`,
+  `publication/MACOS_ALPHA_TESTING_EN.md`,
+  `publication/MACOS_ALPHA_TESTING_JA.md`,
+  `licenses/MACOS_ALPHA_COMPLIANCE_NOTICE_EN.txt`, and
+  `licenses/MACOS_ALPHA_COMPLIANCE_NOTICE_JA.txt`.
+- State records: `CURRENT_STATE.json` and `HANDOFF.md`.
+
+### Tests run
+
+- Exact-current Windows full regression after all Mac port, gate, packaging,
+  and handoff changes: 1,463 tests in 702.607 seconds, zero failures, two
+  optional skips.
+- Final targeted runtime, native-gate, packaging, i18n, release-identity, and
+  packaged-language suite: 58 tests in 3.398 seconds, zero failures.
+- Windows source visible-window UI smoke: Japanese and English both passed.
+- macOS lock dry-run for macOS 15 arm64, CPython 3.13/`cp313`/`abi3`: all 23
+  exact hashed wheels resolved; no source distribution was selected.
+- `bash -n` for both macOS scripts, Python `py_compile`, workflow and issue-form
+  YAML parsing, `CURRENT_STATE.json` parsing, and `git diff --check`: passed.
+- Actual Mac app build and packaged execution: not run; no Mac host is present.
+
+### Do not do
+
+- Do not merge this alpha branch into `main` or modify the published Windows
+  releases merely to expose an unverified Mac build.
+- Do not weaken the existing topology, closed-solid, or 3MF fail-closed gates
+  to make a Mac CI run pass.
+- Do not enable external tester ZIP upload by setting repository variables
+  alone. The exact-commit approval and every reviewed compliance evidence file
+  must also pass the workflow gate.
+- Do not call the app Developer ID signed, notarized, generally supported, or
+  physically validated.
+- Do not commit private models, generated 3MF/toolpath files, local build roots,
+  caches, environments, or binary archives.
+
+### Local-only files
+
+- `.venv`, caches, private models, generated output, and future Mac build roots
+  remain local-only and outside Git.
+- During an earlier packaging cleanup, the ignored local `build_output/`
+  directory was removed in full instead of only its intended temporary child.
+  No tracked source was removed and the current changes are intact, but any
+  older generated artifacts that existed there are not recoverable from Git.
+- No Mac `.app` or tester ZIP exists locally.
+
+## 2026-08-26 macOS volunteer test path and public fixture
+
+### Current objective
+
+Make the separate Apple Silicon macOS alpha easy for a first-time volunteer to
+download safely, test in about ten minutes, and report without sharing a
+private model, while retaining the exact-commit compliance and fail-closed 3MF
+distribution gates.
+
+### Completed in this session
+
+- Enabled GitHub Discussions and created the English macOS testing board at
+  `https://github.com/Ponkichi0718/ChromaMatter/discussions/9`.
+- Reworked the English tester guide around current availability, exact approved
+  build identity, checksum verification, Finder first launch, a required
+  ten-minute checklist, known limitations, diagnostics, privacy, and clear
+  Discussion-versus-Issue reporting.
+- Reworked the macOS Issue form to collect workflow/artifact identity, Mac
+  hardware, Pass/Fail/Not-tested results, exact reproduction, fail-closed 3MF
+  behavior, Orca details, and sanitized self-test evidence.
+- Added README routes for the separate Mac alpha without presenting an
+  unapproved download as available.
+- Added a deterministic CC0 test-model generator. The generated static GLB has
+  32 vertices, 48 triangles, four positive-volume watertight boxes, exact red,
+  blue, white, and black normalized `COLOR_0`, and no texture, brand, character,
+  AI-generated asset, external URI, or private metadata. The binary is generated
+  only during approved tester staging and is not committed.
+- Added a human-readable GitHub Actions job summary that distinguishes the
+  diagnostics artifact from a real tester ZIP and records the exact commit,
+  artifact name, SHA-256, seven-day retention, guide, board, and Issue route.
+
+### Current state
+
+- Discussions is live, but this branch and its documentation/Issue form are not
+  pushed yet, and the main README does not yet show the Mac route.
+- There is no approved Mac application download. Ordinary CI is diagnostics
+  only; tester ZIP creation remains blocked by the exact-commit macOS compliance
+  evidence gate.
+- No real Apple Silicon build or packaged execution has run yet.
+
+### Next exact task
+
+Commit and push `codex/macos-arm64-flat4-test3`, start the first `macos-15`
+diagnostics build through its pull request, inspect the run and fix Mac-only
+failures. Keep Discussion #9 marked as no-download until an exact build passes
+and the macOS distribution evidence is complete. Expose the guide from `main`
+through a documentation-only PR; do not merge the Mac application branch into
+`main` merely to create the navigation.
+
+### Changed files
+
+- Mac source, package, CI, and tests listed in the preceding macOS handoff.
+- Tester UX: `README.md`, `README_EN.md`, `README_PUBLIC_EN.md`,
+  `README_JA.md`, `README_PUBLIC_JA.md`,
+  `publication/MACOS_ALPHA_TESTING_EN.md`,
+  `publication/MACOS_ALPHA_HUB_EN.md`,
+  `.github/ISSUE_TEMPLATE/config.yml`, and
+  `.github/ISSUE_TEMPLATE/macos_alpha_report.yml`.
+- Public fixture: `samples/generate_macos_alpha_test_glb.py`,
+  `samples/MACOS_ALPHA_TEST_MODEL_README.md`, `samples/LICENSE.txt`,
+  `samples/README_JA.md`, and `source/fixed_app/test_public_macos_glb.py`.
+- State: `CURRENT_STATE.json` and `HANDOFF.md`.
+
+### Tests run
+
+- Current tester/package/runtime/release focused suite: 49 tests, zero
+  failures.
+- Public GLB checks include byte identity, static embedded structure, four exact
+  colours, zero boundary/non-manifold edges, four positive watertight bodies,
+  existing loader/preflight compatibility, and staging-only generation.
+- Workflow and Issue YAML parse: PASS.
+- `bash -n` for both Mac scripts, Python compile, README canonical parity tests,
+  and `git diff --check`: PASS.
+- The preceding exact-current full regression remains valid for the application
+  changes; a final full regression will run while the first Mac CI is active.
+
+### Do not do
+
+- Do not call the diagnostics artifact an app or direct testers to it.
+- Do not post an approved download in Discussion #9 until the exact Mac build,
+  native audit, self-test, UI smoke, and compliance gate all pass.
+- Do not commit the generated GLB binary, an `.app`, ZIP, private model, or
+  generated 3MF.
+- Do not weaken topology, Solidify, or 3MF fail-closed behavior for a CI pass.
+
+### Local-only files
+
+- Local environments, caches, generated GLB copies, Mac build roots, app
+  bundles, diagnostics downloads, and tester ZIPs remain outside Git.
+
+## 2026-08-26 first Apple Silicon CI diagnosis
+
+### Current objective
+
+Carry the first real `macos-15` run through packaging without hiding a Mac app
+defect or weakening Windows, topology, or 3MF coverage.
+
+### Completed in this session
+
+- Pushed commit `748c05b5d3faaa1987a67ccd1e73b824a5fde44d` and ran
+  `https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32938795209`.
+- Confirmed on a real Apple Silicon runner that CPython 3.13.14 arm64, all 23
+  hash-locked wheels, PyTetWild tetrahedralization, required PyMeshLab filters,
+  and ModernGL framebuffer draw/read pass.
+- Identified all 10 failures and one error as test portability assumptions:
+  Windows modifier masks and Win32 ABI, macOS `/tmp` canonicalization, Aqua
+  window clamping, canvas-coordinate rounding, a non-Mac rejection subprocess,
+  and a 1.35e-6 ARM64 Delta-E round-off.
+- Preserved the behavior coverage by explicitly emulating Windows for the two
+  Windows modifier tests, using neutral ordinary-button states elsewhere,
+  selecting real accepted canvas pixels, retaining exact Windows layout tests,
+  retaining a live positive-size Aqua layout test, and isolating preferences
+  with the cross-platform data-directory override.
+- Updated Discussion #9 with the accurate no-download first-run status.
+
+### Current state
+
+- The first run did not reach PyInstaller and created diagnostics only. No Mac
+  app or tester ZIP was exposed.
+- Portability fixes are implemented locally and pass their 11 exact regression
+  targets; the full 43-test hotfix module also passes.
+- Windows exact commit `748c05b` passed 1,468 tests in 697.983 seconds with two
+  optional skips before these test-only portability refinements.
+
+### Next exact task
+
+Commit and push the portability fixes, then follow the automatically triggered
+Mac run. If packaging passes, inspect the app audit, packaged native/render
+self-test, and Japanese/English UI smoke. Do not request a tester ZIP yet.
+
+### Changed files
+
+- `source/fixed_app/test_hotfix.py`
+- `source/fixed_app/test_extended_palette.py`
+- `source/fixed_app/test_gui_integration.py`
+- `source/fixed_app/test_macos_alpha_cli.py`
+- `source/fixed_app/test_manual_paint_r25.py`
+- `source/fixed_app/test_new_obj_defaults.py`
+- `source/fixed_app/test_pen_pressure.py`
+- `source/fixed_app/test_platform_runtime.py`
+- `publication/MACOS_ALPHA_HUB_EN.md`
+- `CURRENT_STATE.json` and `HANDOFF.md`
+
+### Tests run
+
+- Exact 11 first-run failure targets: 11 passed.
+- Entire `source.fixed_app.test_hotfix` module: 43 passed.
+- Exact commit `748c05b` Windows full suite: 1,468 passed with two optional
+  skips and zero failures.
+
+### Do not do
+
+- Do not remove broad test modules from the Mac runner to make it green.
+- Do not interpret the first CI failure as a native-library failure; the strict
+  native/render gate passed before the portable source suite stopped.
+- Do not distribute the diagnostics artifact or request the gated tester ZIP.
+
+### Local-only files
+
+- Downloaded CI logs and diagnostics remain in a unique temporary directory and
+  are not Git inputs or package payloads.
+
+## 2026-08-26 macOS technical CI success and distribution hold (current)
+
+### Current objective
+
+Keep the first macOS volunteer path simple and public-facing while completing
+the exact native source/relink evidence required before an external tester ZIP
+can be approved.
+
+### Completed in this session
+
+- The volunteer route is the English guide, Discussion #9, and the dedicated
+  macOS Issue form. The first approved kit will use the deterministic CC0
+  four-box GLB and the 10-minute checklist; no private or complex model is
+  needed.
+- Apple Silicon technical CI run
+  <https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32947038458>
+  succeeded from exact source commit
+  `9404926a6aadbb918ade7855f4141e263c3aafba`.
+- Source tests, native probes, app packaging, packaged native/rendering
+  self-test, and Japanese/English UI smoke passed. The run uploaded diagnostics
+  only; all tester ZIP steps remained skipped.
+- The deterministic app inventory recorded 859 regular files, 207 symlinks,
+  317 arm64 Mach-O files, and 20 packaged Python distributions. Its SHA-256 is
+  `59113A39C8C7BACB566DD3D23E8374CA56973F1D6DB3A472FDDFBF0EAEE45D22`.
+- The fail-closed source-coverage audit maps all 317 Mach-O files uniquely and
+  reports 253 with unresolved source/build/relink evidence. Its SHA-256 is
+  `73907E2E4C5C95E5893F995E7FC74C557DF57E79A7E6131F80021F2545720DAB`;
+  `engineering_gate_passed=false` and `legal_conclusion=false`.
+- Automatic Mac CI now runs once for a relevant source-branch push. The
+  redundant pull-request event was removed because it rebuilt the same exact
+  head for documentation-only PR synchronization events.
+- Draft PR #12 remains the separate macOS source/review workspace and is not a
+  tester download.
+
+### Current state
+
+- The Apple Silicon `.app` builds and passes the technical CI gate on macOS
+  15.7.7 arm64 with CPython 3.13.14.
+- There is no approved macOS tester download. A `diagnostics` artifact is not
+  the application and must not be given to testers.
+- External tester distribution remains blocked by the 253 unresolved native
+  source/build/relink closures. The audit cannot create a complete source stage
+  while any gap remains and cannot make a legal approval decision.
+- This section supersedes the earlier statements that no real Mac app build had
+  completed or that the next technical CI run was pending. The first failed run
+  remains above as historical diagnosis.
+
+### Next exact task
+
+Resolve and review the 253 source/build/relink closures, generate the
+exact-commit corresponding-source evidence, obtain explicit owner approval,
+and rerun the fail-closed tester-distribution gate. Keep Discussion #9 in
+no-download status and PR #12 as Draft until those steps pass.
+
+### Changed files
+
+- `.github/workflows/macos-arm64-alpha.yml`
+- `.gitignore`
+- `tooling/audit_macos_source_coverage.py`
+- `tooling/macos_source_coverage_plan.json`
+- `tooling/stage_macos_corresponding_source.py`
+- `source/fixed_app/test_macos_source_coverage.py`
+- `source/fixed_app/test_macos_packaging.py`
+- `README.md`, `README_EN.md`, and `README_PUBLIC_EN.md`
+- `publication/MACOS_ALPHA_TESTING_EN.md`
+- `publication/MACOS_ALPHA_HUB_EN.md`
+- `CURRENT_STATE.json` and `HANDOFF.md`
+
+### Tests run
+
+- Full Windows regression: 1,478 tests passed with two optional skips and zero
+  failures in 686.573 seconds.
+- Hardened app-inventory/compliance/source-coverage/packaging suite: 35 passed.
+- Exact-source checkout/recording follow-up: 26 focused tests passed.
+- Independent adversarial review confirmed input/output overwrite protection,
+  exact archive/git-source binding, case/Unicode/path collision rejection, and
+  non-legal engineering-gate terminology.
+- Final Apple Silicon CI run #32947038458: success; source commit in both
+  `CI_ENVIRONMENT.txt` and the coverage report exactly matches `9404926...`.
+- Final diagnostics privacy and false-approval scan: passed.
+
+### Do not do
+
+- Do not distribute or describe a diagnostics artifact as the app.
+- Do not publish a tester ZIP while any source/relink closure remains open.
+- Do not call the alpha Developer ID signed, notarized, generally supported,
+  legally approved, or physically validated.
+- Do not weaken topology or 3MF fail-closed validation.
+
+### Local-only files
+
+- Downloaded diagnostic ZIPs, extracted inventory/coverage reports, exact wheel
+  inspection caches, generated GLB copies, app bundles, and any tester ZIP stay
+  outside Git.
+
+## 2026-08-26 macOS Source Tester Alpha 1 publication (current)
+
+### Current objective
+
+Let Apple Silicon/macOS 15+ volunteers run the current ChromaMatter source with
+one guided launcher now, without representing or bypassing the separately
+blocked prebuilt-app distribution gate.
+
+### Completed in this session
+
+- Created branch `codex/macos-arm64-tester-alpha` in a clean worktree because
+  the owner's primary worktree contained unresolved conflicts that were left
+  untouched.
+- Added executable `START_MACOS_SOURCE_ALPHA.command`. It checks Apple Silicon
+  and macOS 15+, verifies the official CPython 3.13.14 installer URL, SHA-256,
+  and macOS signature, creates a private Application Support virtual
+  environment, installs only runtime packages from an exact hash lock,
+  generates the deterministic CC0 four-colour GLB, runs the PyTetWild,
+  PyMeshLab, and ModernGL gate, and opens the source GUI only after success.
+- The launcher does not use `sudo`, invoke the installer CLI, disable
+  Gatekeeper, remove quarantine attributes, or consume the prebuilt-app gate.
+- Added `.github/workflows/macos-source-alpha.yml`. Exact branch commit
+  `41d57d8960191f6fb2182461b620a044a0d3966a` passed run
+  <https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32953820494>.
+  The exact tag passed again in run
+  <https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32953920272>,
+  including runtime lock installation, public GLB generation, native/render
+  self-test, and Japanese/English UI smoke.
+- Published prerelease
+  <https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-macos-source-alpha1>
+  from tag `v0.8beta-macos-source-alpha1` at the exact source commit above.
+  The source ZIP is 4,926,388 bytes with SHA-256
+  `a28d7723957e7cafda1e7db2638fd4fc5e9cb52aa5eca870c81bb48bd292942a`.
+  `SHA256SUMS-macos-source-alpha1.txt` is 111 bytes with SHA-256
+  `a232cc261b740fdd01f3bb76dae3625f3e56b6eb34a53cca348ce76eff3e8695`.
+- Redownloaded both assets without authentication and reverified byte size,
+  SHA-256, the 456-file inventory, case-fold path uniqueness, absence of
+  packaged native/app payloads, LF launcher bytes, and executable mode 100755.
+- Updated Discussion #9 to the public source tester route and added the result
+  template. Draft PR #17 is the source-review delta against the prior Mac
+  branch and remains distinct from the release tag.
+- Merged documentation-only PR #18 to default branch commit
+  `2297bc21932a2bf55bc8b250d3827f74080c80c1`. The public English and Japanese
+  READMEs now expose the direct ZIP, Release/checksum, bilingual test hubs, and
+  Issue form while preserving the blocked prebuilt-app warning.
+- Hardened a future opt-in prebuilt-app workflow so its source-coverage audit
+  requires the engineering gate to pass whenever a tester ZIP is requested.
+
+### Current state
+
+- Apple Silicon/macOS 15+ testers have a public, fixed, source-based download
+  that was verified on the exact tag. It is not a prebuilt, signed, notarized,
+  or generally supported app.
+- The prebuilt `.app` remains blocked. The last packaged-app inventory still
+  has 253 unresolved source/build/relink closures, and diagnostics artifacts
+  are not tester applications.
+- Published Windows stable r32.2 and Flat Four Test 3 assets are unchanged.
+
+### Next exact task
+
+Collect Source Tester Alpha results through Discussion #9 and one reproducible
+defect per macOS Issue form. In parallel, resolve the 253 native closure gaps
+before any prebuilt app ZIP can be separately approved. Do not infer prebuilt
+app eligibility from source tester success.
+
+### Changed files
+
+- `.gitattributes`, `.gitignore`
+- `.github/workflows/macos-source-alpha.yml`
+- `.github/workflows/macos-arm64-alpha.yml`
+- `.github/ISSUE_TEMPLATE/macos_alpha_report.yml`
+- `START_MACOS_SOURCE_ALPHA.command`
+- `source/fixed_app/requirements-runtime-macos-arm64.lock`
+- `source/fixed_app/test_macos_source_launcher.py`
+- `source/fixed_app/test_macos_packaging.py`
+- `README.md`, `README_EN.md`, `README_JA.md`, `README_PUBLIC_EN.md`,
+  `README_PUBLIC_JA.md`
+- `publication/MACOS_ALPHA_HUB_EN.md`,
+  `publication/MACOS_ALPHA_HUB_JA.md`,
+  `publication/MACOS_ALPHA_TESTING_EN.md`, and
+  `publication/MACOS_ALPHA_TESTING_JA.md`
+- `CURRENT_STATE.json` and `HANDOFF.md`
+
+### Tests run
+
+- Windows focused macOS launcher/packaging/CLI/source-coverage/compliance set:
+  52 passed, one bash-only syntax check skipped on Windows.
+- YAML parsing: both workflows and the macOS Issue form passed; Issue-form IDs
+  are unique.
+- README parity: three English variants and two Japanese variants are exact.
+- Documentation: 174 Markdown links inspected, including 54 local links with
+  zero missing targets in the default-branch documentation set.
+- Generated public GLB: 1,524 bytes and exact SHA-256
+  `1b6092448e62a93f5e29a9c6dda1265a7a2179c2eacd293f7d8f02d1f268c563`.
+- Exact-tag Apple Silicon/macOS 15 arm64 Actions run #32953920272: all launcher,
+  dependency, native/render, public-fixture, and Japanese/English UI steps
+  passed.
+- Public assets: anonymous redownload and SHA-256/archive audit passed.
+- `git diff --check`, `git diff --cached --check`, and JSON parse passed before
+  the source implementation commit; rerun for this state-only follow-up before
+  commit.
+
+### Do not do
+
+- Do not describe the Source Tester Alpha ZIP as a `.app`, signed application,
+  notarized build, or evidence that the prebuilt-app gate passed.
+- Do not distribute a `diagnostics` artifact as the app.
+- Do not attach private, purchased, customer, confidential, or third-party
+  models to public reports.
+- Do not weaken topology, 3MF, palette-state, or source-closure gates to turn a
+  failure into a pass.
+
+### Local-only files
+
+- Release staging and anonymous redownload copies are under
+  `C:\Dev\ChromaMatter-macos-source-alpha-release` and remain outside Git.
+- The temporary generated GLB and temporary YAML parser installation are not
+  repository inputs or release payloads.
+
+## 2026-08-26 macOS Source-backed App Alpha 1 publication (current)
+
+### Objective
+
+Provide Apple Silicon/macOS 15+ volunteers with a normal Finder-launchable
+`.app` and an English installation/test guide without distributing the still
+unapproved frozen native runtime.
+
+### Completed
+
+- Added `tooling/stage_macos_source_app.py`, which creates
+  `ChromaMatter Source Alpha.app` from exact committed Git blobs. The app
+  contains ChromaMatter source/data, a shell Finder entry point, icon, notice,
+  and a complete SHA-256 manifest. It rejects symlinks, wheels, virtual
+  environments, Mach-O, ELF, PE, native libraries, archives, and runtime
+  caches fail closed.
+- Finder launch opens the existing reviewed source launcher in Terminal. CLI
+  arguments, including `--self-test-only`, go directly to that launcher. No
+  `sudo`, Gatekeeper disablement, quarantine removal, bundled Python, or
+  bundled third-party native runtime is used.
+- Added the English installation and 10-minute test guide at
+  `publication/MACOS_SOURCE_APP_TESTING_EN.md`. It explains the source-backed
+  distinction, supported host, checksum, normal Finder Open flow, possible
+  Apple Installer administrator prompt, functional checks, privacy, and report
+  template.
+- Extended `.github/workflows/macos-source-alpha.yml` to stage/audit the app,
+  exercise its embedded launcher, run Japanese/English UI smoke, package a
+  one-root ZIP, fresh-extract and re-audit it, compare workflow/root/manifest
+  source identities, run direct and Finder/LaunchServices self-tests, and
+  upload the ZIP only for an explicit manual input.
+- The first manual run exposed only a missing step-local
+  `CHROMAMATTER_ALPHA_HOME` environment binding and failed before packaging.
+  That binding and its regression assertion were added. Candidate run
+  <https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32964917126>
+  then passed on Apple Silicon/macOS 15.
+- Tagged exact commit `aaf6665eca20180129e7b4eade3df941d7d28433` as
+  `v0.8beta-macos-source-app-alpha1`. Exact-tag workflow-dispatch run
+  <https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32965133450>
+  repeated the full test and passed.
+- Published prerelease
+  <https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-macos-source-app-alpha1>
+  with:
+  - `ChromaMatter-0.8beta-macos-source-app-alpha1.zip`: 5,608,874 bytes,
+    SHA-256
+    `271D65D330A97C3DE45FEFDC4F891990BDDFEAA77C223B5B39420FFF1729879E`;
+  - `SHA256SUMS-macos-source-app-alpha1.txt`: 115 bytes, SHA-256
+    `CB7AFF611044C3D2987F129E9D915B0FBAD015844F5815F70888DDFDAD76A86F`.
+- Downloaded both public assets without authentication. The checksum matched,
+  the ZIP extracted to one root, and the 238-file app manifest passed with
+  zero bundled native runtime binaries and the exact source commit above.
+- Merged documentation-only PR #19 to default-branch commit
+  `80845d1c9a72b7d0da45c58101a9b62ce268b58d`. README EN/JA and both macOS
+  hubs now provide the direct app ZIP, checksum, English guide, and reporting
+  route. Discussion #9 comment
+  <https://github.com/Ponkichi0718/ChromaMatter/discussions/9#discussioncomment-18161984>
+  announces the test package.
+- Updated Draft PR #17 to describe the source-backed Finder app and preserve
+  the separate self-contained-app hold.
+- Improved the frozen-app source audit without approving it: all 317 Mach-O
+  paths are mapped, required NumPy/PyMeshLab/PyTetWild/Rtree/SciPy wheel
+  inspections pass, and unresolved source/build/relink paths decreased from
+  253 to 153. Seven known gaps remain and the engineering status stays
+  `candidate-only`.
+
+### Current state
+
+- macOS testers can download and launch a normal Finder `.app`, but first
+  setup remains visible in Terminal and installs the verified runtime on their
+  own Mac.
+- The source-backed app is unsigned and unnotarized. It is not a self-contained
+  frozen app and it is not a supported stable macOS release.
+- The frozen/prebuilt app remains blocked by 153 unresolved native
+  source/build/relink closures. Source-backed app success is not evidence that
+  this separate gate passed.
+- Published Windows stable r32.2 and Flat Four Test 3 assets are unchanged.
+
+### Next exact task
+
+Collect real Apple Silicon/macOS 15+ compatibility reports through Discussion
+#9 and the macOS Issue form. Separately resolve and verify the 153 frozen-app
+closure gaps before any self-contained app is considered. Do not weaken
+topology, 3MF, palette, security, or source-closure gates.
+
+### Changed files
+
+- `.github/workflows/macos-arm64-alpha.yml`
+- `.github/workflows/macos-source-alpha.yml`
+- `.github/ISSUE_TEMPLATE/macos_alpha_report.yml`
+- `.gitignore`
+- `README_EN.md`, `README_JA.md`
+- `publication/MACOS_ALPHA_HUB_EN.md`
+- `publication/MACOS_ALPHA_HUB_JA.md`
+- `publication/MACOS_ALPHA_TESTING_EN.md`
+- `publication/MACOS_APP_TESTING_EN.md`
+- `publication/MACOS_SOURCE_APP_TESTING_EN.md`
+- `source/fixed_app/test_macos_packaging.py`
+- `source/fixed_app/test_macos_source_app.py`
+- `source/fixed_app/test_macos_source_coverage.py`
+- `tooling/macos_source_coverage_plan.json`
+- `tooling/stage_macos_source_app.py`
+- `CURRENT_STATE.json`, `HANDOFF.md`
+
+### Validation
+
+- Windows focused source-app/launcher/packaging/source-coverage suite: 48
+  tests passed; one bash-only syntax check skipped on Windows.
+- Post-commit local app stage/audit: 238 files, zero bundled native runtime
+  binaries, exact source commit, PASS.
+- Exact old packaged-app inventory plus five official required wheels: 317/317
+  mapped, zero missing wheel inspections, zero failed probes, 153 unresolved,
+  seven known gaps, `candidate-only`.
+- Apple Silicon/macOS 15 candidate and exact-tag runs listed above: PASS,
+  including fresh extraction and Finder/LaunchServices opening.
+- Anonymous Release re-download, SHA-256, extraction, and app-manifest audit:
+  PASS.
+- `git diff --check`, JSON parse, focused tests, and status must be rerun after
+  this state update before commit.
+
+### Do not do
+
+- Do not call the source-backed `.app` self-contained, signed, notarized, or a
+  stable macOS release.
+- Do not distribute a diagnostics artifact as the app or bypass Gatekeeper.
+- Do not approve the frozen app while 153 native closure paths remain.
+- Do not publish private models, purchased assets, personal paths, or
+  credentials in reports or repository files.
+
+### Local-only files
+
+- Official macOS audit wheels are under
+  `C:\Dev\ChromaMatter-macos-wheel-audit` and remain outside Git.
+- Candidate/Release staging and anonymous re-download copies are under unique
+  `C:\Dev\ChromaMatter-macos-source-app-release-*` and `%TEMP%` directories;
+  they remain outside Git.
+
+## 2026-08-26 main integration of the macOS source-backed app
+
+### Objective and result
+
+- The owner requested that the default branch contain the same source-backed
+  Finder `.app` implementation as the published Mac alpha instead of only its
+  documentation links.
+- Integration branch `codex/macos-app-main-integration` merges the exact
+  `codex/macos-arm64-tester-alpha` history into the latest `origin/main`.
+- The Finder app depends on Flat Four Test 3 and the macOS runtime port, so the
+  complete reviewed dependency chain is integrated together. Cherry-picking
+  only the wrapper would not reproduce the published app.
+- The immutable Windows r32.2 and Flat Four Test 3 Release tags/assets remain
+  unchanged. The source-backed app remains distinct from the blocked
+  self-contained/frozen Mac build.
+
+### User-facing clarification
+
+- The public four-box GLB can exercise Full Spectrum with 16, 24, or 32 total
+  states and Flat Four. Full Spectrum starts at 16, so testers must explicitly
+  select 32.
+- The fixture contains only flat red, blue, white, and black source colours.
+  It validates the selectable 32-state processing/export path, not simultaneous
+  use or visual coverage of all 32 mixed states.
+- The English app guide and bilingual sample README now state that limitation.
+
+### Changed integration files
+
+- Main and public English/Japanese README aliases now consistently identify the
+  downloadable source-backed Finder app and the 153-gap frozen-app gate.
+- `.github/workflows/macos-source-alpha.yml` and
+  `.github/workflows/macos-arm64-alpha.yml` run for main pushes and pull
+  requests targeting main when relevant files change.
+- `CURRENT_STATE.json`, the English source-app guide, and the public fixture
+  README record the integrated source and exact test scope.
+
+### Validation so far
+
+- Python 3.13.14 focused integration suite: 149 tests passed, one Windows-only
+  bash syntax check skipped, zero failures.
+- `compileall`, `CURRENT_STATE.json` parse, README alias SHA-256 parity, and
+  `git diff --check`: PASS.
+- Full Windows regression, exact GitHub macOS workflows, PR review, and merge
+  are pending and must pass before claiming default-branch completion.
+
+### Do not do
+
+- Do not move or mutate any existing public tag or Release asset.
+- Do not call the source-backed Finder app self-contained, signed, notarized,
+  or stable.
+- Do not claim that the four-box fixture visibly covers all 32 mixed states.
+- Do not weaken topology, palette pending-apply, or 3MF fail-closed contracts.
+
+### Local-only files
+
+- Integration worktree: `C:\Dev\ChromaMatter-macos-main-integration`.
+- Audit-only worktrees, Mac wheels, candidate archives, and private user models
+  remain outside Git and must not be published.
+
+## 2026-08-26 macOS Source-backed App Alpha 2 with stable r32.2 DemoData (current candidate)
+
+### Objective
+
+Prepare a separate Source-backed App Alpha 2 candidate for Apple Silicon on
+macOS 15+. Keep the same Finder-launchable source-backed `.app`, add the quick
+public four-box GLB and the immutable stable r32.2 DemoData beside the app, and
+preserve every Alpha 1 tag and Release asset byte-for-byte.
+
+### Candidate package contract
+
+- The only candidate ZIP name is
+  `ChromaMatter-0.8beta-macos-source-app-alpha2.zip`, with package root
+  `ChromaMatter-0.8beta-macos-source-app-alpha2/`.
+- The root allowlist is exactly `ChromaMatter Source Alpha.app/`,
+  `README_INSTALL_AND_TEST_EN.md`, `SOURCE_BACKED_ALPHA_NOTICE.txt`,
+  `SOURCE_COMMIT.txt`, `ChromaMatter-Public-Four-Color-Test.glb`, its `.sha256`,
+  `DemoData/`, `SOURCE_APP_PACKAGE_MANIFEST.json`, and
+  `SOFTWARE_PACKAGE_SHA256.txt`.
+- `DemoData/` stays beside the Finder app, never inside it. It contains exactly
+  15 canonical files: the original GLB and reference image; one combined and
+  six part-specific Full Spectrum 3MF outputs; the part-output manifest;
+  English/Japanese README and NOTICE documents; and the canonical
+  `DEMO_DATA_MANIFEST.json`. No local validation sidecar or other extra file is
+  allowed.
+- The Alpha 2 outer JSON manifest must independently cover every regular
+  packaged file except itself and `SOFTWARE_PACKAGE_SHA256.txt`, and bind the
+  exact source commit plus the immutable stable r32.2 DemoData source identity.
+  `SOFTWARE_PACKAGE_SHA256.txt` must be sorted; each line contains an uppercase
+  SHA-256 digest, two ASCII spaces, and a POSIX path. It covers every other
+  regular file, including `SOURCE_APP_PACKAGE_MANIFEST.json`, and excludes only
+  itself. The root `/DemoData/` ignore guard prevents the large out-of-tree
+  staging input from being added to Git accidentally.
+
+### Test-scope clarification and mandatory warnings
+
+- The quick four-box fixture checks the selectable Full Spectrum 32-state path
+  and switching to Flat Four. Its four flat source colours do not force or
+  visibly cover all 32 mixed states simultaneously.
+- `DemoData/Original AI model Color.glb` is the realistic multipart,
+  32-state/Hi3D input. The seven included 3MFs are Full Spectrum examples only;
+  they do not prove that a Flat Four output was generated or inspected.
+- Before regenerating DemoData output, select the F slot that physically holds
+  black and enable **Weak Black 5–25%**.
+- Hi3D-derived part names may not match visible regions. Inspect the geometry
+  instead of trusting an individual part filename.
+- Multipart solidification remains unstable beta behavior. The stable r32.2
+  DemoData succeeded, but another multipart GLB can fail solidification or 3MF
+  export; do not weaken the closed-solid or 3MF gates.
+
+### Current state
+
+- Alpha 1 remains the only published source-backed Finder app and is immutable.
+- Alpha 2 has a completed local preflight at exact local commit
+  `83ca52c54f318abbe19eaa2a4010b58667ae64b0`. Real stable r32.2 DemoData
+  extraction, package staging, independent audit, focused tests, and the full
+  Windows suite passed locally.
+- That commit has not been pushed or opened as an Alpha 2 pull request. It has
+  not run through exact-commit Apple Silicon/macOS 15 CI, been reviewed or
+  merged to main, produced and validated an approved manual artifact, been
+  published as an Alpha 2 Release, or been anonymously re-downloaded. No CI or
+  Release success is claimed.
+- The English install/test guide now records the exact Alpha 2 tree, the quick
+  and extended test paths, the Full Spectrum-only status of the included 3MFs,
+  and all mandatory warnings. Existing README aliases were not changed for
+  this candidate documentation update.
+- `CURRENT_STATE.json` records each remaining Alpha 2 gate explicitly and does
+  not treat stable r32.2 DemoData evidence, Alpha 1 CI, or local staging work as
+  proof of an Alpha 2 Release.
+
+### Next exact task
+
+1. Push exact local preflight commit
+   `83ca52c54f318abbe19eaa2a4010b58667ae64b0` and open the Alpha 2 pull
+   request.
+2. Run that exact pushed commit through Apple Silicon/macOS 15 CI, inspect the
+   diagnostics, and obtain review before merging to `main`.
+3. After the merge, explicitly request, download, and independently validate a
+   manual Alpha 2 artifact. Do not substitute a diagnostics artifact.
+4. With explicit owner publication approval, create a new Alpha 2 tag and
+   Release with its detached checksum; never alter Alpha 1.
+5. Anonymously re-download the published Alpha 2 assets and verify their sizes,
+   hashes, extraction, manifests, source identity, paths, privacy, and native
+   exclusions before calling Alpha 2 available.
+
+### Documentation/state files changed
+
+- `.gitignore`
+- `publication/MACOS_SOURCE_APP_TESTING_EN.md`
+- `CURRENT_STATE.json`
+- `HANDOFF.md`
+
+The existing bilingual `samples/MACOS_ALPHA_TEST_MODEL_README.md` already
+states the quick fixture's 32-state-path/Flat-Four scope and its lack of
+simultaneous 32-state coverage, so no additional Alpha 2 edit is required there.
+
+### Validation at this checkpoint
+
+- `CURRENT_STATE.json` parse: PASS.
+- Exact local preflight source commit:
+  `83ca52c54f318abbe19eaa2a4010b58667ae64b0`.
+- Real stable r32.2 DemoData extraction, staging, and independent audit: PASS;
+  exactly 15 files, 10 manifest payloads, and 236,274,418 payload bytes.
+- Focused Windows validation: 40 tests in 136.241 seconds, OK, with three
+  platform skips.
+- Full Windows regression: 1,538 tests in 587.876 seconds, OK, with seven
+  platform skips.
+- Security review fixes are present and covered by the local validation: exact
+  Git-byte parity for staged app content; an early recursive symlink and
+  special-file scan; rejection of control-character, Unicode-confusable, and
+  normalization-colliding paths; and independent `shasum` verification of
+  `SOFTWARE_PACKAGE_SHA256.txt`.
+- Push/PR, Apple Silicon CI, main merge, approved manual artifact validation,
+  Alpha 2 Release publication, and anonymous public re-download remain pending.
+  No macOS CI or Release success is claimed at this checkpoint.
+
+### Do not do
+
+- Do not move, replace, retag, or rebuild the published Source-backed App Alpha
+  1 assets as Alpha 2.
+- Do not commit the large stable DemoData payload, a generated `.app`, candidate
+  package directory, ZIP, checksum, private model, or validation output.
+- Do not place `DemoData/` inside the app or include any file outside its exact
+  15-file canonical allowlist.
+- Do not call Alpha 2 CI-validated, merged, released, signed, notarized,
+  self-contained, generally supported, or physically validated before the
+  corresponding gates actually pass.
+
+### Local-only files
+
+- The verified stable DemoData payload source, staged candidate root, generated
+  app and quick GLB, fresh extraction, archive/checksum, and audit output remain
+  outside Git.

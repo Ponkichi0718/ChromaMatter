@@ -12,21 +12,26 @@
 | --- | --- | --- |
 | **Published r32.2** | The current downloadable Windows build and the documented Full Spectrum workflow | **[Download stable r32.2](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2)** |
 | **Experimental Flat Four Test 3** | Testing Flat Four, topology-aware white/gray highlight correction, the large-static-GLB path, and the 2D Colour Filter before integration | **[Download the Windows test ZIP](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2-flat4-test3/ChromaMatter-0.8beta-r32.2-flat4-test3-win64.zip)** · [Release notes](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2-flat4-test3) · [Draft PR #7](https://github.com/Ponkichi0718/ChromaMatter/pull/7) |
-| **macOS Source Tester Alpha** | Source-based testing on Apple Silicon / macOS 15+; no prebuilt app or public macOS Release | **[Download the source tester ZIP](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-macos-source-alpha1/ChromaMatter-0.8beta-macos-source-alpha1.zip)** · [Release/checksum](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-macos-source-alpha1) · [Test hub](publication/MACOS_ALPHA_HUB_EN.md) |
+| **macOS Source-backed App Alpha** | Finder `.app` testing on Apple Silicon / macOS 15+; first launch prepares the hash-locked source runtime | **[Download the macOS app ZIP](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-macos-source-app-alpha1/ChromaMatter-0.8beta-macos-source-app-alpha1.zip)** · [Release/checksum](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-macos-source-app-alpha1) · [English install/test guide](publication/MACOS_SOURCE_APP_TESTING_EN.md) · [Test hub](publication/MACOS_ALPHA_HUB_EN.md) |
 
 The experimental workstream is an integration candidate, not a permanent fork.
 **Flat Four Test 3 is available as a separate public pre-release.** Extract the
 whole ZIP before starting it. Stable r32.2 below does not contain Flat Four; the
 Test 3 Release and Draft PR #7 remain the experimental status hubs.
 
-**The macOS Source Tester Alpha is available now for Apple Silicon / macOS
-15+.** Download the fixed ZIP above, then Control-click
-`START_MACOS_SOURCE_ALPHA.command` and choose **Open**. The launcher verifies
-official Python 3.13.14 and hash-locked dependencies before opening the GUI.
-There is still no approved prebuilt `.app`: its separate distribution gate
-remains blocked by 253 unresolved Mach-O source/build/relink closures. A
-`diagnostics` artifact is not the app. See [Discussion #9](https://github.com/Ponkichi0718/ChromaMatter/discussions/9)
+**The macOS Source-backed App Alpha is available for Apple Silicon / macOS
+15+.** Download the fixed ZIP, extract it completely, then Control-click
+`ChromaMatter Source Alpha.app` and choose **Open**. It verifies official
+Python 3.13.14 and installs only hash-locked dependencies on the tester's Mac.
+It is a Finder app but not a self-contained frozen build. That separate route
+remains blocked because 153 packaged Mach-O files have unresolved
+source/build/relink closure evidence. A `diagnostics` artifact is not the app.
+See [Discussion #9](https://github.com/Ponkichi0718/ChromaMatter/discussions/9)
 for results and setup questions.
+
+The default branch includes the same source-backed Finder app implementation
+as the public alpha tag. The stable Windows r32.2 binaries and the separate
+self-contained macOS build gate are unchanged.
 
 ## Download for Windows
 
@@ -86,13 +91,39 @@ Snapmaker, OpenAI, Apple, or any other third party.
 - **Published r32.2 test data:** Rights-cleared Hi3D multipart GLB and reference image are included under `DemoData/`
 - **Published demo outputs:** Seven derived 3MF reference outputs under `DemoData/3MF/`; one combined project and six part-specific projects
 - **Physical U1 validation:** The linked public print completed; it does not prove compatibility with every model or production setup
-- **macOS tester path:** Tagged Source Tester Alpha available for Apple Silicon/macOS 15+; the guided launcher verifies official Python 3.13.14 and hash-locked dependencies locally
+- **macOS tester path:** Source-backed Finder `.app` available for Apple Silicon/macOS 15+; the guided launcher verifies official Python 3.13.14 and hash-locked dependencies locally
 - **macOS technical status:** Apple Silicon/macOS 15+ CI passes source, native, packaged self-test, Japanese UI, and English UI checks; the latest successful run published diagnostics only
-- **macOS prebuilt-app gate:** No `.app` ZIP is approved; all 317 packaged Mach-O paths are classified, but 253 still have unresolved source/relink closure evidence
+- **macOS self-contained-app gate:** the source-backed `.app` is separate; all 317 frozen-app Mach-O paths are classified, but 153 still have unresolved source/relink closure evidence
 - **macOS starter test:** The source launcher generates a deterministic CC0 red/blue/white/black four-box GLB; English and Japanese 10-minute guides and the dedicated Issue form are available
 - **Version:** `0.8beta`
 
 The documentation on the default branch may receive corrections after publication. For the exact source that produced the downloadable r32.2 files, use the frozen tag and commit above.
+
+## Experimental test workstream — not included in r32.2
+
+This experimental branch contains the following additions for a separate test
+channel. They are **not** present in the r32.2 Windows download or its frozen
+source tag:
+
+- **Flat Four** makes a deterministic, area-weighted proposal of four distinct
+  physical filament colours. It creates no mixed-colour recipes, and a Flat
+  Four 3MF uses only F1-F4.
+- The experimental **2D Colour Filter** offers **Cel Colour** and **Shaded
+  Monochrome**. It bakes a fixed-front, geometry-aware stepped light into
+  printable colour targets; it is not a screen-space renderer and cannot
+  recreate authored line art, PBR materials, or texture detail absent from the
+  mesh colours.
+- The normal static-GLB limits remain 512 MiB, three million vertices, and
+  three million triangles. A separate beta path can admit a static
+  `TRIANGLES` scene with 3,000,001-5,000,000 triangles only after explicit
+  confirmation and with face-count adjustment enabled; it must produce a
+  working model of at most 450,000 faces. Unsupported or ambiguous input fails
+  closed, and reduction can remove fine geometry and baked texture detail.
+- This workstream writes project schema `obj-adjuster.project.v13`; schema v12
+  remains readable and defaults to the legacy Full Spectrum mode.
+
+These additions have local source-level regression coverage only. They do not
+inherit the published r32.2 binary, package, or physical-print validation.
 
 ## Four things ChromaMatter does
 

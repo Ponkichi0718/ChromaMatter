@@ -27,9 +27,11 @@ import hashlib
 import io
 import json
 import math
+import os
 import re
 import struct
 import urllib.parse
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal, Mapping, Sequence
 
@@ -58,6 +60,12 @@ _MAX_ACCESSOR_VALUES = 16_000_000
 _MAX_TOTAL_ACCESSOR_VALUES = 64_000_000
 _MAX_IMPORTED_VERTICES = 3_000_000
 _MAX_IMPORTED_FACES = 3_000_000
+_MAX_REDUCED_SOURCE_FACES = 5_000_000
+LARGE_GLTF_REDUCTION_TARGET_FACES = 450_000
+GLTF_SOURCE_VERTEX_LIMIT = _MAX_IMPORTED_VERTICES
+GLTF_NORMAL_SOURCE_FACE_LIMIT = _MAX_IMPORTED_FACES
+GLTF_REDUCED_SOURCE_FACE_LIMIT = _MAX_REDUCED_SOURCE_FACES
+_TEXTURE_SAMPLE_CHUNK_VERTICES = 131_072
 _MAX_NODES = 10_000
 _MAX_PRIMITIVES = 10_000
 _MAX_NODE_DEPTH = 512
@@ -120,6 +128,37 @@ _FORBIDDEN_REQUIRED_EXTENSIONS = {
 _VERSION_TOKEN = re.compile(r"^(\d+)\.(\d+)(?:\.(\d+))?$")
 
 
+@dataclass(frozen=True, slots=True)
+class GltfImportPlan:
+    """JSON-only workload estimate for the selected static glTF scene.
+
+    The counts include every selected node instance.  Triangle count is the
+    exact primitive workload before degenerate triangles are discarded;
+    vertex count is a conservative POSITION-accessor upper bound before
+    unreferenced vertices are compacted.
+    """
+
+    vertex_count_upper_bound: int
+    triangle_count: int
+    mesh_node_count: int
+    primitive_instance_count: int
+    primitive_modes: tuple[int, ...]
+
+    @property
+    def requires_reduced_mode(self) -> bool:
+        return self.triangle_count > _MAX_IMPORTED_FACES
+
+    @property
+    def supports_reduced_mode(self) -> bool:
+        return bool(
+            self.requires_reduced_mode
+            and self.vertex_count_upper_bound <= _MAX_IMPORTED_VERTICES
+            and self.triangle_count <= _MAX_REDUCED_SOURCE_FACES
+            and self.primitive_modes
+            and all(mode == 4 for mode in self.primitive_modes)
+        )
+
+
 def _emit(
     callback: ProgressCallback | None,
     phase: str,
@@ -128,14 +167,6 @@ def _emit(
 ) -> None:
     if callback is not None:
         callback(phase, max(0.0, min(1.0, float(fraction))), message)
-
-
-def _sha256_file(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as stream:
-        for chunk in iter(lambda: stream.read(4 * 1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest().upper()
 
 
 def _integer(value: Any, label: str, *, minimum: int = 0) -> int:
@@ -197,12 +228,63 @@ def _decode_json(raw: bytes, label: str) -> dict[str, Any]:
     return _object(value, f"{label} root")
 
 
-def _read_glb(path: Path) -> tuple[dict[str, Any], bytes | None]:
-    file_size = path.stat().st_size
-    if file_size < 20:
-        raise GltfImportError("GLB is shorter than its required header/chunk")
+def _read_glb_json_only(path: Path) -> dict[str, Any]:
+    """Read only the first GLB JSON chunk for a cheap workload preflight."""
+
     with path.open("rb") as stream:
+        file_size = os.fstat(stream.fileno()).st_size
+        if file_size < 20:
+            raise GltfImportError("GLB is shorter than its required header/chunk")
+        if file_size > _MAX_FILE_BYTES:
+            raise GltfImportError("GLB exceeds the 512 MiB safe import limit")
         header = stream.read(12)
+        if len(header) != 12:
+            raise GltfImportError("GLB header is truncated")
+        magic, version, declared_length = struct.unpack("<4sII", header)
+        if magic != _GLB_MAGIC:
+            raise GltfImportError("GLB magic is not 'glTF'")
+        if version != 2:
+            raise GltfImportError(f"Only GLB 2.0 is supported (found {version})")
+        if declared_length != file_size:
+            raise GltfImportError(
+                "GLB declared length does not match the file: "
+                f"{declared_length:,} / {file_size:,}"
+            )
+        chunk_header = stream.read(8)
+        if len(chunk_header) != 8:
+            raise GltfImportError("GLB chunk 1 header is truncated")
+        chunk_length, chunk_type = struct.unpack("<II", chunk_header)
+        if chunk_length % 4:
+            raise GltfImportError("GLB chunk 1 is not 4-byte aligned")
+        if chunk_type != _GLB_JSON_CHUNK:
+            raise GltfImportError("The GLB JSON chunk must be first")
+        if chunk_length > _MAX_JSON_BYTES:
+            raise GltfImportError("GLB JSON chunk is too large")
+        if chunk_length > file_size - stream.tell():
+            raise GltfImportError("GLB chunk 1 is truncated")
+        json_raw = stream.read(chunk_length)
+    return _decode_json(json_raw, "GLB")
+
+
+def _read_glb(
+    path: Path,
+) -> tuple[dict[str, Any], bytes | None, str, int]:
+    with path.open("rb") as stream:
+        file_size = os.fstat(stream.fileno()).st_size
+        if file_size < 20:
+            raise GltfImportError("GLB is shorter than its required header/chunk")
+        if file_size > _MAX_FILE_BYTES:
+            raise GltfImportError("GLB exceeds the 512 MiB safe import limit")
+        digest = hashlib.sha256()
+
+        def read_hashed(size: int) -> bytes:
+            data = stream.read(size)
+            digest.update(data)
+            return data
+
+        header = read_hashed(12)
+        if len(header) != 12:
+            raise GltfImportError("GLB header is truncated")
         magic, version, declared_length = struct.unpack("<4sII", header)
         if magic != _GLB_MAGIC:
             raise GltfImportError("GLB magic is not 'glTF'")
@@ -218,7 +300,7 @@ def _read_glb(path: Path) -> tuple[dict[str, Any], bytes | None]:
         chunk_number = 0
         while stream.tell() < file_size:
             chunk_number += 1
-            header_raw = stream.read(8)
+            header_raw = read_hashed(8)
             if len(header_raw) != 8:
                 raise GltfImportError(f"GLB chunk {chunk_number} header is truncated")
             chunk_length, chunk_type = struct.unpack("<II", header_raw)
@@ -235,23 +317,40 @@ def _read_glb(path: Path) -> tuple[dict[str, Any], bytes | None]:
                     raise GltfImportError("The GLB JSON chunk must be first")
                 if chunk_length > _MAX_JSON_BYTES:
                     raise GltfImportError("GLB JSON chunk is too large")
-                json_raw = stream.read(chunk_length)
+                json_raw = read_hashed(chunk_length)
             elif chunk_type == _GLB_BIN_CHUNK:
                 if binary is not None:
                     raise GltfImportError("GLB contains more than one BIN chunk")
                 if chunk_length > _MAX_EMBEDDED_BYTES:
                     raise GltfImportError("GLB BIN chunk is too large")
-                binary = stream.read(chunk_length)
+                binary = read_hashed(chunk_length)
             else:
-                # glTF requires unknown chunks to be ignored.  Seek instead of
-                # allocating them; they cannot influence this importer.
-                stream.seek(chunk_length, io.SEEK_CUR)
+                # glTF requires unknown chunks to be ignored.  Hash them in
+                # bounded pieces so the returned identity still belongs to the
+                # exact stream that supplied JSON and BIN.
+                remaining = chunk_length
+                while remaining:
+                    block = read_hashed(min(remaining, 1024 * 1024))
+                    if not block:
+                        raise GltfImportError(
+                            f"GLB chunk {chunk_number} is truncated"
+                        )
+                    remaining -= len(block)
         if json_raw is None:
             raise GltfImportError("GLB has no JSON chunk")
-    return _decode_json(json_raw, "GLB"), binary
+        if os.fstat(stream.fileno()).st_size != file_size:
+            raise GltfImportError("GLB changed while it was being read")
+    return (
+        _decode_json(json_raw, "GLB"),
+        binary,
+        digest.hexdigest().upper(),
+        file_size,
+    )
 
 
-def _read_document(path: Path) -> tuple[dict[str, Any], bytes | None]:
+def _read_document(
+    path: Path,
+) -> tuple[dict[str, Any], bytes | None, str, int]:
     suffix = path.suffix.lower()
     if suffix == ".glb":
         return _read_glb(path)
@@ -260,7 +359,25 @@ def _read_document(path: Path) -> tuple[dict[str, Any], bytes | None]:
             raw = path.read_bytes()
         except OSError as exc:
             raise GltfImportError(f"glTF cannot be read: {exc}") from exc
-        return _decode_json(raw, "glTF"), None
+        return (
+            _decode_json(raw, "glTF"),
+            None,
+            hashlib.sha256(raw).hexdigest().upper(),
+            len(raw),
+        )
+    raise GltfImportError("Only .glb and .gltf files are supported")
+
+
+def _read_document_json_only(path: Path) -> dict[str, Any]:
+    suffix = path.suffix.lower()
+    if suffix == ".glb":
+        return _read_glb_json_only(path)
+    if suffix == ".gltf":
+        try:
+            raw = path.read_bytes()
+        except OSError as exc:
+            raise GltfImportError(f"glTF cannot be read: {exc}") from exc
+        return _decode_json(raw, "glTF")
     raise GltfImportError("Only .glb and .gltf files are supported")
 
 
@@ -856,7 +973,7 @@ def _wrap_indices(indices: np.ndarray, size: int, mode: int) -> np.ndarray:
     return np.where(mirrored < size, mirrored, period - 1 - mirrored)
 
 
-def _sample_image_linear(
+def _sample_image_linear_chunk(
     image: np.ndarray,
     uv: np.ndarray,
     wrap_s: int,
@@ -905,6 +1022,32 @@ def _sample_image_linear(
             alpha += sampled[:, 3].astype(np.float64) / 255.0 * weight
     if not has_alpha:
         alpha.fill(1.0)
+    return rgb_linear, alpha
+
+
+def _sample_image_linear(
+    image: np.ndarray,
+    uv: np.ndarray,
+    wrap_s: int,
+    wrap_t: int,
+    nearest: bool,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Sample large textures with a fixed temporary-memory ceiling."""
+
+    uv = np.asarray(uv, dtype=np.float64)
+    rgb_linear = np.empty((len(uv), 3), dtype=np.float64)
+    alpha = np.empty(len(uv), dtype=np.float64)
+    for start in range(0, len(uv), _TEXTURE_SAMPLE_CHUNK_VERTICES):
+        stop = min(start + _TEXTURE_SAMPLE_CHUNK_VERTICES, len(uv))
+        chunk_rgb, chunk_alpha = _sample_image_linear_chunk(
+            image,
+            uv[start:stop],
+            wrap_s,
+            wrap_t,
+            nearest,
+        )
+        rgb_linear[start:stop] = chunk_rgb
+        alpha[start:stop] = chunk_alpha
     return rgb_linear, alpha
 
 
@@ -976,15 +1119,21 @@ def _local_matrix(node: Mapping[str, Any], node_id: int) -> np.ndarray:
 
 
 def _triangles(indices: np.ndarray, mode: int, label: str) -> np.ndarray:
-    indices = np.asarray(indices, dtype=np.int64).reshape(-1)
+    indices = np.asarray(indices).reshape(-1)
+    if len(indices) and (
+        int(indices.min()) < 0
+        or int(indices.max()) > int(np.iinfo(np.int32).max)
+    ):
+        raise GltfImportError(f"{label} indices exceed the supported range")
+    indices = indices.astype(np.int32, copy=False)
     if mode == 4:
         if len(indices) % 3:
             raise GltfImportError(f"{label} TRIANGLES index count is not divisible by 3")
         return indices.reshape((-1, 3))
     if mode == 5:
         if len(indices) < 3:
-            return np.empty((0, 3), dtype=np.int64)
-        output = np.empty((len(indices) - 2, 3), dtype=np.int64)
+            return np.empty((0, 3), dtype=np.int32)
+        output = np.empty((len(indices) - 2, 3), dtype=np.int32)
         output[:, 0] = indices[:-2]
         output[:, 1] = indices[1:-1]
         output[:, 2] = indices[2:]
@@ -996,14 +1145,14 @@ def _triangles(indices: np.ndarray, mode: int, label: str) -> np.ndarray:
         return output
     if mode == 6:
         if len(indices) < 3:
-            return np.empty((0, 3), dtype=np.int64)
+            return np.empty((0, 3), dtype=np.int32)
         return np.column_stack(
             (
-                np.full(len(indices) - 2, indices[0], dtype=np.int64),
+                np.full(len(indices) - 2, indices[0], dtype=np.int32),
                 indices[1:-1],
                 indices[2:],
             )
-        )
+        ).astype(np.int32, copy=False)
     raise GltfImportError(
         f"{label} uses non-triangle primitive mode {mode}; only 4, 5, and 6 are supported"
     )
@@ -1127,6 +1276,238 @@ def _scene_roots(
     if nodes and not roots:
         raise GltfImportError("glTF node graph has no root (possible cycle)")
     return roots, None
+
+
+def _primitive_triangle_count(count: int, mode: int, label: str) -> int:
+    if mode == 4:
+        if count % 3:
+            raise GltfImportError(
+                f"{label} TRIANGLES index count is not divisible by 3"
+            )
+        return count // 3
+    if mode in {5, 6}:
+        return max(0, count - 2)
+    raise GltfImportError(
+        f"{label} uses non-triangle primitive mode {mode}; "
+        "only 4, 5, and 6 are supported"
+    )
+
+
+def _plan_static_scene(
+    document: Mapping[str, Any],
+    warnings: list[str],
+) -> tuple[
+    GltfImportPlan,
+    list[Any],
+    list[Any],
+    list[int],
+    int | None,
+]:
+    """Validate the selected node graph and count work from JSON metadata."""
+
+    nodes = _array(document.get("nodes", []), "nodes")
+    meshes = _array(document.get("meshes", []), "meshes")
+    accessors = _array(document.get("accessors", []), "accessors")
+    if not nodes or not meshes:
+        raise GltfImportError("glTF contains no scene nodes or meshes")
+    primitive_total = sum(
+        len(
+            _array(
+                _object(mesh, f"meshes[{mesh_id}]").get("primitives", []),
+                f"meshes[{mesh_id}].primitives",
+            )
+        )
+        for mesh_id, mesh in enumerate(meshes)
+    )
+    if len(nodes) > _MAX_NODES or primitive_total > _MAX_PRIMITIVES:
+        raise GltfImportError("glTF has too many nodes or mesh primitives")
+    roots, scene_id = _scene_roots(document, nodes, warnings)
+    if not roots:
+        raise GltfImportError("The selected glTF scene has no root nodes")
+
+    vertex_upper_bound = 0
+    triangle_count = 0
+    mesh_node_count = 0
+    primitive_instance_count = 0
+    primitive_modes: list[int] = []
+    seen_nodes: set[int] = set()
+    stack: list[tuple[int, int, frozenset[int], np.ndarray]] = [
+        (root_id, 1, frozenset(), np.eye(4))
+        for root_id in reversed(roots)
+    ]
+    while stack:
+        node_id, depth, ancestors, parent_matrix = stack.pop()
+        if node_id in ancestors:
+            raise GltfImportError(f"glTF node cycle reaches nodes[{node_id}]")
+        if depth > _MAX_NODE_DEPTH:
+            raise GltfImportError("glTF node hierarchy is too deep")
+        if node_id in seen_nodes:
+            raise GltfImportError(
+                f"nodes[{node_id}] is referenced more than once in the selected scene"
+            )
+        seen_nodes.add(node_id)
+        node = _object(nodes[node_id], f"nodes[{node_id}]")
+        node_extensions = node.get("extensions")
+        if (
+            isinstance(node_extensions, dict)
+            and "EXT_mesh_gpu_instancing" in node_extensions
+        ):
+            raise GltfImportError("EXT_mesh_gpu_instancing nodes are unsupported")
+        if "skin" in node:
+            raise GltfImportError(f"nodes[{node_id}] uses unsupported skinning")
+        if "weights" in node:
+            raise GltfImportError(
+                f"nodes[{node_id}] uses unsupported morph weights"
+            )
+        with np.errstate(over="ignore", invalid="ignore"):
+            world = parent_matrix @ _local_matrix(node, node_id)
+        if not np.isfinite(world).all() or not np.allclose(
+            world[3], [0.0, 0.0, 0.0, 1.0], rtol=0.0, atol=1e-9
+        ):
+            raise GltfImportError(
+                f"nodes[{node_id}] world transform overflows or is non-affine"
+            )
+        world_determinant = float(np.linalg.det(world[:3, :3]))
+        if (
+            not math.isfinite(world_determinant)
+            or abs(world_determinant) < 1e-15
+        ):
+            raise GltfImportError(f"nodes[{node_id}] world transform is singular")
+        mesh_value = node.get("mesh")
+        if mesh_value is not None:
+            mesh_node_count += 1
+            mesh_id = _index(mesh_value, meshes, f"nodes[{node_id}].mesh")
+            mesh = _object(meshes[mesh_id], f"meshes[{mesh_id}]")
+            if mesh.get("weights") is not None:
+                raise GltfImportError(
+                    f"meshes[{mesh_id}] uses unsupported morph weights"
+                )
+            primitives = _array(
+                mesh.get("primitives", []), f"meshes[{mesh_id}].primitives"
+            )
+            if not primitives:
+                raise GltfImportError(f"meshes[{mesh_id}] has no primitives")
+            for primitive_id, raw_primitive in enumerate(primitives):
+                primitive_instance_count += 1
+                if primitive_instance_count > _MAX_PRIMITIVES:
+                    raise GltfImportError(
+                        "The selected glTF scene instantiates too many mesh primitives"
+                    )
+                primitive = _object(
+                    raw_primitive,
+                    f"meshes[{mesh_id}].primitives[{primitive_id}]",
+                )
+                extensions = primitive.get("extensions")
+                if (
+                    isinstance(extensions, dict)
+                    and "KHR_draco_mesh_compression" in extensions
+                ):
+                    raise GltfImportError(
+                        "Draco (KHR_draco_mesh_compression) primitives are unsupported"
+                    )
+                if primitive.get("targets"):
+                    raise GltfImportError("Morph target primitives are unsupported")
+                attributes = _object(
+                    primitive.get("attributes"),
+                    f"meshes[{mesh_id}].primitives[{primitive_id}].attributes",
+                )
+                if "POSITION" not in attributes:
+                    raise GltfImportError("Every mesh primitive needs POSITION")
+                if "JOINTS_0" in attributes or "WEIGHTS_0" in attributes:
+                    raise GltfImportError("Skinned vertex attributes are unsupported")
+                position_id = _index(
+                    _integer(attributes["POSITION"], "POSITION"),
+                    accessors,
+                    "POSITION",
+                )
+                position_def = _object(
+                    accessors[position_id], f"accessors[{position_id}]"
+                )
+                if (
+                    position_def.get("type") != "VEC3"
+                    or int(position_def.get("componentType", -1)) != 5126
+                    or bool(position_def.get("normalized", False))
+                ):
+                    raise GltfImportError(
+                        "POSITION must be non-normalized FLOAT VEC3"
+                    )
+                position_count = _integer(
+                    position_def.get("count"),
+                    f"accessors[{position_id}].count",
+                )
+                index_value = primitive.get("indices")
+                if index_value is None:
+                    index_count = position_count
+                else:
+                    index_id = _index(
+                        _integer(index_value, "primitive.indices"),
+                        accessors,
+                        "primitive.indices",
+                    )
+                    index_def = _object(
+                        accessors[index_id], f"accessors[{index_id}]"
+                    )
+                    if (
+                        index_def.get("type") != "SCALAR"
+                        or int(index_def.get("componentType", -1))
+                        not in _UNSIGNED_INDEX_COMPONENTS
+                        or bool(index_def.get("normalized", False))
+                    ):
+                        raise GltfImportError(
+                            "indices must be unsigned non-normalized SCALAR"
+                        )
+                    index_count = _integer(
+                        index_def.get("count"),
+                        f"accessors[{index_id}].count",
+                    )
+                mode = _integer(primitive.get("mode", 4), "primitive.mode")
+                vertex_upper_bound += position_count
+                triangle_count += _primitive_triangle_count(
+                    index_count,
+                    mode,
+                    f"meshes[{mesh_id}].primitives[{primitive_id}]",
+                )
+                primitive_modes.append(mode)
+        children = _array(node.get("children", []), f"nodes[{node_id}].children")
+        next_ancestors = ancestors | {node_id}
+        for child in reversed(children):
+            child_id = _index(child, nodes, f"nodes[{node_id}].children")
+            stack.append((child_id, depth + 1, next_ancestors, world))
+
+    if not mesh_node_count or not primitive_instance_count:
+        raise GltfImportError("The selected glTF scene contains no triangle mesh")
+    return (
+        GltfImportPlan(
+            vertex_count_upper_bound=int(vertex_upper_bound),
+            triangle_count=int(triangle_count),
+            mesh_node_count=int(mesh_node_count),
+            primitive_instance_count=int(primitive_instance_count),
+            primitive_modes=tuple(primitive_modes),
+        ),
+        nodes,
+        meshes,
+        roots,
+        scene_id,
+    )
+
+
+def inspect_gltf_asset(path: Path) -> GltfImportPlan:
+    """Inspect selected-scene workload without reading GLB BIN/image payloads."""
+
+    path = Path(path)
+    if not path.is_file():
+        raise GltfImportError(f"GLB/glTF file was not found: {path}")
+    if path.stat().st_size > _MAX_FILE_BYTES:
+        raise GltfImportError(
+            "GLB/glTF exceeds the 512 MiB safe import limit. "
+            "Reduce the mesh or texture resolution before importing"
+        )
+    document = _read_document_json_only(path)
+    warnings = _validate_document(document)
+    plan, _nodes, _meshes, _roots, _scene_id = _plan_static_scene(
+        document, warnings
+    )
+    return plan
 
 
 def _selected_mesh_ids(
@@ -1403,6 +1784,8 @@ def load_gltf_asset(
     progress: ProgressCallback | None = None,
     *,
     vertex_color_policy: VertexColorPolicy = "auto",
+    allow_large_reduced_source: bool = False,
+    expected_plan: GltfImportPlan | None = None,
 ) -> ObjAsset:
     """Load a static GLB/glTF scene and bake its base colour to ``ObjAsset``.
 
@@ -1412,6 +1795,11 @@ def load_gltf_asset(
     colour equation, while ``'ignore'`` always omits ``COLOR_0``.  The default
     ``'auto'`` only omits it for the conservative multipart segmentation
     signature documented by :func:`_auto_segmentation_vertex_colours`.
+
+    ``allow_large_reduced_source`` explicitly admits a supported
+    3,000,001--5,000,000 triangle source.  The returned asset records a hard
+    450,000-face working-model ceiling which ``prepare_geometry`` enforces on
+    every initial or repeated processing pass.
     """
 
     if (
@@ -1421,6 +1809,10 @@ def load_gltf_asset(
         raise ValueError(
             "vertex_color_policy must be 'auto', 'multiply', or 'ignore'"
         )
+    if not isinstance(allow_large_reduced_source, bool):
+        raise ValueError("allow_large_reduced_source must be a boolean")
+    if expected_plan is not None and not isinstance(expected_plan, GltfImportPlan):
+        raise ValueError("expected_plan must be a GltfImportPlan or None")
     path = Path(path)
     if not path.is_file():
         raise GltfImportError(f"GLB/glTF file was not found: {path}")
@@ -1430,27 +1822,67 @@ def load_gltf_asset(
             "Reduce the Hi3D mesh or texture resolution before importing"
         )
     _emit(progress, "scan", 0.0, "GLB/glTF構造を確認しています")
-    document, glb_binary = _read_document(path)
-    warnings = _validate_document(document)
-    reader = _Reader(document, glb_binary, warnings)
-    nodes = _array(document.get("nodes", []), "nodes")
-    meshes = _array(document.get("meshes", []), "meshes")
-    if not nodes or not meshes:
-        raise GltfImportError("glTF contains no scene nodes or meshes")
-    primitive_total = sum(
-        len(
-            _array(
-                _object(mesh, f"meshes[{mesh_id}]").get("primitives", []),
-                f"meshes[{mesh_id}].primitives",
-            )
-        )
-        for mesh_id, mesh in enumerate(meshes)
+    preflight_document = _read_document_json_only(path)
+    preflight_warnings = _validate_document(preflight_document)
+    plan, _nodes, _meshes, _roots, _scene_id = _plan_static_scene(
+        preflight_document, preflight_warnings
     )
-    if len(nodes) > _MAX_NODES or primitive_total > _MAX_PRIMITIVES:
-        raise GltfImportError("glTF has too many nodes or mesh primitives")
-    roots, scene_id = _scene_roots(document, nodes, warnings)
-    if not roots:
-        raise GltfImportError("The selected glTF scene has no root nodes")
+    if expected_plan is not None and plan != expected_plan:
+        raise GltfImportError(
+            "GLB/glTF changed after the large-model confirmation. Re-open the file"
+        )
+    if plan.vertex_count_upper_bound > _MAX_IMPORTED_VERTICES:
+        raise GltfImportError(
+            "選択sceneの頂点数が安全上限を超えています: "
+            f"{plan.vertex_count_upper_bound:,} / {_MAX_IMPORTED_VERTICES:,}。"
+            "元モデルのメッシュ密度を下げてください"
+        )
+    if plan.requires_reduced_mode and not plan.supports_reduced_mode:
+        raise GltfImportError(
+            "この大規模GLBは安全な縮約読込の条件を満たしません: "
+            f"{plan.triangle_count:,} 三角形 / "
+            f"{plan.vertex_count_upper_bound:,} 頂点。"
+            "5,000,000面以下の静的TRIANGLESへ変換してください"
+        )
+    if plan.requires_reduced_mode and not allow_large_reduced_source:
+        raise GltfImportError(
+            "選択sceneは大規模モデルです: "
+            f"{plan.triangle_count:,} 三角形（通常上限 "
+            f"{_MAX_IMPORTED_FACES:,}）。面数調整を有効にし、"
+            f"{LARGE_GLTF_REDUCTION_TARGET_FACES:,} 面以下の作業用モデルとして"
+            "開いてください"
+        )
+    face_limit = (
+        _MAX_REDUCED_SOURCE_FACES
+        if allow_large_reduced_source
+        else _MAX_IMPORTED_FACES
+    )
+    _emit(
+        progress,
+        "scan",
+        0.05,
+        f"GLB/glTF事前確認: {plan.vertex_count_upper_bound:,}頂点 / "
+        f"{plan.triangle_count:,}三角形",
+    )
+    # Only after the JSON-only workload admission succeeds do we allocate the
+    # GLB BIN payload.  Re-plan the fully read document and compare the frozen
+    # estimate so a file replacement between the two reads fails closed.
+    document, glb_binary, source_sha256, source_file_size = _read_document(path)
+    warnings = _validate_document(document)
+    full_plan, nodes, meshes, roots, scene_id = _plan_static_scene(
+        document, warnings
+    )
+    if full_plan != plan:
+        raise GltfImportError(
+            "GLB/glTF changed while it was being inspected. Re-open the file"
+        )
+    if plan.requires_reduced_mode:
+        warnings.append(
+            f"大規模GLB {plan.triangle_count:,} 面を、面数調整を有効にした"
+            "作業用モデルとして読み込みました。閉立体化では元形状の"
+            "同一座標継ぎ目を先に検証してから面数を調整します"
+        )
+    reader = _Reader(document, glb_binary, warnings)
     auto_ignored_colours: set[tuple[int, int]] = set()
     auto_shared_texture: int | None = None
     compatible_exploded_multipart = _has_exploded_multipart_provenance(
@@ -1567,7 +1999,7 @@ def load_gltf_asset(
                     raise GltfImportError("POSITION is empty or contains NaN/infinity")
                 index_value = primitive.get("indices")
                 if index_value is None:
-                    source_indices = np.arange(len(positions), dtype=np.int64)
+                    source_indices = np.arange(len(positions), dtype=np.int32)
                 else:
                     decoded_indices, index_def = reader.accessor(
                         _integer(index_value, "primitive.indices"), "primitive.indices"
@@ -1578,7 +2010,7 @@ def load_gltf_asset(
                         or bool(index_def.get("normalized", False))
                     ):
                         raise GltfImportError("indices must be unsigned non-normalized SCALAR")
-                    source_indices = np.asarray(decoded_indices).reshape(-1).astype(np.int64)
+                    source_indices = np.asarray(decoded_indices).reshape(-1)
                 mode = _integer(primitive.get("mode", 4), "primitive.mode")
                 triangles = _triangles(source_indices, mode, "mesh primitive")
                 if not len(triangles):
@@ -1612,9 +2044,14 @@ def load_gltf_asset(
                 discarded_alpha = discarded_alpha or bool(
                     np.any(rgba_linear[:, 3] < 0.999999)
                 )
-                used = np.unique(triangles.reshape(-1))
-                remap = np.full(len(positions), -1, dtype=np.int64)
-                remap[used] = np.arange(len(used), dtype=np.int64)
+                # POSITION is capped below int32 range.  A boolean membership
+                # pass avoids sorting and duplicating up to 15 million uint32
+                # indices solely to discover which vertices are referenced.
+                used_mask = np.zeros(len(positions), dtype=np.bool_)
+                used_mask[triangles.reshape(-1)] = True
+                used = np.flatnonzero(used_mask).astype(np.int32, copy=False)
+                remap = np.full(len(positions), -1, dtype=np.int32)
+                remap[used] = np.arange(len(used), dtype=np.int32)
                 compact_faces = remap[triangles]
                 compact_positions = positions[used]
                 transformed = (
@@ -1628,27 +2065,35 @@ def load_gltf_asset(
                 part_vertex_chunks.append(transformed.astype(np.float32))
                 part_colour_chunks.append(compact_colours.astype(np.float32))
                 part_face_chunks.append(
-                    (compact_faces + part_local_offset).astype(np.int64)
+                    (
+                        compact_faces + np.int32(part_local_offset)
+                    ).astype(np.int32, copy=False)
                 )
                 part_local_offset += len(compact_positions)
                 local_vertex_count += len(compact_positions)
                 local_face_count += len(compact_faces)
                 if (
                     vertex_offset + local_vertex_count > _MAX_IMPORTED_VERTICES
-                    or sum(part_face_counts) + local_face_count > _MAX_IMPORTED_FACES
+                    or sum(part_face_counts) + local_face_count > face_limit
                 ):
                     raise GltfImportError(
-                        "Imported static mesh exceeds the safe vertex/triangle limit"
+                        "Imported static mesh exceeds its admitted vertex/triangle limit: "
+                        f"vertices {vertex_offset + local_vertex_count:,} / "
+                        f"{_MAX_IMPORTED_VERTICES:,}, triangles "
+                        f"{sum(part_face_counts) + local_face_count:,} / "
+                        f"{face_limit:,}"
                     )
             if local_face_count:
                 part_vertices = np.vstack(part_vertex_chunks)
                 part_colours = np.vstack(part_colour_chunks)
-                part_faces = np.vstack(part_face_chunks) + vertex_offset
+                part_faces = np.vstack(part_face_chunks)
+                if vertex_offset:
+                    part_faces = part_faces + np.int32(vertex_offset)
                 if vertex_offset + len(part_vertices) > np.iinfo(np.int32).max:
                     raise GltfImportError("Imported glTF has too many vertices")
                 vertices_parts.append(part_vertices)
                 colours_parts.append(part_colours)
-                face_parts.append(part_faces.astype(np.int32))
+                face_parts.append(part_faces.astype(np.int32, copy=False))
                 face_part_ids_parts.append(
                     np.full(local_face_count, part_id, dtype=np.int32)
                 )
@@ -1728,8 +2173,8 @@ def load_gltf_asset(
     _emit(progress, "parse", 1.0, "GLB/glTF読込完了")
     return ObjAsset(
         path=path,
-        sha256=_sha256_file(path),
-        file_size=path.stat().st_size,
+        sha256=source_sha256,
+        file_size=source_file_size,
         vertices=vertices,
         colors=np.clip(colours, 0.0, 1.0),
         faces=faces,
@@ -1745,6 +2190,15 @@ def load_gltf_asset(
         has_explicit_parts=len(part_names) > 1,
         import_metadata={
             "schema": _GLTF_IMPORT_METADATA_SCHEMA,
+            "large_source_reduction_required": bool(
+                plan.requires_reduced_mode
+            ),
+            "source_triangle_workload": int(plan.triangle_count),
+            "maximum_final_faces": int(
+                LARGE_GLTF_REDUCTION_TARGET_FACES
+                if plan.requires_reduced_mode
+                else _MAX_IMPORTED_FACES
+            ),
             "compatible_exploded_multipart": bool(
                 compatible_exploded_multipart
             ),
@@ -1757,4 +2211,14 @@ def load_gltf_asset(
     )
 
 
-__all__ = ["GltfImportError", "VertexColorPolicy", "load_gltf_asset"]
+__all__ = [
+    "GLTF_NORMAL_SOURCE_FACE_LIMIT",
+    "GLTF_REDUCED_SOURCE_FACE_LIMIT",
+    "GLTF_SOURCE_VERTEX_LIMIT",
+    "GltfImportError",
+    "GltfImportPlan",
+    "LARGE_GLTF_REDUCTION_TARGET_FACES",
+    "VertexColorPolicy",
+    "inspect_gltf_asset",
+    "load_gltf_asset",
+]

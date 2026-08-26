@@ -1,0 +1,48 @@
+ChromaMatter Apple Silicon macOS 15+ Developer ID unsigned,
+unnotarized alpha (ad-hoc signed)
+============================================================
+
+This package is a short-lived CI tester artifact. It is separate from the
+published Windows stable and Flat Four Test 3 releases. It is not a normal
+public macOS Release, release/compliance evidence, or a claim of supported
+macOS compatibility.
+
+Product display version: 0.8beta (unchanged)
+
+ChromaMatter application code remains GPL-3.0-or-later. Bundled third-party
+components retain their own terms. The alpha dependency set includes, among
+other components, PyMeshLab under GPL-3.0-only, Qt libraries carried by its
+wheel, Shapely/GEOS, PyTetWild/fTetWild, and the tetgen Python wrapper with the
+TetGen core. The free-software TetGen route is AGPL-3.0-or-later. The
+application license, repository-held reference texts, and license/notice files
+shipped by the pinned wheels are included inside the app bundle. This is not a
+completed macOS component map or a claim that the reference set is complete.
+
+The macOS alpha currently uses the upstream PyPI macOS arm64 PyTetWild wheel.
+It is not the controlled Windows PyTetWild rebuild. A macOS-native binary
+component map, SBOM, LGPL relinking verification, and complete corresponding-
+source pairing have not yet been completed. The Windows component map, SBOM,
+controlled-native identities, and Windows corresponding-source approval do not
+approve this macOS bundle.
+
+Do not redistribute this alpha. In particular, do not copy it to a GitHub
+Release, mirror, forum attachment, or other public download. Before normal
+distribution, ChromaMatter must complete the macOS-specific native inventory,
+corresponding-source and relinking gates, then build from an exact source
+commit, sign with Apple Developer ID, and notarize the final bytes.
+
+The current CI fails closed and blocks creation of an external tester ZIP
+until the repository explicitly records approval of those audits. Before that
+approval, only build diagnostics without a distributable app are available.
+
+PyInstaller applies an ad-hoc signature so the Apple Silicon bundle can run.
+That is not Developer ID signing or Apple notarization. A volunteer tester may
+still need to use Finder's Open action or macOS Privacy & Security to approve
+the first launch. Never disable Gatekeeper globally.
+
+The artifact root records the exact repository commit used by CI. The public
+application source is available at:
+
+https://github.com/Ponkichi0718/ChromaMatter
+
+This notice is an engineering safeguard, not legal advice.

@@ -66,6 +66,47 @@ class AutoShadingTests(unittest.TestCase):
         self.assertEqual(result.trees, {})
         self.assertEqual(result.total_leaves, 0)
 
+    def test_flat_face_tone_does_not_restore_vertex_approximation_gradient(self) -> None:
+        faces, vertices = one_triangle()
+        # Shared-vertex illustration previews can contain a smooth
+        # approximation even though the printable triangle is one flat band.
+        approximate_vertices = np.asarray(
+            ((0.0, 0.0, 0.0), (1.0, 1.0, 1.0), (1.0, 1.0, 1.0)),
+            dtype=np.float64,
+        )
+        result = auto_shading.generate_auto_shading(
+            faces,
+            vertices,
+            approximate_vertices,
+            np.asarray((0,), dtype=np.int8),
+            BLACK_WHITE,
+            options=auto_shading.AutoShadingOptions(
+                min_edge_mm=0.1,
+                max_depth=3,
+                dither=True,
+                dither_strength=1.0,
+                min_variation_delta_e=0.1,
+            ),
+            tone_face_rgb=np.asarray(((0.2, 0.2, 0.2),)),
+        )
+
+        self.assertEqual(result.candidate_faces, 0)
+        self.assertEqual(result.trees, {})
+
+    def test_flat_face_tone_count_must_match_faces(self) -> None:
+        faces, vertices = one_triangle()
+        with self.assertRaisesRegex(
+            auto_shading.AutoShadingError, "tone_face_rgb count"
+        ):
+            auto_shading.generate_auto_shading(
+                faces,
+                vertices,
+                np.zeros((3, 3), dtype=np.float64),
+                np.asarray((0,), dtype=np.int8),
+                BLACK_WHITE,
+                tone_face_rgb=np.zeros((2, 3), dtype=np.float64),
+            )
+
     def test_uniform_subtrees_collapse_bottom_up(self) -> None:
         uniform = auto_shading._tree_from_leaf_states(
             np.zeros(16, dtype=np.int8),

@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from spectrum_mapper.models import ColorResult, MeshLevel  # noqa: E402
 from spectrum_mapper.renderer import (  # noqa: E402
     RendererError,
+    _effective_shaded,
     overlay_active_part_outline,
     render_front_preview,
     render_front_preview_pair,
@@ -185,6 +186,15 @@ class FixedFrontPreviewPairTests(unittest.TestCase):
                 background=BACKGROUND,
                 active_part_id=9,
             )
+
+    def test_baked_illustration_target_is_unlit_but_source_stays_lit(self) -> None:
+        ordinary = _color_result()
+        self.assertTrue(_effective_shaded(ordinary, "source", True))
+        self.assertTrue(_effective_shaded(ordinary, "target", True))
+        ordinary.tone_face_rgb_flat = True
+        self.assertTrue(_effective_shaded(ordinary, "source", True))
+        self.assertFalse(_effective_shaded(ordinary, "target", True))
+        self.assertFalse(_effective_shaded(ordinary, "source", False))
 
 
 if __name__ == "__main__":

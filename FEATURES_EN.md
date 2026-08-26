@@ -16,8 +16,55 @@ This is more than a file-format converter. The project gives AI 3D generation a 
 > part-specific derived demo 3MF projects. The exact build, complete source,
 > archives, checksums, and unauthenticated post-publication downloads passed.
 
+<a id="experimental-workstream"></a>
+## Flat Four Test 3 candidate — not in the stable r32.2 download
+
+This experimental branch is preparing a separate Test 3 prerelease candidate
+without changing the published stable r32.2 package or the frozen Flat Four
+Test 2 assets:
+
+- **Flat Four** selects four distinct physical filament colours from an
+  area-weighted representation of the model. It makes no mixed-colour recipes,
+  and its 3MF output uses only F1-F4.
+- Test 3 does **not** remove white globally. Eye whites beside dark linework and
+  other meaningful small white details remain white targets. Only small,
+  high-confidence white/gray lighting patches on a smooth chromatic surface
+  such as skin are folded into the chromatic F slot used around their boundary.
+- Retained white covering at least **0.01%** of total printable area reserves a
+  suitable near-white physical filament. White below 0.01% remains unabsorbed
+  but does not by itself force a white spool, so it can map to the nearest
+  selected F1-F4 colour.
+- All four physical F slots and 3MF state metadata remain present even when the
+  output effectively uses three paint IDs. Manual Editing remains authoritative,
+  and Full Spectrum behaviour is unchanged.
+- This is topology-based filtering, not semantic recognition. A tiny white patch
+  enclosed by one smooth skin/tan surface without a dark edge, crease, or part
+  boundary may be absorbed. On an open mesh above 500,000 faces without reusable
+  adjacency, only this automatic correction is skipped fail-closed.
+- The experimental **2D Colour Filter** provides **Cel Colour** and **Shaded
+  Monochrome**. It bakes fixed-front, geometry-aware stepped shading into the
+  printable colour targets. It is not an outline generator or PBR renderer;
+  results depend on mesh normals and source colour, and detail absent from the
+  input is not invented.
+- The normal static-GLB limits remain 512 MiB, three million vertices, and
+  three million triangles. A separate beta route accepts only static
+  `TRIANGLES` scenes from 3,000,001 through 5,000,000 triangles, after explicit
+  confirmation and with face-count adjustment enabled, and must reduce them
+  to a working model no larger than 450,000 faces. Unsupported or ambiguous
+  cases fail closed, and reduction can remove fine geometry or baked texture
+  detail.
+
+This workstream writes project schema `obj-adjuster.project.v13`. Schema v12
+remains readable as legacy Full Spectrum data. The Test 3 candidate working tree
+passed 1,431 tests with zero failures and three optional skips, plus an
+owner-only clean-build/fresh-extract preflight. Public eligibility still requires
+an exact committed rebuild, corresponding source and compliance assets,
+checksums, fresh-extract audit, and publication verification. Physical-printer
+validation of the exact Test 3 package is pending.
+
 ## Explore by topic
 
+- [Experimental Flat Four, 2D Colour Filter, and large-GLB tests](#experimental-workstream)
 - [Original-model workflow and project examples](#project-examples)
 - [OBJ / GLB to 3MF workflow](#model-workflow)
 - [Unofficial multipart GLB support](#multipart-glb)

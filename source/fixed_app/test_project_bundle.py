@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import os
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 from unittest.mock import patch
 
@@ -27,7 +29,7 @@ def project_payload(
     *, manual: bool = False, manual_fingerprint: str = "mesh-face-order-123"
 ) -> dict[str, object]:
     value: dict[str, object] = {
-        "schema": "obj-adjuster.project.v12",
+        "schema": "obj-adjuster.project.v13",
         "settings": {"geometry": {}, "palette": {}, "tone": {}},
         "obj_path": r"C:\private\character.obj",
         "reference_path": r"C:\private\reference.png",
@@ -44,6 +46,48 @@ def project_payload(
 
 def read_wrapper(folder: Path) -> dict[str, object]:
     return json.loads((folder / "project.json").read_text(encoding="utf-8"))
+
+
+def replace_snapshot_array_header(
+    snapshot: Path,
+    name: str,
+    *,
+    shape: tuple[int, ...],
+    dtype: object,
+) -> None:
+    """Replace one tiny test member with a header-only forged NPY array."""
+
+    member = f"{name}.npy"
+    header = io.BytesIO()
+    project_bundle.np.lib.format.write_array_header_2_0(
+        header,
+        {
+            "descr": project_bundle.np.lib.format.dtype_to_descr(
+                project_bundle.np.dtype(dtype)
+            ),
+            "fortran_order": False,
+            "shape": shape,
+        },
+    )
+    replacement = snapshot.with_name(f"{snapshot.stem}-replacement.npz")
+    with zipfile.ZipFile(snapshot, "r") as source_archive, zipfile.ZipFile(
+        replacement,
+        "w",
+        compression=zipfile.ZIP_DEFLATED,
+    ) as target_archive:
+        for record in source_archive.infolist():
+            payload = (
+                header.getvalue()
+                if record.filename == member
+                else source_archive.read(record)
+            )
+            target_archive.writestr(record.filename, payload)
+    os.replace(replacement, snapshot)
+
+
+def file_identity(path: Path) -> tuple[str, int]:
+    payload = path.read_bytes()
+    return hashlib.sha256(payload).hexdigest(), len(payload)
 
 
 def prepared_geometry(source: Path) -> PreparedGeometry:
@@ -231,6 +275,15 @@ class PortableProjectBundleTests(unittest.TestCase):
             loaded.prepared_geometry_snapshot,
             saved.folder / "prepared_geometry.npz",
         )
+        wrapper = read_wrapper(saved.folder)
+        self.assertEqual(
+            loaded.prepared_geometry_snapshot_sha256,
+            wrapper["prepared_geometry"]["sha256"],
+        )
+        self.assertEqual(
+            loaded.prepared_geometry_snapshot_size_bytes,
+            wrapper["prepared_geometry"]["size_bytes"],
+        )
         self.assertIn("must still be verified", loaded.geometry_restore_reason)
         decoded = loaded.load_exact_prepared_geometry(
             expected_geometry_key=geometry_key
@@ -242,6 +295,10 @@ class PortableProjectBundleTests(unittest.TestCase):
             decoded.prepared.source.import_metadata,
             prepared.source.import_metadata,
         )
+        workload = loaded.inspect_prepared_geometry_workload()
+        self.assertEqual(workload.asset_vertex_count, len(prepared.source.vertices))
+        self.assertEqual(workload.asset_face_count, len(prepared.source.faces))
+        self.assertEqual(workload.final_face_count, len(prepared.final.faces))
         project_bundle.np.testing.assert_array_equal(
             decoded.prepared.final.faces,
             prepared.final.faces,
@@ -258,6 +315,242 @@ class PortableProjectBundleTests(unittest.TestCase):
             raised.exception.code,
             {"bundle_member_size_mismatch", "bundle_member_sha256_mismatch"},
         )
+
+    def test_snapshot_changed_after_project_inspection_fails_before_np_load(self) -> None:
+        prepared = prepared_geometry(self.source)
+        geometry_key = (None, 80_000, "Y", 25, False, True, False)
+        saved = save_project_bundle_in_parent(
+            self.root,
+            self.source,
+            project_payload(),
+            prepared_geometry=prepared,
+            prepared_geometry_key=geometry_key,
+        )
+        loaded = inspect_project_path(saved.folder)
+
+        snapshot = loaded.prepared_geometry_snapshot
+        self.assertIsNotNone(snapshot)
+        changed = bytearray(snapshot.read_bytes())
+        changed[-1] ^= 0x01
+        snapshot.write_bytes(changed)
+
+        with patch.object(
+            project_bundle.np,
+            "load",
+            side_effect=AssertionError("snapshot arrays must not be opened"),
+        ) as array_load:
+            with self.assertRaises(ProjectBundleError) as raised:
+                loaded.load_exact_prepared_geometry(
+                    expected_geometry_key=geometry_key
+                )
+        self.assertEqual(raised.exception.code, "bundle_member_sha256_mismatch")
+        array_load.assert_not_called()
+
+    def test_all_snapshot_headers_are_rejected_before_np_load(self) -> None:
+        prepared = prepared_geometry(self.source)
+        geometry_key = (None, 80_000, "Y", 25, False, True, False)
+        saved = save_project_bundle_in_parent(
+            self.root,
+            self.source,
+            project_payload(),
+            prepared_geometry=prepared,
+            prepared_geometry_key=geometry_key,
+        )
+        original_snapshot = saved.prepared_geometry_snapshot.read_bytes()
+        cases = (
+            (
+                "metadata",
+                (project_bundle.MAX_SNAPSHOT_METADATA_BYTES + 1,),
+                project_bundle.np.uint8,
+                "snapshot_metadata_too_large",
+            ),
+            (
+                "asset_colors",
+                (4, 3),
+                project_bundle.np.float64,
+                "invalid_snapshot_shape",
+            ),
+            (
+                "asset_colors",
+                (3, 3),
+                project_bundle.np.float32,
+                "invalid_snapshot_dtype",
+            ),
+            (
+                "final_vertices_unit",
+                (3_000_001, 3),
+                project_bundle.np.float64,
+                "snapshot_workload_too_large",
+            ),
+            (
+                "final_areas_unit",
+                (2,),
+                project_bundle.np.float64,
+                "invalid_snapshot_shape",
+            ),
+            (
+                "final_neighbors",
+                (2, 3),
+                project_bundle.np.int32,
+                "invalid_snapshot_shape",
+            ),
+            (
+                "preview_faces",
+                (2, 3),
+                project_bundle.np.int32,
+                "invalid_snapshot_shape",
+            ),
+        )
+
+        for name, shape, dtype, expected_code in cases:
+            snapshot = self.root / f"forged-{name}.npz"
+            snapshot.write_bytes(original_snapshot)
+            replace_snapshot_array_header(
+                snapshot,
+                name,
+                shape=shape,
+                dtype=dtype,
+            )
+            digest, size = file_identity(snapshot)
+            with self.subTest(name=name, shape=shape, dtype=dtype), patch.object(
+                project_bundle.np,
+                "load",
+                side_effect=AssertionError("snapshot arrays must not be opened"),
+            ) as array_load:
+                with self.assertRaises(ProjectBundleError) as raised:
+                    with project_bundle._validated_snapshot_arrays(
+                        snapshot,
+                        expected_sha256=digest,
+                        expected_size_bytes=size,
+                    ):
+                        self.fail("forged snapshot must not reach array expansion")
+                self.assertEqual(raised.exception.code, expected_code)
+                array_load.assert_not_called()
+
+    def test_normal_source_cannot_restore_unbounded_final_snapshot(self) -> None:
+        prepared = prepared_geometry(self.source)
+        geometry_key = (None, 80_000, "Y", 25, False, True, False)
+        saved = save_project_bundle_in_parent(
+            self.root,
+            self.source,
+            project_payload(),
+            prepared_geometry=prepared,
+            prepared_geometry_key=geometry_key,
+        )
+        snapshot = self.root / "normal-source-huge-final.npz"
+        snapshot.write_bytes(saved.prepared_geometry_snapshot.read_bytes())
+        replace_snapshot_array_header(
+            snapshot,
+            "final_faces",
+            shape=(3_000_001, 3),
+            dtype=project_bundle.np.int32,
+        )
+        digest, size = file_identity(snapshot)
+
+        with patch.object(
+            project_bundle.np,
+            "load",
+            side_effect=AssertionError("snapshot arrays must not be opened"),
+        ) as array_load:
+            with self.assertRaises(ProjectBundleError) as raised:
+                with project_bundle._validated_snapshot_arrays(
+                    snapshot,
+                    expected_sha256=digest,
+                    expected_size_bytes=size,
+                ):
+                    self.fail("oversized final mesh must fail in header preflight")
+        self.assertEqual(raised.exception.code, "snapshot_workload_too_large")
+        array_load.assert_not_called()
+
+    def test_large_source_still_requires_reduced_final_snapshot(self) -> None:
+        prepared = prepared_geometry(self.source)
+        geometry_key = (None, 80_000, "Y", 25, False, True, False)
+        saved = save_project_bundle_in_parent(
+            self.root,
+            self.source,
+            project_payload(),
+            prepared_geometry=prepared,
+            prepared_geometry_key=geometry_key,
+        )
+        snapshot = self.root / "large-source-large-final.npz"
+        snapshot.write_bytes(saved.prepared_geometry_snapshot.read_bytes())
+        replace_snapshot_array_header(
+            snapshot,
+            "asset_faces",
+            shape=(3_000_001, 3),
+            dtype=project_bundle.np.int32,
+        )
+        replace_snapshot_array_header(
+            snapshot,
+            "final_faces",
+            shape=(450_001, 3),
+            dtype=project_bundle.np.int32,
+        )
+        digest, size = file_identity(snapshot)
+
+        with patch.object(
+            project_bundle.np,
+            "load",
+            side_effect=AssertionError("snapshot arrays must not be opened"),
+        ) as array_load:
+            with self.assertRaises(ProjectBundleError) as raised:
+                with project_bundle._validated_snapshot_arrays(
+                    snapshot,
+                    expected_sha256=digest,
+                    expected_size_bytes=size,
+                ):
+                    self.fail("large source must have a reduced final mesh")
+        self.assertEqual(raised.exception.code, "snapshot_workload_too_large")
+        array_load.assert_not_called()
+
+    def test_snapshot_hard_workload_caps_are_inclusive(self) -> None:
+        project_bundle._enforce_snapshot_workload_limits(
+            project_bundle.PreparedGeometrySnapshotWorkload(
+                asset_vertex_count=3_000_000,
+                asset_face_count=5_000_000,
+                final_face_count=450_000,
+            ),
+            self.root / "prepared_geometry.npz",
+        )
+
+    def test_decoder_uses_frozen_copy_if_original_changes_after_copy(self) -> None:
+        prepared = prepared_geometry(self.source)
+        geometry_key = (None, 80_000, "Y", 25, False, True, False)
+        saved = save_project_bundle_in_parent(
+            self.root,
+            self.source,
+            project_payload(),
+            prepared_geometry=prepared,
+            prepared_geometry_key=geometry_key,
+        )
+        loaded = inspect_project_path(saved.folder)
+        snapshot = loaded.prepared_geometry_snapshot
+        self.assertIsNotNone(snapshot)
+        inspect_headers = project_bundle._inspect_snapshot_headers_archive
+        mutated = False
+
+        def mutate_original_after_freeze(archive, path):
+            nonlocal mutated
+            if not mutated:
+                snapshot.write_bytes(b"changed after frozen copy")
+                mutated = True
+            return inspect_headers(archive, path)
+
+        with patch.object(
+            project_bundle,
+            "_inspect_snapshot_headers_archive",
+            side_effect=mutate_original_after_freeze,
+        ):
+            decoded = loaded.load_exact_prepared_geometry(
+                expected_geometry_key=geometry_key
+            )
+
+        self.assertTrue(mutated)
+        project_bundle.np.testing.assert_array_equal(
+            decoded.prepared.final.faces,
+            prepared.final.faces,
+        )
+        self.assertEqual(snapshot.read_bytes(), b"changed after frozen copy")
 
     def test_reference_image_is_copied_and_resolved_relatively(self) -> None:
         reference = self.root / "元画像.PNG"

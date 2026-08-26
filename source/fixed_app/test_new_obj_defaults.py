@@ -30,6 +30,7 @@ from spectrum_mapper.models import (
     RadialSettings,
     ToneSettings,
 )
+from spectrum_mapper.platform_runtime import APPLICATION_DATA_DIRECTORY_ENV
 
 
 class Variable:
@@ -216,15 +217,16 @@ class NewObjDefaultTests(unittest.TestCase):
             model_settings(), developer_features_enabled=True
         )
         with tempfile.TemporaryDirectory() as temporary:
-            settings_path = (
-                Path(temporary) / "TripoSpectrumMapper" / "settings.json"
-            )
-            settings_path.parent.mkdir(parents=True)
+            settings_path = Path(temporary) / "settings.json"
+            settings_path.parent.mkdir(parents=True, exist_ok=True)
             settings_path.write_text(
                 json.dumps(payload), encoding="utf-8-sig"
             )
             app = MapperApp.__new__(MapperApp)
-            with patch.dict(os.environ, {"APPDATA": temporary}):
+            with patch.dict(
+                os.environ,
+                {APPLICATION_DATA_DIRECTORY_ENV: temporary},
+            ):
                 restored = app._load_persistent_settings()
         self.assertTrue(app._loaded_developer_features_enabled)
         self.assertIsInstance(restored, AppSettings)

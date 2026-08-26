@@ -12,8 +12,44 @@ ChromaMatter — AI Model Print Studioは、AI生成された色付き3Dモデ�
 > 収録しています。exact build、完全対応source、archive、checksum、公開後の未認証
 > 再download検証はすべてPASSしています。
 
+<a id="experimental-workstream"></a>
+## Flat Four Test 3候補 — 安定版r32.2 Windows版には未収録
+
+この実験branchでは、公開済みの安定版r32.2 packageと、固定済みFlat Four Test 2
+assetを変更せず、別のTest 3 prerelease候補を準備しています。
+
+- **Flat Four**はモデル表面の面積を加味し、重複しない4本の実フィラメントを
+  自動提案します。混色recipeは作らず、3MF出力もF1～F4だけを使用します。
+- Test 3は白を一律に除去しません。黒い線に隣接する目の白など、意味のある小さな白は
+  白いtargetとして保持します。肌などの滑らかな有彩色面に焼き込まれた、小さく確度の
+  高い白／灰色の照明斑だけを、その境界で使われる有彩色F slotへまとめます。
+- 保持された白が印刷対象総面積の**0.01%以上**なら、白に近い実filamentを1 slot
+  確保します。0.01%未満の白は吸収せずに残しますが、それだけでは白spoolを強制せず、
+  選択済みF1～F4の最寄色へ割り当てられる場合があります。
+- 4つの物理F slotと3MF state情報は維持し、実際のpaint IDが3色だけになる場合も
+  あります。Manual Editingを優先し、Full Spectrumの動作は変更しません。
+- これはtopologyを使うfilterで、意味認識ではありません。暗い線、折り目、part境界の
+  ない滑らかな肌色面に囲まれた小さな白は吸収される場合があります。再利用できる
+  隣接情報がない50万面超のopen meshでは、この自動補正だけをfail-closedでskipします。
+- 実験的な**2D彩色フィルター**は、**Cel Colour（セル彩色）**と
+  **Shaded Monochrome（陰影モノクロ）**を提供します。形状を使った固定正面光と
+  段階的な陰影を印刷対象色へ焼き付けます。輪郭線生成やPBR rendererではなく、
+  結果はmesh normalと元色に依存し、入力にない細部は生成しません。
+- 静的GLBの通常上限は512 MiB／300万頂点／300万三角形のままです。別のβ経路では、
+  300万超～500万三角形の静的`TRIANGLES` sceneだけを、明示確認と面数調整ONを
+  条件として最大45万面の作業用modelへ縮約します。非対応・曖昧なcaseは
+  fail-closedで停止し、細かな形状や焼付textureが失われる場合があります。
+
+このワークストリームはproject schema `obj-adjuster.project.v13`を書き出し、v12を
+旧来のFull Spectrum dataとして引き続き読み込みます。Test 3候補working treeは
+1,431 test／0 FAIL／3 optional SKIPと、owner-onlyのclean build／fresh-extract
+preflightを通過しました。公開にはexact commitからのrebuild、完全対応source、
+compliance asset、checksum、fresh-extract監査、公開検証が必要です。exact Test 3
+packageのphysical printer validationは未実施です。
+
 ## 見たい内容へ
 
+- [実験中のFlat Four／2D彩色／大規模GLB](#experimental-workstream)
 - [OBJ／GLBの読み込みから3MF出力まで](#model-workflow)
 - [Hi3D系分割GLB対応](#multipart-glb)
 - [オリジナル作品の制作工程と過去の画面](#project-examples)

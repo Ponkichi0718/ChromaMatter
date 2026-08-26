@@ -1,8 +1,10 @@
-# ChromaMatter Source-backed App Alpha — Install and Test
+# ChromaMatter Source-backed App Alpha 2 Candidate — Install and Test
 
-This guide is for the Finder-launchable **ChromaMatter Source Alpha.app** on
-Apple Silicon Macs running macOS 15 or newer. The displayed product version is
-still `0.8beta`.
+This guide is for the Finder-launchable **ChromaMatter Source Alpha.app** in
+the Alpha 2 candidate package on Apple Silicon Macs running macOS 15 or newer.
+The displayed product version is still `0.8beta`. The already published
+Source-backed App Alpha 1 remains immutable; Alpha 2 is a separate candidate
+and is not a released download until its exact-commit package and CI gates pass.
 
 ## Read this distinction first
 
@@ -21,23 +23,56 @@ run `xattr` commands, or use `sudo` to make it open.
 
 The official candidate ZIP name is:
 
-`ChromaMatter-0.8beta-macos-source-app-alpha1.zip`
+`ChromaMatter-0.8beta-macos-source-app-alpha2.zip`
 
 After extraction, keep this folder together:
 
 ```text
-ChromaMatter-0.8beta-macos-source-app-alpha1/
-  ChromaMatter Source Alpha.app
+ChromaMatter-0.8beta-macos-source-app-alpha2/
+  ChromaMatter Source Alpha.app/
   README_INSTALL_AND_TEST_EN.md
+  SOURCE_BACKED_ALPHA_NOTICE.txt
+  SOURCE_COMMIT.txt
   ChromaMatter-Public-Four-Color-Test.glb
   ChromaMatter-Public-Four-Color-Test.glb.sha256
-  SOURCE_COMMIT.txt
-  SOURCE_BACKED_ALPHA_NOTICE.txt
+  DemoData/
+    DEMO_DATA_MANIFEST.json
+    README_EN.md
+    README_JA.md
+    NOTICE_EN.md
+    NOTICE_JA.md
+    Original AI model Color.glb
+    Reference.jpg
+    3MF/
+      Original AI model Color_FullSpectrum.3mf
+      Original AI model Color_FullSpectrum_parts_2/
+        01_RightArm_FullSpectrum.3mf
+        02_LeftLeg_FullSpectrum.3mf
+        03_Head_FullSpectrum.3mf
+        04_LeftArm_FullSpectrum.3mf
+        05_Torso_FullSpectrum.3mf
+        06_RightLeg_FullSpectrum.3mf
+        パーツ別3MF_manifest.json
+  SOURCE_APP_PACKAGE_MANIFEST.json
+  SOFTWARE_PACKAGE_SHA256.txt
 ```
 
-Only use a ZIP linked by the project testing hub or release page together with
-the fixed filename and its published SHA-256. A GitHub artifact with
-`diagnostics` in its name is not the app.
+`DemoData/` has exactly 15 canonical files: four README/NOTICE documents, the
+canonical `DEMO_DATA_MANIFEST.json`, the original GLB and reference image,
+seven Full Spectrum 3MF outputs, and the part-output manifest. It stays beside
+the app and must never be moved into the `.app` bundle. The outer JSON package
+manifest independently covers every regular package file except itself and
+`SOFTWARE_PACKAGE_SHA256.txt`. The checksum file is sorted; each line uses an
+uppercase SHA-256 digest, two ASCII spaces, and a POSIX path. It covers every
+other regular file, including `SOURCE_APP_PACKAGE_MANIFEST.json`, and excludes
+only itself. The DemoData manifest remains the stable r32.2 payload allowlist
+and hash authority.
+
+At this candidate stage there is no approved Alpha 2 download. Once the project
+publishes one, use only the ZIP linked by the project testing hub or Release
+page together with this exact filename and its published SHA-256. A local
+staging folder or GitHub artifact with `diagnostics` in its name is not a
+released app package.
 
 ## Download, verify, and extract
 
@@ -72,7 +107,7 @@ Stop and report the final Terminal lines if setup or self-test fails. Do not
 edit the dependency lock, install a different package manually, or search for
 a macOS security bypass.
 
-## 10-minute basic test
+## 10-minute quick-fixture test
 
 Use `ChromaMatter-Public-Four-Color-Test.glb` beside the app. It is a small CC0
 model containing four closed red, blue, white, and black boxes.
@@ -82,7 +117,10 @@ model containing four closed red, blue, white, and black boxes.
    readable.
 3. Choose **Open OBJ / GLB** and open the supplied GLB.
 4. Orbit, pan, and zoom. All four boxes should remain visible.
-5. Select **Full Spectrum (Mixed)** and confirm that its preview appears.
+5. Select **Full Spectrum (Mixed)**, change the total palette colours from the
+   default 16 to **32**, and confirm that the preview recalculates. This checks
+   the 32-state processing path; the four-colour fixture does not force every
+   mixed state to appear on the model at once.
 6. Select **Flat 4 Colors** and confirm that it uses physical F1-F4 only,
    without an F5+ mixed state.
 7. Open **Manual Editing**, use **Fill** on one box, then test Undo and Redo.
@@ -96,6 +134,39 @@ model containing four closed red, blue, white, and black boxes.
 Record **Pass**, **Fail**, or **Not tested** for every step. If one operation
 shows no progress for more than 60 seconds, note the wait and stop that step.
 
+## Extended stable r32.2 DemoData test
+
+The quick four-box GLB is deliberately tiny. `DemoData/Original AI model
+Color.glb` is the realistic six-part Hi3D-generated input used by the stable
+r32.2 release. It exercises a substantially larger multipart, 32-state Full
+Spectrum path. This extended test can take much longer than ten minutes.
+
+1. Read `DemoData/README_EN.md`, `DemoData/NOTICE_EN.md`, and
+   `DemoData/DEMO_DATA_MANIFEST.json`. Do not add, rename, regenerate, or
+   replace anything in `DemoData/` when checking the candidate package.
+2. Open `DemoData/Original AI model Color.glb` and, if useful, its adjacent
+   `Reference.jpg`. Select **Full Spectrum (Mixed)** and explicitly select 32
+   total palette states.
+3. Before regenerating any 3MF, under **Filament Settings > Physical Black
+   Correction**, select the F slot that will physically contain black and
+   enable **Weak Black (5–25%)**. This is mandatory for this demo workflow.
+4. Do not trust the Hi3D-derived part names as descriptions of the visible
+   regions. `RightArm`, `LeftLeg`, and the other labels can disagree with the
+   geometry you see; inspect every part visually.
+5. Under **Output Settings**, choose **Solidify**. Multipart solidification is
+   still unstable beta behavior and can fail. If it fails, record the exact
+   message; do not bypass the closed-solid or 3MF validation gate.
+6. Inspect the included combined 3MF and six part-specific 3MFs under
+   `DemoData/3MF/` by opening them **as projects** in Snapmaker Orca. Check
+   geometry, materials, tool order, and slice preview before any print.
+7. Treat all seven included 3MFs as **Full Spectrum examples only**. They do
+   not prove Flat Four output. A Flat Four claim requires a newly exported
+   Flat Four project from the live GLB and its own inspection; do not relabel
+   an included Full Spectrum file as Flat Four evidence.
+
+The stable multipart GLB is a confirmed successful r32.2 example, not a
+promise that every Hi3D or multipart GLB will solidify, export, slice, or print.
+
 ## Report a result
 
 For a successful or partial result, setup question, or general observation,
@@ -105,7 +176,7 @@ For one reproducible defect, use the [macOS alpha Issue form](https://github.com
 Include:
 
 ```text
-Test route: Source-backed App Alpha
+Test route: Source-backed App Alpha 2 candidate
 ZIP filename and verified SHA-256:
 Source commit (SOURCE_COMMIT.txt):
 Mac model/chip/RAM:
@@ -118,6 +189,9 @@ Public GLB / Full Spectrum / Flat Four: Pass / Fail / Not tested
 Manual Fill / Undo / Redo: Pass / Fail / Not tested
 3MF export: Pass / Fail / Not tested
 Project save / reload: Pass / Fail / Not tested
+Stable DemoData 32-state load: Pass / Fail / Not tested
+Weak Black 5–25% selected before DemoData export: Yes / No / Not tested
+Stable DemoData solidify / included Full Spectrum 3MF review: Pass / Fail / Not tested
 Final sanitized Terminal lines and notes:
 ```
 
@@ -128,6 +202,17 @@ Final sanitized Terminal lines and notes:
 - Pen pressure is not part of this first Mac target; use a mouse or trackpad.
 - Some multipart, damaged, compressed, animated, or otherwise unsupported
   models may be rejected safely.
+- The supplied four-box GLB checks both Full Spectrum 32-state processing and
+  Flat Four switching, but it does not force or visibly cover all 32 mixed
+  states simultaneously.
+- The stable multipart GLB is the realistic 32-state/Hi3D input. Its part names
+  may not match visible regions, and **Weak Black 5–25% is mandatory** before
+  regenerating its 3MF outputs.
+- All seven included DemoData 3MFs are Full Spectrum examples. They do not
+  establish that a Flat Four export was created or inspected.
+- Multipart solidification remains unstable beta behavior. The included stable
+  example succeeded, but another multipart GLB can fail solidification or 3MF
+  export without any validation gate being weakened.
 - Physical colour accuracy and printer safety are not proven by this test.
 
 ChromaMatter processes model and project data locally and does not

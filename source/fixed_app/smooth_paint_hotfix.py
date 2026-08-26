@@ -415,13 +415,85 @@ def _palette_rgb(palette: Any, mixer_module: Any) -> np.ndarray:
     return np.clip(values, 0.0, 1.0)
 
 
+def _is_flat_four_palette(palette: Any) -> bool:
+    return getattr(palette, "color_mode", None) == "flat_four"
+
+
+def _flat_four_state_map(palette_rgb: np.ndarray) -> np.ndarray:
+    """Map every palette row to the nearest physical F1-F4 state."""
+
+    values = np.asarray(palette_rgb, dtype=np.float64)
+    if values.ndim != 2 or values.shape[1:] != (3,) or len(values) < 4:
+        raise ValueError("palette RGB table must contain at least four colours")
+    mapping = np.arange(len(values), dtype=np.int16)
+    if len(values) > 4:
+        delta = values[4:, None, :] - values[None, :4, :]
+        mapping[4:] = np.argmin(np.sum(delta * delta, axis=2), axis=1)
+    return mapping
+
+
+def _effective_manual_state(
+    palette: Any,
+    state: int,
+    palette_rgb: np.ndarray,
+) -> int:
+    """Constrain a newly selected Flat paint state without editing stored data."""
+
+    selected = int(state)
+    if not _is_flat_four_palette(palette):
+        return selected
+    values = np.asarray(palette_rgb, dtype=np.float64)
+    if 0 <= selected < 4:
+        return selected
+    if selected < 0 or selected >= len(values):
+        return 0
+    return int(_flat_four_state_map(values)[selected])
+
+
+def _effective_enabled_state_mask(palette: Any) -> np.ndarray:
+    """Return mode-filtered candidates while retaining the palette's raw mask."""
+
+    enabled = np.asarray(palette.enabled_states, dtype=bool).copy()
+    if _is_flat_four_palette(palette):
+        enabled[4:] = False
+    return enabled
+
+
+def _preview_palette_table(palette: Any, table: np.ndarray) -> np.ndarray:
+    """Route old mixed tree IDs to their Flat physical preview colours."""
+
+    values = np.asarray(table, dtype=np.float64)
+    if not _is_flat_four_palette(palette):
+        return values.copy()
+    mapping = _flat_four_state_map(values)
+    return values[mapping]
+
+
+def _preview_palette_routing(
+    settings: Any,
+    level: Any,
+) -> tuple[Any, tuple[Any, ...], np.ndarray]:
+    """Resolve per-part preview tables, remapping only their visible RGB rows."""
+
+    layout = part_palette_module.validate_part_layout(level)
+    palettes = tuple(
+        part_palette_module.resolve_part_palette_settings(settings, layout)
+    )
+    tables = np.asarray(
+        part_palette_module.build_part_palette_rgb_tables(settings, layout),
+        dtype=np.float64,
+    ).copy()
+    for part_id, palette in enumerate(palettes):
+        tables[part_id] = _preview_palette_table(palette, tables[part_id])
+    return layout, palettes, tables
+
+
 def _configure_gpu_palette_routing(settings: Any, level: Any) -> None:
     """Attach immutable per-part GPU tables only when their colours differ."""
 
-    layout = part_palette_module.validate_part_layout(level)
-    palettes = part_palette_module.resolve_part_palette_settings(settings, layout)
+    layout, palettes, preview_tables = _preview_palette_routing(settings, level)
     tables = np.ascontiguousarray(
-        part_palette_module.build_part_palette_rgb_tables(settings, layout),
+        preview_tables,
         dtype=np.float32,
     )
     level._hotfix_palette = palettes[0]
@@ -429,7 +501,8 @@ def _configure_gpu_palette_routing(settings: Any, level: Any) -> None:
     multipart = len(tables) > 1 and any(
         not np.array_equal(tables[0], table) for table in tables[1:]
     )
-    if not multipart:
+    flat_routing = any(_is_flat_four_palette(palette) for palette in palettes)
+    if not multipart and not flat_routing:
         level._hotfix_part_palette_rgb_tables = None
         level._hotfix_face_part_ids = None
         level._hotfix_part_palette_tokens = None
@@ -480,12 +553,19 @@ def compose_target_image(
     mvp, _state, _pixels_per_unit = renderer_module._orbit_camera_mvp(
         level.vertices_unit, (width, height), camera
     )
-    palette_rgb = _palette_rgb(palette, mixer_module)
+    palette_rgb = _preview_palette_table(
+        palette, _palette_rgb(palette, mixer_module)
+    )
     part_tables = (
         None
         if part_palette_rgb_tables is None
         else np.asarray(part_palette_rgb_tables, dtype=np.float64)
     )
+    if part_tables is not None and _is_flat_four_palette(palette):
+        part_tables = np.stack(
+            tuple(_preview_palette_table(palette, table) for table in part_tables),
+            axis=0,
+        )
     part_ids = (
         None
         if face_part_ids is None
@@ -1005,7 +1085,7 @@ def apply_smooth_paint_hotfix(
 
     def finish_tree_only_command(
         session: Any,
-        undo_size: int,
+        undo_marker: Any,
         keys: set[int],
         before_nodes: dict[int, smooth_paint.PaintNode],
         label: str,
@@ -1017,9 +1097,11 @@ def apply_smooth_paint_hotfix(
         if store is None:
             return
         after_nodes = _clone_store_subset(store, keys)
-        if len(session._undo) > undo_size:
-            command = session._undo[-1]
-        else:
+        # A new command can evict an old one at the history limit, leaving the
+        # list length unchanged.  Object identity still distinguishes it from
+        # the command that was last before this edit began.
+        command = session._undo[-1] if session._undo else None
+        if command is None or command is undo_marker:
             indices = np.asarray(sorted(keys), dtype=np.int32)
             current = np.asarray(session.overrides[indices], dtype=np.int8).copy()
             command = paint_module.PaintCommand(
@@ -1032,25 +1114,64 @@ def apply_smooth_paint_hotfix(
         _attach_tree_history(command, keys, before_nodes, after_nodes)
         _bump_revision(owner)
 
-    def fill_tree_aware(self, seed_face, state):
+    def fill_tree_aware(
+        self,
+        seed_face,
+        state,
+        *,
+        connectivity_state_map=None,
+    ):
+        connectivity_options = (
+            {"connectivity_state_map": connectivity_state_map}
+            if connectivity_state_map is not None
+            else {}
+        )
         store, _owner = session_context(self)
         if not store:
-            return original_fill(self, seed_face, state)
-        faces = np.asarray(self.connected_fill_faces(seed_face), dtype=np.int32)
+            return original_fill(
+                self,
+                seed_face,
+                state,
+                **connectivity_options,
+            )
+        if connectivity_state_map is not None:
+            seed = int(seed_face)
+            requested = int(state)
+            if (
+                0 <= seed < len(self.faces)
+                and 0 <= requested < int(mixer_module.PALETTE_STATE_COUNT)
+            ):
+                labels = self._fill_connectivity_labels(
+                    connectivity_state_map
+                )
+                if int(labels[seed]) == requested:
+                    return np.empty(0, dtype=np.int32)
+        faces = np.asarray(
+            self.connected_fill_faces(
+                seed_face,
+                **connectivity_options,
+            ),
+            dtype=np.int32,
+        )
         keys = {int(face) for face in faces if int(face) in store}
         if not keys:
-            return original_fill(self, seed_face, state)
+            return original_fill(
+                self,
+                seed_face,
+                state,
+                **connectivity_options,
+            )
         before_nodes = _clone_store_subset(store, keys)
         ordered = np.asarray(sorted(keys), dtype=np.int32)
         before_values = np.asarray(self.overrides[ordered], dtype=np.int8).copy()
-        undo_size = len(self._undo)
+        undo_marker = self._undo[-1] if self._undo else None
         changed = self._set_overrides(
             faces, self._validate_state(state), "塗りつぶし"
         )
         for key in keys:
             store.pop(key, None)
         finish_tree_only_command(
-            self, undo_size, keys, before_nodes, "塗りつぶし", before_values
+            self, undo_marker, keys, before_nodes, "塗りつぶし", before_values
         )
         if len(changed) == 0:
             return ordered
@@ -1058,7 +1179,7 @@ def apply_smooth_paint_hotfix(
 
     def smooth_tree_aware(self, *args, **kwargs):
         store, _owner = session_context(self)
-        undo_size = len(self._undo)
+        undo_marker = self._undo[-1] if self._undo else None
         changed = original_smooth(self, *args, **kwargs)
         if not store or len(changed) == 0:
             return changed
@@ -1070,8 +1191,8 @@ def apply_smooth_paint_hotfix(
         before_values = np.asarray(self.overrides[ordered], dtype=np.int8).copy()
         # The root colour was already changed by the original command.  The
         # old override values are stored on that command, when available.
-        if len(self._undo) > undo_size:
-            command = self._undo[-1]
+        command = self._undo[-1] if self._undo else None
+        if command is not None and command is not undo_marker:
             lookup = {int(face): value for face, value in zip(command.indices, command.before)}
             before_values = np.asarray(
                 [lookup.get(int(face), self.overrides[int(face)]) for face in ordered],
@@ -1080,13 +1201,13 @@ def apply_smooth_paint_hotfix(
         for key in keys:
             store.pop(key, None)
         finish_tree_only_command(
-            self, undo_size, keys, before_nodes, "境界ならし", before_values
+            self, undo_marker, keys, before_nodes, "境界ならし", before_values
         )
         return changed
 
     def clear_tree_aware(self):
         store, _owner = session_context(self)
-        undo_size = len(self._undo)
+        undo_marker = self._undo[-1] if self._undo else None
         changed = original_clear(self)
         if not store:
             return changed
@@ -1094,8 +1215,8 @@ def apply_smooth_paint_hotfix(
         before_nodes = _clone_store_subset(store, keys)
         ordered = np.asarray(sorted(keys), dtype=np.int32)
         before_values = np.asarray(self.overrides[ordered], dtype=np.int8).copy()
-        if len(self._undo) > undo_size:
-            command = self._undo[-1]
+        command = self._undo[-1] if self._undo else None
+        if command is not None and command is not undo_marker:
             lookup = {int(face): value for face, value in zip(command.indices, command.before)}
             before_values = np.asarray(
                 [lookup.get(int(face), before_values[index]) for index, face in enumerate(ordered)],
@@ -1103,7 +1224,7 @@ def apply_smooth_paint_hotfix(
             )
         store.clear()
         finish_tree_only_command(
-            self, undo_size, keys, before_nodes, "全修正を解除", before_values
+            self, undo_marker, keys, before_nodes, "全修正を解除", before_values
         )
         if len(changed) == 0:
             return ordered
@@ -1435,13 +1556,17 @@ def apply_smooth_paint_hotfix(
     def feedback_color(self, erase: bool) -> str:
         if erase:
             return "#DDE6EE"
-        state = int(self.paint_state_var.get())
         palette = editor_palette(self)
-        values, _rgb = mixer_module.build_palette_rgb(
+        values, palette_rgb = mixer_module.build_palette_rgb(
             list(palette.physical_hex),
             list(palette.mix_hex_overrides),
             list(palette.mix_ratios_b),
             list(palette.secondary_mix_ratios_b),
+        )
+        state = _effective_manual_state(
+            palette,
+            int(self.paint_state_var.get()),
+            np.asarray(palette_rgb, dtype=np.float64),
         )
         return str(values[state])
 
@@ -2031,12 +2156,18 @@ def apply_smooth_paint_hotfix(
         else:
             initial_scale = 1.0
             stored_pressure = pressure
-        selected_state = int(self.paint_state_var.get())
         palette = editor_palette(self)
-        active_states = list(bool(value) for value in palette.enabled_states)
+        captured_palette_rgb = _palette_rgb(palette, mixer_module)
+        selected_state = _effective_manual_state(
+            palette,
+            int(self.paint_state_var.get()),
+            captured_palette_rgb,
+        )
+        active_states = list(
+            bool(value) for value in _effective_enabled_state_mask(palette)
+        )
         if 0 <= selected_state < len(active_states):
             active_states[selected_state] = True
-        captured_palette_rgb = _palette_rgb(palette, mixer_module)
         self._hotfix_smooth_points = [point]
         self._hotfix_smooth_pressures = [stored_pressure]
         self._hotfix_smooth_radius_scales = [initial_scale]
@@ -2339,17 +2470,33 @@ def apply_smooth_paint_hotfix(
             options = _auto_shading_options(
                 quality,
                 height_mm=float(self.settings.geometry.height_mm),
-                enabled_states=palette.enabled_states,
+                enabled_states=_effective_enabled_state_mask(palette),
                 dither_strength=dither_strength,
             )
+            shading_kwargs = {
+                "options": options,
+                "face_mask": scope,
+            }
+            stored_tone_faces = getattr(
+                self._auto_colors, "tone_face_rgb", None
+            )
+            if bool(
+                getattr(self._auto_colors, "tone_face_rgb_flat", False)
+            ):
+                if stored_tone_faces is None:
+                    raise RuntimeError(
+                        "2D彩色フィルターの面色が失われたため陰影補正を停止しました"
+                    )
+                shading_kwargs["tone_face_rgb"] = np.asarray(
+                    stored_tone_faces, dtype=np.float64
+                )
             shading_result = auto_shading.generate_auto_shading(
                 np.asarray(self.level.faces),
                 np.asarray(self.level.vertices_unit),
                 np.asarray(self._auto_colors.tone_vertex_rgb),
                 current_states,
                 palette_rgb,
-                options=options,
-                face_mask=scope,
+                **shading_kwargs,
             )
             if not shading_result.trees:
                 return auto_shading_snapshot(
@@ -3257,6 +3404,9 @@ def apply_smooth_paint_hotfix(
         if store and exact_frame and gpu_revision is None and not visibility_filtered:
             cached = getattr(self, "_hotfix_overlay_cache", None)
             if not _overlay_cache_matches(cached, image, ids, self.camera, revision):
+                _layout, _palettes, preview_tables = _preview_palette_routing(
+                    self.settings, self.level
+                )
                 composite = compose_target_image(
                     image,
                     self.level,
@@ -3264,11 +3414,7 @@ def apply_smooth_paint_hotfix(
                     camera=self.camera,
                     face_ids=ids,
                     palette=self.settings.palette,
-                    part_palette_rgb_tables=(
-                        part_palette_module.build_part_palette_rgb_tables(
-                            self.settings, self.level
-                        )
-                    ),
+                    part_palette_rgb_tables=preview_tables,
                     face_part_ids=self.level.face_part_ids,
                     focus_state=(
                         int(self._palette_usage_focus_state)

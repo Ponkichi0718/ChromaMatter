@@ -1,0 +1,30 @@
+{
+  "automatic_approval_permitted": false,
+  "blockers": [
+    "native-binary-to-source-closure-review",
+    "pymeshlab-arm64-wheel-closure",
+    "pytetwild-arm64-wheel-closure",
+    "lgpl-relinking-practical-validation",
+    "complete-corresponding-source-archive",
+    "owner-distribution-approval"
+  ],
+  "generated_by": "ChromaMatter-macOS-compliance-evidence-1",
+  "inventory_sha256": "f5945baa1b586a7367ff7c81b426a0caf94fde5a4bcef32333e4b142e7552bde",
+  "owner_approval": {
+    "approved": false,
+    "reviewed_at": null,
+    "reviewer": null
+  },
+  "required_final_actions": [
+    "Review every Mach-O ownership and dependency mapping.",
+    "Publish and checksum complete corresponding source for the exact app bytes.",
+    "Validate LGPL replacement/relinking instructions on Apple Silicon.",
+    "Update bilingual notices so they no longer declare pending work.",
+    "Record explicit owner approval for this exact commit and inventory."
+  ],
+  "schema": "chromamatter.macos-distribution-approval.v1",
+  "scope": "Apple Silicon macOS 15+ external volunteer alpha testing",
+  "signing": "ad-hoc-only-developer-id-unsigned-unnotarized",
+  "source_commit": "1c4bb508c24cfa82b2e67322f4ed3b9a76c9b5b6",
+  "status": "blocked"
+}

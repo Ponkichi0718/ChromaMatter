@@ -78,7 +78,13 @@ from .manual_shortcuts import (
     install_manual_shortcuts,
     shortcut_help_rows,
 )
-from .models import AppSettings, PaletteSettings, PreparedGeometry, ToneSettings
+from .models import (
+    AppSettings,
+    COLOR_MODE_FLAT_FOUR,
+    PaletteSettings,
+    PreparedGeometry,
+    ToneSettings,
+)
 from .i18n import TkLocalizer, Translator
 from .part_names import PartNameError, rename_prepared_part
 from .paint import PaintSession
@@ -286,6 +292,7 @@ def _copy_palette_settings(palette: PaletteSettings) -> PaletteSettings:
     return PaletteSettings(
         material=palette.material,
         palette_state_count=palette.palette_state_count,
+        color_mode=getattr(palette, "color_mode", "full_spectrum"),
         physical_hex=list(palette.physical_hex),
         enabled_states=list(palette.enabled_states),
         mix_hex_overrides=list(palette.mix_hex_overrides),
@@ -318,6 +325,97 @@ def _copy_palette_settings(palette: PaletteSettings) -> PaletteSettings:
         ),
         physical_filament_refs=list(palette.physical_filament_refs),
     )
+
+
+def _effective_paint_enabled_states(palette: PaletteSettings) -> np.ndarray:
+    """Return paint candidates without mutating reversible palette settings."""
+
+    enabled = np.asarray(palette.enabled_states, dtype=bool).copy()
+    if getattr(palette, "color_mode", None) == COLOR_MODE_FLAT_FOUR:
+        enabled[4:] = False
+    return enabled
+
+
+def _effective_paint_state_map(
+    palette: PaletteSettings,
+    *,
+    palette_rgb: np.ndarray | None = None,
+) -> np.ndarray:
+    """Map canonical state IDs to the colours currently visible to Fill.
+
+    Full Spectrum uses the identity map.  Flat 4 Colors uses the same
+    non-destructive nearest-physical projection as its manual preview: legacy
+    mixed IDs stay stored, while visually identical connected faces can be
+    filled as one region.
+    """
+
+    mapping = np.arange(PALETTE_STATE_COUNT, dtype=np.int8)
+    if getattr(palette, "color_mode", None) != COLOR_MODE_FLAT_FOUR:
+        return mapping
+    if palette_rgb is None:
+        _palette_hex, palette_rgb = build_palette_rgb(
+            palette.physical_hex,
+            palette.mix_hex_overrides,
+            palette.mix_ratios_b,
+            palette.secondary_mix_ratios_b,
+        )
+    colors = np.asarray(palette_rgb, dtype=np.float64)
+    if colors.shape != (PALETTE_STATE_COUNT, 3) or not np.all(
+        np.isfinite(colors)
+    ):
+        raise ValueError(
+            f"Flat 4 Colors requires a {PALETTE_STATE_COUNT}x3 palette table"
+        )
+    delta = colors[4:, None, :] - colors[None, :4, :]
+    mapping[4:] = np.argmin(np.sum(delta * delta, axis=2), axis=1)
+    return mapping
+
+
+def _effective_paint_state(
+    palette: PaletteSettings,
+    state: int,
+    *,
+    palette_rgb: np.ndarray | None = None,
+) -> int:
+    """Return the state a new manual edit may write in the active mode.
+
+    Flat 4 Colors deliberately keeps old Full Spectrum overrides intact so a
+    later mode switch can restore them.  New manual input, however, must use a
+    physical F1-F4 state.  The nearest-colour rule matches the non-destructive
+    remap used by :func:`engine.apply_palette_overrides` for Flat previews and
+    export.
+    """
+
+    selected = int(state)
+    if getattr(palette, "color_mode", None) != COLOR_MODE_FLAT_FOUR:
+        return selected
+    if 0 <= selected < 4:
+        return selected
+    if selected < 0 or selected >= PALETTE_STATE_COUNT:
+        return 0
+    try:
+        return int(
+            _effective_paint_state_map(
+                palette,
+                palette_rgb=palette_rgb,
+            )[selected]
+        )
+    except ValueError:
+        return 0
+
+
+def _editor_palette_if_available(editor: object) -> PaletteSettings | None:
+    """Resolve an editor palette while keeping lightweight legacy callers valid."""
+
+    resolver = getattr(editor, "_active_palette", None)
+    if callable(resolver):
+        try:
+            return resolver()
+        except (AttributeError, IndexError, KeyError, ValueError):
+            pass
+    settings = getattr(editor, "settings", None)
+    palette = getattr(settings, "palette", None)
+    return palette if isinstance(palette, PaletteSettings) else None
 
 
 def _is_manual_only_palette_state(
@@ -579,6 +677,22 @@ class PaintEditorWindow:
         )
         self.tone_smoothing_slack_var = tk.DoubleVar(
             value=tone.smoothing_delta_e_slack
+        )
+        self.illustration_mode_var = tk.StringVar(
+            value=str(getattr(tone, "illustration_mode", "off"))
+        )
+        self.illustration_strength_var = tk.DoubleVar(
+            value=100.0 * float(
+                getattr(tone, "illustration_strength", 0.78)
+            )
+        )
+        self.illustration_bands_var = tk.IntVar(
+            value=int(getattr(tone, "illustration_bands", 4))
+        )
+        self.illustration_light_var = tk.StringVar(
+            value=str(
+                getattr(tone, "illustration_light", "front_left")
+            )
         )
         self.mix_optimization_target_var = tk.StringVar()
         self._syncing_tone_controls = False
@@ -1286,8 +1400,12 @@ class PaintEditorWindow:
             transform = self._decal_transform(ids.shape)
             active_palette = self._active_palette()
             palette_rgb = np.asarray(self.palette_rgb, dtype=np.float64).copy()
-            enabled = np.asarray(active_palette.enabled_states, dtype=bool).copy()
-            selected_state = int(self.paint_state_var.get())
+            enabled = _effective_paint_enabled_states(active_palette)
+            selected_state = _effective_paint_state(
+                active_palette,
+                int(self.paint_state_var.get()),
+                palette_rgb=palette_rgb,
+            )
             mode = str(self.decal_mode_var.get())
             if mode == "selected" and (
                 selected_state < 0
@@ -1480,19 +1598,22 @@ class PaintEditorWindow:
             or not self._decal_exact_frame_available()
         ):
             return False
-        if preview.mode == "selected" and int(
-            getattr(self, "_decal_preview_selected_state", -1)
-        ) != int(self.paint_state_var.get()):
-            return False
         try:
             if preview.transform != self._decal_transform(preview.state_map.shape):
                 return False
             active_palette = self._active_palette()
             current_palette = np.asarray(self.palette_rgb, dtype=np.float64)
-            current_enabled = np.asarray(
-                active_palette.enabled_states, dtype=bool
+            current_enabled = _effective_paint_enabled_states(active_palette)
+            current_state = _effective_paint_state(
+                active_palette,
+                int(self.paint_state_var.get()),
+                palette_rgb=current_palette,
             )
         except (DecalProjectionError, TypeError, ValueError, tk.TclError):
+            return False
+        if preview.mode == "selected" and int(
+            getattr(self, "_decal_preview_selected_state", -1)
+        ) != current_state:
             return False
         return bool(
             np.array_equal(palette, current_palette)
@@ -1889,6 +2010,12 @@ class PaintEditorWindow:
                 "1  Global Shading & Tone",
             ),
             (
+                "shading_illustration_title_label",
+                "paint.shading_illustration_group",
+                "試験  2D彩色フィルター",
+                "Experimental  2D Colour Filter",
+            ),
+            (
                 "shading_mix_title_label",
                 "paint.shading_mix_group",
                 "2  混色比率を陰影に合わせる",
@@ -1907,6 +2034,21 @@ class PaintEditorWindow:
                 widget.configure(
                     text=self._shading_text(key, japanese, english)
                 )
+        illustration_widgets = (
+            ("illustration_mode_off_button", "tone.illustration_off"),
+            ("illustration_mode_cel_button", "tone.illustration_cel"),
+            ("illustration_mode_noir_button", "tone.illustration_noir"),
+            ("illustration_strength_label", "tone.illustration_strength"),
+            ("illustration_bands_label", "tone.illustration_bands"),
+            ("illustration_light_label", "tone.illustration_light"),
+            ("illustration_light_left_button", "tone.light_front_left"),
+            ("illustration_light_front_button", "tone.light_front"),
+            ("illustration_light_right_button", "tone.light_front_right"),
+        )
+        for attribute, key in illustration_widgets:
+            widget = getattr(self, attribute, None)
+            if widget is not None:
+                widget.configure(text=self.i18n.text(key))
         self._sync_mix_optimization_target()
 
     def _sync_mix_optimization_target(self) -> None:
@@ -1926,6 +2068,20 @@ class PaintEditorWindow:
             variable.set(f"{label} {name}")
 
     def _tone_settings_from_controls(self) -> ToneSettings:
+        existing_tone = getattr(
+            getattr(self, "settings", None), "tone", ToneSettings()
+        )
+
+        def illustration_value(
+            variable_name: str,
+            setting_name: str,
+            default: object,
+        ) -> object:
+            variable = getattr(self, variable_name, None)
+            if variable is not None:
+                return variable.get()
+            return getattr(existing_tone, setting_name, default)
+
         tone = ToneSettings(
             black_point=float(self.tone_black_point_var.get()),
             white_point=float(self.tone_white_point_var.get()),
@@ -1940,6 +2096,36 @@ class PaintEditorWindow:
             ),
             smoothing_delta_e_slack=float(
                 self.tone_smoothing_slack_var.get()
+            ),
+            illustration_mode=str(
+                illustration_value(
+                    "illustration_mode_var", "illustration_mode", "off"
+                )
+            ),
+            illustration_strength=float(
+                illustration_value(
+                    "illustration_strength_var",
+                    "illustration_strength",
+                    0.78,
+                )
+            )
+            / (
+                100.0
+                if getattr(self, "illustration_strength_var", None)
+                is not None
+                else 1.0
+            ),
+            illustration_bands=int(
+                illustration_value(
+                    "illustration_bands_var", "illustration_bands", 4
+                )
+            ),
+            illustration_light=str(
+                illustration_value(
+                    "illustration_light_var",
+                    "illustration_light",
+                    "front_left",
+                )
             ),
         )
         if tone.white_point <= tone.black_point + 0.005:
@@ -1969,6 +2155,33 @@ class PaintEditorWindow:
             self.tone_smoothing_slack_var.set(
                 float(tone.smoothing_delta_e_slack)
             )
+            illustration_controls = (
+                (
+                    "illustration_mode_var",
+                    str(getattr(tone, "illustration_mode", "off")),
+                ),
+                (
+                    "illustration_strength_var",
+                    100.0
+                    * float(
+                        getattr(tone, "illustration_strength", 0.78)
+                    ),
+                ),
+                (
+                    "illustration_bands_var",
+                    int(getattr(tone, "illustration_bands", 4)),
+                ),
+                (
+                    "illustration_light_var",
+                    str(
+                        getattr(tone, "illustration_light", "front_left")
+                    ),
+                ),
+            )
+            for attribute, value in illustration_controls:
+                variable = getattr(self, attribute, None)
+                if variable is not None:
+                    variable.set(value)
         finally:
             self._syncing_tone_controls = False
 
@@ -2006,6 +2219,31 @@ class PaintEditorWindow:
             callback(replace(tone))
         except Exception as exc:
             self.status_var.set(str(exc))
+
+    def _flush_pending_tone_change(self) -> bool:
+        """Synchronously commit the visible tone controls before closing."""
+
+        if self._tone_change_after is None:
+            return True
+        try:
+            self.window.after_cancel(self._tone_change_after)
+        except tk.TclError:
+            pass
+        self._tone_change_after = None
+        # Any already-queued lambda now belongs to an older revision and must
+        # not apply the same controls twice.
+        self._tone_callback_revision += 1
+        try:
+            tone = self._tone_settings_from_controls()
+            callback = self.on_tone_settings_changed
+            if callback is None:
+                self.reapply_tone_settings(tone)
+            else:
+                callback(replace(tone))
+        except Exception as exc:
+            self.status_var.set(str(exc))
+            return False
+        return True
 
     def _active_mix_optimization_key(self) -> str | None:
         if not self.part_keys:
@@ -3307,8 +3545,134 @@ class PaintEditorWindow:
         ttk.Separator(shading, orient=tk.HORIZONTAL).grid(
             row=1, column=0, sticky="ew", pady=5
         )
+        illustration_shading = ttk.Frame(
+            shading, style="PaintPanel.TFrame"
+        )
+        illustration_shading.grid(row=2, column=0, sticky="ew")
+        illustration_shading.columnconfigure(7, weight=1)
+        self.shading_illustration_title_label = tk.Label(
+            illustration_shading,
+            bg=PANEL,
+            fg=ACCENT,
+            font=("Yu Gothic UI", 9, "bold"),
+            anchor="w",
+        )
+        self.shading_illustration_title_label.grid(
+            row=0, column=0, sticky="w", padx=(0, 12)
+        )
+        self.illustration_mode_off_button = ttk.Radiobutton(
+            illustration_shading,
+            variable=self.illustration_mode_var,
+            value="off",
+            command=self._on_editor_tone_control_changed,
+            style="Paint.Tool.TRadiobutton",
+        )
+        self.illustration_mode_off_button.grid(row=0, column=1, padx=2)
+        self.illustration_mode_cel_button = ttk.Radiobutton(
+            illustration_shading,
+            variable=self.illustration_mode_var,
+            value="cel",
+            command=self._on_editor_tone_control_changed,
+            style="Paint.Tool.TRadiobutton",
+        )
+        self.illustration_mode_cel_button.grid(row=0, column=2, padx=2)
+        self.illustration_mode_noir_button = ttk.Radiobutton(
+            illustration_shading,
+            variable=self.illustration_mode_var,
+            value="noir",
+            command=self._on_editor_tone_control_changed,
+            style="Paint.Tool.TRadiobutton",
+        )
+        self.illustration_mode_noir_button.grid(row=0, column=3, padx=2)
+
+        self.illustration_strength_label = ttk.Label(
+            illustration_shading,
+            style="PaintPanelMuted.TLabel",
+        )
+        self.illustration_strength_label.grid(
+            row=0, column=4, padx=(12, 2), sticky="w"
+        )
+        tk.Scale(
+            illustration_shading,
+            from_=0,
+            to=100,
+            resolution=1,
+            orient=tk.HORIZONTAL,
+            variable=self.illustration_strength_var,
+            command=self._on_editor_tone_control_changed,
+            bg=PANEL,
+            fg=TEXT,
+            troughcolor="#303A49",
+            activebackground=ACCENT,
+            highlightthickness=0,
+            length=105,
+        ).grid(row=0, column=5, padx=2)
+        self.illustration_bands_label = ttk.Label(
+            illustration_shading,
+            style="PaintPanelMuted.TLabel",
+        )
+        self.illustration_bands_label.grid(
+            row=1, column=1, padx=(2, 2), pady=(3, 0), sticky="w"
+        )
+        tk.Scale(
+            illustration_shading,
+            from_=2,
+            to=6,
+            resolution=1,
+            orient=tk.HORIZONTAL,
+            variable=self.illustration_bands_var,
+            command=self._on_editor_tone_control_changed,
+            bg=PANEL,
+            fg=TEXT,
+            troughcolor="#303A49",
+            activebackground=ACCENT,
+            highlightthickness=0,
+            length=80,
+        ).grid(row=1, column=2, padx=2, pady=(3, 0))
+
+        self.illustration_light_label = ttk.Label(
+            illustration_shading,
+            style="PaintPanelMuted.TLabel",
+        )
+        self.illustration_light_label.grid(
+            row=1, column=3, padx=(12, 2), pady=(3, 0), sticky="w"
+        )
+        self.illustration_light_left_button = ttk.Radiobutton(
+            illustration_shading,
+            variable=self.illustration_light_var,
+            value="front_left",
+            command=self._on_editor_tone_control_changed,
+            style="Paint.Tool.TRadiobutton",
+        )
+        self.illustration_light_left_button.grid(
+            row=1, column=4, padx=2, pady=(3, 0)
+        )
+        self.illustration_light_front_button = ttk.Radiobutton(
+            illustration_shading,
+            variable=self.illustration_light_var,
+            value="front",
+            command=self._on_editor_tone_control_changed,
+            style="Paint.Tool.TRadiobutton",
+        )
+        self.illustration_light_front_button.grid(
+            row=1, column=5, padx=2, pady=(3, 0)
+        )
+        self.illustration_light_right_button = ttk.Radiobutton(
+            illustration_shading,
+            variable=self.illustration_light_var,
+            value="front_right",
+            command=self._on_editor_tone_control_changed,
+            style="Paint.Tool.TRadiobutton",
+        )
+        self.illustration_light_right_button.grid(
+            row=1, column=6, padx=2, pady=(3, 0)
+        )
+
+        ttk.Separator(shading, orient=tk.HORIZONTAL).grid(
+            row=3, column=0, sticky="ew", pady=5
+        )
         mix_shading = ttk.Frame(shading, style="PaintPanel.TFrame")
-        mix_shading.grid(row=2, column=0, sticky="ew")
+        mix_shading.grid(row=4, column=0, sticky="ew")
         mix_shading.columnconfigure(5, weight=1)
         self.shading_mix_title_label = tk.Label(
             mix_shading,
@@ -3355,10 +3719,10 @@ class PaintEditorWindow:
         ).grid(row=0, column=4, sticky="w", padx=(10, 0))
 
         ttk.Separator(shading, orient=tk.HORIZONTAL).grid(
-            row=3, column=0, sticky="ew", pady=5
+            row=5, column=0, sticky="ew", pady=5
         )
         local_shading = ttk.Frame(shading, style="PaintPanel.TFrame")
-        local_shading.grid(row=4, column=0, sticky="ew")
+        local_shading.grid(row=6, column=0, sticky="ew")
         local_shading.columnconfigure(1, weight=1)
         self.shading_local_title_label = tk.Label(
             local_shading,
@@ -5672,12 +6036,23 @@ class PaintEditorWindow:
 
     def _refresh_palette_buttons(self) -> None:
         active_palette = self._active_palette()
+        flat_mode = (
+            getattr(active_palette, "color_mode", None)
+            == COLOR_MODE_FLAT_FOUR
+        )
+        effective_count = 4 if flat_mode else active_palette.palette_state_count
         count_variable = getattr(
             self, "manual_palette_state_count_var", None
         )
         if count_variable is not None:
-            count_variable.set(active_palette.palette_state_count)
-        if int(self.paint_state_var.get()) >= active_palette.palette_state_count:
+            # The control describes what can be painted *now*.  Keep the
+            # stored Full Spectrum count untouched so switching back restores
+            # the user's previous 16/24/32-colour setup.
+            count_variable.set(effective_count)
+        count_combo = getattr(self, "manual_palette_state_count_combo", None)
+        if count_combo is not None:
+            count_combo.configure(state="disabled" if flat_mode else "readonly")
+        if int(self.paint_state_var.get()) >= effective_count:
             self.paint_state_var.set(0)
         palette_hex, palette_rgb = build_palette_rgb(
             active_palette.physical_hex,
@@ -5727,6 +6102,8 @@ class PaintEditorWindow:
             label.grid_remove()
 
         rows = palette_family_display_rows(active_palette)
+        if getattr(active_palette, "color_mode", None) == COLOR_MODE_FLAT_FOUR:
+            rows = tuple(row for row in rows if row.get("chart_number") is None)
         physical_rows = [row for row in rows if row.get("chart_number") is None]
         if physical_rows and physical_label is not None:
             physical_label.grid(row=1, column=0, sticky="w", padx=(0, 4), pady=1)
@@ -5776,6 +6153,10 @@ class PaintEditorWindow:
                 )
 
     def _on_manual_palette_state_count_changed(self, _event=None) -> None:
+        active_palette = self._active_palette()
+        if getattr(active_palette, "color_mode", None) == COLOR_MODE_FLAT_FOUR:
+            self.manual_palette_state_count_var.set(4)
+            return
         count = int(self.manual_palette_state_count_var.get())
         part_key = self.part_keys[self.active_part_id]
         if len(self.part_keys) > 1 or part_key in self.settings.part_palettes:
@@ -6452,10 +6833,15 @@ class PaintEditorWindow:
         target_lab = srgb_to_lab((rgb8[None, :] / 255.0))[0]
         palette_lab = srgb_to_lab(self.palette_rgb)
         active_palette = self._active_palette()
-        enabled = np.asarray(active_palette.enabled_states, dtype=bool)
+        enabled = _effective_paint_enabled_states(active_palette)
         candidates = np.flatnonzero(enabled)
         if len(candidates) == 0:
-            candidates = np.arange(PALETTE_STATE_COUNT)
+            candidates = np.arange(
+                4
+                if getattr(active_palette, "color_mode", None)
+                == COLOR_MODE_FLAT_FOUR
+                else PALETTE_STATE_COUNT
+            )
         distances = np.linalg.norm(palette_lab[candidates] - target_lab, axis=1)
         nearest = int(candidates[int(np.argmin(distances))])
         self.paint_state_var.set(nearest)
@@ -6464,6 +6850,8 @@ class PaintEditorWindow:
             update_label()
 
         try:
+            if getattr(active_palette, "color_mode", None) == COLOR_MODE_FLAT_FOUR:
+                raise LookupError("flat mode has no mixed recipe")
             recipes = find_best_mix_recipes(
                 rgb8,
                 active_palette.physical_hex,
@@ -6561,6 +6949,18 @@ class PaintEditorWindow:
             state = int(sample(int(face), adaptive_state=adaptive_state))
         else:
             state = int(indices[int(face)])
+        active_palette = _editor_palette_if_available(self)
+        if active_palette is not None:
+            palette_rgb = getattr(self, "palette_rgb", None)
+            state = _effective_paint_state(
+                active_palette,
+                state,
+                palette_rgb=(
+                    None
+                    if palette_rgb is None
+                    else np.asarray(palette_rgb, dtype=np.float64)
+                ),
+            )
         self.paint_state_var.set(state)
         self._update_selected_palette_label()
         names = getattr(self, "state_names", STATE_NAMES)
@@ -6681,6 +7081,9 @@ class PaintEditorWindow:
                 sampler(face, event)
             elif self.effective_indices is not None:
                 state = int(self.effective_indices[face])
+                active_palette = _editor_palette_if_available(self)
+                if active_palette is not None:
+                    state = _effective_paint_state(active_palette, state)
                 self.paint_state_var.set(state)
                 update_label = getattr(self, "_update_selected_palette_label", None)
                 if callable(update_label):
@@ -7354,7 +7757,9 @@ class PaintEditorWindow:
         radius = float(self.brush_radius_var.get())
         protect = bool(self.edge_guard_var.get())
         angle = float(self.edge_angle_var.get())
-        state = int(self.paint_state_var.get())
+        state = _effective_paint_state(
+            self._active_palette(), int(self.paint_state_var.get())
+        )
         ordered_seeds = [int(seed) for seed in seeds if seed >= 0]
         visible_mask = self._visible_face_mask_for_stroke()
         visibility = (
@@ -7406,8 +7811,11 @@ class PaintEditorWindow:
         strength = float(self.airbrush_strength_var.get()) / 100.0
         protect = bool(self.edge_guard_var.get())
         angle = float(self.edge_angle_var.get())
-        state = int(self.paint_state_var.get())
-        enabled = np.asarray(self._active_palette().enabled_states, dtype=bool).copy()
+        active_palette = self._active_palette()
+        state = _effective_paint_state(
+            active_palette, int(self.paint_state_var.get())
+        )
+        enabled = _effective_paint_enabled_states(active_palette)
         # Disabled/mixed states stay intentionally available for manual paint.
         # Permit the explicitly selected target without widening the set of
         # incidental Airbrush candidates.
@@ -7448,7 +7856,7 @@ class PaintEditorWindow:
         strength = float(self.smudge_strength_var.get()) / 100.0
         protect = bool(self.edge_guard_var.get())
         angle = float(self.edge_angle_var.get())
-        enabled = np.asarray(self._active_palette().enabled_states, dtype=bool).copy()
+        enabled = _effective_paint_enabled_states(self._active_palette())
         palette_rgb = np.asarray(self.palette_rgb, dtype=np.float64).copy()
         # Preserve the ordered path, including later visits to the same face.
         # Back-and-forth motion carries colour directionally in the core.
@@ -7482,12 +7890,33 @@ class PaintEditorWindow:
         self._submit("edit", work)
 
     def _queue_fill(self, seed: int) -> None:
-        state = int(self.paint_state_var.get())
+        active_palette = self._active_palette()
+        state = _effective_paint_state(
+            active_palette, int(self.paint_state_var.get())
+        )
+        connectivity_state_map = (
+            _effective_paint_state_map(
+                active_palette,
+                palette_rgb=np.asarray(self.palette_rgb, dtype=np.float64),
+            )
+            if getattr(active_palette, "color_mode", None)
+            == COLOR_MODE_FLAT_FOUR
+            else None
+        )
+        fill_options = (
+            {"connectivity_state_map": connectivity_state_map}
+            if connectivity_state_map is not None
+            else {}
+        )
 
         def work():
             if self._session is None:
                 raise RuntimeError("色修正の準備中です")
-            changed = self._session.fill(seed, state)
+            changed = self._session.fill(
+                seed,
+                state,
+                **fill_options,
+            )
             return self._worker_refresh_after_edit(
                 f"同じ色でつながった領域を色 {state + 1} へ変更しました", len(changed)
             )
@@ -7817,6 +8246,11 @@ class PaintEditorWindow:
         # WM_CLOSE can arrive before ButtonRelease. Commit that visible brush
         # gesture first so the queued close drains it like every other edit.
         self._commit_active_stroke()
+        # Tone controls use a short debounce while dragging.  A quick click on
+        # Cel/Noir followed immediately by Save & Close must not discard the
+        # last visible selection when the pending callback is cancelled.
+        if not self._flush_pending_tone_change():
+            return
         decal_cancel = getattr(self, "_decal_cancel_event", None)
         if decal_cancel is not None:
             decal_cancel.set()

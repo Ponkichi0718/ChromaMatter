@@ -3,7 +3,7 @@ name: macOS Apple Silicon Developer ID unsigned, unnotarized alpha
 on:
   push:
     branches:
-      - "codex/macos-arm64-flat4-test3"
+      - "main"
     paths:
       - ".github/ISSUE_TEMPLATE/macos_alpha_report.yml"
       - ".github/workflows/macos-arm64-alpha.yml"
@@ -17,10 +17,13 @@ on:
       - "samples/MACOS_ALPHA_TEST_MODEL_README.md"
       - "samples/generate_macos_alpha_test_glb.py"
       - "source/fixed_app/**"
+      - "tooling/audit_macos_source_coverage.py"
       - "tooling/generate_macos_app_inventory.py"
+      - "tooling/macos_source_coverage_plan.json"
+      - "tooling/stage_macos_corresponding_source.py"
   pull_request:
     branches:
-      - "codex/r32-2-experimental-flat4-large-glb-2d-filter"
+      - "main"
     paths:
       - ".github/ISSUE_TEMPLATE/macos_alpha_report.yml"
       - ".github/workflows/macos-arm64-alpha.yml"
@@ -34,7 +37,10 @@ on:
       - "samples/MACOS_ALPHA_TEST_MODEL_README.md"
       - "samples/generate_macos_alpha_test_glb.py"
       - "source/fixed_app/**"
+      - "tooling/audit_macos_source_coverage.py"
       - "tooling/generate_macos_app_inventory.py"
+      - "tooling/macos_source_coverage_plan.json"
+      - "tooling/stage_macos_corresponding_source.py"
   workflow_dispatch:
     inputs:
       upload_tester_alpha:
@@ -47,7 +53,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: macos-arm64-alpha-${{ github.ref }}
+  group: macos-arm64-alpha-${{ github.sha }}
   cancel-in-progress: true
 
 jobs:
@@ -60,12 +66,14 @@ jobs:
       PIP_DISABLE_PIP_VERSION_CHECK: "1"
       PIP_NO_CACHE_DIR: "1"
       PYTHONDONTWRITEBYTECODE: "1"
+      SOURCE_COMMIT: ${{ github.sha }}
 
     steps:
       - name: Check out exact source
         uses: actions/checkout@v4
         with:
           persist-credentials: false
+          ref: ${{ github.sha }}
 
       - name: Set up CPython 3.13.14 arm64
         uses: actions/setup-python@v7
@@ -96,7 +104,7 @@ jobs:
             echo "Run this workflow with upload_tester_alpha=false for build diagnostics."
             exit 1
           fi
-          if [[ "$MACOS_ALPHA_APPROVED_SOURCE_COMMIT" != "$GITHUB_SHA" ]]; then
+          if [[ "$MACOS_ALPHA_APPROVED_SOURCE_COMMIT" != "$SOURCE_COMMIT" ]]; then
             echo "::error::The requested source commit has not been explicitly approved for external macOS testing."
             exit 1
           fi
@@ -157,10 +165,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          wheelhouse="$RUNNER_TEMP/chromamatter-macos-wheelhouse"
+          mkdir -p "$wheelhouse"
+          python -m pip download \
+            --require-hashes \
+            --only-binary=:all: \
+            --no-deps \
+            --dest "$wheelhouse" \
+            -r source/fixed_app/requirements-build-macos-arm64.lock
           python -m pip install \
             --require-hashes \
             --only-binary=:all: \
             --no-deps \
+            --no-index \
+            --find-links "$wheelhouse" \
             -r source/fixed_app/requirements-build-macos-arm64.lock
           python -m pip check
 
@@ -173,6 +191,29 @@ jobs:
             --output-root "$RUNNER_TEMP/chromamatter-macos-arm64" \
             --ui-smoke required
 
+      - name: Record fail-closed corresponding-source coverage
+        shell: bash
+        env:
+          TESTER_ZIP_REQUESTED: ${{ github.event_name == 'workflow_dispatch' && inputs.upload_tester_alpha }}
+        run: |
+          set -euo pipefail
+          wheelhouse="$RUNNER_TEMP/chromamatter-macos-wheelhouse"
+          test -d "$wheelhouse"
+          coverage_args=(
+            --inventory "$RUNNER_TEMP/chromamatter-macos-arm64/validation/MACOS_ALPHA_APP_INVENTORY.json"
+            --source-commit "$SOURCE_COMMIT"
+            --output "$RUNNER_TEMP/chromamatter-macos-arm64/validation/MACOS_SOURCE_COVERAGE_REPORT.json"
+            --wheel "$wheelhouse/numpy-2.5.1-cp313-cp313-macosx_14_0_arm64.whl"
+            --wheel "$wheelhouse/pymeshlab-2025.7.post1-cp313-cp313-macosx_11_0_arm64.whl"
+            --wheel "$wheelhouse/pytetwild-0.3.0-cp312-abi3-macosx_15_0_arm64.whl"
+            --wheel "$wheelhouse/rtree-1.4.1-py3-none-macosx_11_0_arm64.whl"
+            --wheel "$wheelhouse/scipy-1.18.0-cp313-cp313-macosx_14_0_arm64.whl"
+          )
+          if [[ "$TESTER_ZIP_REQUESTED" == "true" ]]; then
+            coverage_args+=(--require-engineering-gate-passed)
+          fi
+          python tooling/audit_macos_source_coverage.py "${coverage_args[@]}"
+
       - name: Record diagnostic bundle information
         if: always()
         shell: bash
@@ -183,7 +224,7 @@ jobs:
           {
             echo "workflow_run=${GITHUB_RUN_ID}"
             echo "workflow_attempt=${GITHUB_RUN_ATTEMPT}"
-            echo "source_commit=${GITHUB_SHA}"
+            echo "source_commit=${SOURCE_COMMIT}"
             echo "runner_os=${RUNNER_OS}"
             echo "runner_arch=${RUNNER_ARCH}"
             uname -a || true
@@ -201,6 +242,10 @@ jobs:
           app_inventory="$RUNNER_TEMP/chromamatter-macos-arm64/validation/MACOS_ALPHA_APP_INVENTORY.json"
           if [[ -f "$app_inventory" ]]; then
             cp "$app_inventory" "$diagnostic/"
+          fi
+          source_coverage="$RUNNER_TEMP/chromamatter-macos-arm64/validation/MACOS_SOURCE_COVERAGE_REPORT.json"
+          if [[ -f "$source_coverage" ]]; then
+            cp "$source_coverage" "$diagnostic/"
           fi
           for gate_json in "$RUNNER_TEMP/chromamatter-macos-arm64/validation/"MACOS_ALPHA_*_SELF_TEST.json; do
             if [[ -f "$gate_json" ]]; then
@@ -279,7 +324,7 @@ jobs:
           EOF
 
           cp licenses/macos/MACOS_ALPHA_SOURCE_OFFER_STATUS.txt "$stage/"
-          printf '%s\n' "$GITHUB_SHA" >"$stage/SOURCE_COMMIT.txt"
+          printf '%s\n' "$SOURCE_COMMIT" >"$stage/SOURCE_COMMIT.txt"
 
           rm -f -- "$archive"
           ditto -c -k --sequesterRsrc --keepParent "$stage" "$archive"
@@ -331,7 +376,7 @@ jobs:
           app="$root/ChromaMatter-macOS-Alpha.app"
           executable="$app/Contents/MacOS/ChromaMatter"
           test -x "$executable"
-          test "$(cat "$root/SOURCE_COMMIT.txt")" = "$GITHUB_SHA"
+          test "$(cat "$root/SOURCE_COMMIT.txt")" = "$SOURCE_COMMIT"
           (
             cd "$root"
             shasum -a 256 -c PUBLIC_TEST_MODEL_SHA256.txt
@@ -413,10 +458,10 @@ jobs:
             echo "# ChromaMatter macOS alpha result"
             echo
             echo "- Job status: **${JOB_STATUS}**"
-            echo "- Source commit: \`${GITHUB_SHA}\`"
+            echo "- Source commit: \`${SOURCE_COMMIT}\`"
             echo "- Workflow run: [${GITHUB_RUN_ID}](${run_url})"
             echo "- Diagnostics artifact: \`ChromaMatter-macOS15-arm64-alpha-diagnostics-${GITHUB_RUN_ID}\` (reports only; not an app)"
-            echo "- [English volunteer test guide](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/blob/${GITHUB_SHA}/publication/MACOS_ALPHA_TESTING_EN.md)"
+            echo "- [English volunteer test guide](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/blob/${SOURCE_COMMIT}/publication/MACOS_ALPHA_TESTING_EN.md)"
             echo "- [Testing board](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/discussions/9)"
             echo "- [Reproducible-problem form](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/issues/new?template=macos_alpha_report.yml)"
             echo

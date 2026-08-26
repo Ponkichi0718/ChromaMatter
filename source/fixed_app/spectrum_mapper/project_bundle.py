@@ -30,8 +30,10 @@ import os
 import re
 import shutil
 import stat
+import tempfile
 import uuid
 import zipfile
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path, PurePosixPath, PureWindowsPath
@@ -45,7 +47,7 @@ from .paint import mesh_fingerprint
 
 LEGACY_BUNDLE_SCHEMA = "obj-adjuster.project-bundle.v1"
 BUNDLE_SCHEMA = "obj-adjuster.project-bundle.v2"
-CURRENT_PROJECT_SCHEMA = "obj-adjuster.project.v12"
+CURRENT_PROJECT_SCHEMA = "obj-adjuster.project.v13"
 PROJECT_JSON_NAME = "project.json"
 SOURCE_OBJ_NAME = "source.obj"
 SOURCE_GLB_NAME = "source.glb"
@@ -55,6 +57,17 @@ MAX_PROJECT_JSON_BYTES = 32 * 1024 * 1024
 MAX_SNAPSHOT_METADATA_BYTES = 16 * 1024 * 1024
 MAX_SNAPSHOT_UNCOMPRESSED_BYTES = 8 * 1024 * 1024 * 1024
 PREPARED_SNAPSHOT_SCHEMA = "obj-adjuster.prepared-geometry.v1"
+
+# Exact snapshots are an untrusted cache, not an authority that may widen the
+# raw-model import budget.  Keep these absolute decoder limits independent of
+# GUI labels and source-file suffixes so a renamed or externally edited bundle
+# cannot allocate arrays beyond the supported large-model route.
+_HARD_SNAPSHOT_SOURCE_VERTEX_LIMIT = 3_000_000
+_HARD_SNAPSHOT_SOURCE_FACE_LIMIT = 5_000_000
+_HARD_SNAPSHOT_LEVEL_VERTEX_LIMIT = 3_000_000
+_HARD_SNAPSHOT_LEVEL_FACE_LIMIT = 3_000_000
+_HARD_LARGE_SNAPSHOT_FACE_THRESHOLD = 3_000_000
+_HARD_LARGE_SNAPSHOT_FINAL_FACE_LIMIT = 450_000
 
 _SNAPSHOT_REQUIRED_ARRAYS = frozenset(
     {
@@ -160,6 +173,15 @@ class PreparedGeometrySnapshotResult:
 
 
 @dataclass(frozen=True)
+class PreparedGeometrySnapshotWorkload:
+    """Array counts read from NPY headers without expanding mesh payloads."""
+
+    asset_vertex_count: int
+    asset_face_count: int
+    final_face_count: int
+
+
+@dataclass(frozen=True)
 class ProjectLoadResult:
     """Validated project information ready for GUI wiring.
 
@@ -181,6 +203,8 @@ class ProjectLoadResult:
     source_format: str | None = None
     expected_mesh_fingerprints: Mapping[str, str] = field(default_factory=dict)
     prepared_geometry_snapshot: Path | None = None
+    prepared_geometry_snapshot_sha256: str | None = None
+    prepared_geometry_snapshot_size_bytes: int | None = None
     reference_image: Path | None = None
     legacy_source_name: str | None = None
     ignored_features: tuple[str, ...] = ()
@@ -261,6 +285,25 @@ class ProjectLoadResult:
             expected_source_sha256=self.source_sha256,
             expected_geometry_key=expected_geometry_key,
             expected_paint_mesh_fingerprint=manual_fingerprint,
+            expected_snapshot_sha256=self.prepared_geometry_snapshot_sha256,
+            expected_snapshot_size_bytes=(
+                self.prepared_geometry_snapshot_size_bytes
+            ),
+        )
+
+    def inspect_prepared_geometry_workload(
+        self,
+    ) -> PreparedGeometrySnapshotWorkload:
+        """Inspect exact-snapshot mesh sizes before allocating their arrays."""
+
+        if self.prepared_geometry_snapshot is None:
+            raise ProjectBundleError(
+                "prepared_geometry_snapshot_missing",
+                "This project has no exact prepared-geometry snapshot.",
+                path=self.project_json,
+            )
+        return inspect_prepared_geometry_snapshot_workload(
+            self.prepared_geometry_snapshot
         )
 
 
@@ -483,6 +526,21 @@ def _sha256(path: Path) -> tuple[str, int]:
                 break
             digest.update(block)
             size += len(block)
+    return digest.hexdigest(), size
+
+
+def _sha256_open_handle(handle: Any) -> tuple[str, int]:
+    """Hash the bytes owned by one already-open regular-file handle."""
+
+    handle.seek(0)
+    digest = hashlib.sha256()
+    size = 0
+    while True:
+        block = handle.read(1024 * 1024)
+        if not block:
+            break
+        digest.update(block)
+        size += len(block)
     return digest.hexdigest(), size
 
 
@@ -744,32 +802,503 @@ def encode_prepared_geometry_snapshot(
     return digest, size, normalized_key, paint_fingerprint
 
 
-def _check_snapshot_archive(path: Path) -> None:
+def _check_snapshot_archive_members(
+    archive: zipfile.ZipFile,
+    path: Path,
+) -> None:
+    names = [record.filename for record in archive.infolist()]
+    if len(names) != len(set(names)):
+        _error("duplicate_snapshot_member", "Snapshot members are duplicated.", path)
+    expected_names = {f"{key}.npy" for key in _SNAPSHOT_ARRAYS}
+    actual_names = set(names)
+    required_names = {f"{key}.npy" for key in _SNAPSHOT_REQUIRED_ARRAYS}
+    if not required_names.issubset(actual_names) or not actual_names.issubset(
+        expected_names
+    ):
+        _error(
+            "invalid_snapshot_members",
+            "The prepared snapshot contains missing or unexpected arrays.",
+            path,
+        )
+    uncompressed = 0
+    for record in archive.infolist():
+        if record.flag_bits & 0x1:
+            _error("encrypted_snapshot", "Encrypted snapshots are not accepted.", path)
+        uncompressed += int(record.file_size)
+        if uncompressed > MAX_SNAPSHOT_UNCOMPRESSED_BYTES:
+            _error("snapshot_too_large", "The prepared snapshot is too large.", path)
+
+
+@dataclass(frozen=True)
+class _SnapshotArraySpec:
+    dtype: np.dtype[Any]
+    ndim: int
+    shape_tail: tuple[int, ...] = ()
+    exact_shape: tuple[int, ...] | None = None
+
+
+@dataclass(frozen=True)
+class _SnapshotArrayHeader:
+    shape: tuple[int, ...]
+    dtype: np.dtype[Any]
+    data_offset: int
+    member_size: int
+
+
+@dataclass(frozen=True)
+class _SnapshotHeaderLayout:
+    workload: PreparedGeometrySnapshotWorkload
+    headers: Mapping[str, _SnapshotArrayHeader]
+
+
+_SNAPSHOT_ARRAY_SPECS: Mapping[str, _SnapshotArraySpec] = {
+    "metadata": _SnapshotArraySpec(np.dtype(np.uint8), 1),
+    "asset_vertices": _SnapshotArraySpec(np.dtype(np.float64), 2, (3,)),
+    "asset_colors": _SnapshotArraySpec(np.dtype(np.float64), 2, (3,)),
+    "asset_faces": _SnapshotArraySpec(np.dtype(np.int32), 2, (3,)),
+    "asset_face_part_ids": _SnapshotArraySpec(np.dtype(np.int32), 1),
+    "final_vertices_unit": _SnapshotArraySpec(np.dtype(np.float64), 2, (3,)),
+    "final_faces": _SnapshotArraySpec(np.dtype(np.int32), 2, (3,)),
+    "final_vertex_colors": _SnapshotArraySpec(np.dtype(np.float64), 2, (3,)),
+    "final_areas_unit": _SnapshotArraySpec(np.dtype(np.float64), 1),
+    "final_face_part_ids": _SnapshotArraySpec(np.dtype(np.int32), 1),
+    "final_face_provenance": _SnapshotArraySpec(np.dtype(np.uint8), 1),
+    "final_neighbors": _SnapshotArraySpec(np.dtype(np.int32), 2, (3,)),
+    "preview_vertices_unit": _SnapshotArraySpec(np.dtype(np.float64), 2, (3,)),
+    "preview_faces": _SnapshotArraySpec(np.dtype(np.int32), 2, (3,)),
+    "preview_vertex_colors": _SnapshotArraySpec(np.dtype(np.float64), 2, (3,)),
+    "preview_areas_unit": _SnapshotArraySpec(np.dtype(np.float64), 1),
+    "preview_face_part_ids": _SnapshotArraySpec(np.dtype(np.int32), 1),
+    "preview_face_provenance": _SnapshotArraySpec(np.dtype(np.uint8), 1),
+    "preview_neighbors": _SnapshotArraySpec(np.dtype(np.int32), 2, (3,)),
+    "source_dimensions_unit": _SnapshotArraySpec(
+        np.dtype(np.float64),
+        1,
+        exact_shape=(3,),
+    ),
+}
+
+
+def _snapshot_npy_header(
+    archive: zipfile.ZipFile,
+    path: Path,
+    name: str,
+) -> _SnapshotArrayHeader:
+    """Read and type-check one NPY member without expanding its payload."""
+
+    spec = _SNAPSHOT_ARRAY_SPECS[name]
+    member = f"{name}.npy"
     try:
-        with zipfile.ZipFile(path, "r") as archive:
-            names = [record.filename for record in archive.infolist()]
-            if len(names) != len(set(names)):
-                _error("duplicate_snapshot_member", "Snapshot members are duplicated.", path)
-            expected_names = {f"{key}.npy" for key in _SNAPSHOT_ARRAYS}
-            actual_names = set(names)
-            required_names = {f"{key}.npy" for key in _SNAPSHOT_REQUIRED_ARRAYS}
-            if not required_names.issubset(actual_names) or not actual_names.issubset(expected_names):
+        record = archive.getinfo(member)
+        with archive.open(record, "r") as stream:
+            version = np.lib.format.read_magic(stream)
+            if version == (1, 0):
+                shape, _fortran_order, dtype = (
+                    np.lib.format.read_array_header_1_0(stream)
+                )
+            elif version == (2, 0):
+                shape, _fortran_order, dtype = (
+                    np.lib.format.read_array_header_2_0(stream)
+                )
+            else:
                 _error(
-                    "invalid_snapshot_members",
-                    "The prepared snapshot contains missing or unexpected arrays.",
+                    "invalid_snapshot_array",
+                    f"Unsupported NPY header version for {name}: {version}",
                     path,
                 )
-            uncompressed = 0
-            for record in archive.infolist():
-                if record.flag_bits & 0x1:
-                    _error("encrypted_snapshot", "Encrypted snapshots are not accepted.", path)
-                uncompressed += int(record.file_size)
-                if uncompressed > MAX_SNAPSHOT_UNCOMPRESSED_BYTES:
-                    _error("snapshot_too_large", "The prepared snapshot is too large.", path)
+            data_offset = int(stream.tell())
+    except ProjectBundleError:
+        raise
+    except (KeyError, OSError, ValueError, EOFError) as exc:
+        _error(
+            "invalid_snapshot_array",
+            f"Cannot read snapshot array header {name}: {exc}",
+            path,
+        )
+
+    normalized_shape = tuple(int(value) for value in shape)
+    normalized_dtype = np.dtype(dtype)
+    if normalized_dtype.hasobject or normalized_dtype.fields is not None:
+        _error("unsafe_snapshot_dtype", f"Unsafe dtype is forbidden for {name}.", path)
+    if normalized_dtype != spec.dtype or normalized_dtype.itemsize != spec.dtype.itemsize:
+        _error(
+            "invalid_snapshot_dtype",
+            f"Snapshot array {name} must have dtype {spec.dtype}.",
+            path,
+        )
+    if len(normalized_shape) != spec.ndim:
+        _error(
+            "invalid_snapshot_shape",
+            f"Snapshot array {name} has the wrong rank.",
+            path,
+        )
+    if spec.shape_tail and normalized_shape[-len(spec.shape_tail) :] != spec.shape_tail:
+        _error(
+            "invalid_snapshot_shape",
+            f"Snapshot array {name} has the wrong trailing dimensions.",
+            path,
+        )
+    if spec.exact_shape is not None and normalized_shape != spec.exact_shape:
+        _error(
+            "invalid_snapshot_shape",
+            f"Snapshot array {name} has the wrong shape.",
+            path,
+        )
+    if any(value < 0 for value in normalized_shape):
+        _error(
+            "invalid_snapshot_shape",
+            f"Snapshot array {name} has a negative dimension.",
+            path,
+        )
+    return _SnapshotArrayHeader(
+        shape=normalized_shape,
+        dtype=normalized_dtype,
+        data_offset=data_offset,
+        member_size=int(record.file_size),
+    )
+
+
+def _snapshot_array_payload_size(header: _SnapshotArrayHeader) -> int:
+    elements = 1
+    for dimension in header.shape:
+        elements *= dimension
+    return elements * int(header.dtype.itemsize)
+
+
+def _header_length(headers: Mapping[str, _SnapshotArrayHeader], name: str) -> int:
+    return int(headers[name].shape[0])
+
+
+def _require_zero_or_equal(
+    headers: Mapping[str, _SnapshotArrayHeader],
+    name: str,
+    expected: int,
+    path: Path,
+) -> None:
+    actual = _header_length(headers, name)
+    if actual not in {0, expected}:
+        _error(
+            "invalid_snapshot_shape",
+            f"Snapshot array {name} has an inconsistent length.",
+            path,
+            expected=expected,
+            actual=actual,
+        )
+
+
+def _inspect_snapshot_headers_archive(
+    archive: zipfile.ZipFile,
+    path: Path,
+) -> _SnapshotHeaderLayout:
+    """Validate every NPY header and all count relationships before np.load."""
+
+    _check_snapshot_archive_members(archive, path)
+    member_names = {record.filename for record in archive.infolist()}
+    array_names = set(_SNAPSHOT_REQUIRED_ARRAYS)
+    array_names.update(
+        name
+        for name in _SNAPSHOT_OPTIONAL_ARRAYS
+        if f"{name}.npy" in member_names
+    )
+    headers = {
+        name: _snapshot_npy_header(archive, path, name)
+        for name in sorted(array_names)
+    }
+
+    metadata_size = _header_length(headers, "metadata")
+    if metadata_size > MAX_SNAPSHOT_METADATA_BYTES:
+        _error(
+            "snapshot_metadata_too_large",
+            "Snapshot metadata is too large.",
+            path,
+            maximum=MAX_SNAPSHOT_METADATA_BYTES,
+            actual=metadata_size,
+        )
+
+    asset_vertices = _header_length(headers, "asset_vertices")
+    asset_faces = _header_length(headers, "asset_faces")
+    final_vertices = _header_length(headers, "final_vertices_unit")
+    final_faces = _header_length(headers, "final_faces")
+    preview_vertices = _header_length(headers, "preview_vertices_unit")
+    preview_faces = _header_length(headers, "preview_faces")
+    workload = PreparedGeometrySnapshotWorkload(
+        asset_vertex_count=asset_vertices,
+        asset_face_count=asset_faces,
+        final_face_count=final_faces,
+    )
+    _enforce_snapshot_workload_limits(workload, path)
+    if (
+        final_vertices > _HARD_SNAPSHOT_LEVEL_VERTEX_LIMIT
+        or final_faces > _HARD_SNAPSHOT_LEVEL_FACE_LIMIT
+        or preview_vertices > _HARD_SNAPSHOT_LEVEL_VERTEX_LIMIT
+        or preview_faces > _HARD_SNAPSHOT_LEVEL_FACE_LIMIT
+    ):
+        _error(
+            "snapshot_workload_too_large",
+            "The prepared snapshot levels exceed the supported exact-cache workload.",
+            path,
+            final_vertices=final_vertices,
+            final_faces=final_faces,
+            preview_vertices=preview_vertices,
+            preview_faces=preview_faces,
+            maximum_level_vertices=_HARD_SNAPSHOT_LEVEL_VERTEX_LIMIT,
+            maximum_level_faces=_HARD_SNAPSHOT_LEVEL_FACE_LIMIT,
+        )
+    if preview_faces > final_faces:
+        _error(
+            "invalid_snapshot_shape",
+            "Preview face count cannot exceed final face count.",
+            path,
+            final_faces=final_faces,
+            preview_faces=preview_faces,
+        )
+
+    if _header_length(headers, "asset_colors") != asset_vertices:
+        _error("invalid_snapshot_shape", "Asset vertex/color lengths differ.", path)
+    _require_zero_or_equal(headers, "asset_face_part_ids", asset_faces, path)
+    for prefix, vertex_count, face_count in (
+        ("final", final_vertices, final_faces),
+        ("preview", preview_vertices, preview_faces),
+    ):
+        if _header_length(headers, f"{prefix}_vertex_colors") != vertex_count:
+            _error(
+                "invalid_snapshot_shape",
+                f"{prefix} vertex/color lengths differ.",
+                path,
+            )
+        if _header_length(headers, f"{prefix}_areas_unit") != face_count:
+            _error(
+                "invalid_snapshot_shape",
+                f"{prefix} face/area lengths differ.",
+                path,
+            )
+        _require_zero_or_equal(
+            headers,
+            f"{prefix}_face_part_ids",
+            face_count,
+            path,
+        )
+        _require_zero_or_equal(
+            headers,
+            f"{prefix}_face_provenance",
+            face_count,
+            path,
+        )
+        neighbor_name = f"{prefix}_neighbors"
+        if neighbor_name in headers and _header_length(headers, neighbor_name) != face_count:
+            _error(
+                "invalid_snapshot_shape",
+                f"{prefix} neighbors have the wrong length.",
+                path,
+            )
+
+    # A forged shape with a tiny member body must fail before NumPy can try to
+    # allocate the declared array.  This check is intentionally after the hard
+    # count checks so a shape bomb receives the stable workload error.
+    for name, header in headers.items():
+        expected_member_size = (
+            header.data_offset + _snapshot_array_payload_size(header)
+        )
+        if header.member_size != expected_member_size:
+            _error(
+                "invalid_snapshot_array_size",
+                f"Snapshot array {name} payload size does not match its header.",
+                path,
+                expected=expected_member_size,
+                actual=header.member_size,
+            )
+    return _SnapshotHeaderLayout(workload=workload, headers=headers)
+
+
+def _inspect_snapshot_workload_archive(
+    archive: zipfile.ZipFile,
+    path: Path | None = None,
+) -> PreparedGeometrySnapshotWorkload:
+    """Compatibility wrapper returning the public three-count summary."""
+
+    return _inspect_snapshot_headers_archive(
+        archive,
+        path or Path(PREPARED_GEOMETRY_NAME),
+    ).workload
+
+
+def inspect_prepared_geometry_snapshot_workload(
+    snapshot_path: Path | str,
+) -> PreparedGeometrySnapshotWorkload:
+    """Read exact-snapshot mesh counts without decompressing the mesh arrays."""
+
+    snapshot = Path(snapshot_path)
+    _assert_regular_file(
+        snapshot,
+        suffix=".npz",
+        code="prepared_geometry_snapshot_missing",
+    )
+    try:
+        with snapshot.open("rb") as handle, zipfile.ZipFile(handle, "r") as archive:
+            return _inspect_snapshot_headers_archive(archive, snapshot).workload
     except ProjectBundleError:
         raise
     except (OSError, zipfile.BadZipFile) as exc:
-        _error("invalid_prepared_snapshot", f"The prepared snapshot is invalid: {exc}", path)
+        _error(
+            "invalid_prepared_snapshot",
+            f"The prepared snapshot is invalid: {exc}",
+            snapshot,
+        )
+
+
+def _enforce_snapshot_workload_limits(
+    workload: PreparedGeometrySnapshotWorkload,
+    snapshot: Path,
+) -> None:
+    exceeds_limit = (
+        workload.asset_vertex_count > _HARD_SNAPSHOT_SOURCE_VERTEX_LIMIT
+        or workload.asset_face_count > _HARD_SNAPSHOT_SOURCE_FACE_LIMIT
+        or workload.final_face_count > _HARD_SNAPSHOT_LEVEL_FACE_LIMIT
+        or (
+            workload.asset_face_count > _HARD_LARGE_SNAPSHOT_FACE_THRESHOLD
+            and workload.final_face_count > _HARD_LARGE_SNAPSHOT_FINAL_FACE_LIMIT
+        )
+    )
+    if exceeds_limit:
+        _error(
+            "snapshot_workload_too_large",
+            "The prepared snapshot exceeds the supported exact-cache workload.",
+            snapshot,
+            asset_vertices=workload.asset_vertex_count,
+            asset_faces=workload.asset_face_count,
+            final_faces=workload.final_face_count,
+            maximum_asset_vertices=_HARD_SNAPSHOT_SOURCE_VERTEX_LIMIT,
+            maximum_asset_faces=_HARD_SNAPSHOT_SOURCE_FACE_LIMIT,
+            maximum_final_faces=_HARD_SNAPSHOT_LEVEL_FACE_LIMIT,
+            large_snapshot_threshold=_HARD_LARGE_SNAPSHOT_FACE_THRESHOLD,
+            maximum_large_snapshot_final_faces=(
+                _HARD_LARGE_SNAPSHOT_FINAL_FACE_LIMIT
+            ),
+        )
+
+
+@contextmanager
+def _validated_snapshot_arrays(
+    snapshot: Path,
+    *,
+    expected_sha256: str | None,
+    expected_size_bytes: int | None,
+):
+    """Yield lazy arrays from a private, verified byte-for-byte frozen copy."""
+
+    normalized_digest: str | None = None
+    if expected_sha256 is not None:
+        normalized_digest = str(expected_sha256).lower()
+        if not _SHA256_RE.fullmatch(normalized_digest):
+            _error(
+                "invalid_sha256_manifest",
+                "The prepared snapshot SHA-256 value is invalid.",
+                snapshot,
+            )
+    if expected_size_bytes is not None and (
+        isinstance(expected_size_bytes, bool)
+        or not isinstance(expected_size_bytes, int)
+        or expected_size_bytes < 0
+    ):
+        _error(
+            "invalid_size_manifest",
+            "The prepared snapshot size value is invalid.",
+            snapshot,
+        )
+
+    try:
+        with tempfile.TemporaryFile(mode="w+b") as frozen:
+            digest = hashlib.sha256()
+            actual_size = 0
+            with snapshot.open("rb") as source_handle:
+                opened_status = os.fstat(source_handle.fileno())
+                if not stat.S_ISREG(opened_status.st_mode):
+                    _error(
+                        "prepared_geometry_snapshot_missing",
+                        "The prepared snapshot is not a regular file.",
+                        snapshot,
+                    )
+                while True:
+                    block = source_handle.read(1024 * 1024)
+                    if not block:
+                        break
+                    frozen.write(block)
+                    digest.update(block)
+                    actual_size += len(block)
+            actual_digest = digest.hexdigest()
+            if actual_size != int(opened_status.st_size):
+                _error(
+                    "bundle_member_size_mismatch",
+                    "The prepared snapshot changed while it was being copied.",
+                    snapshot,
+                    expected=int(opened_status.st_size),
+                    actual=actual_size,
+                )
+            if expected_size_bytes is not None and actual_size != expected_size_bytes:
+                _error(
+                    "bundle_member_size_mismatch",
+                    "The prepared snapshot size no longer matches project.json.",
+                    snapshot,
+                    expected=expected_size_bytes,
+                    actual=actual_size,
+                )
+            if normalized_digest is not None and actual_digest != normalized_digest:
+                _error(
+                    "bundle_member_sha256_mismatch",
+                    "The prepared snapshot was changed after the project was inspected.",
+                    snapshot,
+                    expected=normalized_digest,
+                    actual=actual_digest,
+                )
+
+            frozen.flush()
+            frozen_digest, frozen_size = _sha256_open_handle(frozen)
+            if frozen_digest != actual_digest or frozen_size != actual_size:
+                _error(
+                    "bundle_member_sha256_mismatch",
+                    "The private snapshot copy failed its identity check.",
+                    snapshot,
+                    expected=actual_digest,
+                    actual=frozen_digest,
+                    expected_size=actual_size,
+                    actual_size=frozen_size,
+                )
+
+            frozen.seek(0)
+            try:
+                with zipfile.ZipFile(frozen, "r") as header_archive:
+                    _inspect_snapshot_headers_archive(header_archive, snapshot)
+            except ProjectBundleError:
+                raise
+            except (OSError, zipfile.BadZipFile) as exc:
+                _error(
+                    "invalid_prepared_snapshot",
+                    f"The prepared snapshot is invalid: {exc}",
+                    snapshot,
+                )
+
+            # NumPy reads only from this unlinked/private temporary file.  A
+            # caller replacing or editing the original path after verification
+            # cannot alter the bytes expanded below.
+            frozen.seek(0)
+            try:
+                loaded_context = np.load(frozen, allow_pickle=False)
+            except (OSError, ValueError) as exc:
+                _error(
+                    "invalid_prepared_snapshot",
+                    f"Cannot open prepared snapshot: {exc}",
+                    snapshot,
+                )
+            with loaded_context as archive:
+                yield archive
+    except ProjectBundleError:
+        raise
+    except OSError as exc:
+        _error(
+            "invalid_prepared_snapshot",
+            f"Cannot read prepared snapshot: {exc}",
+            snapshot,
+        )
 
 
 def _snapshot_array(
@@ -880,6 +1409,8 @@ def decode_prepared_geometry_snapshot(
     expected_source_sha256: str,
     expected_geometry_key: tuple[object, ...],
     expected_paint_mesh_fingerprint: str | None = None,
+    expected_snapshot_sha256: str | None = None,
+    expected_snapshot_size_bytes: int | None = None,
 ) -> PreparedGeometrySnapshotResult:
     """Decode an exact cache with strict dtype/topology/source validation."""
 
@@ -898,12 +1429,11 @@ def decode_prepared_geometry_snapshot(
     actual_source, actual_source_size = _sha256(source_obj)
     if actual_source != expected_source:
         _error("snapshot_source_sha256_mismatch", "Snapshot source-model SHA-256 differs.")
-    _check_snapshot_archive(snapshot)
-    try:
-        loaded_context = np.load(snapshot, allow_pickle=False)
-    except (OSError, ValueError) as exc:
-        _error("invalid_prepared_snapshot", f"Cannot open prepared snapshot: {exc}", snapshot)
-    with loaded_context as archive:
+    with _validated_snapshot_arrays(
+        snapshot,
+        expected_sha256=expected_snapshot_sha256,
+        expected_size_bytes=expected_snapshot_size_bytes,
+    ) as archive:
         keys = set(archive.files)
         if not _SNAPSHOT_REQUIRED_ARRAYS.issubset(keys) or not keys.issubset(_SNAPSHOT_ARRAYS):
             _error("invalid_snapshot_members", "Snapshot array allowlist failed.", snapshot)
@@ -1227,6 +1757,8 @@ def save_project_bundle(
                 expected_source_sha256=source_digest,
                 expected_geometry_key=prepared_geometry_key,
                 expected_paint_mesh_fingerprint=contracts.get("manual_paint"),
+                expected_snapshot_sha256=snapshot_digest,
+                expected_snapshot_size_bytes=snapshot_size,
             )
             prepared_manifest = {
                 "relative_path": PREPARED_GEOMETRY_NAME,
@@ -1661,6 +2193,8 @@ def inspect_project_path(path: Path | str) -> ProjectLoadResult:
 
     snapshot_path: Path | None = None
     snapshot_geometry_key: tuple[object, ...] | None = None
+    snapshot_digest: str | None = None
+    snapshot_size: int | None = None
     snapshot_manifest = data.get("prepared_geometry")
     if snapshot_manifest is not None:
         if not isinstance(snapshot_manifest, Mapping):
@@ -1672,7 +2206,7 @@ def inspect_project_path(path: Path | str) -> ProjectLoadResult:
             snapshot_manifest.get("relative_path"),
             suffix=".npz",
         )
-        _validate_digest_manifest(
+        snapshot_digest, snapshot_size = _validate_digest_manifest(
             snapshot_path,
             snapshot_manifest,
             missing_code="prepared_geometry_snapshot_missing",
@@ -1758,6 +2292,8 @@ def inspect_project_path(path: Path | str) -> ProjectLoadResult:
         source_format=source_format,
         expected_mesh_fingerprints=actual_contracts,
         prepared_geometry_snapshot=snapshot_path,
+        prepared_geometry_snapshot_sha256=snapshot_digest,
+        prepared_geometry_snapshot_size_bytes=snapshot_size,
         reference_image=reference_path,
         ignored_features=ignored,
         geometry_restore_reason=(
@@ -1799,7 +2335,9 @@ __all__ = [
     "ProjectLoadResult",
     "ProjectLoadState",
     "PreparedGeometrySnapshotResult",
+    "PreparedGeometrySnapshotWorkload",
     "inspect_project_path",
+    "inspect_prepared_geometry_snapshot_workload",
     "load_project_bundle",
     "save_project_bundle",
     "save_project_bundle_in_parent",

@@ -122,7 +122,9 @@ class AutoShadingIntegrationTests(unittest.TestCase):
             tone_vertex_rgb=np.asarray(
                 ((0.0, 0.0, 0.0), (1.0, 1.0, 1.0), (0.5, 0.5, 0.5)),
                 dtype=np.float64,
-            )
+            ),
+            tone_face_rgb=np.asarray(((0.2, 0.2, 0.2),), dtype=np.float64),
+            tone_face_rgb_flat=True,
         )
         editor._hotfix_tree_store = store
         editor._hotfix_tree_owner = owner
@@ -153,6 +155,10 @@ class AutoShadingIntegrationTests(unittest.TestCase):
         self.assertTrue(bool(call.kwargs["face_mask"][0]))
         self.assertEqual(call.kwargs["options"].max_depth, 2)
         self.assertAlmostEqual(call.kwargs["options"].dither_strength, 0.4)
+        np.testing.assert_array_equal(
+            call.kwargs["tone_face_rgb"],
+            editor._auto_colors.tone_face_rgb,
+        )
 
         encoded = smooth_paint.encode_paint_color(store[0])
         command = session._undo[-1]

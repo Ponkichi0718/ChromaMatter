@@ -101,6 +101,8 @@ def _normalize_palette_hex(palette: object) -> list[str]:
     count = mixer.coerce_palette_state_count(
         getattr(palette, "palette_state_count", 16)
     )
+    if getattr(palette, "color_mode", None) == models.COLOR_MODE_FLAT_FOUR:
+        count = 4
     return [mixer.normalize_hex(value) for value in values[:count]]
 
 
@@ -245,11 +247,15 @@ def _portable_palette_metadata(data: bytes, palette_hex: list[str]) -> bytes:
         return data
     states = metadata.get("states") if isinstance(metadata, dict) else None
     if isinstance(states, list):
-        for index, state in enumerate(states[: mixer.PALETTE_STATE_COUNT]):
+        for index, state in enumerate(states[: len(palette_hex)]):
             if isinstance(state, dict):
                 state["display_rgb"] = mixer.normalize_hex(palette_hex[index])
     if isinstance(metadata, dict):
-        metadata["snapmaker_orca_display_model"] = "2.3.5-layer-cadence"
+        metadata["snapmaker_orca_display_model"] = (
+            "physical-F1-F4-only"
+            if metadata.get("palette_mode") == models.COLOR_MODE_FLAT_FOUR
+            else "2.3.5-layer-cadence"
+        )
         metadata["hotfix_version"] = HOTFIX_VERSION
     return json.dumps(metadata, ensure_ascii=False, indent=2).encode("utf-8")
 
@@ -317,8 +323,30 @@ def _inspect_mixed_definition_recipes(path: Path) -> dict[str, object]:
             archive.read("Metadata/full_spectrum_palette.json").decode("utf-8")
         )
     definitions = project.get("mixed_filament_definitions", "")
-    if not isinstance(definitions, str) or not definitions:
+    palette_mode = (
+        palette_metadata.get("palette_mode", models.COLOR_MODE_FULL_SPECTRUM)
+        if isinstance(palette_metadata, dict)
+        else models.COLOR_MODE_FULL_SPECTRUM
+    )
+    if not isinstance(definitions, str):
         raise ValueError("mixed_filament_definitions is missing")
+    if not definitions:
+        if palette_mode != models.COLOR_MODE_FLAT_FOUR:
+            raise ValueError("mixed_filament_definitions is missing")
+        return {
+            "palette_mode": models.COLOR_MODE_FLAT_FOUR,
+            "mixed_definition_string": "",
+            "mixed_definition_pairs": [],
+            "mixed_definition_stable_ids": [],
+            "requested_output_mix_ratios_b_percent": [],
+            "effective_output_mix_ratios_b_percent": [],
+            "mixed_definition_active_rows": 0,
+            "mixed_definition_manual_patterns": [],
+            "mixed_definition_cycle_rows": 0,
+            "mixed_definition_cycle_rows_valid": True,
+            "surface_shell_metadata": None,
+            "unsafe_grouped_cycle_detected": False,
+        }
 
     pairs: list[list[int]] = []
     requested: list[int] = []
@@ -399,6 +427,7 @@ def _inspect_mixed_definition_recipes(path: Path) -> dict[str, object]:
         ),
         "surface_shell_metadata": surface_shell_metadata,
         "unsafe_grouped_cycle_detected": unsafe_grouped_cycle_detected,
+        "palette_mode": palette_mode,
     }
 
 
@@ -458,7 +487,7 @@ def _inspect_portable_materials(
         material_count = model.count(b"<base ")
         result["portable_palette_state_count"] = material_count
         result["portable_basematerials"] = (
-            material_count in mixer.SUPPORTED_PALETTE_STATE_COUNTS
+            material_count in (4, *mixer.SUPPORTED_PALETTE_STATE_COUNTS)
             and b'<basematerials id="2">' in model
         )
         material_colors = [
@@ -697,7 +726,10 @@ def _final_black_free_metadata(
     for raw_code, face_id in zip(paint_values, output_face_ids, strict=True):
         part_id = int(layout.face_part_ids[int(face_id)])
         part_palette = resolved[part_id]
-        if not part_palette.black_free_gradient_enabled:
+        if (
+            part_palette.color_mode == models.COLOR_MODE_FLAT_FOUR
+            or not part_palette.black_free_gradient_enabled
+        ):
             continue
         forbidden = mixer.black_containing_mixed_states(
             part_palette.palette_state_count,
@@ -730,7 +762,11 @@ def _final_black_free_metadata(
             {
                 "part_index": part_id,
                 "part_key": part_key,
-                "enabled": bool(part_palette.black_free_gradient_enabled),
+                "enabled": bool(
+                    part_palette.black_free_gradient_enabled
+                    and part_palette.color_mode
+                    != models.COLOR_MODE_FLAT_FOUR
+                ),
                 "black_slot": int(part_palette.black_free_black_slot),
                 "red_slot": int(part_palette.black_free_red_slot),
                 "brown_slot": int(part_palette.black_free_brown_slot),
@@ -803,6 +839,7 @@ def _write_3mf_atomic_fixed(
     print_uses_global_palette=False,
 ):
     palette = models.without_surface_shell_output(palette)
+    flat_four = palette.color_mode == models.COLOR_MODE_FLAT_FOUR
     if part_palettes:
         part_palettes = {
             key: models.without_surface_shell_output(value)
@@ -821,8 +858,16 @@ def _write_3mf_atomic_fixed(
     state_names = mixer.palette_state_names(
         list(palette.mix_ratios_b),
         list(palette.secondary_mix_ratios_b),
-    )[: palette.palette_state_count]
-    paint_trees = getattr(prepared, "_hotfix_subtriangle_paint", None)
+    )[: (4 if flat_four else palette.palette_state_count)]
+    # Adaptive paint trees retain their original state IDs.  In Flat 4 Colors
+    # the core writer has already remapped every face to F1-F4, so serializing
+    # an old mixed-state tree here would silently reintroduce state 5+.  A flat
+    # export deliberately uses the remapped whole-face colour instead.
+    paint_trees = (
+        None
+        if flat_four
+        else getattr(prepared, "_hotfix_subtriangle_paint", None)
+    )
     _rewrite_3mf_portably(
         Path(destination), palette_hex, paint_trees, state_names
     )
@@ -841,6 +886,19 @@ def _write_3mf_atomic_fixed(
         filament_materials.generic_filament_profile(palette.material),
     )
     validation.update(portable)
+    if flat_four:
+        portable_counts = portable.get("portable_material_state_counts", [])
+        paint_counts = portable.get("paint_color_state_counts", [])
+        leaf_areas = portable.get("paint_color_leaf_area_counts", [])
+        if (
+            portable.get("portable_palette_state_count") != 4
+            or any(int(value) for value in portable_counts[4:])
+            or any(int(value) for value in paint_counts[4:])
+            or any(float(value) > 1e-12 for value in leaf_areas[4:])
+        ):
+            raise engine.EngineError(
+                "Flat 4 Colorsの最終3MFに混色stateが残っています"
+            )
     validation.update(
         {
             "black_free_gradient_enabled": bool(
@@ -872,8 +930,9 @@ def _write_3mf_atomic_fixed(
         for block in iter(lambda: stream.read(1024 * 1024), b""):
             digest.update(block)
     validation["sha256"] = digest.hexdigest()
-    validation["mix_display_overrides_present"] = any(
-        value is not None for value in palette.mix_hex_overrides
+    validation["mix_display_overrides_present"] = bool(
+        not flat_four
+        and any(value is not None for value in palette.mix_hex_overrides)
     )
     validation["snapmaker_orca_tested_version"] = "2.3.5"
     validation["snapmaker_orca_minimum_version"] = "2.3.3"
@@ -881,12 +940,14 @@ def _write_3mf_atomic_fixed(
     # Keep display targets explicit and separate from the physical cadence.
     # The latter is read back from the final archive so a portable rewrite can
     # never silently erase output-only black calibration.
-    validation["display_mix_ratios_b_percent"] = [
-        int(value) for value in palette.mix_ratios_b
-    ]
-    validation["display_secondary_mix_ratios_b_percent"] = [
-        int(value) for value in palette.secondary_mix_ratios_b
-    ]
+    validation["display_mix_ratios_b_percent"] = (
+        [] if flat_four else [int(value) for value in palette.mix_ratios_b]
+    )
+    validation["display_secondary_mix_ratios_b_percent"] = (
+        []
+        if flat_four
+        else [int(value) for value in palette.secondary_mix_ratios_b]
+    )
     recipe_validation = _inspect_mixed_definition_recipes(Path(destination))
     validation.update(recipe_validation)
     unsafe_grouped_cycle_detected = bool(
@@ -907,22 +968,31 @@ def _write_3mf_atomic_fixed(
     effective_output = recipe_validation[
         "effective_output_mix_ratios_b_percent"
     ]
-    expected_specs = mixer.print_palette_mix_specs(
-        palette.mix_ratios_b,
-        palette.secondary_mix_ratios_b,
-        getattr(palette, "output_mix_ratios_b", None),
-    )[: palette.palette_state_count - 4]
+    expected_specs = (
+        ()
+        if flat_four
+        else mixer.print_palette_mix_specs(
+            palette.mix_ratios_b,
+            palette.secondary_mix_ratios_b,
+            getattr(palette, "output_mix_ratios_b", None),
+        )[: palette.palette_state_count - 4]
+    )
     surface_shell_enabled = bool(
-        getattr(palette, "surface_shell_enabled", False)
+        not flat_four
+        and getattr(palette, "surface_shell_enabled", False)
         and models.SURFACE_SHELL_OUTPUT_ENABLED
     )
-    expected_definitions = engine.make_portable_mixed_definitions(
-        palette.mix_ratios_b,
-        palette.secondary_mix_ratios_b,
-        palette.palette_state_count,
-        getattr(palette, "output_mix_ratios_b", None),
-        surface_shell_enabled,
-        palette.physical_hex,
+    expected_definitions = (
+        engine.make_auto_mixed_tombstones()
+        if flat_four
+        else engine.make_portable_mixed_definitions(
+            palette.mix_ratios_b,
+            palette.secondary_mix_ratios_b,
+            palette.palette_state_count,
+            getattr(palette, "output_mix_ratios_b", None),
+            surface_shell_enabled,
+            palette.physical_hex,
+        )
     )
     validation["mixed_definitions_match_output_specs"] = (
         recipe_validation["mixed_definition_string"] == expected_definitions
@@ -968,9 +1038,10 @@ def _write_3mf_atomic_fixed(
         validation["surface_shell_passthrough_rows"] = 0
         validation["surface_shell_fallback_rows"] = 0
     validation["surface_shell_enabled"] = surface_shell_enabled
-    validation["output_ratio_override_active"] = getattr(
-        palette, "output_mix_ratios_b", None
-    ) is not None
+    validation["output_ratio_override_active"] = bool(
+        not flat_four
+        and getattr(palette, "output_mix_ratios_b", None) is not None
+    )
     # Compatibility aliases retained for callers that show the original two
     # six-state blocks.  They now correctly describe *output* cadence.
     validation["effective_mix_ratios_b_percent"] = list(effective_output[:6])
@@ -1087,6 +1158,23 @@ def _write_guide_fixed(path, model_path, height_mm, palette):
         "読み込み方法を聞かれたら「Import geometry / 形状を読み込む」を選びます。",
         "読み込み方法を聞かれたら「Open as project / プロジェクトとして開く」を選びます。",
     )
+    if palette.color_mode == models.COLOR_MODE_FLAT_FOUR:
+        warning = (
+            "\n\n"
+            "【Flat 4 Colors】\n"
+            "----------------\n"
+            "・この3MFはF1〜F4の物理4色だけを使用し、混色stateは0色です。\n"
+            "・色IDと物理スロットを保つため、必ず『プロジェクトとして開く』を選びます。\n"
+            "・公式 Snapmaker Orca 2.3.3以降を使用します（2.3.5で確認済み）。\n"
+            "・通常層0.08 mm、初層0.20 mmです。\n"
+            "・サポートは3MFで固定していません。モデルごとにOrca上で選択してください。\n"
+        )
+        guide_path.write_text(
+            current.rstrip() + warning,
+            encoding="utf-8",
+            newline="\n",
+        )
+        return
     warning = (
         "\n\n"
         "【重要・Snapmaker Orcaで同じ色を表示するために】\n"
@@ -1172,12 +1260,26 @@ paint.PaintSession._set_overrides = _set_overrides_fixed
 _original_connected_fill_faces = paint.PaintSession.connected_fill_faces
 
 
-def _connected_fill_faces_fixed(self, seed_face):
+def _connected_fill_faces_fixed(
+    self,
+    seed_face,
+    *,
+    connectivity_state_map=None,
+):
     """Run large connected fills in SciPy's compiled graph traversal."""
+    connectivity_options = (
+        {"connectivity_state_map": connectivity_state_map}
+        if connectivity_state_map is not None
+        else {}
+    )
     seed = int(seed_face)
     face_count = len(self.faces)
     if seed < 0 or seed >= face_count:
-        return _original_connected_fill_faces(self, seed_face)
+        return _original_connected_fill_faces(
+            self,
+            seed_face,
+            **connectivity_options,
+        )
     allowed_value = getattr(self, "allowed_face_mask", None)
     allowed = (
         np.ones(face_count, dtype=bool)
@@ -1185,14 +1287,25 @@ def _connected_fill_faces_fixed(self, seed_face):
         else np.asarray(allowed_value, dtype=bool)
     )
     if allowed.shape != (face_count,) or not bool(allowed[seed]):
-        return _original_connected_fill_faces(self, seed_face)
+        return _original_connected_fill_faces(
+            self,
+            seed_face,
+            **connectivity_options,
+        )
     if face_count < 20_000:
-        return _original_connected_fill_faces(self, seed_face)
+        return _original_connected_fill_faces(
+            self,
+            seed_face,
+            **connectivity_options,
+        )
     try:
         from scipy.sparse import csr_matrix
         from scipy.sparse.csgraph import breadth_first_order
 
-        labels = self.effective_indices()
+        labels = paint.PaintSession._fill_connectivity_labels(
+            self,
+            connectivity_state_map,
+        )
         target = labels[seed]
         neighbors = np.asarray(self.neighbors, dtype=np.int32)
         sources = np.repeat(np.arange(face_count, dtype=np.int32), neighbors.shape[1])
@@ -1214,7 +1327,11 @@ def _connected_fill_faces_fixed(self, seed_face):
         )
         return np.asarray(selected, dtype=np.int32)
     except Exception:
-        return _original_connected_fill_faces(self, seed_face)
+        return _original_connected_fill_faces(
+            self,
+            seed_face,
+            **connectivity_options,
+        )
 
 
 paint.PaintSession.connected_fill_faces = _connected_fill_faces_fixed
@@ -1223,16 +1340,36 @@ paint.PaintSession.connected_fill_faces = _connected_fill_faces_fixed
 _original_fill = paint.PaintSession.fill
 
 
-def _fill_fixed(self, seed_face, state):
+def _fill_fixed(
+    self,
+    seed_face,
+    state,
+    *,
+    connectivity_state_map=None,
+):
+    connectivity_options = (
+        {"connectivity_state_map": connectivity_state_map}
+        if connectivity_state_map is not None
+        else {}
+    )
     seed = int(seed_face)
     requested = int(state)
     if (
         0 <= seed < len(self.faces)
         and 0 <= requested < mixer.PALETTE_STATE_COUNT
     ):
-        if int(self.effective_indices()[seed]) == requested:
+        labels = paint.PaintSession._fill_connectivity_labels(
+            self,
+            connectivity_state_map,
+        )
+        if int(labels[seed]) == requested:
             return np.empty(0, dtype=np.int32)
-    return _original_fill(self, seed_face, state)
+    return _original_fill(
+        self,
+        seed_face,
+        state,
+        **connectivity_options,
+    )
 
 
 paint.PaintSession.fill = _fill_fixed
@@ -1464,9 +1601,15 @@ def _worker_refresh_after_edit_fixed(self, message: str, changed: int):
                 target_rgb[changed_faces] = palette_tables[
                     changed_parts, changed_states
                 ]
-                tone_faces = np.asarray(self._auto_colors.tone_vertex_rgb)[
-                    self.level.faces[changed_faces]
-                ].mean(axis=1)
+                stored_tone_faces = getattr(
+                    self._auto_colors, "tone_face_rgb", None
+                )
+                if stored_tone_faces is None:
+                    tone_faces = np.asarray(
+                        self._auto_colors.tone_vertex_rgb
+                    )[self.level.faces[changed_faces]].mean(axis=1)
+                else:
+                    tone_faces = np.asarray(stored_tone_faces)[changed_faces]
                 face_lab = engine.srgb_to_lab(tone_faces)
                 target_lab = engine.srgb_to_lab(target_rgb[changed_faces])
                 delta_e[changed_faces] = np.linalg.norm(
@@ -1496,6 +1639,12 @@ def _worker_refresh_after_edit_fixed(self, message: str, changed: int):
                     getattr(previous, "black_free_remapped_faces", 0)
                 ),
                 part_metrics=list(getattr(previous, "part_metrics", [])),
+                tone_face_rgb=getattr(
+                    self._auto_colors, "tone_face_rgb", None
+                ),
+                tone_face_rgb_flat=bool(
+                    getattr(self._auto_colors, "tone_face_rgb_flat", False)
+                ),
             )
     self._display_colors = refreshed
     if self._renderer is not None:
@@ -1981,12 +2130,14 @@ _original_launch_orca = gui.MapperApp._launch_orca
 
 
 def _launch_orca_fixed(self):
+    if not gui.sys.platform.startswith("win"):
+        return _original_launch_orca(self)
     program_files = Path(os.environ.get("ProgramFiles", r"C:\Program Files"))
     official = program_files / "Snapmaker_Orca" / "snapmaker-orca.exe"
     if not official.exists():
         return _original_launch_orca(self)
     try:
-        gui.subprocess.Popen([str(official)], cwd=str(official.parent))
+        gui.launch_snapmaker_orca(official)
         self.status_var.set(
             "Snapmaker Orca 2.3.5を起動しました。3MFはプロジェクトとして開いてください"
         )
@@ -2007,7 +2158,7 @@ def _app_init_fixed(self, *args, **kwargs):
     _original_app_init(self, *args, **kwargs)
     try:
         root = getattr(self, "root", self)
-        root.title(gui.APP_TITLE)
+        root.title(gui.application_window_title(gui.APP_TITLE))
     except Exception:
         pass
     try:
