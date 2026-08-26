@@ -5,16 +5,9 @@ separate ChromaMatter **Apple Silicon / macOS 15+ alpha**.
 
 ## Download status
 
-**There is no approved tester download yet.** On real Apple Silicon CI, the app
-now builds and passes source tests, native dependency probes, packaged native
-and rendering self-tests, and Japanese and English UI smoke tests. The separate
-distribution-compliance review is still open. A GitHub Actions artifact with
-`diagnostics` in its name is not the application.
-
-Technical reference only: [successful diagnostics run
-#32941504793](https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32941504793),
-source commit `29d46240e10732653c67e8fc85841d39fcef6601`. That run intentionally did
-not publish a tester application.
+**There is no approved tester download yet.** Start with the guide and testing
+board below, and wait for the single approved build entry on this page. A
+GitHub Actions artifact with `diagnostics` in its name is not the application.
 
 When a build is approved, the owner will update this post with exactly one:
 
@@ -35,6 +28,20 @@ Do not use an app sent through a comment, mirror, or file-sharing service.
 
 No programming knowledge, printer, paid AI account, or private model is needed
 for the required test. The supplied CC0 GLB contains only four coloured boxes.
+
+## Current engineering status
+
+The Apple Silicon app now builds and passes source tests, native dependency
+probes, packaged native/rendering self-tests, and Japanese and English UI smoke
+tests. The latest successful technical run is
+[#32945773238](https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32945773238)
+at source commit `b514122a64755106bf654b1929515c101c82bbec`. It uploaded
+diagnostics only.
+
+Distribution is not approved. All 317 packaged Mach-O paths are classified,
+but 253 still have unresolved source/relink closure evidence.
+[Draft PR #12](https://github.com/Ponkichi0718/ChromaMatter/pull/12) is the open
+source and review workspace; it is not a tester download.
 
 ## Share a successful result
 

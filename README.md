@@ -19,10 +19,14 @@ The experimental workstream is an integration candidate, not a permanent fork.
 the whole ZIP before starting it. Stable r32.2 below does not contain Flat Four;
 the test Release and Draft PR #7 remain the experimental status hubs.
 
-**The macOS tester download is not approved yet.** The Apple Silicon technical
-build and app checks now pass, but the separate distribution-compliance review
-is still open. The guide above will point to one verified build after that
-review passes. A `diagnostics` artifact is not the app.
+**The macOS tester download is not approved yet.** Start with the
+[English guide](publication/MACOS_ALPHA_TESTING_EN.md) and
+[Discussion #9](https://github.com/Ponkichi0718/ChromaMatter/discussions/9);
+do not use a `diagnostics` artifact as an application. Technical Apple Silicon
+CI passes, but distribution remains blocked because 253 packaged Mach-O files
+still have unresolved source/relink closure evidence.
+[Draft PR #12](https://github.com/Ponkichi0718/ChromaMatter/pull/12) contains
+the separate source and review history.
 
 ## Download for Windows
 
@@ -82,8 +86,10 @@ Snapmaker, OpenAI, Apple, or any other third party.
 - **Published r32.2 test data:** Rights-cleared Hi3D multipart GLB and reference image are included under `DemoData/`
 - **Published demo outputs:** Seven derived 3MF reference outputs under `DemoData/3MF/`; one combined project and six part-specific projects
 - **Physical U1 validation:** The linked public print completed; it does not prove compatibility with every model or production setup
-- **macOS alpha:** Apple Silicon and macOS 15+ only; the app built and passed source, native, packaged self-test, Japanese UI, and English UI checks on real arm64 CI, but the distribution audit is still open, so no tester download is approved yet
-- **macOS test kit:** A deterministic CC0 red/blue/white/black GLB and a 10-minute English checklist are prepared for the first approved tester package
+- **macOS tester path:** No approved download yet; use the English guide, Discussion #9, and the dedicated macOS Issue form
+- **macOS technical status:** Apple Silicon/macOS 15+ CI passes source, native, packaged self-test, Japanese UI, and English UI checks; the latest successful run published diagnostics only
+- **macOS distribution gate:** All 317 packaged Mach-O paths are classified, but 253 still have unresolved source/relink closure evidence; Draft PR #12 remains open and tester distribution is not approved
+- **macOS starter test:** A deterministic CC0 red/blue/white/black four-box GLB and a 10-minute English checklist are ready for the first approved tester package
 - **Version:** `0.8beta`
 
 The documentation on the default branch may receive corrections after publication. For the exact source that produced the downloadable r32.2 files, use the frozen tag and commit above.
