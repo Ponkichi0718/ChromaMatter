@@ -439,9 +439,19 @@
       "final_failure_contract": "Do not replace, retag, or silently mutate the frozen v0.8beta-r32.2 or earlier release assets. Any later release must rerun the exact-source regression, clean build, smoke, stage, archive, privacy, identity, layout, DemoData, and checksum gates. Multipart solidification remains explicitly beta even though the bundled DemoData succeeds."
     }
   },
+  "macos_volunteer_navigation": {
+    "status": "documentation and reporting entry point prepared; no approved macOS application download",
+    "target": "Apple Silicon arm64 on macOS 15 or newer",
+    "testing_board": "https://github.com/Ponkichi0718/ChromaMatter/discussions/9",
+    "english_guide": "publication/MACOS_ALPHA_TESTING_EN.md",
+    "issue_form": ".github/ISSUE_TEMPLATE/macos_alpha_report.yml",
+    "display_version": "0.8beta",
+    "distribution_contract": "Do not point volunteers to diagnostics or an unreviewed build. Only one exact CI run, commit, artifact, and SHA-256 approved in Discussion #9 may become the tester path."
+  },
   "known_pending": [
     "Validate the final Manual Editing interaction on physical XP-PEN hardware.",
     "Run a physical printer matrix and confirm exported projects in Snapmaker Orca slice preview.",
+    "Complete the first Apple Silicon macOS CI build and the exact-commit distribution review before posting a tester download in Discussion #9.",
     "Complete the Innovation Fund submission materials and community post using the published immutable v0.8beta-r32.2 prerelease.",
     "Improve multipart solidification coverage: the bundled DemoData succeeds, but other multipart files may still fail solidification or 3MF export.",
     "Keep the retained Decal beta implementation inaccessible until it is separately revalidated and explicitly reintroduced."
