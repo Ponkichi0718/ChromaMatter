@@ -135,6 +135,8 @@ jobs:
 
       - name: Package and fresh-extract the source-backed app
         shell: bash
+        env:
+          CHROMAMATTER_ALPHA_HOME: ${{ runner.temp }}/chromamatter-source-alpha
         run: |
           set -euo pipefail
           app="$RUNNER_TEMP/ChromaMatter Source Alpha.app"

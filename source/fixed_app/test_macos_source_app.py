@@ -267,6 +267,12 @@ class MacOSSourceBackedAppTests(unittest.TestCase):
         self.assertIn("ditto -c -k --keepParent", workflow)
         self.assertIn("ditto -x -k", workflow)
         self.assertIn("README_INSTALL_AND_TEST_EN.md", workflow)
+        self.assertGreaterEqual(
+            workflow.count(
+                "CHROMAMATTER_ALPHA_HOME: ${{ runner.temp }}/chromamatter-source-alpha"
+            ),
+            3,
+        )
         self.assertIn("ChromaMatter-Public-Four-Color-Test.glb.sha256", workflow)
         self.assertIn("SOURCE_COMMIT.txt", workflow)
         self.assertIn("workflow_commit != root_commit", workflow)
