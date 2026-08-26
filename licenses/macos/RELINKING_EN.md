@@ -1,7 +1,8 @@
 # macOS LGPL replacement and relinking guide (DRAFT)
 
-Product display version: **0.8beta**  
-Target: Apple Silicon, macOS 15 or newer  
+Product display version: **0.8beta**
+
+Target: Apple Silicon, macOS 15 or newer
 State: **not yet validated on a volunteer Mac; not distribution approval**
 
 ChromaMatter is packaged as a PyInstaller `.app` bundle. Some Python wheels may
