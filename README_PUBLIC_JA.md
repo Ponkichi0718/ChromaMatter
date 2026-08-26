@@ -6,6 +6,18 @@
 
 [English README](README.md)
 
+## 使うバージョンを選ぶ
+
+| 種別 | 向いている用途 | 開く場所 |
+| --- | --- | --- |
+| **公開安定版 r32.2** | 現在ダウンロードできるWindows版と、検証済みのFull Spectrum制作フローを使う | **[安定版r32.2をダウンロード](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2)** |
+| **Flat Four Test 3（実験版）** | Flat Four、白／灰色ハイライト補正、大容量静的GLB、2D彩色フィルターを統合前に試す | **[Windowsテスト版ZIPをダウンロード](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2-flat4-test3/ChromaMatter-0.8beta-r32.2-flat4-test3-win64.zip)** · [説明と注意事項](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2-flat4-test3) · [Draft PR #7](https://github.com/Ponkichi0718/ChromaMatter/pull/7) |
+
+実験テスト版は恒久的な別系統ではなく、検証後に通常版へ統合する候補です。
+**Flat Four Test 3を別の公開プレリリースとしてダウンロードできます。**
+ZIP全体を展開してから起動してください。下の安定版r32.2にはFlat Fourが
+入っていないため、Test 3 ReleaseとDraft PR #7を実験版の案内先にしています。
+
 ## Windows版をダウンロード
 
 **[ChromaMatter 0.8beta r32.2 Windows版（ZIP）をダウンロード](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2/ChromaMatter-0.8beta-r32.2-win64.zip)**
