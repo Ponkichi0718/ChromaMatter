@@ -13,8 +13,8 @@ diagnostics artifact is not an application and cannot be launched. Do not use
 an unreviewed ZIP sent through a comment, mirror, or file-sharing service.
 
 When a build is approved, its exact workflow run, artifact name, source commit,
-SHA-256, and expiry date will be posted in the repository's pinned
-[macOS Alpha Testing discussion](https://github.com/Ponkichi0718/ChromaMatter/discussions/9).
+SHA-256, and expiry date will be posted in
+[macOS Alpha Testing discussion #9](https://github.com/Ponkichi0718/ChromaMatter/discussions/9).
 The approved artifact will be short-lived and may require a GitHub account to
 download. If no approved build is listed there, please wait rather than testing
 an older or unofficial copy.
@@ -43,12 +43,18 @@ model.
 
 ## Download the approved build
 
-Use only the workflow run linked from the pinned macOS testing discussion.
-Download both:
+Use only the workflow run linked from macOS testing discussion #9. On the run
+page, scroll to **Artifacts** and click the one approved artifact whose name
+begins:
 
-- the artifact whose name begins
-  `ChromaMatter-macOS15-arm64-developer-id-unsigned-unnotarized-alpha-`;
-- its `.zip.sha256` checksum file.
+`ChromaMatter-macOS15-arm64-developer-id-unsigned-unnotarized-alpha-`
+
+GitHub downloads one **outer artifact ZIP**. Extract that outer ZIP once. It
+contains two files:
+
+- the **inner application ZIP** beginning
+  `ChromaMatter-0.8beta-flat4-test3-macos15-arm64-...`;
+- the matching `.zip.sha256` checksum file.
 
 Do **not** download the similarly named `diagnostics` artifact. It contains
 test reports only, not the app. The approved post must identify the same source
@@ -96,6 +102,38 @@ watertight boxes. It uses exact red, blue, white, and black vertex colours. It
 contains no brand, character, reference image, texture, network resource, or
 private metadata.
 
+![Expected public four-colour test model](MACOS_ALPHA_TEST_MODEL_EXPECTED.svg)
+
+The diagram is an orientation guide, not a colour-calibration target. Your
+lighting and camera angle may differ, but all four blocks must remain separate
+and recognisably red, blue, white, and black.
+
+### Click-by-click basic path
+
+1. Launch the app and leave it open for 30 seconds.
+2. Use the **Language** menu to select **English**. Check that the toolbar and
+   labels remain readable. Select **Japanese**, check again, then return to
+   **English** for the rest of this checklist.
+3. Choose **Open OBJ / GLB**, select
+   `ChromaMatter-Public-Four-Color-Test.glb`, and wait for all three previews
+   to finish.
+4. Under **Color Mode**, choose **Full Spectrum (Mixed)**. Confirm that a
+   mixed palette and converted-colour preview appear.
+5. Choose **Flat 4 Colors**. Confirm that the converted preview uses only
+   physical **F1-F4**, with no F5+ mixed state.
+6. Choose **Manual Editing**. Select **Fill**, select a colour, and click one
+   block. Choose **Undo**, then **Redo**. Finish with **Keep Corrections and
+   Close**.
+7. Choose **Export 3MF**. For this supplied closed model, export must finish
+   successfully. If it does not, record **Fail** even when ChromaMatter safely
+   refuses to leave a partial file.
+8. Choose **Save Project**, close ChromaMatter, relaunch it, choose
+   **Load Project**, and open the saved project. Confirm the selected mode,
+   F1-F4 colours, and manual fill are unchanged.
+9. If Snapmaker Orca is installed, open the exported 3MF **as a project** and
+   check that Flat Four uses only F1-F4 and shows a 0.08 mm normal layer
+   height. Do not print for this basic software test.
+
 Record **Pass**, **Fail**, or **Not tested** for each row.
 
 | Check | Pass condition |
@@ -108,7 +146,7 @@ Record **Pass**, **Fail**, or **Not tested** for each row.
 | Flat Four | The preview uses physical F1-F4 only; no mixed F5+ colour remains. |
 | Manual Editing | Fill one small area, then Undo and Redo; the preview changes and returns exactly. |
 | Output preparation | The supplied closed model is not incorrectly reported as an open surface. |
-| 3MF export | Export completes, or a clear fail-closed warning appears; a failed export must not leave a misleading partial 3MF. |
+| 3MF export | The supplied closed GLB exports successfully. A safe refusal is still a test failure, and it must not leave a misleading partial 3MF. |
 | Snapmaker Orca (if installed) | The 3MF opens as a project; Flat Four uses only F1-F4 and the intended 0.08 mm layer height is visible. |
 | Project save/reload | Mode, four filament colours, and the manual edit are unchanged after quit and reload. |
 
@@ -176,7 +214,9 @@ model itself. Describe only its format,
 approximate triangle count, number of parts, and texture size when relevant.
 Remove personal paths, account details, serial numbers, and private filenames
 from screenshots and logs. Do not post credentials or a security vulnerability
-in a public Issue or Discussion.
+in a public Issue or Discussion. Use the repository's private
+[Report a vulnerability](https://github.com/Ponkichi0718/ChromaMatter/security/advisories/new)
+form for a suspected security issue.
 
 ## Optional extended tests
 

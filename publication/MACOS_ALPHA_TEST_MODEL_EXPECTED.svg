@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 650" role="img" aria-labelledby="title desc">
+  <title id="title">Expected ChromaMatter public four-colour test model</title>
+  <desc id="desc">Four separate box-shaped solids arranged in a two-by-two square: red, blue, white, and black.</desc>
+  <rect width="900" height="650" rx="24" fill="#111821"/>
+  <text x="450" y="46" text-anchor="middle" fill="#f4f7fb" font-family="Arial, sans-serif" font-size="28" font-weight="700">Expected public test model</text>
+  <g stroke="#8fa4b8" stroke-width="3" stroke-linejoin="round">
+    <g transform="translate(210 92)">
+      <path d="M0 44 82 0l108 48-82 46Z" fill="#ff5a5f"/>
+      <path d="m0 44 108 50v112L0 156Z" fill="#d92f3a"/>
+      <path d="m108 94 82-46v112l-82 46Z" fill="#a91f2b"/>
+      <text x="95" y="245" text-anchor="middle" fill="#ffffff" stroke="none" font-family="Arial, sans-serif" font-size="24">RED</text>
+    </g>
+    <g transform="translate(500 92)">
+      <path d="M0 44 82 0l108 48-82 46Z" fill="#4b7dff"/>
+      <path d="m0 44 108 50v112L0 156Z" fill="#2053d7"/>
+      <path d="m108 94 82-46v112l-82 46Z" fill="#163897"/>
+      <text x="95" y="245" text-anchor="middle" fill="#ffffff" stroke="none" font-family="Arial, sans-serif" font-size="24">BLUE</text>
+    </g>
+    <g transform="translate(210 350)">
+      <path d="M0 44 82 0l108 48-82 46Z" fill="#ffffff"/>
+      <path d="m0 44 108 50v112L0 156Z" fill="#dfe5ea"/>
+      <path d="m108 94 82-46v112l-82 46Z" fill="#b8c2cc"/>
+      <text x="95" y="245" text-anchor="middle" fill="#ffffff" stroke="none" font-family="Arial, sans-serif" font-size="24">WHITE</text>
+    </g>
+  </g>
+  <g transform="translate(500 350)" stroke="#8fa4b8" stroke-width="3" stroke-linejoin="round">
+    <path d="M0 44 82 0l108 48-82 46Z" fill="#2d3238"/>
+    <path d="m0 44 108 50v112L0 156Z" fill="#111418"/>
+    <path d="m108 94 82-46v112l-82 46Z" fill="#050607"/>
+    <text x="95" y="245" text-anchor="middle" fill="#ffffff" stroke="none" font-family="Arial, sans-serif" font-size="24">BLACK</text>
+  </g>
+  <text x="450" y="625" text-anchor="middle" fill="#b9c7d5" font-family="Arial, sans-serif" font-size="18">4 separate watertight boxes · no texture · CC0</text>
+</svg>

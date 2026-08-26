@@ -3,6 +3,9 @@ contact_links:
   - name: macOS Alpha Testing discussions
     url: https://github.com/Ponkichi0718/ChromaMatter/discussions/9
     about: Share successful results, ask setup questions, and compare Apple Silicon compatibility.
+  - name: Private security report
+    url: https://github.com/Ponkichi0718/ChromaMatter/security/advisories/new
+    about: Privately report a suspected security vulnerability; do not post it in a public Issue or Discussion.
   - name: Development journal on note
     url: https://note.com/ponkichi0718
     about: Read the experiments, failures, calibration work, and project history (Japanese).
