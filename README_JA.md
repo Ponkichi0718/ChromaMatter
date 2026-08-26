@@ -12,17 +12,19 @@
 | --- | --- | --- |
 | **公開安定版 r32.2** | 現在ダウンロードできるWindows版と、検証済みのFull Spectrum制作フローを使う | **[安定版r32.2をダウンロード](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2)** |
 | **Flat Four Test 3（実験版）** | 目の白を保持しながら肌などの小さな白／灰色ハイライトを補正するFlat Fourと、大容量静的GLB、2D彩色フィルターを統合前に試す | **[Windowsテスト版ZIPをダウンロード](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2-flat4-test3/ChromaMatter-0.8beta-r32.2-flat4-test3-win64.zip)** · [Release説明](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2-flat4-test3) · [Draft PR #7](https://github.com/Ponkichi0718/ChromaMatter/pull/7) |
-| **macOS Apple Silicon alpha** | macOS 15以降での協力テスト。Developer ID未署名・未公証で、正式Releaseではありません | **[英語のテスターガイドから開始](publication/MACOS_ALPHA_TESTING_EN.md)** · [テスト掲示板](https://github.com/Ponkichi0718/ChromaMatter/discussions/9) · [再現する不具合を報告](https://github.com/Ponkichi0718/ChromaMatter/issues/new?template=macos_alpha_report.yml) |
+| **macOS Source Tester Alpha** | Apple Silicon / macOS 15以降でsourceから協力テスト。事前build appや正式macOS Releaseではありません | **[日本語のmacOSテスト案内](publication/MACOS_ALPHA_HUB_JA.md)** · [Source Tester ZIPをダウンロード](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-macos-source-alpha1/ChromaMatter-0.8beta-macos-source-alpha1.zip) · [Release／checksum](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-macos-source-alpha1) · [初回setup手順](publication/MACOS_ALPHA_TESTING_JA.md) |
 
 実験テスト版は恒久的な別系統ではなく、検証後に通常版へ統合する候補です。
 **Flat Four Test 3は別の公開Pre-releaseとしてダウンロードできます。**
 ZIP全体を展開してから起動してください。下の安定版r32.2にはFlat Fourは
 入っていないため、実験版の状況はTest 3 ReleaseとDraft PR #7で確認できます。
 
-**macOSテスター版はまだ配布承認前です。** Apple Silicon上での技術buildと
-application検査は通過しましたが、配布ライセンス監査は継続中です。監査まで
-通った正確な1つのbuildだけを、上の英語ガイドから案内します。`diagnostics`と
-書かれたartifactはapplicationではありません。
+**macOS Source Tester AlphaはApple Silicon / macOS 15以降で試せます。**
+[macOSテスト案内](publication/MACOS_ALPHA_HUB_JA.md)から固定source ZIPをdownloadし、
+`START_MACOS_SOURCE_ALPHA.command`をControl-clickして「開く」を選びます。launcherは
+公式Python 3.13.14を検証し、hash-lock済み依存関係だけを本人のMacへ導入します。
+事前buildした`.app` ZIPはまだ未公開です。253件のMach-Oについてsource／build／
+再link根拠が未解決で、`diagnostics` artifactはapplicationではありません。
 
 ## Windows版をダウンロード
 

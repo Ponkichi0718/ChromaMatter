@@ -73,6 +73,7 @@ publication/*
 !publication/MACOS_ALPHA_TESTING_EN.md
 !publication/MACOS_ALPHA_TESTING_JA.md
 !publication/MACOS_ALPHA_HUB_EN.md
+!publication/MACOS_ALPHA_HUB_JA.md
 !publication/MACOS_ALPHA_TEST_MODEL_EXPECTED.svg
 
 # Historical local probes and recovery utilities stay in the private workspace.

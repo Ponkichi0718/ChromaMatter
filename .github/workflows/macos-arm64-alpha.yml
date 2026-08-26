@@ -163,12 +163,19 @@ jobs:
 
       - name: Record fail-closed corresponding-source coverage
         shell: bash
+        env:
+          TESTER_ZIP_REQUESTED: ${{ github.event_name == 'workflow_dispatch' && inputs.upload_tester_alpha }}
         run: |
           set -euo pipefail
-          python tooling/audit_macos_source_coverage.py \
-            --inventory "$RUNNER_TEMP/chromamatter-macos-arm64/validation/MACOS_ALPHA_APP_INVENTORY.json" \
-            --source-commit "$SOURCE_COMMIT" \
+          coverage_args=(
+            --inventory "$RUNNER_TEMP/chromamatter-macos-arm64/validation/MACOS_ALPHA_APP_INVENTORY.json"
+            --source-commit "$SOURCE_COMMIT"
             --output "$RUNNER_TEMP/chromamatter-macos-arm64/validation/MACOS_SOURCE_COVERAGE_REPORT.json"
+          )
+          if [[ "$TESTER_ZIP_REQUESTED" == "true" ]]; then
+            coverage_args+=(--require-engineering-gate-passed)
+          fi
+          python tooling/audit_macos_source_coverage.py "${coverage_args[@]}"
 
       - name: Record diagnostic bundle information
         if: always()

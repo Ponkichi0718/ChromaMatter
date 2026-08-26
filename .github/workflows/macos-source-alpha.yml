@@ -1,0 +1,146 @@
+name: macOS Source Tester Alpha
+
+on:
+  push:
+    branches:
+      - "codex/macos-arm64-tester-alpha"
+    tags:
+      - "v0.8beta-macos-source-alpha*"
+    paths:
+      - ".github/ISSUE_TEMPLATE/macos_alpha_report.yml"
+      - ".github/workflows/macos-source-alpha.yml"
+      - "START_MACOS_SOURCE_ALPHA.command"
+      - "publication/MACOS_ALPHA_SOURCE_TESTER_*.md"
+      - "publication/MACOS_ALPHA_TESTING_*.md"
+      - "samples/LICENSE.txt"
+      - "samples/MACOS_ALPHA_TEST_MODEL_README.md"
+      - "samples/generate_macos_alpha_test_glb.py"
+      - "source/fixed_app/requirements-runtime-macos-arm64.lock"
+      - "source/fixed_app/spectrum_mapper/**"
+      - "source/fixed_app/TripoSpectrumMapper_fixed.py"
+      - "source/fixed_app/test_macos_source_launcher.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-source-alpha-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-launcher-test:
+    name: macOS 15 arm64 source launcher
+    runs-on: macos-15
+    timeout-minutes: 60
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+
+      - name: Set up CPython 3.13.14 arm64
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13.14"
+          architecture: arm64
+
+      - name: Verify source tester host
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(uname -s)" = Darwin
+          test "$(uname -m)" = arm64
+          test "$(python -c 'import platform; print(platform.machine())')" = arm64
+          test "$(python -c 'import sys; print(".".join(map(str, sys.version_info[:3])))')" = 3.13.14
+          test "$(sw_vers -productVersion | awk -F. '{print $1}')" -ge 15
+
+      - name: Validate launcher contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n ./START_MACOS_SOURCE_ALPHA.command
+          python -m unittest source.fixed_app.test_macos_source_launcher
+
+      - name: Run source tester setup and native/render gate
+        shell: bash
+        env:
+          CHROMAMATTER_ALPHA_HOME: ${{ runner.temp }}/chromamatter-source-alpha
+        run: |
+          set -euo pipefail
+          export CHROMAMATTER_PYTHON="$(command -v python)"
+          bash ./START_MACOS_SOURCE_ALPHA.command --self-test-only
+          test -s "$CHROMAMATTER_ALPHA_HOME/TestData/ChromaMatter-Public-Four-Color-Test.glb"
+          test -s "$CHROMAMATTER_ALPHA_HOME/Validation/macos-alpha-self-test.json"
+          python - "$CHROMAMATTER_ALPHA_HOME/Validation/macos-alpha-self-test.json" <<'PY'
+          import json
+          from pathlib import Path
+          import sys
+
+          payload = json.loads(Path(sys.argv[1]).read_text(encoding="ascii"))
+          if payload.get("ok") is not True:
+              raise SystemExit("Source launcher self-test did not report ok=true")
+          PY
+
+      - name: Smoke-test Japanese and English source UI
+        shell: bash
+        env:
+          CHROMAMATTER_ALPHA_HOME: ${{ runner.temp }}/chromamatter-source-alpha
+          CHROMAMATTER_DATA_DIRECTORY: ${{ runner.temp }}/chromamatter-source-alpha/Profile
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/source/fixed_app
+        run: |
+          set -euo pipefail
+          runtime="$CHROMAMATTER_ALPHA_HOME/venv-3.13.14/bin/python"
+          entry="source/fixed_app/TripoSpectrumMapper_fixed.py"
+          "$runtime" "$entry" --ui-smoke --ui-smoke-language ja
+          "$runtime" "$entry" --ui-smoke --ui-smoke-language en
+
+      - name: Record source tester diagnostics
+        if: always()
+        shell: bash
+        env:
+          CHROMAMATTER_ALPHA_HOME: ${{ runner.temp }}/chromamatter-source-alpha
+        run: |
+          set -u
+          diagnostic="$RUNNER_TEMP/chromamatter-source-alpha-diagnostics"
+          mkdir -p "$diagnostic"
+          {
+            echo "workflow_run=${GITHUB_RUN_ID}"
+            echo "workflow_attempt=${GITHUB_RUN_ATTEMPT}"
+            echo "source_commit=${GITHUB_SHA}"
+            echo "runner_os=${RUNNER_OS}"
+            echo "runner_arch=${RUNNER_ARCH}"
+            uname -a || true
+            sw_vers || true
+            python --version || true
+          } >"$diagnostic/CI_ENVIRONMENT.txt"
+          report="$CHROMAMATTER_ALPHA_HOME/Validation/macos-alpha-self-test.json"
+          if [[ -f "$report" ]]; then
+            cp "$report" "$diagnostic/"
+          fi
+
+      - name: Upload source tester diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ChromaMatter-macOS-source-alpha-diagnostics-${{ github.run_id }}
+          path: ${{ runner.temp }}/chromamatter-source-alpha-diagnostics/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Publish result summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## macOS Source Tester Alpha"
+            echo
+            echo "- Exact source: \`$GITHUB_SHA\`"
+            echo "- Host: Apple Silicon / macOS 15"
+            echo "- Launcher: \`START_MACOS_SOURCE_ALPHA.command\`"
+            echo "- This validates the source tester path only. It is not evidence for a packaged or notarized app."
+          } >>"$GITHUB_STEP_SUMMARY"

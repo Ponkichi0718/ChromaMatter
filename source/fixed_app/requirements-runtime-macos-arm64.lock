@@ -1,0 +1,42 @@
+# ChromaMatter Apple Silicon / macOS 15+ / CPython 3.13.14 source-alpha
+# runtime lock.
+#
+# This is the runtime-only subset of requirements-build-macos-arm64.lock.
+# START_MACOS_SOURCE_ALPHA.command installs it into a private virtual
+# environment with --require-hashes, --only-binary=:all:, and --no-deps.
+# Every hash is the SHA-256 published by the official PyPI JSON API for the
+# CPython 3.13 arm64, compatible abi3, universal2, or pure-Python wheel used by
+# the tested alpha. No application ZIP or packaged-app admission gate is used.
+
+glcontext==3.0.0 \
+    --hash=sha256:857fd83e60f15580afd369dfb651a10d84a70ec35995622d253551bfb3ff9477
+manifold3d==3.5.2 \
+    --hash=sha256:36e68dc76087aa214546d5aee3a1ad7956b6759aa24d07e864f15c11f6139b16
+mapbox-earcut==2.0.0 \
+    --hash=sha256:d2ac5f610b3e44a3a0c4df06b5552d503b4f1c2c409eeca20dbe05112bd60955
+moderngl==5.12.0 \
+    --hash=sha256:9b09d8d15b2eaab41c8646a664429ec86af225fa25096758497cd212489d2e1e
+networkx==3.5 \
+    --hash=sha256:0030d386a9a06dee3565298b4a734b68589749a544acbb6c412dc9e2489ec6ec
+numpy==2.5.1 \
+    --hash=sha256:6165343f81b56ef8f514f396989e529b61d9dc709b99421b07e9f3e698e2287d
+packaging==26.2 \
+    --hash=sha256:5fc45236b9446107ff2415ce77c807cee2862cb6fac22b8a73826d0693b0980e
+pillow==11.2.1 \
+    --hash=sha256:b0e130705d568e2f43a17bcbe74d90958e8a16263868a12c3e0d9c8162690830
+pymeshlab==2025.7.post1 \
+    --hash=sha256:841b1fa15fc76ab73e594f4bbfcbe339782b36be67d9387ff5aa5f4ca422e180
+pytetwild==0.3.0 \
+    --hash=sha256:e0f7edd8d2e29f1439cf78dde9d2be63b3c0d4091d402b8cb291f5ca75c0312e
+resvg==0.2.0 \
+    --hash=sha256:350738ad930becec79f59367066cd0d2092a0194f69ca0ee3cc821a9b95233fe
+rtree==1.4.1 \
+    --hash=sha256:a7e48d805e12011c2cf739a29d6a60ae852fb1de9fc84220bbcef67e6e595d7d
+scipy==1.18.0 \
+    --hash=sha256:68363b7eaacd8b5dd426df56d782cc156468ac79a127a1b87ca597d6e2e82197
+shapely==2.1.2 \
+    --hash=sha256:8cff473e81017594d20ec55d86b54bc635544897e13a7cfc12e36909c5309a2a
+tetgen==0.8.3 \
+    --hash=sha256:004b4b41d8f3b51ec386118c026ae17d835a78686d6d168e62221fe12cf27455
+trimesh==5.0.0 \
+    --hash=sha256:51ec67d7f9f74b918f2a695da5fd511b9c084e96307648ae83f45b58f13f8009
