@@ -95,6 +95,8 @@ class MacOSAlphaSpecTests(unittest.TestCase):
         self.assertIn("tree_datas(PROJECT / \"licenses\"", text)
         self.assertIn("is_private_install_origin_metadata", text)
         self.assertIn("WINDOWS_RELEASE_ONLY_DOCUMENTS", text)
+        self.assertIn('!= "macos"', text)
+        self.assertIn("circular inventory", text)
         self.assertNotIn("licenses/native-closure", text)
         self.assertIn("/ pure.parent", text)
 

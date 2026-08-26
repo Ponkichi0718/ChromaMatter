@@ -1,0 +1,665 @@
+{
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "annotations": [
+    {
+      "annotationDate": "2026-08-26T07:40:00Z",
+      "annotationType": "OTHER",
+      "annotator": "Tool: ChromaMatter-macOS-compliance-evidence-1",
+      "comment": "macOS app inventory SHA-256 f5945baa1b586a7367ff7c81b426a0caf94fde5a4bcef32333e4b142e7552bde; component-map status review-required; human review pending. Per-file SHA-256 and Mach-O ownership records are in BINARY_COMPONENT_MAP.json rather than duplicated as SPDX files."
+    }
+  ],
+  "creationInfo": {
+    "comment": "Generated inventory evidence; not distribution approval.",
+    "created": "2026-08-26T07:40:00Z",
+    "creators": [
+      "Tool: ChromaMatter-macOS-compliance-evidence-1"
+    ]
+  },
+  "dataLicense": "CC0-1.0",
+  "documentDescribes": [
+    "SPDXRef-Package-ChromaMatter"
+  ],
+  "documentNamespace": "https://github.com/Ponkichi0718/ChromaMatter/spdx/macos-alpha/1c4bb508c24cfa82b2e67322f4ed3b9a76c9b5b6/f5945baa1b586a7367ff7c81b426a0caf94fde5a4bcef32333e4b142e7552bde",
+  "name": "ChromaMatter-macOS-Alpha-0.8beta",
+  "packages": [
+    {
+      "SPDXID": "SPDXRef-Package-ChromaMatter",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "https://github.com/Ponkichi0718/ChromaMatter/tree/1c4bb508c24cfa82b2e67322f4ed3b9a76c9b5b6",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "GPL-3.0-or-later",
+      "name": "ChromaMatter",
+      "sourceInfo": "Exact source commit 1c4bb508c24cfa82b2e67322f4ed3b9a76c9b5b6",
+      "versionInfo": "0.8beta"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-57c22f80589d6cc7075d",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "https://files.pythonhosted.org/packages/7e/f8/97fdf103f38fed6792a1601dbc16cc8aac56e7459a9fff08c812d8ae177a/altgraph-0.17.5.tar.gz",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:pypi/altgraph@0.17.5",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT",
+      "name": "altgraph",
+      "sourceInfo": "Source archive SHA-256: c87b395dd12fabde9c99573a9749d67da8d29ef9de0125c7f536699b4a9bc9e7",
+      "versionInfo": "0.17.5"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-c8059f1846238fea6133",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "https://files.pythonhosted.org/packages/3a/80/8238a0e6e972292061176141c1028b5e670aa8c94cf4c2f819bd730d314e/glcontext-3.0.0.tar.gz",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:pypi/glcontext@3.0.0",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT",
+      "name": "glcontext",
+      "sourceInfo": "Source archive SHA-256: 57168edcd38df2fc0d70c318edf6f7e59091fba1cd3dadb289d0aa50449211ef",
+      "versionInfo": "3.0.0"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-2cbb0d21cbdfa11be53c",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "https://files.pythonhosted.org/packages/95/ee/af1a3842bdd5902ce133bd246eb7ffd4375c38642aeb5dc0ae3a0329dfa2/macholib-1.16.3.tar.gz",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:pypi/macholib@1.16.3",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT",
+      "name": "macholib",
+      "sourceInfo": "Source archive SHA-256: 07ae9e15e8e4cd9a788013d81f5908b3609aa76f9b1421bae9c4d7606ec86a30",
+      "versionInfo": "1.16.3"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-e183e245081fcdac623b",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "https://files.pythonhosted.org/packages/66/36/5b11c97e56d2101b1c6e311580f2546dd0d1cf0fbb167ec59e122e195ced/manifold3d-3.5.2.tar.gz",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:pypi/manifold3d@3.5.2",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "Apache-2.0",
+      "name": "manifold3d",
+      "sourceInfo": "Source archive SHA-256: 8d445798ba5f86efae18e0dca6cb71823165f0887767a274d7c14ed63ab64648",
+      "versionInfo": "3.5.2"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-ae375a1fdfc51d7afd68",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "https://files.pythonhosted.org/packages/bc/7b/bbf6b00488662be5d2eb7a188222c264b6f713bac10dc4a77bf37a4cb4b6/mapbox_earcut-2.0.0.tar.gz",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:pypi/mapbox-earcut@2.0.0",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "ISC",
+      "name": "mapbox-earcut",
+      "sourceInfo": "Source archive SHA-256: 81eab6b86cf99551deb698b98e3f7502c57900e5c479df15e1bdaf1a57f0f9d6",
+      "versionInfo": "2.0.0"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-c547820494065ae50d18",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "https://files.pythonhosted.org/packages/da/52/540e2f8c45060bb2709f56eb5a44ae828dfcc97ccecb342c1a7deb467889/moderngl-5.12.0.tar.gz",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:pypi/moderngl@5.12.0",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT",
+      "name": "moderngl",
+      "sourceInfo": "Source archive SHA-256: 52936a98ccb2f2e1d6e3cb18528b2919f6831e7e3f924e788b5873badce5129b",
+      "versionInfo": "5.12.0"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-4eb2b1fff546398cd84c",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "https://files.pythonhosted.org/packages/6c/4f/ccdb8ad3a38e583f214547fd2f7ff1fc160c43a75af88e6aec213404b96a/networkx-3.5.tar.gz",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:pypi/networkx@3.5",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "BSD-3-Clause",
+      "name": "networkx",
+      "sourceInfo": "Source archive SHA-256: d4c6f9cf81f52d69230866796b82afbccdec3db7ae4fbd1b65ea750feed50037",
+      "versionInfo": "3.5"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-73dd0baf8e5438da8816",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "https://files.pythonhosted.org/packages/22/fd/89965aa4ac08c74998539fcbf24fa3540f3e15237fbeb6bcf9c908f4aade/numpy-2.5.1.tar.gz",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:pypi/numpy@2.5.1",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0",
+      "name": "numpy",
+      "sourceInfo": "Source archive SHA-256: a48a113e6afea91f5608793bafa7ef2ad481fefbda87ec5069f483de61cb9fa3",
+      "versionInfo": "2.5.1"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-71669691cb0b0f1bf662",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "https://files.pythonhosted.org/packages/d7/f1/e7a6dd94a8d4a5626c03e4e99c87f241ba9e350cd9e6d75123f992427270/packaging-26.2.tar.gz",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:pypi/packaging@26.2",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "Apache-2.0 OR BSD-2-Clause",
+      "name": "packaging",
+      "sourceInfo": "Source archive SHA-256: ff452ff5a3e828ce110190feff1178bb1f2ea2281fa2075aadb987c2fb221661",
+      "versionInfo": "26.2"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-f6000d4ef895fd961f13",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "https://files.pythonhosted.org/packages/af/cb/bb5c01fcd2a69335b86c22142b2bccfc3464087efb7fd382eee5ffc7fdf7/pillow-11.2.1.tar.gz",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:pypi/pillow@11.2.1",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT-CMU",
+      "name": "pillow",
+      "sourceInfo": "Source archive SHA-256: a64dd61998416367b7ef979b73d3a85853ba9bec4c2925f74e588879a58716b6",
+      "versionInfo": "11.2.1"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-b2cf4acc8a374c9ee546",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "https://files.pythonhosted.org/packages/46/60/d03d52e6690d4e9caf333dcd14550cde634ce6c118b3bc8fa3112c3186fd/pyinstaller-6.20.0.tar.gz",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:pypi/pyinstaller@6.20.0",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "GPL-2.0-or-later",
+      "name": "pyinstaller",
+      "sourceInfo": "Source archive SHA-256: 95c5c7e03d5d61e9dfb8ef259c699cf492bb1041beb6dbe83696608cec07347a",
+      "versionInfo": "6.20.0"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-7626607eff3f2f05d8b8",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "https://files.pythonhosted.org/packages/94/5b/c9fe0db5e83ee1c39b2258fa21d23b15e1a60786b6c5990ee5074ead8bb6/pyinstaller_hooks_contrib-2026.6.tar.gz",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:pypi/pyinstaller-hooks-contrib@2026.6",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "GPL-2.0-or-later AND Apache-2.0",
+      "name": "pyinstaller-hooks-contrib",
+      "sourceInfo": "Source archive SHA-256: bef5002c32f4f50bd55b005da12cff64eca8783e7eaf86a06a62410164bab725",
+      "versionInfo": "2026.6"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-744a272d13e53f71e7df",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "https://github.com/cnr-isti-vclab/PyMeshLab",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:pypi/pymeshlab@2025.7.post1",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "GPL-3.0-only",
+      "name": "pymeshlab",
+      "sourceInfo": "Source archive SHA-256: not yet established for this wheel pairing",
+      "versionInfo": "2025.7.post1"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-a64c28c6fa16e95b8397",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "https://files.pythonhosted.org/packages/2b/dc/55324467c4fe206331fda63d60231e9b6669b92afb2e19d0326913662db3/pytetwild-0.3.0.tar.gz",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:pypi/pytetwild@0.3.0",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MPL-2.0",
+      "name": "pytetwild",
+      "sourceInfo": "Source archive SHA-256: 8ea2c460036c757e8f0d27cd2ce3390afa675a1a4d031a6ce209326c592bd6ba",
+      "versionInfo": "0.3.0"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-da92ccdd0bdf8e95a8d9",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "https://files.pythonhosted.org/packages/95/09/7302695875a019514de9a5dd17b8320e7a19d6e7bc8f85dcfb79a4ce2da3/rtree-1.4.1.tar.gz",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:pypi/rtree@1.4.1",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT",
+      "name": "rtree",
+      "sourceInfo": "Source archive SHA-256: c6b1b3550881e57ebe530cc6cffefc87cd9bf49c30b37b894065a9f810875e46",
+      "versionInfo": "1.4.1"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-b91780636b12da5ea37a",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "https://files.pythonhosted.org/packages/a7/25/c2700dfaf6442b4effaa91af24ebce5dc9d31bb4a69706313aae70d72cd0/scipy-1.18.0.tar.gz",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:pypi/scipy@1.18.0",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "BSD-3-Clause",
+      "name": "scipy",
+      "sourceInfo": "Source archive SHA-256: 67b2ad2ad54c72ca6d04975a9b2df8c3638c34ddd5b28738e94fc2b57929d378",
+      "versionInfo": "1.18.0"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-9ee3a07916ebb6610dfc",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "https://files.pythonhosted.org/packages/34/26/f5d29e25ffdb535afef2d35cdb55b325298f96debd670da4c325e08d70f4/setuptools-83.0.0.tar.gz",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:pypi/setuptools@83.0.0",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT",
+      "name": "setuptools",
+      "sourceInfo": "Source archive SHA-256: 025bccbbf0fa05b6192bc64ae1e7b16e001fd6d6d4d5de03c97b1c1ade523bef",
+      "versionInfo": "83.0.0"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-a38e6d45d8170d66b6f2",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "https://files.pythonhosted.org/packages/4d/bc/0989043118a27cccb4e906a46b7565ce36ca7b57f5a18b78f4f1b0f72d9d/shapely-2.1.2.tar.gz",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:pypi/shapely@2.1.2",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "BSD-3-Clause AND LGPL-2.1-or-later",
+      "name": "shapely",
+      "sourceInfo": "Source archive SHA-256: 2ed4ecb28320a433db18a5bf029986aa8afcfd740745e78847e330d5d94922a9",
+      "versionInfo": "2.1.2"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-d369c40ea8f7c1394c6d",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "https://files.pythonhosted.org/packages/6a/37/50eace0be2c97ca2eff048de93c6ee1c4af0dc4be587a5d8e4fc83f06113/tetgen-0.8.3.tar.gz",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:pypi/tetgen@0.8.3",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT AND AGPL-3.0-or-later",
+      "name": "tetgen",
+      "sourceInfo": "Source archive SHA-256: acaff9569da73700c7df027512a518ec6e6e091b537581a6fad497e68d170cf6",
+      "versionInfo": "0.8.3"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-4c35218e63e3a70ea19f",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "https://files.pythonhosted.org/packages/a8/45/5b9943631f265073bb96ca4cc2a9de05d151cd8c1a6896fcbaac132a1355/trimesh-5.0.0.tar.gz",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceLocator": "pkg:pypi/trimesh@5.0.0",
+          "referenceType": "purl"
+        }
+      ],
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT",
+      "name": "trimesh",
+      "sourceInfo": "Source archive SHA-256: 0195003198baaf2550aebe612254ba2f01c385cec46c37ecc5beca8291f79a13",
+      "versionInfo": "5.0.0"
+    },
+    {
+      "SPDXID": "SPDXRef-NativeClosure-bbb342868930a9a621fd",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "https://github.com/python/cpython/tree/v3.13.14",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "PSF-2.0",
+      "name": "CPython macOS runtime",
+      "sourceInfo": "Native-closure review state: source-version-known-binary-identity-inventory-required",
+      "versionInfo": "3.13.14"
+    },
+    {
+      "SPDXID": "SPDXRef-NativeClosure-6be6b4fcf0e25690ed71",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "https://github.com/tcltk/tcl/tree/core-8-6-18",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "TCL",
+      "name": "Tcl and Tk",
+      "sourceInfo": "Native-closure review state: source-version-known-binary-identity-inventory-required",
+      "versionInfo": "8.6.18"
+    },
+    {
+      "SPDXID": "SPDXRef-NativeClosure-b5b58cf366d69ae1d2bf",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "https://github.com/openssl/openssl",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "Apache-2.0",
+      "name": "OpenSSL carried by the CPython macOS runtime",
+      "sourceInfo": "Native-closure review state: blocked-pending-exact-version-and-source-proof",
+      "versionInfo": "inventory-does-not-establish-patch-version"
+    },
+    {
+      "SPDXID": "SPDXRef-NativeClosure-2b102cf6cf381f0de856",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "https://github.com/pyvista/pytetwild",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MPL-2.0 AND (LGPL-3.0-or-later OR GPL-2.0-or-later)",
+      "name": "PyTetWild arm64 native closure",
+      "sourceInfo": "Native-closure review state: blocked-pending-wheel-build-and-native-closure-proof",
+      "versionInfo": "0.3.0-wheel-specific"
+    },
+    {
+      "SPDXID": "SPDXRef-NativeClosure-1c03110365b2a854d60f",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "https://github.com/cnr-isti-vclab/PyMeshLab",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "GPL-3.0-only AND LGPL-3.0-only",
+      "name": "PyMeshLab arm64 native closure",
+      "sourceInfo": "Native-closure review state: blocked-pending-wheel-build-and-native-closure-proof",
+      "versionInfo": "2025.7.post1-wheel-specific"
+    },
+    {
+      "SPDXID": "SPDXRef-NativeClosure-9ecdfec704df148c1f8b",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "https://github.com/shapely/shapely/tree/2.1.2",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "BSD-3-Clause AND LGPL-2.1-or-later",
+      "name": "Shapely and bundled GEOS arm64 closure",
+      "sourceInfo": "Native-closure review state: blocked-pending-geos-binary-source-and-relink-proof",
+      "versionInfo": "2.1.2-wheel-specific"
+    },
+    {
+      "SPDXID": "SPDXRef-NativeClosure-bbe3d553a2e734ed2bf4",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "https://github.com/pyvista/tetgen/tree/v0.8.3/src",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "AGPL-3.0-or-later",
+      "name": "TetGen core carried by tetgen",
+      "sourceInfo": "Native-closure review state: blocked-pending-extension-to-source-identity-proof",
+      "versionInfo": "1.6.0"
+    },
+    {
+      "SPDXID": "SPDXRef-NativeClosure-3e476c11031ded09703b",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "https://github.com/python-pillow/Pillow/tree/11.2.1",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "name": "Pillow arm64 wheel native closure",
+      "sourceInfo": "Native-closure review state: blocked-pending-vendored-library-source-and-license-proof",
+      "versionInfo": "11.2.1-wheel-specific"
+    },
+    {
+      "SPDXID": "SPDXRef-NativeClosure-d6222c17f6fad51b538b",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "https://github.com/numpy/numpy/tree/v2.5.1",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "name": "NumPy and SciPy arm64 wheel native closure",
+      "sourceInfo": "Native-closure review state: blocked-pending-vendored-library-source-and-license-proof",
+      "versionInfo": "2.5.1-and-1.18.0-wheel-specific"
+    },
+    {
+      "SPDXID": "SPDXRef-NativeClosure-0f071ac605f4e10ecf02",
+      "copyrightText": "NOASSERTION",
+      "downloadLocation": "https://github.com/Toblerity/rtree/tree/1.4.1",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "MIT",
+      "name": "Rtree and libspatialindex arm64 wheel closure",
+      "sourceInfo": "Native-closure review state: blocked-pending-libspatialindex-version-and-source-proof",
+      "versionInfo": "1.4.1-wheel-specific"
+    }
+  ],
+  "relationships": [
+    {
+      "relatedSpdxElement": "SPDXRef-Package-ChromaMatter",
+      "relationshipType": "DESCRIBES",
+      "spdxElementId": "SPDXRef-DOCUMENT"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-Package-57c22f80589d6cc7075d",
+      "relationshipType": "DEPENDS_ON",
+      "spdxElementId": "SPDXRef-Package-ChromaMatter"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-Package-c8059f1846238fea6133",
+      "relationshipType": "DEPENDS_ON",
+      "spdxElementId": "SPDXRef-Package-ChromaMatter"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-Package-2cbb0d21cbdfa11be53c",
+      "relationshipType": "DEPENDS_ON",
+      "spdxElementId": "SPDXRef-Package-ChromaMatter"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-Package-e183e245081fcdac623b",
+      "relationshipType": "DEPENDS_ON",
+      "spdxElementId": "SPDXRef-Package-ChromaMatter"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-Package-ae375a1fdfc51d7afd68",
+      "relationshipType": "DEPENDS_ON",
+      "spdxElementId": "SPDXRef-Package-ChromaMatter"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-Package-c547820494065ae50d18",
+      "relationshipType": "DEPENDS_ON",
+      "spdxElementId": "SPDXRef-Package-ChromaMatter"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-Package-4eb2b1fff546398cd84c",
+      "relationshipType": "DEPENDS_ON",
+      "spdxElementId": "SPDXRef-Package-ChromaMatter"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-Package-73dd0baf8e5438da8816",
+      "relationshipType": "DEPENDS_ON",
+      "spdxElementId": "SPDXRef-Package-ChromaMatter"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-Package-71669691cb0b0f1bf662",
+      "relationshipType": "DEPENDS_ON",
+      "spdxElementId": "SPDXRef-Package-ChromaMatter"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-Package-f6000d4ef895fd961f13",
+      "relationshipType": "DEPENDS_ON",
+      "spdxElementId": "SPDXRef-Package-ChromaMatter"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-Package-b2cf4acc8a374c9ee546",
+      "relationshipType": "DEPENDS_ON",
+      "spdxElementId": "SPDXRef-Package-ChromaMatter"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-Package-7626607eff3f2f05d8b8",
+      "relationshipType": "DEPENDS_ON",
+      "spdxElementId": "SPDXRef-Package-ChromaMatter"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-Package-744a272d13e53f71e7df",
+      "relationshipType": "DEPENDS_ON",
+      "spdxElementId": "SPDXRef-Package-ChromaMatter"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-Package-a64c28c6fa16e95b8397",
+      "relationshipType": "DEPENDS_ON",
+      "spdxElementId": "SPDXRef-Package-ChromaMatter"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-Package-da92ccdd0bdf8e95a8d9",
+      "relationshipType": "DEPENDS_ON",
+      "spdxElementId": "SPDXRef-Package-ChromaMatter"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-Package-b91780636b12da5ea37a",
+      "relationshipType": "DEPENDS_ON",
+      "spdxElementId": "SPDXRef-Package-ChromaMatter"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-Package-9ee3a07916ebb6610dfc",
+      "relationshipType": "DEPENDS_ON",
+      "spdxElementId": "SPDXRef-Package-ChromaMatter"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-Package-a38e6d45d8170d66b6f2",
+      "relationshipType": "DEPENDS_ON",
+      "spdxElementId": "SPDXRef-Package-ChromaMatter"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-Package-d369c40ea8f7c1394c6d",
+      "relationshipType": "DEPENDS_ON",
+      "spdxElementId": "SPDXRef-Package-ChromaMatter"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-Package-4c35218e63e3a70ea19f",
+      "relationshipType": "DEPENDS_ON",
+      "spdxElementId": "SPDXRef-Package-ChromaMatter"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-NativeClosure-bbb342868930a9a621fd",
+      "relationshipType": "DEPENDS_ON",
+      "spdxElementId": "SPDXRef-Package-ChromaMatter"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-NativeClosure-6be6b4fcf0e25690ed71",
+      "relationshipType": "DEPENDS_ON",
+      "spdxElementId": "SPDXRef-Package-ChromaMatter"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-NativeClosure-b5b58cf366d69ae1d2bf",
+      "relationshipType": "DEPENDS_ON",
+      "spdxElementId": "SPDXRef-Package-ChromaMatter"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-NativeClosure-2b102cf6cf381f0de856",
+      "relationshipType": "DEPENDS_ON",
+      "spdxElementId": "SPDXRef-Package-ChromaMatter"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-NativeClosure-1c03110365b2a854d60f",
+      "relationshipType": "DEPENDS_ON",
+      "spdxElementId": "SPDXRef-Package-ChromaMatter"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-NativeClosure-9ecdfec704df148c1f8b",
+      "relationshipType": "DEPENDS_ON",
+      "spdxElementId": "SPDXRef-Package-ChromaMatter"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-NativeClosure-bbe3d553a2e734ed2bf4",
+      "relationshipType": "DEPENDS_ON",
+      "spdxElementId": "SPDXRef-Package-ChromaMatter"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-NativeClosure-3e476c11031ded09703b",
+      "relationshipType": "DEPENDS_ON",
+      "spdxElementId": "SPDXRef-Package-ChromaMatter"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-NativeClosure-d6222c17f6fad51b538b",
+      "relationshipType": "DEPENDS_ON",
+      "spdxElementId": "SPDXRef-Package-ChromaMatter"
+    },
+    {
+      "relatedSpdxElement": "SPDXRef-NativeClosure-0f071ac605f4e10ecf02",
+      "relationshipType": "DEPENDS_ON",
+      "spdxElementId": "SPDXRef-Package-ChromaMatter"
+    }
+  ],
+  "spdxVersion": "SPDX-2.3"
+}

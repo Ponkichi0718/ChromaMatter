@@ -1,0 +1,334 @@
+{
+  "application_source": {
+    "commit": "1c4bb508c24cfa82b2e67322f4ed3b9a76c9b5b6",
+    "license": "GPL-3.0-or-later",
+    "url": "https://github.com/Ponkichi0718/ChromaMatter/tree/1c4bb508c24cfa82b2e67322f4ed3b9a76c9b5b6"
+  },
+  "complete_archive": {
+    "sha256": null,
+    "status": "not-built-or-reviewed",
+    "url": null
+  },
+  "component_sources": [
+    {
+      "component_id": "python-distribution:altgraph",
+      "license_declared": "MIT",
+      "name": "altgraph",
+      "pairing_status": "version-and-sha256-pinned-source-candidate",
+      "source_commit": null,
+      "source_sha256": "c87b395dd12fabde9c99573a9749d67da8d29ef9de0125c7f536699b4a9bc9e7",
+      "source_url": "https://files.pythonhosted.org/packages/7e/f8/97fdf103f38fed6792a1601dbc16cc8aac56e7459a9fff08c812d8ae177a/altgraph-0.17.5.tar.gz",
+      "version": "0.17.5"
+    },
+    {
+      "component_id": "python-distribution:glcontext",
+      "license_declared": "MIT",
+      "name": "glcontext",
+      "pairing_status": "version-and-sha256-pinned-source-candidate",
+      "source_commit": null,
+      "source_sha256": "57168edcd38df2fc0d70c318edf6f7e59091fba1cd3dadb289d0aa50449211ef",
+      "source_url": "https://files.pythonhosted.org/packages/3a/80/8238a0e6e972292061176141c1028b5e670aa8c94cf4c2f819bd730d314e/glcontext-3.0.0.tar.gz",
+      "version": "3.0.0"
+    },
+    {
+      "component_id": "python-distribution:macholib",
+      "license_declared": "MIT",
+      "name": "macholib",
+      "pairing_status": "version-and-sha256-pinned-source-candidate",
+      "source_commit": null,
+      "source_sha256": "07ae9e15e8e4cd9a788013d81f5908b3609aa76f9b1421bae9c4d7606ec86a30",
+      "source_url": "https://files.pythonhosted.org/packages/95/ee/af1a3842bdd5902ce133bd246eb7ffd4375c38642aeb5dc0ae3a0329dfa2/macholib-1.16.3.tar.gz",
+      "version": "1.16.3"
+    },
+    {
+      "component_id": "python-distribution:manifold3d",
+      "license_declared": "Apache-2.0",
+      "name": "manifold3d",
+      "pairing_status": "version-and-sha256-pinned-source-candidate",
+      "source_commit": null,
+      "source_sha256": "8d445798ba5f86efae18e0dca6cb71823165f0887767a274d7c14ed63ab64648",
+      "source_url": "https://files.pythonhosted.org/packages/66/36/5b11c97e56d2101b1c6e311580f2546dd0d1cf0fbb167ec59e122e195ced/manifold3d-3.5.2.tar.gz",
+      "version": "3.5.2"
+    },
+    {
+      "component_id": "python-distribution:mapbox-earcut",
+      "license_declared": "ISC",
+      "name": "mapbox-earcut",
+      "pairing_status": "version-and-sha256-pinned-source-candidate",
+      "source_commit": null,
+      "source_sha256": "81eab6b86cf99551deb698b98e3f7502c57900e5c479df15e1bdaf1a57f0f9d6",
+      "source_url": "https://files.pythonhosted.org/packages/bc/7b/bbf6b00488662be5d2eb7a188222c264b6f713bac10dc4a77bf37a4cb4b6/mapbox_earcut-2.0.0.tar.gz",
+      "version": "2.0.0"
+    },
+    {
+      "component_id": "python-distribution:moderngl",
+      "license_declared": "MIT",
+      "name": "moderngl",
+      "pairing_status": "version-and-sha256-pinned-source-candidate",
+      "source_commit": null,
+      "source_sha256": "52936a98ccb2f2e1d6e3cb18528b2919f6831e7e3f924e788b5873badce5129b",
+      "source_url": "https://files.pythonhosted.org/packages/da/52/540e2f8c45060bb2709f56eb5a44ae828dfcc97ccecb342c1a7deb467889/moderngl-5.12.0.tar.gz",
+      "version": "5.12.0"
+    },
+    {
+      "component_id": "python-distribution:networkx",
+      "license_declared": "BSD-3-Clause",
+      "name": "networkx",
+      "pairing_status": "version-and-sha256-pinned-source-candidate",
+      "source_commit": null,
+      "source_sha256": "d4c6f9cf81f52d69230866796b82afbccdec3db7ae4fbd1b65ea750feed50037",
+      "source_url": "https://files.pythonhosted.org/packages/6c/4f/ccdb8ad3a38e583f214547fd2f7ff1fc160c43a75af88e6aec213404b96a/networkx-3.5.tar.gz",
+      "version": "3.5"
+    },
+    {
+      "component_id": "python-distribution:numpy",
+      "license_declared": "BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0",
+      "name": "numpy",
+      "pairing_status": "version-and-sha256-pinned-source-candidate",
+      "source_commit": null,
+      "source_sha256": "a48a113e6afea91f5608793bafa7ef2ad481fefbda87ec5069f483de61cb9fa3",
+      "source_url": "https://files.pythonhosted.org/packages/22/fd/89965aa4ac08c74998539fcbf24fa3540f3e15237fbeb6bcf9c908f4aade/numpy-2.5.1.tar.gz",
+      "version": "2.5.1"
+    },
+    {
+      "component_id": "python-distribution:packaging",
+      "license_declared": "Apache-2.0 OR BSD-2-Clause",
+      "name": "packaging",
+      "pairing_status": "version-and-sha256-pinned-source-candidate",
+      "source_commit": null,
+      "source_sha256": "ff452ff5a3e828ce110190feff1178bb1f2ea2281fa2075aadb987c2fb221661",
+      "source_url": "https://files.pythonhosted.org/packages/d7/f1/e7a6dd94a8d4a5626c03e4e99c87f241ba9e350cd9e6d75123f992427270/packaging-26.2.tar.gz",
+      "version": "26.2"
+    },
+    {
+      "component_id": "python-distribution:pillow",
+      "license_declared": "MIT-CMU",
+      "name": "pillow",
+      "pairing_status": "version-and-sha256-pinned-source-candidate",
+      "source_commit": null,
+      "source_sha256": "a64dd61998416367b7ef979b73d3a85853ba9bec4c2925f74e588879a58716b6",
+      "source_url": "https://files.pythonhosted.org/packages/af/cb/bb5c01fcd2a69335b86c22142b2bccfc3464087efb7fd382eee5ffc7fdf7/pillow-11.2.1.tar.gz",
+      "version": "11.2.1"
+    },
+    {
+      "component_id": "python-distribution:pyinstaller",
+      "license_declared": "GPL-2.0-or-later",
+      "name": "pyinstaller",
+      "pairing_status": "version-and-sha256-pinned-source-candidate",
+      "source_commit": null,
+      "source_sha256": "95c5c7e03d5d61e9dfb8ef259c699cf492bb1041beb6dbe83696608cec07347a",
+      "source_url": "https://files.pythonhosted.org/packages/46/60/d03d52e6690d4e9caf333dcd14550cde634ce6c118b3bc8fa3112c3186fd/pyinstaller-6.20.0.tar.gz",
+      "version": "6.20.0"
+    },
+    {
+      "component_id": "python-distribution:pyinstaller-hooks-contrib",
+      "license_declared": "GPL-2.0-or-later AND Apache-2.0",
+      "name": "pyinstaller-hooks-contrib",
+      "pairing_status": "version-and-sha256-pinned-source-candidate",
+      "source_commit": null,
+      "source_sha256": "bef5002c32f4f50bd55b005da12cff64eca8783e7eaf86a06a62410164bab725",
+      "source_url": "https://files.pythonhosted.org/packages/94/5b/c9fe0db5e83ee1c39b2258fa21d23b15e1a60786b6c5990ee5074ead8bb6/pyinstaller_hooks_contrib-2026.6.tar.gz",
+      "version": "2026.6"
+    },
+    {
+      "component_id": "python-distribution:pymeshlab",
+      "license_declared": "GPL-3.0-only",
+      "name": "pymeshlab",
+      "pairing_status": "blocked-no-source-archive-sha256",
+      "source_commit": "1dc199f9b6c43e58b6db346ba4600866b950b8ae",
+      "source_sha256": null,
+      "source_url": "https://github.com/cnr-isti-vclab/PyMeshLab",
+      "version": "2025.7.post1"
+    },
+    {
+      "component_id": "python-distribution:pytetwild",
+      "license_declared": "MPL-2.0",
+      "name": "pytetwild",
+      "pairing_status": "version-and-sha256-pinned-source-candidate",
+      "source_commit": null,
+      "source_sha256": "8ea2c460036c757e8f0d27cd2ce3390afa675a1a4d031a6ce209326c592bd6ba",
+      "source_url": "https://files.pythonhosted.org/packages/2b/dc/55324467c4fe206331fda63d60231e9b6669b92afb2e19d0326913662db3/pytetwild-0.3.0.tar.gz",
+      "version": "0.3.0"
+    },
+    {
+      "component_id": "python-distribution:rtree",
+      "license_declared": "MIT",
+      "name": "rtree",
+      "pairing_status": "version-and-sha256-pinned-source-candidate",
+      "source_commit": null,
+      "source_sha256": "c6b1b3550881e57ebe530cc6cffefc87cd9bf49c30b37b894065a9f810875e46",
+      "source_url": "https://files.pythonhosted.org/packages/95/09/7302695875a019514de9a5dd17b8320e7a19d6e7bc8f85dcfb79a4ce2da3/rtree-1.4.1.tar.gz",
+      "version": "1.4.1"
+    },
+    {
+      "component_id": "python-distribution:scipy",
+      "license_declared": "BSD-3-Clause",
+      "name": "scipy",
+      "pairing_status": "version-and-sha256-pinned-source-candidate",
+      "source_commit": null,
+      "source_sha256": "67b2ad2ad54c72ca6d04975a9b2df8c3638c34ddd5b28738e94fc2b57929d378",
+      "source_url": "https://files.pythonhosted.org/packages/a7/25/c2700dfaf6442b4effaa91af24ebce5dc9d31bb4a69706313aae70d72cd0/scipy-1.18.0.tar.gz",
+      "version": "1.18.0"
+    },
+    {
+      "component_id": "python-distribution:setuptools",
+      "license_declared": "MIT",
+      "name": "setuptools",
+      "pairing_status": "version-and-sha256-pinned-source-candidate",
+      "source_commit": null,
+      "source_sha256": "025bccbbf0fa05b6192bc64ae1e7b16e001fd6d6d4d5de03c97b1c1ade523bef",
+      "source_url": "https://files.pythonhosted.org/packages/34/26/f5d29e25ffdb535afef2d35cdb55b325298f96debd670da4c325e08d70f4/setuptools-83.0.0.tar.gz",
+      "version": "83.0.0"
+    },
+    {
+      "component_id": "python-distribution:shapely",
+      "license_declared": "BSD-3-Clause AND LGPL-2.1-or-later",
+      "name": "shapely",
+      "pairing_status": "version-and-sha256-pinned-source-candidate",
+      "source_commit": null,
+      "source_sha256": "2ed4ecb28320a433db18a5bf029986aa8afcfd740745e78847e330d5d94922a9",
+      "source_url": "https://files.pythonhosted.org/packages/4d/bc/0989043118a27cccb4e906a46b7565ce36ca7b57f5a18b78f4f1b0f72d9d/shapely-2.1.2.tar.gz",
+      "version": "2.1.2"
+    },
+    {
+      "component_id": "python-distribution:tetgen",
+      "license_declared": "MIT AND AGPL-3.0-or-later",
+      "name": "tetgen",
+      "pairing_status": "version-and-sha256-pinned-source-candidate",
+      "source_commit": null,
+      "source_sha256": "acaff9569da73700c7df027512a518ec6e6e091b537581a6fad497e68d170cf6",
+      "source_url": "https://files.pythonhosted.org/packages/6a/37/50eace0be2c97ca2eff048de93c6ee1c4af0dc4be587a5d8e4fc83f06113/tetgen-0.8.3.tar.gz",
+      "version": "0.8.3"
+    },
+    {
+      "component_id": "python-distribution:trimesh",
+      "license_declared": "MIT",
+      "name": "trimesh",
+      "pairing_status": "version-and-sha256-pinned-source-candidate",
+      "source_commit": null,
+      "source_sha256": "0195003198baaf2550aebe612254ba2f01c385cec46c37ecc5beca8291f79a13",
+      "source_url": "https://files.pythonhosted.org/packages/a8/45/5b9943631f265073bb96ca4cc2a9de05d151cd8c1a6896fcbaac132a1355/trimesh-5.0.0.tar.gz",
+      "version": "5.0.0"
+    }
+  ],
+  "inventory_sha256": "f5945baa1b586a7367ff7c81b426a0caf94fde5a4bcef32333e4b142e7552bde",
+  "known_gaps": [
+    {
+      "id": "native-binary-to-source-closure-review",
+      "reason": "Each Mach-O file and bundled/static native component must be paired with complete source and build provenance.",
+      "status": "unresolved"
+    },
+    {
+      "id": "pymeshlab-arm64-wheel-closure",
+      "reason": "The PyMeshLab arm64 wheel has no PyPI sdist and its MeshLab/Qt/native closure is not yet byte-bound to complete sources.",
+      "status": "unresolved"
+    },
+    {
+      "id": "pytetwild-arm64-wheel-closure",
+      "reason": "The upstream arm64 PyTetWild wheel is distinct from the approved Windows controlled rebuild; fTetWild/GMP/build inputs require separate proof.",
+      "status": "unresolved"
+    },
+    {
+      "id": "lgpl-relinking-practical-validation",
+      "reason": "Qt, GEOS, GMP and any other LGPL libraries must be identified and replacement/relinking steps verified on an actual volunteer Mac.",
+      "status": "unresolved"
+    },
+    {
+      "id": "complete-corresponding-source-archive",
+      "reason": "No complete source archive and immutable public checksum/URL are paired with this exact app inventory yet.",
+      "status": "unresolved"
+    },
+    {
+      "id": "owner-distribution-approval",
+      "reason": "The project owner has not approved this exact source commit and app inventory for external tester distribution.",
+      "status": "unresolved"
+    }
+  ],
+  "known_native_closures": [
+    {
+      "id": "cpython-3.13.14-macos-runtime",
+      "license_declared": "PSF-2.0",
+      "name": "CPython macOS runtime",
+      "review_status": "source-version-known-binary-identity-inventory-required",
+      "source_url": "https://github.com/python/cpython/tree/v3.13.14",
+      "version": "3.13.14"
+    },
+    {
+      "additional_source_url": "https://github.com/tcltk/tk/tree/core-8-6-18",
+      "id": "tcl-tk-8.6.18",
+      "license_declared": "TCL",
+      "name": "Tcl and Tk",
+      "review_status": "source-version-known-binary-identity-inventory-required",
+      "source_url": "https://github.com/tcltk/tcl/tree/core-8-6-18",
+      "version": "8.6.18"
+    },
+    {
+      "id": "cpython-openssl-macos-runtime",
+      "license_declared": "Apache-2.0",
+      "name": "OpenSSL carried by the CPython macOS runtime",
+      "review_status": "blocked-pending-exact-version-and-source-proof",
+      "source_url": "https://github.com/openssl/openssl",
+      "version": "inventory-does-not-establish-patch-version"
+    },
+    {
+      "id": "pytetwild-ftetwild-gmp-arm64-wheel-closure",
+      "license_declared": "MPL-2.0 AND (LGPL-3.0-or-later OR GPL-2.0-or-later)",
+      "name": "PyTetWild arm64 native closure",
+      "review_status": "blocked-pending-wheel-build-and-native-closure-proof",
+      "source_url": "https://github.com/pyvista/pytetwild",
+      "version": "0.3.0-wheel-specific"
+    },
+    {
+      "id": "pymeshlab-meshlab-qt-arm64-wheel-closure",
+      "license_declared": "GPL-3.0-only AND LGPL-3.0-only",
+      "name": "PyMeshLab arm64 native closure",
+      "review_status": "blocked-pending-wheel-build-and-native-closure-proof",
+      "source_url": "https://github.com/cnr-isti-vclab/PyMeshLab",
+      "version": "2025.7.post1-wheel-specific"
+    },
+    {
+      "id": "shapely-geos-arm64-wheel-closure",
+      "license_declared": "BSD-3-Clause AND LGPL-2.1-or-later",
+      "name": "Shapely and bundled GEOS arm64 closure",
+      "review_status": "blocked-pending-geos-binary-source-and-relink-proof",
+      "source_url": "https://github.com/shapely/shapely/tree/2.1.2",
+      "version": "2.1.2-wheel-specific"
+    },
+    {
+      "id": "tetgen-1.6-core",
+      "license_declared": "AGPL-3.0-or-later",
+      "name": "TetGen core carried by tetgen",
+      "review_status": "blocked-pending-extension-to-source-identity-proof",
+      "source_url": "https://github.com/pyvista/tetgen/tree/v0.8.3/src",
+      "version": "1.6.0"
+    },
+    {
+      "id": "pillow-arm64-wheel-native-closure",
+      "license_declared": "NOASSERTION",
+      "name": "Pillow arm64 wheel native closure",
+      "review_status": "blocked-pending-vendored-library-source-and-license-proof",
+      "source_url": "https://github.com/python-pillow/Pillow/tree/11.2.1",
+      "version": "11.2.1-wheel-specific"
+    },
+    {
+      "additional_source_url": "https://github.com/scipy/scipy/tree/v1.18.0",
+      "id": "numpy-scipy-arm64-wheel-native-closure",
+      "license_declared": "NOASSERTION",
+      "name": "NumPy and SciPy arm64 wheel native closure",
+      "review_status": "blocked-pending-vendored-library-source-and-license-proof",
+      "source_url": "https://github.com/numpy/numpy/tree/v2.5.1",
+      "version": "2.5.1-and-1.18.0-wheel-specific"
+    },
+    {
+      "id": "rtree-libspatialindex-arm64-wheel-closure",
+      "license_declared": "MIT",
+      "name": "Rtree and libspatialindex arm64 wheel closure",
+      "review_status": "blocked-pending-libspatialindex-version-and-source-proof",
+      "source_url": "https://github.com/Toblerity/rtree/tree/1.4.1",
+      "version": "1.4.1-wheel-specific"
+    }
+  ],
+  "schema": "chromamatter.macos-corresponding-source-manifest.v1",
+  "source_commit": "1c4bb508c24cfa82b2e67322f4ed3b9a76c9b5b6",
+  "status": "candidate-only"
+}

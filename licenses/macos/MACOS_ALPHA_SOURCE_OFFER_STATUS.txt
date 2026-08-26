@@ -1,0 +1,13 @@
+MACOS ALPHA CORRESPONDING SOURCE STATUS: BLOCKED
+================================================
+
+Source commit: 1c4bb508c24cfa82b2e67322f4ed3b9a76c9b5b6
+App inventory SHA-256: f5945baa1b586a7367ff7c81b426a0caf94fde5a4bcef32333e4b142e7552bde
+Manifest status: candidate-only
+Complete source archive URL: not available
+Complete source archive SHA-256: not available
+
+Do not distribute the tester app while this file says BLOCKED. The public
+repository contains the application source, but it is not yet the reviewed
+complete corresponding-source package for every bundled macOS native binary.
+See CORRESPONDING_SOURCE_MANIFEST.json for the unresolved component closures.

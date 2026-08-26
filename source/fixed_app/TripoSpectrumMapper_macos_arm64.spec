@@ -229,6 +229,11 @@ APP_LICENSE_DATAS = [
     entry
     for entry in tree_datas(PROJECT / "licenses", "licenses")
     if Path(entry[0]).name not in WINDOWS_RELEASE_ONLY_DOCUMENTS
+    # Exact-build distribution evidence is staged beside the app after the
+    # observed bundle inventory is generated.  Keeping it outside the signed
+    # app avoids a circular inventory -> evidence -> changed-app dependency.
+    and Path(entry[0]).relative_to(PROJECT / "licenses").parts[0].casefold()
+    != "macos"
 ]
 FILAMENT_DATABASE_DIR = APP / "resources" / "filament_db"
 FILAMENT_DATABASE_FILENAMES = (
