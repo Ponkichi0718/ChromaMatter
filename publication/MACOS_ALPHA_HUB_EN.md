@@ -5,9 +5,16 @@ separate ChromaMatter **Apple Silicon / macOS 15+ alpha**.
 
 ## Download status
 
-**There is no approved tester download yet.** The first real Apple Silicon CI
-build and its distribution review are in progress. A GitHub Actions artifact
-with `diagnostics` in its name is not the application.
+**There is no approved tester download yet.** On real Apple Silicon CI, the app
+now builds and passes source tests, native dependency probes, packaged native
+and rendering self-tests, and Japanese and English UI smoke tests. The separate
+distribution-compliance review is still open. A GitHub Actions artifact with
+`diagnostics` in its name is not the application.
+
+Technical reference only: [successful diagnostics run
+#32941504793](https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32941504793),
+source commit `29d46240e10732653c67e8fc85841d39fcef6601`. That run intentionally did
+not publish a tester application.
 
 When a build is approved, the owner will update this post with exactly one:
 
@@ -20,7 +27,7 @@ Do not use an app sent through a comment, mirror, or file-sharing service.
 
 ## Start here
 
-1. Read the [English volunteer test guide](https://github.com/Ponkichi0718/ChromaMatter/blob/codex/macos-arm64-flat4-test3/publication/MACOS_ALPHA_TESTING_EN.md).
+1. Read the [English volunteer test guide](https://github.com/Ponkichi0718/ChromaMatter/blob/main/publication/MACOS_ALPHA_TESTING_EN.md).
 2. When the approved build appears above, verify its SHA-256.
 3. Run the 10-minute checklist with the supplied public four-colour GLB.
 4. Reply here with a successful or partly successful compatibility result.
@@ -71,7 +78,9 @@ notarized, and is not a supported public macOS Release. Do not redistribute it.
 Never upload a private, purchased, customer, confidential, or third-party
 model. Remove user names, home paths, account details, serial numbers, and
 private filenames from screenshots and logs. Do not post credentials or a
-security vulnerability publicly.
+security vulnerability publicly; use the private
+[Report a vulnerability](https://github.com/Ponkichi0718/ChromaMatter/security/advisories/new)
+form instead.
 
 The displayed application version remains `0.8beta`. The stable Windows build
 and Windows Flat Four Test 3 remain separate downloads.
