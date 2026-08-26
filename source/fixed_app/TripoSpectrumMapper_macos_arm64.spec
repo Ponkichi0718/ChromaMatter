@@ -88,17 +88,21 @@ CPYTHON_LICENSE = require_first_file(
     "CPython runtime license", CPYTHON_LICENSE_CANDIDATES
 )
 
-TCL_LIBRARY = Path(tkinter.Tcl().eval("info library")).resolve()
-TCL_TK_LICENSE_CANDIDATES = (
-    TCL_LIBRARY / "license.terms",
-    TCL_LIBRARY.parent / "tk8.6" / "license.terms",
-    TCL_LIBRARY.parent / "tcl8.6" / "license.terms",
-    Path(sys.base_prefix) / "lib" / "tk8.6" / "license.terms",
-    Path(sys.base_prefix) / "lib" / "tcl8.6" / "license.terms",
-    Path(sys.base_prefix) / "tcl" / "tk8.6" / "license.terms",
+TCL_INTERPRETER = tkinter.Tcl()
+TCL_LIBRARY = Path(TCL_INTERPRETER.eval("info library")).resolve()
+TCL_PATCHLEVEL = str(TCL_INTERPRETER.eval("info patchlevel"))
+if TCL_PATCHLEVEL != "8.6.18":
+    raise RuntimeError(
+        "The pinned CPython 3.13.14 macOS build must carry Tcl/Tk 8.6.18; "
+        f"found Tcl {TCL_PATCHLEVEL}"
+    )
+TCL_LICENSE = require_first_file(
+    "reviewed Tcl 8.6.18 license",
+    (PROJECT / "licenses" / "LICENSE_TCL_8_6_18.txt",),
 )
-TCL_TK_LICENSE = require_first_file(
-    "Tcl/Tk runtime license", TCL_TK_LICENSE_CANDIDATES
+TK_LICENSE = require_first_file(
+    "reviewed Tk 8.6.18 license",
+    (PROJECT / "licenses" / "LICENSE_TK_8_6_18.txt",),
 )
 
 
@@ -247,7 +251,8 @@ a = Analysis(
         (str(APP / "assets" / "mixer_model.npz"), "assets"),
         (str(APP / "assets" / "obj_adjuster_icon.png"), "assets"),
         (str(CPYTHON_LICENSE), "licenses/cpython"),
-        (str(TCL_TK_LICENSE), "licenses/tcl-tk"),
+        (str(TCL_LICENSE), "licenses/tcl-tk"),
+        (str(TK_LICENSE), "licenses/tcl-tk"),
         (str(APP / "THIRD_PARTY_VOLUME_LICENSES_JA.md"), "."),
     ]
     + FILAMENT_DATABASE_DATAS

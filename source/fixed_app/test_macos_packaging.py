@@ -97,6 +97,22 @@ class MacOSAlphaSpecTests(unittest.TestCase):
         self.assertNotIn("licenses/native-closure", text)
         self.assertIn("/ pure.parent", text)
 
+    def test_spec_pins_and_bundles_exact_tcl_tk_licenses(self) -> None:
+        text = SPEC.read_text(encoding="utf-8")
+        for component in ("TCL", "TK"):
+            license_path = (
+                REPOSITORY / "licenses" / f"LICENSE_{component}_8_6_18.txt"
+            )
+            with self.subTest(component=component):
+                self.assertTrue(license_path.is_file())
+                self.assertIn(
+                    "notice is included verbatim in any distributions",
+                    license_path.read_text(encoding="utf-8"),
+                )
+                self.assertIn(license_path.name, text)
+        self.assertIn('TCL_PATCHLEVEL != "8.6.18"', text)
+        self.assertNotIn("TCL_TK_LICENSE_CANDIDATES", text)
+
 
 class MacOSAlphaAutomationTests(unittest.TestCase):
     def test_build_and_audit_scripts_keep_platform_gates_fail_closed(self) -> None:
