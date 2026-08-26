@@ -4,8 +4,6 @@ import hashlib
 import json
 import os
 import queue
-import shutil
-import subprocess
 import sys
 import traceback
 from concurrent.futures import Future, ThreadPoolExecutor
@@ -131,6 +129,13 @@ from .gltf_import import (
     inspect_gltf_asset,
 )
 from .paint_gui import PaintEditorWindow
+from .platform_runtime import (
+    application_data_directory,
+    application_window_title,
+    find_snapmaker_orca,
+    launch_snapmaker_orca,
+    open_folder,
+)
 from .reference_parts import (
     ReferencePartMatch,
     extract_corner_foreground,
@@ -301,8 +306,7 @@ def _radial_error_reason(i18n: Translator, exc: Exception) -> str:
     )
 
 def _configuration_dir() -> Path:
-    base = Path(os.environ.get("APPDATA", Path.home()))
-    return base / "TripoSpectrumMapper"
+    return application_data_directory()
 
 
 _PREFERENCES_SCHEMA = "obj-adjuster.preferences.v5-developer-features"
@@ -844,7 +848,7 @@ class MapperApp:
         initial_project: Path | None = None,
     ) -> None:
         self.root = root
-        self.root.title(APP_TITLE)
+        self.root.title(application_window_title(APP_TITLE))
         self.root.geometry("1540x920")
         self.root.minsize(1180, 740)
         self.root.configure(bg=BG)
@@ -945,8 +949,30 @@ class MapperApp:
         self._draw_comparison_canvas()
         self.poll_after_id: str | None = self.root.after(80, self._poll_queue)
         if smoke_test:
-            self.root.withdraw()
-            self.root.after(700, self._on_close)
+            # A packaged smoke must prove that Tk can map and update a real
+            # window on the target desktop, not merely construct withdrawn
+            # widgets. Model/OpenGL workflow validation remains a separate
+            # native gate and volunteer test responsibility.
+            self.root.update_idletasks()
+            self.root.update()
+            smoke_metrics = {
+                "mapped": int(self.root.winfo_ismapped()),
+                "width": int(self.root.winfo_width()),
+                "height": int(self.root.winfo_height()),
+                "screen_width": int(self.root.winfo_screenwidth()),
+                "screen_height": int(self.root.winfo_screenheight()),
+            }
+            if (
+                smoke_metrics["mapped"] != 1
+                or smoke_metrics["width"] <= 1
+                or smoke_metrics["height"] <= 1
+                or smoke_metrics["screen_width"] < 800
+                or smoke_metrics["screen_height"] < 600
+            ):
+                raise RuntimeError(
+                    f"Packaged UI smoke window is invalid: {smoke_metrics}"
+                )
+            self.root.after(900, self._on_close)
         elif initial_project is not None:
             self.root.after(180, lambda: self._load_project_path(initial_project))
 
@@ -8937,7 +8963,7 @@ class MapperApp:
                     folder=folder,
                 )
             )
-            open_folder = messagebox.askyesno(
+            should_open_folder = messagebox.askyesno(
                 self.i18n.text("dialog.calibration_done.title"),
                 self.i18n.text(
                     "dialog.calibration_done.message",
@@ -8946,11 +8972,11 @@ class MapperApp:
                 ),
                 parent=self.root,
             )
-            if not open_folder:
+            if not should_open_folder:
                 return
             try:
-                os.startfile(result.folder)  # type: ignore[attr-defined]
-            except (AttributeError, OSError) as exc:
+                open_folder(result.folder)
+            except OSError as exc:
                 messagebox.showerror(
                     self.i18n.text("dialog.calibration_folder_error.title"),
                     self.i18n.text(
@@ -9095,7 +9121,7 @@ class MapperApp:
                 collapsed = sum(
                     len(group) for group in result.collapsed_target_groups
                 )
-                open_folder = messagebox.askyesno(
+                should_open_folder = messagebox.askyesno(
                     self.i18n.text("color_depth.done_title"),
                     self.i18n.text(
                         "color_depth.done_message",
@@ -9106,10 +9132,10 @@ class MapperApp:
                     ),
                     parent=self.root,
                 )
-                if open_folder:
+                if should_open_folder:
                     try:
-                        os.startfile(result.model_path.parent)  # type: ignore[attr-defined]
-                    except (AttributeError, OSError):
+                        open_folder(result.model_path.parent)
+                    except OSError:
                         pass
 
             def convert_error(exc: Exception, _details: str) -> bool:
@@ -9237,7 +9263,7 @@ class MapperApp:
             collapsed = sum(
                 len(group) for group in result.collapsed_target_groups
             )
-            open_folder = messagebox.askyesno(
+            should_open_folder = messagebox.askyesno(
                 self.i18n.text("color_depth.done_title"),
                 self.i18n.text(
                     "color_depth.done_message",
@@ -9248,10 +9274,10 @@ class MapperApp:
                 ),
                 parent=self.root,
             )
-            if open_folder:
+            if should_open_folder:
                 try:
-                    os.startfile(result.model_path.parent)  # type: ignore[attr-defined]
-                except (AttributeError, OSError):
+                    open_folder(result.model_path.parent)
+                except OSError:
                     pass
 
         def on_error(exc: Exception, _details: str) -> bool:
@@ -9337,7 +9363,7 @@ class MapperApp:
 
         def done(result) -> None:
             self.status_var.set(str(result.model_path))
-            open_folder = messagebox.askyesno(
+            should_open_folder = messagebox.askyesno(
                 self.i18n.text("radial.done_title"),
                 self.i18n.text(
                     "radial.done_message",
@@ -9347,10 +9373,10 @@ class MapperApp:
                 ),
                 parent=self.root,
             )
-            if open_folder:
+            if should_open_folder:
                 try:
-                    os.startfile(result.model_path.parent)  # type: ignore[attr-defined]
-                except (AttributeError, OSError):
+                    open_folder(result.model_path.parent)
+                except OSError:
                     pass
 
         def on_error(exc: Exception, _details: str) -> bool:
@@ -9744,23 +9770,20 @@ class MapperApp:
                     if result.individual_only
                     else result.model_path.parent
                 )
-                os.startfile(output_folder)  # type: ignore[attr-defined]
+                open_folder(output_folder)
 
         self._submit_main("3MFを書き出しています", work, done)
 
     def _launch_orca(self) -> None:
-        candidates = [
-            Path(os.environ.get("ProgramFiles", r"C:\Program Files")) / "Snapmaker_Orca" / "snapmaker-orca.exe",
-            Path(os.environ.get("ProgramFiles", r"C:\Program Files")) / "Snapmaker Orca" / "Snapmaker Orca.exe",
-            Path(os.environ.get("LOCALAPPDATA", "")) / "Programs" / "Snapmaker Orca" / "Snapmaker Orca.exe",
-            Path(os.environ.get("LOCALAPPDATA", "")) / "Snapmaker Orca" / "Snapmaker Orca.exe",
-        ]
-        for name in ("Snapmaker Orca.exe", "snapmaker-orca.exe", "Snapmaker_Orca.exe"):
-            found = shutil.which(name)
-            if found:
-                candidates.insert(0, Path(found))
-        executable = next((path for path in candidates if path.is_file()), None)
+        executable = find_snapmaker_orca()
         if executable is None:
+            if sys.platform == "darwin":
+                messagebox.showinfo(
+                    self.i18n.text("dialog.orca_macos_manual.title"),
+                    self.i18n.text("dialog.orca_macos_manual.message"),
+                    parent=self.root,
+                )
+                return
             value = filedialog.askopenfilename(
                 parent=self.root,
                 title=self.i18n.text("filedialog.select_orca"),
@@ -9772,7 +9795,7 @@ class MapperApp:
                 return
             executable = Path(value)
         try:
-            subprocess.Popen([str(executable)], cwd=str(executable.parent))
+            launch_snapmaker_orca(executable)
             self.status_var.set("Snapmaker Orcaを起動しました。3MFはプロジェクトとして開いてください")
         except OSError as exc:
             messagebox.showerror(

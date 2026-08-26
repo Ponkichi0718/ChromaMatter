@@ -6,6 +6,13 @@
 
 `synthetic_multipart_vertex_color.obj`は、実在の人物、キャラクター、製品、ブランド、生成サービスの出力に依存せず、このプロジェクトの公開検証用としてゼロから作成した小型の合成モデルです。個人所有の実モデルや元画像を配布せずに、OBJ読込、パーツ認識、頂点カラー、閉鎖性、色変換を再現確認する目的で使用します。
 
+macOS alpha協力テスト用の`ChromaMatter-Public-Four-Color-Test.glb`は、
+`generate_macos_alpha_test_glb.py`からworkflow内で決定的に生成します。基本形状の
+直方体4個と赤・青・白・黒の`COLOR_0`だけで構成し、外部texture、private metadata、
+生成service由来素材を含みません。構成と確認手順は
+`MACOS_ALPHA_TEST_MODEL_README.md`を参照してください。GLB binaryはrepositoryへ
+直接保存せず、テスター成果物を作るworkflow内で生成します。
+
 ## サンプルの構成
 
 - 頂点18個、三角形24面

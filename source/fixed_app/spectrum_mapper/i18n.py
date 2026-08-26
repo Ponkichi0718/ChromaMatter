@@ -6,6 +6,8 @@ import os
 from pathlib import Path
 from typing import Any, Iterable
 
+from .platform_runtime import application_data_directory
+
 
 DEFAULT_LANGUAGE = "ja"
 SUPPORTED_LANGUAGES = ("ja", "en")
@@ -1601,6 +1603,14 @@ CATALOG: dict[str, dict[str, str]] = {
         "en": "Choose a Folder for the Physical Comparison Chart",
     },
     "filedialog.select_orca": {"ja": "Snapmaker Orcaの実行ファイルを選択", "en": "Select the Snapmaker Orca Executable"},
+    "dialog.orca_macos_manual.title": {
+        "ja": "Snapmaker Orcaを自動検出できません",
+        "en": "Snapmaker Orca Was Not Detected",
+    },
+    "dialog.orca_macos_manual.message": {
+        "ja": "Macの標準ApplicationsフォルダーからSnapmaker Orcaを検出できませんでした。3MFを書き出し、Snapmaker Orca側で「プロジェクトとして開く」を選んでください。",
+        "en": "Snapmaker Orca was not found in the standard macOS Applications folders. Export the 3MF, then use Open as project from Snapmaker Orca.",
+    },
     # Paint editor (the editor inherits the selected app language when opened)
     "paint.title": {"ja": "マニュアル修正", "en": "Manual Editing"},
     "paint.orbit": {"ja": "回転", "en": "Orbit"},
@@ -2404,8 +2414,7 @@ class Translator:
 
 
 def default_preferences_path() -> Path:
-    base = Path(os.environ.get("APPDATA", Path.home()))
-    return base / "TripoSpectrumMapper" / "ui_preferences.json"
+    return application_data_directory() / "ui_preferences.json"
 
 
 def load_language(path: Path | None = None) -> str:

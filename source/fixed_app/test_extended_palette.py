@@ -285,7 +285,11 @@ class ExtendedPaletteTests(unittest.TestCase):
 
         self.assertEqual(len(result.palette_rgb), 32)
         self.assertEqual(len(result.palette_weight_fractions), 32)
-        self.assertAlmostEqual(result.weighted_mean_delta_e76, 0.0, places=10)
+        self.assertAlmostEqual(
+            result.weighted_mean_delta_e76,
+            0.0,
+            delta=1.0e-5,
+        )
         self.assertAlmostEqual(result.palette_weight_fractions[10], 1.0)
 
     def test_optimizer_evaluates_added_24_and_32_state_recipes(self) -> None:

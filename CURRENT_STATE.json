@@ -260,6 +260,98 @@
       "release_note": "Flat Four Test 3 is a separate public prerelease built from exact tag v0.8beta-r32.2-flat4-test3 at beddc110922fdccc4a8c48def286014ad23cd0ed. Its five assets passed exact-source/build/compliance gates, anonymous post-publication redownload with byte-size and SHA-256 parity, and fresh-extracted Windows self-test plus Japanese/English UI smoke. It preserves eye whites conservatively while absorbing only small high-confidence baked white/gray highlights; it is not semantic recognition. The Test 3 package contains no DemoData, physical-printer validation remains pending, and multipart solidification/part-specific 3MF remain input-dependent beta behavior. Published stable r32.2 is unchanged and preferred; Flat Four Test 2 remains immutable historical prerelease evidence."
     }
   },
+  "macos_alpha_workstream": {
+    "channel": "separate Developer ID unsigned and unnotarized alpha",
+    "target": "Apple Silicon arm64 on macOS 15 or newer",
+    "branch": "codex/macos-arm64-flat4-test3",
+    "base_commit": "9c7be309bc2a8268d0fa9a4a0c63ad444759120d",
+    "display_version": "0.8beta",
+    "bundle_short_version": "0.8.0",
+    "status": "technical-ci-passed; no approved tester download; distribution blocked by 253 unresolved Mach-O source/relink closures",
+    "windows_release_impact": "none; the published Windows stable and Flat Four test assets remain unchanged",
+    "runtime_scope": [
+      "Uses the normal macOS Application Support directory while preserving the legacy Windows settings path.",
+      "Replaces Windows-only folder opening and Snapmaker Orca discovery with platform-specific behavior and a manual Open as project fallback.",
+      "Loads PyTetWild native wrappers from Windows or macOS layouts without weakening topology or 3MF fail-closed checks.",
+      "Provides a strict source and packaged self-test that executes PyTetWild, required PyMeshLab filters, and a real ModernGL framebuffer draw and readback."
+    ],
+    "ci": {
+      "workflow": ".github/workflows/macos-arm64-alpha.yml",
+      "runner": "macos-15 arm64",
+      "python": "CPython 3.13.14 arm64 with exact hash-locked wheels",
+      "automatic_trigger": "one push run on codex/macos-arm64-flat4-test3 when build, package, guide, sample, source, or audit inputs change; no duplicate pull-request run",
+      "default_output": "seven-day diagnostics only; no app archive",
+      "tester_archive": "fail-closed until the exact source commit and macOS compliance evidence are explicitly approved"
+    },
+    "volunteer_testing": {
+      "github_discussions_enabled": true,
+      "testing_board": "https://github.com/Ponkichi0718/ChromaMatter/discussions/9",
+      "english_guide": "publication/MACOS_ALPHA_TESTING_EN.md",
+      "reproducible_problem_form": ".github/ISSUE_TEMPLATE/macos_alpha_report.yml",
+      "basic_test": "10-minute Pass/Fail/Not-tested checklist before optional large-model or physical-print testing",
+      "public_test_model": "deterministic CC0 static GLB generated during approved tester staging; 32 vertices, 48 triangles, four watertight bodies, exact red/blue/white/black COLOR_0, no texture or third-party/private metadata",
+      "availability": "no approved tester download yet; Discussion #9 is the single status and future approved-build hub",
+      "draft_pull_request": {
+        "number": 12,
+        "url": "https://github.com/Ponkichi0718/ChromaMatter/pull/12",
+        "status": "open Draft; source and review workspace only; not an approved tester download"
+      }
+    },
+    "validation": {
+      "windows_regression": "1478 tests in 686.573s, 0 failures, 2 optional skips after the macOS port and source-coverage audit; the later workflow/source-identity test-only follow-up passed its 26 focused tests",
+      "final_targeted": "35 macOS packaging/source-coverage tests passed after the hardened stager review; 26 focused tests passed after binding CI diagnostics to the exact source head",
+      "tester_workflow_focused": "49 tests passed after adding the public GLB fixture, workflow summary, English tester guide, Issue form, README path, and Discussion hub; YAML parse, shell syntax, Python compile, and diff checks passed",
+      "current_windows_full_regression": "1478 tests in 686.573s, 0 failures, 2 optional skips; subsequent source-audit and exact-source workflow refinements were tooling/test-only and passed their focused suites",
+      "windows_ui_smoke": "source Japanese and English visible-window smoke passed",
+      "mac_lock_dry_run": "all 23 exact macOS 15 arm64 CPython 3.13 wheels resolved with hash enforcement and no source distributions",
+      "mac_actual_build": "The latest Apple Silicon run completed app packaging and all technical checks successfully; diagnostics only were uploaded and no tester application was distributed.",
+      "latest_successful_ci_run": {
+        "url": "https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32947038458",
+        "source_commit": "9404926a6aadbb918ade7855f4141e263c3aafba",
+        "result": "success",
+        "source_tests": "passed",
+        "native_dependency_probe": "passed",
+        "packaged_native_render_self_test": "passed",
+        "packaged_ui_smoke": {
+          "ja": "passed",
+          "en": "passed"
+        },
+        "published_artifact": "diagnostics only",
+        "tester_artifact": false,
+        "inventory_sha256": "59113A39C8C7BACB566DD3D23E8374CA56973F1D6DB3A472FDDFBF0EAEE45D22",
+        "source_coverage_report_sha256": "73907E2E4C5C95E5893F995E7FC74C557DF57E79A7E6131F80021F2545720DAB"
+      },
+      "source_closure_audit": {
+        "inventory_run": "https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32947038458",
+        "inventory_source_commit": "9404926a6aadbb918ade7855f4141e263c3aafba",
+        "mach_o_total": 317,
+        "mach_o_mapped": 317,
+        "mach_o_unresolved_source_or_relink_closure": 253,
+        "status": "candidate-only",
+        "engineering_gate_passed": false,
+        "legal_conclusion": false
+      },
+      "first_ci_run": {
+        "url": "https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32938795209",
+        "source_commit": "748c05b5d3faaa1987a67ccd1e73b824a5fde44d",
+        "result": "failed before packaging on test portability only",
+        "native_gate": "passed",
+        "tester_artifact": false,
+        "fix_status": "superseded by later successful technical CI; retained as historical diagnosis"
+      }
+    },
+    "distribution_gate": {
+      "status": "blocked-native-source-closure",
+      "reason": "All 317 packaged Mach-O paths are classified, but 253 still have unresolved exact source, build-provenance, or relinking evidence.",
+      "native_mach_o_total": 317,
+      "native_mach_o_mapped": 317,
+      "native_mach_o_unresolved_source_or_relink_closure": 253,
+      "public_release": false,
+      "tester_distribution": false,
+      "owner_approval": false
+    },
+    "next_exact_task": "Resolve and review the exact source/build/relink evidence for the 253 unresolved Mach-O files, produce the exact-commit corresponding-source evidence, then obtain explicit owner approval and rerun the fail-closed tester-distribution gate. Until then keep Discussion #9 no-download and PR #12 Draft."
+  },
   "current_features": {
     "public_main_window": [
       "Compact Filament and Output pages leave more room for the preview.",
@@ -674,6 +766,8 @@
   "known_pending": [
     "Validate the final Manual Editing interaction on physical XP-PEN hardware.",
     "Run a physical printer matrix and confirm exported projects in Snapmaker Orca slice preview.",
+    "Complete and review exact macOS source/build/relink closure for the 253 unresolved Mach-O files.",
+    "After the distribution gate passes and owner approval is explicit, publish one approved tester ZIP and begin the 10-minute volunteer matrix through Discussion #9 and the macOS Issue form.",
     "Complete the Innovation Fund submission materials and community post using the published immutable v0.8beta-r32.2 prerelease.",
     "Improve multipart solidification coverage: the bundled DemoData succeeds, but other multipart files may still fail solidification or 3MF export.",
     "Keep the retained Decal beta implementation inaccessible until it is separately revalidated and explicitly reintroduced."

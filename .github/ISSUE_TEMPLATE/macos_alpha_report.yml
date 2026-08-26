@@ -1,0 +1,189 @@
+name: macOS alpha reproducible problem
+description: Report one reproducible Apple Silicon macOS 15+ alpha defect.
+title: "[macOS alpha]: "
+labels:
+  - compatibility
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for helping test ChromaMatter. Use Discussions for successful results, setup questions, and general observations. Use this form for one reproducible defect. Do **not** upload a private, purchased, customer, or third-party model. Remove names, home paths, account details, and other sensitive data from evidence.
+
+  - type: input
+    id: workflow_run
+    attributes:
+      label: Approved workflow run URL or run ID
+      description: Copy it from macOS Alpha Testing discussion #9.
+      placeholder: https://github.com/Ponkichi0718/ChromaMatter/actions/runs/...
+    validations:
+      required: true
+
+  - type: input
+    id: artifact
+    attributes:
+      label: Artifact filename and ZIP SHA-256
+      description: Include the downloaded artifact name and the verified 64-character SHA-256.
+      placeholder: ChromaMatter-macOS15-arm64-...-1234567890 / abcdef...
+    validations:
+      required: true
+
+  - type: input
+    id: source_commit
+    attributes:
+      label: Alpha source commit
+      description: Copy the commit from SOURCE_COMMIT.txt in the tester package.
+      placeholder: 40-character Git commit
+    validations:
+      required: true
+
+  - type: input
+    id: mac_model
+    attributes:
+      label: Mac model, chip, and RAM
+      placeholder: MacBook Air (M2, 2022), 16 GB
+    validations:
+      required: true
+
+  - type: input
+    id: macos_version
+    attributes:
+      label: macOS version
+      placeholder: macOS 15.x
+    validations:
+      required: true
+
+  - type: dropdown
+    id: first_launch
+    attributes:
+      label: First-launch result
+      options:
+        - Opened normally
+        - Opened with Finder Open
+        - Opened after Privacy & Security approval
+        - Still blocked by macOS
+        - Crashed or closed immediately
+    validations:
+      required: true
+
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Colour mode when the problem occurred
+      options:
+        - Full Spectrum
+        - Flat Four
+        - Both
+        - Not applicable / did not reach this step
+    validations:
+      required: true
+
+  - type: textarea
+    id: checklist
+    attributes:
+      label: Basic checklist results
+      description: Enter Pass, Fail, Not tested, or Could not run for each line. Complete only the steps you reached.
+      value: |
+        Japanese UI:
+        English UI:
+        Public four-colour GLB:
+        Orbit / pan / zoom:
+        Full Spectrum preview:
+        Flat Four F1-F4 only:
+        Manual Fill / Undo / Redo:
+        Output preparation / Solidify:
+        3MF export:
+        Snapmaker Orca open:
+        Project save / reload:
+    validations:
+      required: false
+
+  - type: input
+    id: input_summary
+    attributes:
+      label: Test input summary
+      description: Format, approximate triangles/parts, texture size, and generator if known. Do not identify or attach a private model.
+      placeholder: Supplied public GLB, 48 triangles, four parts, no texture
+    validations:
+      required: true
+
+  - type: dropdown
+    id: reproducibility
+    attributes:
+      label: How often does it happen?
+      options:
+        - Every time
+        - Sometimes
+        - Once
+        - Not yet retried
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Exact steps to reproduce
+      description: Start from app launch and list the smallest repeatable sequence.
+      placeholder: |
+        1. Launch the app in English.
+        2. Open the supplied public GLB.
+        3. Select Flat Four.
+        4. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected_actual
+    attributes:
+      label: Expected result and actual result
+      placeholder: |
+        Expected:
+        Actual:
+        Longest wait before stopping (if it hung):
+    validations:
+      required: true
+
+  - type: dropdown
+    id: leftover_3mf
+    attributes:
+      label: After a failed export, was a new 3MF left behind?
+      options:
+        - "No"
+        - "Yes"
+        - Export did not fail
+        - Not tested
+    validations:
+      required: true
+
+  - type: input
+    id: orca_result
+    attributes:
+      label: Snapmaker Orca version and result
+      description: Optional. Include filaments shown and layer height, or write Not tested / Could not run.
+      placeholder: Orca 2.x; opened; four filaments; 0.08 mm
+    validations:
+      required: false
+
+  - type: textarea
+    id: self_test
+    attributes:
+      label: Sanitized macOS alpha self-test result
+      description: Optional, especially if the app never opened. State whether top-level ok was true. For a failure, drag in the sanitized JSON. Remove personal paths and filenames.
+      placeholder: ok=true, Could not run, or attach sanitized macos-alpha-self-test.json
+
+  - type: textarea
+    id: sanitized_evidence
+    attributes:
+      label: Sanitized screenshots or additional logs (optional)
+      description: Attach only material you are allowed to share. Do not attach the model. Remove names, home paths, account details, serial numbers, and private filenames.
+
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy and alpha conditions
+      options:
+        - label: I did not attach or link a private, purchased, customer, or third-party model.
+          required: true
+        - label: I removed personal paths, account information, serial numbers, and other sensitive data.
+          required: true
+        - label: I understand this is a Developer ID unsigned, unnotarized, ad-hoc signed tester-only alpha and not a supported public macOS Release.
+          required: true

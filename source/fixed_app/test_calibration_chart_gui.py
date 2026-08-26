@@ -191,7 +191,7 @@ class CalibrationChartGuiTests(unittest.TestCase):
             patch(
                 "spectrum_mapper.gui.messagebox.askyesno", return_value=True
             ) as question,
-            patch("spectrum_mapper.gui.os.startfile", create=True) as startfile,
+            patch("spectrum_mapper.gui.open_folder") as open_folder,
         ):
             app._export_palette_calibration_chart()
             submitted["done"](result)
@@ -199,7 +199,7 @@ class CalibrationChartGuiTests(unittest.TestCase):
             question.call_args.args[0], "Physical Comparison Chart Created"
         )
         self.assertIn("16-state", question.call_args.args[1])
-        startfile.assert_called_once_with(result.folder)
+        open_folder.assert_called_once_with(result.folder)
 
     def test_main_worker_disables_both_export_actions(self) -> None:
         app = self._bare_app()

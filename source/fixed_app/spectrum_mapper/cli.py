@@ -11,6 +11,16 @@ from pathlib import Path
 from . import APP_DISPLAY_NAME, APP_NAME, __version__
 
 
+MACOS_ALPHA_SELF_TEST_FLAG = "--macos-alpha-self-test"
+MACOS_ALPHA_REQUIRED_PYMESHLAB_FILTERS = (
+    "compute_selection_by_self_intersections_per_face",
+    "meshing_close_holes",
+    "meshing_decimation_quadric_edge_collapse",
+    "meshing_re_orient_faces_coherently",
+    "meshing_remove_connected_component_by_face_number",
+)
+
+
 def _progress(phase: str, fraction: float, message: str) -> None:
     print(f"[{fraction * 100:5.1f}%] {phase}: {message}", flush=True)
 
@@ -457,6 +467,359 @@ def _color_depth_export_smoke() -> tuple[bool, str]:
         return False, f"error: {type(exc).__name__}: {exc}"
 
 
+def _macos_alpha_moderngl_probe(moderngl_module: object) -> dict[str, object]:
+    """Prove that a real OpenGL 3.3 framebuffer can clear and read back."""
+
+    context = None
+    framebuffer = None
+    expected = (17, 91, 203, 255)
+    result: dict[str, object] = {
+        "ok": False,
+        "required_version_code": 330,
+        "version_code": None,
+        "expected_rgba8": list(expected),
+        "read_rgba8": [],
+        "status": "not-run",
+    }
+    try:
+        create_context = getattr(
+            moderngl_module, "create_standalone_context", None
+        )
+        if not callable(create_context):
+            raise RuntimeError("create_standalone_context is unavailable")
+        context = create_context(require=330)
+        version_code = int(getattr(context, "version_code", 0))
+        result["version_code"] = version_code
+        if version_code < 330:
+            raise RuntimeError(
+                f"OpenGL version_code {version_code} is below 330"
+            )
+        framebuffer = context.simple_framebuffer(
+            (1, 1), components=4, dtype="f1"
+        )
+        framebuffer.use()
+        framebuffer.clear(*(component / 255.0 for component in expected))
+        raw = bytes(framebuffer.read(components=4, dtype="f1"))
+        actual = tuple(int(value) for value in raw)
+        result["read_rgba8"] = list(actual)
+        if len(actual) != 4:
+            raise RuntimeError(
+                f"1x1 RGBA8 read returned {len(actual)} bytes"
+            )
+        if any(abs(actual[index] - expected[index]) > 1 for index in range(4)):
+            raise RuntimeError(
+                f"framebuffer clear/read mismatch: {actual!r}"
+            )
+        result["ok"] = True
+        result["status"] = "ok"
+    except Exception as exc:
+        result["status"] = f"error: {type(exc).__name__}: {exc}"
+    finally:
+        for resource in (framebuffer, context):
+            release = getattr(resource, "release", None)
+            if callable(release):
+                try:
+                    release()
+                except Exception:
+                    pass
+    return result
+
+
+def _macos_alpha_pymeshlab_probe(
+    pymeshlab_module: object,
+) -> dict[str, object]:
+    """Require and execute every MeshLab filter needed by the print path."""
+
+    import numpy as np
+
+    filter_list = getattr(pymeshlab_module, "filter_list", None)
+    if not callable(filter_list):
+        raise RuntimeError("pymeshlab.filter_list is unavailable")
+    available = {str(value) for value in filter_list()}
+    missing = [
+        name
+        for name in MACOS_ALPHA_REQUIRED_PYMESHLAB_FILTERS
+        if name not in available
+    ]
+    applications: dict[str, dict[str, object]] = {}
+    vertices = np.asarray(
+        (
+            (0.0, 0.0, 0.0),
+            (1.0, 0.0, 0.0),
+            (0.0, 1.0, 0.0),
+            (0.0, 0.0, 1.0),
+        ),
+        dtype=np.float64,
+    )
+    faces = np.asarray(
+        ((0, 2, 1), (0, 1, 3), (1, 2, 3), (2, 0, 3)),
+        dtype=np.int32,
+    )
+    mesh_type = getattr(pymeshlab_module, "Mesh", None)
+    mesh_set_type = getattr(pymeshlab_module, "MeshSet", None)
+    if not callable(mesh_type) or not callable(mesh_set_type):
+        raise RuntimeError("pymeshlab Mesh/MeshSet API is unavailable")
+    for name in MACOS_ALPHA_REQUIRED_PYMESHLAB_FILTERS:
+        if name not in available:
+            applications[name] = {
+                "ok": False,
+                "status": "missing from filter_list",
+            }
+            continue
+        try:
+            mesh_set = mesh_set_type()
+            mesh_set.add_mesh(
+                mesh_type(
+                    vertex_matrix=vertices.copy(),
+                    face_matrix=faces.copy(),
+                ),
+                f"macOS alpha filter probe: {name}",
+            )
+            mesh_set.apply_filter(name)
+        except Exception as exc:
+            applications[name] = {
+                "ok": False,
+                "status": f"error: {type(exc).__name__}: {exc}",
+            }
+        else:
+            applications[name] = {"ok": True, "status": "ok"}
+    failed_applications = [
+        name
+        for name in MACOS_ALPHA_REQUIRED_PYMESHLAB_FILTERS
+        if not bool(applications[name]["ok"])
+    ]
+    ok = bool(not missing and not failed_applications)
+    return {
+        "ok": ok,
+        "required": list(MACOS_ALPHA_REQUIRED_PYMESHLAB_FILTERS),
+        "missing": missing,
+        "available_count": len(available),
+        "applications": applications,
+        "failed_applications": failed_applications,
+        "status": "ok" if ok else "required filter application failed",
+    }
+
+
+def _macos_alpha_tetwild_probe(wrapper: object) -> dict[str, object]:
+    """Execute one real fTetWild tetrahedralization and validate its output."""
+
+    import numpy as np
+
+    tetrahedralize = getattr(wrapper, "tetrahedralize_mesh", None)
+    if not callable(tetrahedralize):
+        raise RuntimeError("tetrahedralize_mesh is unavailable")
+    vertices = np.asarray(
+        (
+            (0.0, 0.0, 0.0),
+            (1.0, 0.0, 0.0),
+            (0.0, 1.0, 0.0),
+            (0.0, 0.0, 1.0),
+        ),
+        dtype=np.float64,
+    )
+    faces = np.asarray(
+        ((0, 2, 1), (0, 1, 3), (1, 2, 3), (2, 0, 3)),
+        dtype=np.uint32,
+    )
+    previous_cwd = Path.cwd()
+    with tempfile.TemporaryDirectory(prefix="chromamatter_macos_tetwild_") as work:
+        try:
+            os.chdir(work)
+            raw_nodes, raw_elements = tetrahedralize(
+                vertices,
+                faces,
+                True,
+                False,
+                0.05,
+                0.0,
+                5e-4,
+                10.0,
+                False,
+                0,
+                10,
+                3,
+                True,
+                False,
+                False,
+            )
+        finally:
+            os.chdir(previous_cwd)
+
+    nodes = np.asarray(raw_nodes, dtype=np.float64)
+    raw_indices = np.asarray(raw_elements)
+    if nodes.ndim != 2 or nodes.shape[1:] != (3,) or len(nodes) < 4:
+        raise RuntimeError(f"invalid fTetWild node shape: {nodes.shape!r}")
+    if not np.all(np.isfinite(nodes)):
+        raise RuntimeError("fTetWild returned non-finite node coordinates")
+    if raw_indices.ndim != 2 or raw_indices.shape[1:] != (4,) or not len(raw_indices):
+        raise RuntimeError(
+            f"invalid fTetWild tetrahedron shape: {raw_indices.shape!r}"
+        )
+    if not np.all(np.isfinite(raw_indices)):
+        raise RuntimeError("fTetWild returned non-finite tetrahedron indices")
+    if not np.all(raw_indices == np.floor(raw_indices)):
+        raise RuntimeError("fTetWild returned fractional tetrahedron indices")
+    elements = np.asarray(raw_indices, dtype=np.int64)
+    if int(elements.min()) < 0 or int(elements.max()) >= len(nodes):
+        raise RuntimeError("fTetWild returned an out-of-range tetrahedron index")
+    tetra = nodes[elements]
+    signed_six_volume = np.einsum(
+        "ij,ij->i",
+        tetra[:, 1] - tetra[:, 0],
+        np.cross(
+            tetra[:, 2] - tetra[:, 0],
+            tetra[:, 3] - tetra[:, 0],
+        ),
+    )
+    volumes = np.abs(signed_six_volume) / 6.0
+    if not np.all(np.isfinite(volumes)) or np.any(volumes <= 1e-15):
+        raise RuntimeError("fTetWild returned a degenerate tetrahedron")
+    return {
+        "ok": True,
+        "status": "ok: tetrahedralize_mesh executed",
+        "node_count": int(len(nodes)),
+        "tetrahedron_count": int(len(elements)),
+        "minimum_tetrahedron_volume": float(volumes.min()),
+    }
+
+
+def macos_alpha_self_test(
+    *,
+    platform_name: str | None = None,
+    system_name: str | None = None,
+    machine_name: str | None = None,
+    tetwild_loader=None,
+    pymeshlab_module: object | None = None,
+    moderngl_module: object | None = None,
+    output_stream=None,
+) -> int:
+    """Run the strict Apple-Silicon-only packaged alpha admission gate.
+
+    Optional dependency arguments exist only to make the fail-closed contract
+    testable on non-Mac development hosts.  The command-line path supplies none
+    of them and therefore always exercises the packaged native dependencies.
+    """
+
+    resolved_platform = str(
+        sys.platform if platform_name is None else platform_name
+    ).strip()
+    resolved_system = str(
+        platform.system() if system_name is None else system_name
+    ).strip()
+    resolved_machine = str(
+        platform.machine() if machine_name is None else machine_name
+    ).strip()
+    platform_ok = bool(
+        resolved_platform == "darwin"
+        and resolved_system == "Darwin"
+        and resolved_machine.casefold() == "arm64"
+    )
+    skipped_status = "skipped: requires Darwin arm64"
+    checks: dict[str, dict[str, object]] = {
+        "platform": {
+            "ok": platform_ok,
+            "sys_platform": resolved_platform,
+            "system": resolved_system,
+            "machine": resolved_machine,
+            "required": "Darwin arm64",
+            "status": "ok" if platform_ok else "unsupported platform",
+        },
+        "pytetwild_wrapper": {"ok": False, "status": skipped_status},
+        "pymeshlab_filters": {
+            "ok": False,
+            "required": list(MACOS_ALPHA_REQUIRED_PYMESHLAB_FILTERS),
+            "missing": list(MACOS_ALPHA_REQUIRED_PYMESHLAB_FILTERS),
+            "available_count": 0,
+            "applications": {},
+            "failed_applications": list(
+                MACOS_ALPHA_REQUIRED_PYMESHLAB_FILTERS
+            ),
+            "status": skipped_status,
+        },
+        "moderngl_framebuffer": {
+            "ok": False,
+            "required_version_code": 330,
+            "version_code": None,
+            "expected_rgba8": [17, 91, 203, 255],
+            "read_rgba8": [],
+            "status": skipped_status,
+        },
+    }
+
+    if platform_ok:
+        try:
+            if tetwild_loader is None:
+                from .volume_partition import _load_tetwild_wrapper
+
+                tetwild_loader = _load_tetwild_wrapper
+            wrapper = tetwild_loader()
+            if wrapper is None:
+                raise RuntimeError("PyTetWild wrapper loader returned None")
+            checks["pytetwild_wrapper"] = _macos_alpha_tetwild_probe(wrapper)
+        except Exception as exc:
+            checks["pytetwild_wrapper"] = {
+                "ok": False,
+                "status": f"error: {type(exc).__name__}: {exc}",
+            }
+
+        try:
+            if pymeshlab_module is None:
+                import pymeshlab as imported_pymeshlab
+
+                pymeshlab_module = imported_pymeshlab
+            checks["pymeshlab_filters"] = _macos_alpha_pymeshlab_probe(
+                pymeshlab_module
+            )
+        except Exception as exc:
+            checks["pymeshlab_filters"] = {
+                "ok": False,
+                "required": list(MACOS_ALPHA_REQUIRED_PYMESHLAB_FILTERS),
+                "missing": list(MACOS_ALPHA_REQUIRED_PYMESHLAB_FILTERS),
+                "available_count": 0,
+                "applications": {},
+                "failed_applications": list(
+                    MACOS_ALPHA_REQUIRED_PYMESHLAB_FILTERS
+                ),
+                "status": f"error: {type(exc).__name__}: {exc}",
+            }
+
+        if moderngl_module is None:
+            try:
+                import moderngl as imported_moderngl
+
+                moderngl_module = imported_moderngl
+            except Exception as exc:
+                checks["moderngl_framebuffer"]["status"] = (
+                    f"error: {type(exc).__name__}: {exc}"
+                )
+        if moderngl_module is not None:
+            checks["moderngl_framebuffer"] = _macos_alpha_moderngl_probe(
+                moderngl_module
+            )
+
+    ok = bool(platform_ok) and all(
+        bool(checks[name]["ok"])
+        for name in (
+            "pytetwild_wrapper",
+            "pymeshlab_filters",
+            "moderngl_framebuffer",
+        )
+    )
+    data = {
+        "schema": "chromamatter.macos-alpha-self-test.v1",
+        "application": f"{APP_DISPLAY_NAME} {__version__}",
+        "gate": MACOS_ALPHA_SELF_TEST_FLAG,
+        "checks": checks,
+        "ok": ok,
+    }
+    stream = sys.stdout if output_stream is None else output_stream
+    print(
+        json.dumps(data, ensure_ascii=True, indent=2, sort_keys=True),
+        file=stream,
+    )
+    return 0 if ok else 1
+
+
 def self_test() -> int:
     import importlib.metadata
 
@@ -750,6 +1113,11 @@ def build_parser() -> argparse.ArgumentParser:
         description="色付きOBJ / GLBをSnapmaker Full Spectrum用3MFへ変換します。",
     )
     parser.add_argument("--self-test", action="store_true", help="依存関係と混色モデルを確認")
+    parser.add_argument(
+        MACOS_ALPHA_SELF_TEST_FLAG,
+        action="store_true",
+        help=argparse.SUPPRESS,
+    )
     parser.add_argument("--ui-smoke", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument(
         "--ui-smoke-language",
@@ -780,6 +1148,12 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.ui_smoke_language is not None and not args.ui_smoke:
         parser.error("--ui-smoke-language requires --ui-smoke")
+    if args.self_test and args.macos_alpha_self_test:
+        parser.error(
+            f"--self-test and {MACOS_ALPHA_SELF_TEST_FLAG} are mutually exclusive"
+        )
+    if args.macos_alpha_self_test:
+        return macos_alpha_self_test()
     if args.self_test:
         return self_test()
     if args.obj:

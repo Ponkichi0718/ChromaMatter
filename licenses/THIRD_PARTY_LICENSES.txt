@@ -106,10 +106,12 @@ the applicable terms and the explicitly copied texts.
   Source revision:
   https://github.com/python/cpython-source-deps/tree/780e21d43a92832d12c2add68fcc8e03cee38bcf
 
-- Tcl/Tk 8.6 (used by tkinter)
+- Tcl/Tk 8.6.18 (used by tkinter in the pinned CPython 3.13.14 macOS build)
   License: Tcl/Tk BSD-style license
-  Exact text: `_internal/licenses/tcl-tk/license.terms`
-  Source: https://www.tcl.tk/software/tcltk/
+  Exact Tcl text: `_internal/licenses/tcl-tk/LICENSE_TCL_8_6_18.txt`
+  Exact Tk text: `_internal/licenses/tcl-tk/LICENSE_TK_8_6_18.txt`
+  Tcl source: https://github.com/tcltk/tcl/tree/core-8-6-18
+  Tk source: https://github.com/tcltk/tk/tree/core-8-6-18
 
 - NumPy 2.5.1
   License expression: BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0

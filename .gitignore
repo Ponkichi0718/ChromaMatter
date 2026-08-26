@@ -70,6 +70,10 @@ publication/*
 !publication/RELEASE_NOTES_r32.2.md
 !publication/RELEASE_NOTES_r32.2_EXPERIMENTAL_TEST_20260825.md
 !publication/RELEASE_NOTES_r32.2_FLAT4_TEST3_20260826.md
+!publication/MACOS_ALPHA_TESTING_EN.md
+!publication/MACOS_ALPHA_TESTING_JA.md
+!publication/MACOS_ALPHA_HUB_EN.md
+!publication/MACOS_ALPHA_TEST_MODEL_EXPECTED.svg
 
 # Historical local probes and recovery utilities stay in the private workspace.
 tooling/*
@@ -77,6 +81,12 @@ tooling/*
 !tooling/generate_public_icon.py
 !tooling/audit_public_tree.ps1
 !tooling/generate_binary_compliance_inventory.py
+!tooling/generate_macos_app_inventory.py
+!tooling/generate_macos_compliance_evidence.py
+!tooling/macos_compliance_components.json
+!tooling/audit_macos_source_coverage.py
+!tooling/macos_source_coverage_plan.json
+!tooling/stage_macos_corresponding_source.py
 !tooling/generate_pytetwild_rebuild_lock.py
 !tooling/pytetwild_static_closure_contract.py
 !tooling/pymeshlab_audited_native_identities.json

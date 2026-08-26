@@ -2130,12 +2130,14 @@ _original_launch_orca = gui.MapperApp._launch_orca
 
 
 def _launch_orca_fixed(self):
+    if not gui.sys.platform.startswith("win"):
+        return _original_launch_orca(self)
     program_files = Path(os.environ.get("ProgramFiles", r"C:\Program Files"))
     official = program_files / "Snapmaker_Orca" / "snapmaker-orca.exe"
     if not official.exists():
         return _original_launch_orca(self)
     try:
-        gui.subprocess.Popen([str(official)], cwd=str(official.parent))
+        gui.launch_snapmaker_orca(official)
         self.status_var.set(
             "Snapmaker Orca 2.3.5を起動しました。3MFはプロジェクトとして開いてください"
         )
@@ -2156,7 +2158,7 @@ def _app_init_fixed(self, *args, **kwargs):
     _original_app_init(self, *args, **kwargs)
     try:
         root = getattr(self, "root", self)
-        root.title(gui.APP_TITLE)
+        root.title(gui.application_window_title(gui.APP_TITLE))
     except Exception:
         pass
     try:

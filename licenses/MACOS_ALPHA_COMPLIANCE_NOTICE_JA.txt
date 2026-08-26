@@ -1,0 +1,44 @@
+ChromaMatter Apple Silicon macOS 15以降
+Developer ID未署名・未公証（ad-hoc署名）alpha
+================================================
+
+このパッケージは、保存期間の短いCIテスター用成果物です。公開済みWindows
+安定版およびFlat Four Test 3とは別物です。通常の公開macOS Release、公開・
+法令順守を完了した証拠、macOS正式対応の宣言ではありません。
+
+製品表示version：0.8beta（変更なし）
+
+ChromaMatter本体はGPL-3.0-or-laterです。同梱する第三者コンポーネントには、
+それぞれ固有の条件が残ります。alpha依存セットには、GPL-3.0-onlyの
+PyMeshLab、そのwheelが含むQt、Shapely/GEOS、PyTetWild/fTetWild、tetgen
+Python wrapperおよびTetGen本体などが含まれます。無償ソフトウェアとしての
+TetGen経路はAGPL-3.0-or-laterです。app本体のlicense、repository保管の参照用
+原文、固定wheelに付属するlicense・noticeをapp内へ収録します。ただしこれは
+macOS component表の完成や、参照文書一式が完全であることを示しません。
+
+macOS alphaでは、PyPI公開のmacOS arm64 PyTetWild wheelを使用します。
+Windows版で管理している制御再ビルド品とは別物です。macOSネイティブ
+バイナリのコンポーネント表、SBOM、LGPL再リンク確認、完全な対応ソースの
+組合せは未完了です。Windows版の表・SBOM・ネイティブ識別情報・対応ソース
+承認を、このmacOS bundleの承認として流用してはいけません。
+
+このalphaを再配布しないでください。GitHub Release、ミラー、掲示板添付など
+一般公開場所へコピーしてはいけません。通常配布の前に、macOS専用の
+ネイティブ一覧、対応ソース、再リンクの各確認を完了し、確定commitから再度
+ビルドした最終byteをDeveloper IDで署名し、Apple notarizationを行う必要が
+あります。
+
+現在のCIは、上記監査の完了をrepository側で明示的に承認するまで、外部
+テスター用ZIPの作成をfail-closedで遮断します。承認前に利用できるのは、
+配布物を含まないビルド診断だけです。
+
+Apple Silicon上で実行できるようPyInstallerがadhoc署名を行いますが、これは
+Developer ID署名やApple notarizationではありません。テスターの初回起動時
+にはFinderの「開く」またはmacOSの「プライバシーとセキュリティ」で許可が
+必要な場合があります。Gatekeeperを全体的に無効化しないでください。
+
+CIで使用した正確なrepository commitは成果物直下に記録します。公開ソース：
+
+https://github.com/Ponkichi0718/ChromaMatter
+
+この通知は技術上の安全策であり、法律相談ではありません。

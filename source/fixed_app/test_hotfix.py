@@ -254,7 +254,10 @@ class HotfixTests(unittest.TestCase):
             status_var=Variable(""),
         )
         event = SimpleNamespace(x=20, y=30, state=0x0008)
-        with mock.patch.object(hotfix, "_windows_alt_key_down", return_value=False):
+        with (
+            mock.patch.object(hotfix.os, "name", "nt"),
+            mock.patch.object(hotfix, "_windows_alt_key_down", return_value=False),
+        ):
             hotfix._on_left_press_fixed(dummy, event)
         self.assertEqual(dummy._drag_mode, "stroke")
         self.assertEqual(dummy._stroke_faces, [1])
@@ -281,9 +284,10 @@ class HotfixTests(unittest.TestCase):
             tool_var=Variable("brush"),
             status_var=Variable(""),
         )
-        hotfix._on_left_press_fixed(
-            dummy, SimpleNamespace(x=20, y=30, state=0x20000)
-        )
+        with mock.patch.object(hotfix.os, "name", "nt"):
+            hotfix._on_left_press_fixed(
+                dummy, SimpleNamespace(x=20, y=30, state=0x20000)
+            )
         self.assertEqual(dummy.paint_state_var.get(), 7)
         self.assertFalse(hasattr(dummy, "_drag_mode"))
 
@@ -786,13 +790,13 @@ class HotfixTests(unittest.TestCase):
             for stroke in range(6):
                 editor.paint_state_var.set(states[stroke % 2])
                 editor._on_left_press(
-                    SimpleNamespace(x=start[0], y=start[1], state=0x0008)
+                    SimpleNamespace(x=start[0], y=start[1], state=0)
                 )
                 editor._on_left_motion(
-                    SimpleNamespace(x=end[0], y=end[1], state=0x0108)
+                    SimpleNamespace(x=end[0], y=end[1], state=0x0100)
                 )
                 editor._on_left_release(
-                    SimpleNamespace(x=end[0], y=end[1], state=0x0008)
+                    SimpleNamespace(x=end[0], y=end[1], state=0)
                 )
 
             self.assertFalse(editor._job_running)
@@ -925,13 +929,13 @@ class HotfixTests(unittest.TestCase):
             for stroke in range(3):
                 editor.paint_state_var.set((automatic + stroke + 1) % 10)
                 editor._on_left_press(
-                    SimpleNamespace(x=start[0], y=start[1], state=0x0008)
+                    SimpleNamespace(x=start[0], y=start[1], state=0)
                 )
                 editor._on_left_motion(
-                    SimpleNamespace(x=end[0], y=end[1], state=0x0108)
+                    SimpleNamespace(x=end[0], y=end[1], state=0x0100)
                 )
                 editor._on_left_release(
-                    SimpleNamespace(x=end[0], y=end[1], state=0x0008)
+                    SimpleNamespace(x=end[0], y=end[1], state=0)
                 )
             self.assertEqual(int(prepared._hotfix_tree_revision), 0)
             self.assertEqual(len(editor._hotfix_pending_feedback), 3)

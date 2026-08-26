@@ -1,0 +1,61 @@
+# ChromaMatter Apple Silicon / macOS 15+ / CPython 3.13.14 alpha build lock.
+#
+# This file is intentionally separate from requirements-build.lock, which is
+# the frozen Windows x64 release lock.  Every hash below is the SHA-256
+# published by the official PyPI JSON API for the CPython 3.13 arm64,
+# compatible abi3, universal2, or pure-Python wheel selected for this alpha.
+# BUILD_MACOS_ARM64.sh installs this file with --require-hashes and
+# --only-binary=:all:.  Do not add an sdist hash here.
+#
+# PyTetWild currently supplies a cp312-abi3 wheel whose minimum platform tag is
+# macOS 15.0 arm64.  That native wheel is the reason this first port is limited
+# to Apple Silicon and macOS 15 or newer.  It is not the controlled Windows
+# rebuild and requires a separate native-component/source audit before any
+# normal public macOS Release.
+
+altgraph==0.17.5 \
+    --hash=sha256:f3a22400bce1b0c701683820ac4f3b159cd301acab067c51c653e06961600597
+glcontext==3.0.0 \
+    --hash=sha256:857fd83e60f15580afd369dfb651a10d84a70ec35995622d253551bfb3ff9477
+macholib==1.16.3 \
+    --hash=sha256:0e315d7583d38b8c77e815b1ecbdbf504a8258d8b3e17b61165c6feb60d18f2c
+manifold3d==3.5.2 \
+    --hash=sha256:36e68dc76087aa214546d5aee3a1ad7956b6759aa24d07e864f15c11f6139b16
+mapbox-earcut==2.0.0 \
+    --hash=sha256:d2ac5f610b3e44a3a0c4df06b5552d503b4f1c2c409eeca20dbe05112bd60955
+moderngl==5.12.0 \
+    --hash=sha256:9b09d8d15b2eaab41c8646a664429ec86af225fa25096758497cd212489d2e1e
+networkx==3.5 \
+    --hash=sha256:0030d386a9a06dee3565298b4a734b68589749a544acbb6c412dc9e2489ec6ec
+numpy==2.5.1 \
+    --hash=sha256:6165343f81b56ef8f514f396989e529b61d9dc709b99421b07e9f3e698e2287d
+packaging==26.2 \
+    --hash=sha256:5fc45236b9446107ff2415ce77c807cee2862cb6fac22b8a73826d0693b0980e
+pillow==11.2.1 \
+    --hash=sha256:b0e130705d568e2f43a17bcbe74d90958e8a16263868a12c3e0d9c8162690830
+pip==26.2.1 \
+    --hash=sha256:71138adf1f4ca900cdb7d289c21b7494329f2332b6d85f0e1c42108c0384ed3e
+pyinstaller==6.20.0 \
+    --hash=sha256:bf3be4e1284ee78ddccba5e29f99443a12a7b4673168288ffc4c9d38c6f7b90e
+pyinstaller-hooks-contrib==2026.6 \
+    --hash=sha256:fd13b8ac126b35361175edacd41a0d97080b75dd5f4b594ecefefff969509dd3
+pymeshlab==2025.7.post1 \
+    --hash=sha256:841b1fa15fc76ab73e594f4bbfcbe339782b36be67d9387ff5aa5f4ca422e180
+pytetwild==0.3.0 \
+    --hash=sha256:e0f7edd8d2e29f1439cf78dde9d2be63b3c0d4091d402b8cb291f5ca75c0312e
+resvg==0.2.0 \
+    --hash=sha256:350738ad930becec79f59367066cd0d2092a0194f69ca0ee3cc821a9b95233fe
+rtree==1.4.1 \
+    --hash=sha256:a7e48d805e12011c2cf739a29d6a60ae852fb1de9fc84220bbcef67e6e595d7d
+scipy==1.18.0 \
+    --hash=sha256:68363b7eaacd8b5dd426df56d782cc156468ac79a127a1b87ca597d6e2e82197
+setuptools==83.0.0 \
+    --hash=sha256:29b23c360f22f414dc7336bb39178cc7bcbf6021ed2733cde173f09dba19abb3
+shapely==2.1.2 \
+    --hash=sha256:8cff473e81017594d20ec55d86b54bc635544897e13a7cfc12e36909c5309a2a
+tetgen==0.8.3 \
+    --hash=sha256:004b4b41d8f3b51ec386118c026ae17d835a78686d6d168e62221fe12cf27455
+trimesh==5.0.0 \
+    --hash=sha256:51ec67d7f9f74b918f2a695da5fd511b9c084e96307648ae83f45b58f13f8009
+wheel==0.46.3 \
+    --hash=sha256:4b399d56c9d9338230118d705d9737a2a468ccca63d5e813e2a4fc7815d8bc4d
