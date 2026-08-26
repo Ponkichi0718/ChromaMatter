@@ -289,6 +289,7 @@ class MacOSSourceBackedAppTests(unittest.TestCase):
             workflow,
         )
         self.assertIn("upload_source_app_alpha:", workflow)
+        self.assertIn('"v0.8beta-macos-source-app-alpha*"', workflow)
         self.assertIn("default: false", workflow)
         self.assertIn("inputs.upload_source_app_alpha == true", workflow)
         self.assertIn("no bundled Python/runtime/Mach-O", workflow)

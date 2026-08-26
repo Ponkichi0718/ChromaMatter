@@ -261,20 +261,21 @@
     }
   },
   "macos_alpha_workstream": {
-    "channel": "public source tester alpha plus a separately gated Developer ID unsigned and unnotarized app alpha",
+    "channel": "public command-based source tester alpha plus a public source-backed Finder app alpha and a separately gated self-contained app",
     "target": "Apple Silicon arm64 on macOS 15 or newer",
     "branch": "codex/macos-arm64-tester-alpha",
     "base_commit": "9c7be309bc2a8268d0fa9a4a0c63ad444759120d",
     "display_version": "0.8beta",
     "bundle_short_version": "0.8.0",
-    "status": "source tester alpha1 published and exact-tag CI passed; prebuilt app distribution remains blocked by 253 unresolved Mach-O source/relink closures",
+    "status": "source-backed Finder app alpha1 published and exact-tag CI passed; self-contained app distribution remains blocked by 153 unresolved Mach-O source/relink closures",
     "windows_release_impact": "none; the published Windows stable and Flat Four test assets remain unchanged",
     "runtime_scope": [
       "Uses the normal macOS Application Support directory while preserving the legacy Windows settings path.",
       "Replaces Windows-only folder opening and Snapmaker Orca discovery with platform-specific behavior and a manual Open as project fallback.",
       "Loads PyTetWild native wrappers from Windows or macOS layouts without weakening topology or 3MF fail-closed checks.",
       "Provides a strict source and packaged self-test that executes PyTetWild, required PyMeshLab filters, and a real ModernGL framebuffer draw and readback.",
-      "The source tester launcher verifies Apple Silicon/macOS 15+, official CPython 3.13.14, a runtime-only hash lock, a deterministic CC0 GLB, and the native/render gate before opening the GUI; it does not use sudo or disable Gatekeeper."
+      "The source tester launcher verifies Apple Silicon/macOS 15+, official CPython 3.13.14, a runtime-only hash lock, a deterministic CC0 GLB, and the native/render gate before opening the GUI; it does not use sudo or disable Gatekeeper.",
+      "The Finder-launchable source-backed app contains no Python runtime, wheel, third-party native library, or packaged Mach-O executable; it opens the same reviewed launcher in Terminal and binds every included source/data file to the exact Git commit with a SHA-256 manifest."
     ],
     "ci": {
       "workflow": ".github/workflows/macos-arm64-alpha.yml",
@@ -285,16 +286,19 @@
       "tester_archive": "prebuilt app ZIP remains fail-closed until the exact source commit and macOS compliance evidence are explicitly approved",
       "source_tester_workflow": ".github/workflows/macos-source-alpha.yml",
       "source_tester_exact_tag_run": "https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32953920272",
-      "source_tester_exact_tag_result": "passed setup, native/render self-test, deterministic public GLB, and Japanese/English UI smoke on macOS 15 arm64"
+      "source_tester_exact_tag_result": "passed setup, native/render self-test, deterministic public GLB, and Japanese/English UI smoke on macOS 15 arm64",
+      "source_backed_app_candidate_run": "https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32964917126",
+      "source_backed_app_exact_tag_run": "https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32965133450",
+      "source_backed_app_exact_tag_result": "passed staged and fresh-extracted manifest audits, launcher setup, native/render self-test, Japanese/English UI smoke, direct app-entry self-test, and Finder/LaunchServices opening on macOS 15 arm64"
     },
     "volunteer_testing": {
       "github_discussions_enabled": true,
       "testing_board": "https://github.com/Ponkichi0718/ChromaMatter/discussions/9",
-      "english_guide": "publication/MACOS_ALPHA_TESTING_EN.md",
+      "english_guide": "publication/MACOS_SOURCE_APP_TESTING_EN.md",
       "reproducible_problem_form": ".github/ISSUE_TEMPLATE/macos_alpha_report.yml",
       "basic_test": "10-minute Pass/Fail/Not-tested checklist before optional large-model or physical-print testing",
       "public_test_model": "deterministic CC0 static GLB generated during approved tester staging; 32 vertices, 48 triangles, four watertight bodies, exact red/blue/white/black COLOR_0, no texture or third-party/private metadata",
-      "availability": "Source Tester Alpha 1 is publicly downloadable from https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-macos-source-alpha1; Discussion #9 is the result and setup-question hub",
+      "availability": "Source-backed App Alpha 1 is publicly downloadable from https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-macos-source-app-alpha1; the earlier command-based Source Tester Alpha 1 remains available; Discussion #9 is the result and setup-question hub",
       "source_tester_release": {
         "tag": "v0.8beta-macos-source-alpha1",
         "source_commit": "41d57d8960191f6fb2182461b620a044a0d3966a",
@@ -309,15 +313,31 @@
         "anonymous_redownload": "passed byte-size, SHA-256, 456-file inventory, case-fold uniqueness, LF launcher bytes, and executable-mode checks",
         "scope": "source-based tester path only; not a signed, notarized, or prebuilt app"
       },
+      "source_backed_app_release": {
+        "tag": "v0.8beta-macos-source-app-alpha1",
+        "source_commit": "aaf6665eca20180129e7b4eade3df941d7d28433",
+        "release_id": 377095171,
+        "release_url": "https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-macos-source-app-alpha1",
+        "zip": "ChromaMatter-0.8beta-macos-source-app-alpha1.zip",
+        "zip_bytes": 5608874,
+        "zip_sha256": "271D65D330A97C3DE45FEFDC4F891990BDDFEAA77C223B5B39420FFF1729879E",
+        "checksum": "SHA256SUMS-macos-source-app-alpha1.txt",
+        "checksum_bytes": 115,
+        "checksum_sha256": "CB7AFF611044C3D2987F129E9D915B0FBAD015844F5815F70888DDFDAD76A86F",
+        "app_manifest_files": 238,
+        "bundled_native_runtime_binaries": 0,
+        "anonymous_redownload": "passed byte-size, SHA-256, fresh extraction, exact source-commit identity, complete app-manifest audit, and zero-native-runtime verification",
+        "scope": "Finder-launchable source-backed app only; unsigned and unnotarized, with runtime setup on the tester Mac; not the self-contained frozen app"
+      },
       "draft_pull_request": {
         "number": 17,
         "url": "https://github.com/Ponkichi0718/ChromaMatter/pull/17",
-        "status": "open Draft against the separate macOS branch; Source Tester Alpha 1 is fixed by its tag and Release, while the prebuilt app remains gated"
+        "status": "open Draft against the separate macOS branch; Source-backed App Alpha 1 is fixed by its tag and Release, while the self-contained app remains gated"
       }
     },
     "validation": {
       "windows_regression": "1478 tests in 686.573s, 0 failures, 2 optional skips after the macOS port and source-coverage audit; the later workflow/source-identity test-only follow-up passed its 26 focused tests",
-      "final_targeted": "35 macOS packaging/source-coverage tests passed after the hardened stager review; 26 focused tests passed after binding CI diagnostics to the exact source head",
+      "final_targeted": "48 macOS source-app/launcher/packaging/source-coverage tests passed with one Windows-only bash syntax skip after the Finder app stager and exact wheel-inspection updates",
       "tester_workflow_focused": "49 tests passed after adding the public GLB fixture, workflow summary, English tester guide, Issue form, README path, and Discussion hub; YAML parse, shell syntax, Python compile, and diff checks passed",
       "current_windows_full_regression": "1478 tests in 686.573s, 0 failures, 2 optional skips; subsequent source-audit and exact-source workflow refinements were tooling/test-only and passed their focused suites",
       "windows_ui_smoke": "source Japanese and English visible-window smoke passed",
@@ -337,6 +357,22 @@
           "en": "passed"
         },
         "windows_focused_regression": "52 tests passed with one bash-only syntax test skipped on Windows; macOS Actions subsequently passed bash -n"
+      },
+      "source_backed_app_alpha1": {
+        "candidate_run": "https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32964917126",
+        "exact_tag_run": "https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32965133450",
+        "source_commit": "aaf6665eca20180129e7b4eade3df941d7d28433",
+        "result": "success",
+        "finder_app_stage_and_manifest_audit": "passed",
+        "runtime_hash_lock_install": "passed",
+        "native_render_self_test": "passed",
+        "fresh_archive_audit": "passed",
+        "launchservices_open_and_self_test": "passed",
+        "source_ui_smoke": {
+          "ja": "passed",
+          "en": "passed"
+        },
+        "anonymous_release_redownload": "passed with exact 5608874-byte ZIP and SHA-256 271D65D330A97C3DE45FEFDC4F891990BDDFEAA77C223B5B39420FFF1729879E"
       },
       "latest_successful_ci_run": {
         "url": "https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32947038458",
@@ -359,7 +395,17 @@
         "inventory_source_commit": "9404926a6aadbb918ade7855f4141e263c3aafba",
         "mach_o_total": 317,
         "mach_o_mapped": 317,
-        "mach_o_unresolved_source_or_relink_closure": 253,
+        "mach_o_unresolved_source_or_relink_closure": 153,
+        "required_wheel_inspections": [
+          "numpy",
+          "pymeshlab",
+          "pytetwild",
+          "rtree",
+          "scipy"
+        ],
+        "missing_required_wheel_inspections": [],
+        "failed_wheel_probes": [],
+        "known_gaps": 7,
         "status": "candidate-only",
         "engineering_gate_passed": false,
         "legal_conclusion": false
@@ -375,17 +421,19 @@
     },
     "distribution_gate": {
       "status": "blocked-native-source-closure",
-      "reason": "All 317 packaged Mach-O paths are classified, but 253 still have unresolved exact source, build-provenance, or relinking evidence.",
+      "reason": "All 317 packaged Mach-O paths are classified and the five required wheel inspections pass, but 153 still have unresolved exact source, build-provenance, or relinking evidence.",
       "native_mach_o_total": 317,
       "native_mach_o_mapped": 317,
-      "native_mach_o_unresolved_source_or_relink_closure": 253,
+      "native_mach_o_unresolved_source_or_relink_closure": 153,
       "public_release": false,
       "tester_distribution": false,
       "source_tester_distribution": true,
       "source_tester_distribution_scope": "exact tagged source ZIP with a guided launcher; dependencies are verified and downloaded on the tester's own Mac",
+      "source_backed_app_distribution": true,
+      "source_backed_app_distribution_scope": "exact tagged Finder .app with source/data only, no bundled runtime/native binaries, a complete SHA-256 manifest, and verified runtime setup on the tester's own Mac",
       "owner_approval": false
     },
-    "next_exact_task": "Collect Apple Silicon/macOS 15+ Source Tester Alpha reports through Discussion #9 and the dedicated Issue form. Separately resolve and review the 253 exact source/build/relink closures before approving any prebuilt app ZIP; do not treat the published source tester as evidence for that app gate."
+    "next_exact_task": "Collect Apple Silicon/macOS 15+ Source-backed App Alpha reports through Discussion #9 and the dedicated Issue form. Separately resolve and review the 153 exact source/build/relink closures before approving any self-contained app ZIP; do not treat the published source-backed app as evidence for that frozen-app gate."
   },
   "current_features": {
     "public_main_window": [
@@ -801,9 +849,9 @@
   "known_pending": [
     "Validate the final Manual Editing interaction on physical XP-PEN hardware.",
     "Run a physical printer matrix and confirm exported projects in Snapmaker Orca slice preview.",
-    "Complete and review exact macOS source/build/relink closure for the 253 unresolved Mach-O files.",
-    "Collect the published macOS Source Tester Alpha 1 compatibility matrix through Discussion #9 and the macOS Issue form; keep private models out of reports.",
-    "Publish no prebuilt macOS app until the 253 native source/build/relink closures pass the separate exact-commit distribution gate and owner approval is explicit.",
+    "Complete and review exact macOS source/build/relink closure for the 153 unresolved Mach-O files.",
+    "Collect the published macOS Source-backed App Alpha 1 compatibility matrix through Discussion #9 and the macOS Issue form; keep private models out of reports.",
+    "Publish no self-contained macOS app until the 153 native source/build/relink closures pass the separate exact-commit distribution gate and owner approval is explicit.",
     "Complete the Innovation Fund submission materials and community post using the published immutable v0.8beta-r32.2 prerelease.",
     "Improve multipart solidification coverage: the bundled DemoData succeeds, but other multipart files may still fail solidification or 3MF export.",
     "Keep the retained Decal beta implementation inaccessible until it is separately revalidated and explicitly reintroduced."

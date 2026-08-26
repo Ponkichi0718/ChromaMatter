@@ -6,6 +6,7 @@ on:
       - "codex/macos-arm64-tester-alpha"
     tags:
       - "v0.8beta-macos-source-alpha*"
+      - "v0.8beta-macos-source-app-alpha*"
     paths:
       - ".github/ISSUE_TEMPLATE/macos_alpha_report.yml"
       - ".github/workflows/macos-source-alpha.yml"
