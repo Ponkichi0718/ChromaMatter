@@ -26,6 +26,7 @@ import struct
 import subprocess
 import sys
 import tempfile
+import unicodedata
 
 
 SCHEMA = "chromamatter.macos-source-backed-app.v1"
@@ -134,10 +135,15 @@ def _safe_relative(value: str) -> PurePosixPath:
         not value
         or candidate.is_absolute()
         or "\\" in value
+        or any(unicodedata.category(character) == "Cc" for character in value)
         or any(part in {"", ".", ".."} for part in candidate.parts)
     ):
         raise SourceAppError(f"Unsafe source path: {value!r}")
     return candidate
+
+
+def _normalized_path_key(value: str) -> str:
+    return unicodedata.normalize("NFC", value).casefold()
 
 
 def _git_output(repository: Path, arguments: list[str]) -> bytes:
@@ -178,6 +184,7 @@ def _git_tracked_files(
     except UnicodeDecodeError as exc:
         raise SourceAppError("Git returned a non-UTF-8 source path") from exc
     tracked: dict[str, tuple[str, str]] = {}
+    normalized_paths: dict[str, str] = {}
     for value in values:
         if not value:
             continue
@@ -187,6 +194,13 @@ def _git_tracked_files(
         except ValueError as exc:
             raise SourceAppError("Git returned a malformed source-tree record") from exc
         _safe_relative(relative)
+        normalized = _normalized_path_key(relative)
+        previous = normalized_paths.setdefault(normalized, relative)
+        if previous != relative:
+            raise SourceAppError(
+                "Case/Unicode-colliding Git source paths: "
+                f"{previous!r}, {relative!r}"
+            )
         if object_type != "blob" or mode not in {"100644", "100755"}:
             raise SourceAppError(
                 f"Unsupported Git object in source-backed app input: {relative}"
@@ -389,6 +403,7 @@ def _plist_bytes() -> bytes:
 
 def _manifest_records(app_bundle: Path) -> list[dict[str, object]]:
     records: list[dict[str, object]] = []
+    normalized_paths: dict[str, str] = {}
     for path in sorted(app_bundle.rglob("*"), key=lambda item: item.as_posix()):
         if path.is_symlink():
             raise SourceAppError(f"Symlink is forbidden in source app: {path}")
@@ -397,6 +412,14 @@ def _manifest_records(app_bundle: Path) -> list[dict[str, object]]:
         if not path.is_file():
             raise SourceAppError(f"Special file is forbidden in source app: {path}")
         relative = path.relative_to(app_bundle).as_posix()
+        _safe_relative(relative)
+        normalized = _normalized_path_key(relative)
+        previous = normalized_paths.setdefault(normalized, relative)
+        if previous != relative:
+            raise SourceAppError(
+                "Case/Unicode-colliding source app paths: "
+                f"{previous!r}, {relative!r}"
+            )
         if relative == f"Contents/Resources/{MANIFEST_NAME}":
             continue
         _reject_runtime_payload(path, relative)

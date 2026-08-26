@@ -10,6 +10,8 @@ import sys
 import tempfile
 import unittest
 
+from tooling import stage_macos_source_app as app_tool
+
 
 FIXED_APP = Path(__file__).resolve().parent
 REPOSITORY = FIXED_APP.parents[1]
@@ -80,6 +82,30 @@ class MacOSSourceBackedAppTests(unittest.TestCase):
         self.assertEqual(plist["LSMinimumSystemVersion"], "15.0")
         self.assertEqual(plist["LSArchitecturePriority"], ["arm64"])
         self.assertTrue((self.app / "Contents" / "Resources" / "AppIcon.icns").is_file())
+
+    def test_source_paths_reject_controls_and_normalization_collisions(self) -> None:
+        with self.assertRaisesRegex(app_tool.SourceAppError, "Unsafe source path"):
+            app_tool._safe_relative("source/line\nbreak.py")
+        self.assertEqual(
+            app_tool._normalized_path_key("source/e\N{COMBINING ACUTE ACCENT}.py"),
+            app_tool._normalized_path_key(
+                "source/\N{LATIN SMALL LETTER E WITH ACUTE}.py"
+            ),
+        )
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw) / APP_NAME
+            root.mkdir()
+            decomposed = root / "e\N{COMBINING ACUTE ACCENT}.txt"
+            composed = root / "\N{LATIN SMALL LETTER E WITH ACUTE}.txt"
+            decomposed.write_text("decomposed", encoding="ascii")
+            composed.write_text("composed", encoding="ascii")
+            if len(list(root.iterdir())) != 2:
+                self.skipTest("filesystem normalizes Unicode filenames")
+            with self.assertRaisesRegex(
+                app_tool.SourceAppError,
+                "Case/Unicode-colliding source app paths",
+            ):
+                app_tool._manifest_records(root)
 
     def test_wrapper_opens_existing_launcher_in_terminal_without_bypasses(self) -> None:
         wrapper = (
@@ -260,13 +286,21 @@ class MacOSSourceBackedAppTests(unittest.TestCase):
             workflow.count("tooling/stage_macos_source_app.py audit"),
             2,
         )
+        self.assertIn(
+            "tooling/stage_macos_source_package.py extract-demo",
+            workflow,
+        )
+        self.assertIn("tooling/stage_macos_source_package.py stage", workflow)
+        self.assertGreaterEqual(
+            workflow.count("tooling/stage_macos_source_package.py audit"),
+            2,
+        )
         self.assertGreaterEqual(
             workflow.count('Contents/MacOS/ChromaMatterSourceAlpha" --self-test-only'),
             1,
         )
         self.assertIn("ditto -c -k --keepParent", workflow)
         self.assertIn("ditto -x -k", workflow)
-        self.assertIn("README_INSTALL_AND_TEST_EN.md", workflow)
         self.assertGreaterEqual(
             workflow.count(
                 "CHROMAMATTER_ALPHA_HOME: ${{ runner.temp }}/chromamatter-source-alpha"
@@ -277,9 +311,21 @@ class MacOSSourceBackedAppTests(unittest.TestCase):
         self.assertIn("SOURCE_COMMIT.txt", workflow)
         self.assertIn("workflow_commit != root_commit", workflow)
         self.assertIn("root_commit != manifest_commit", workflow)
-        self.assertIn("ChromaMatter-0.8beta-macos-source-app-alpha1.zip", workflow)
-        self.assertIn("ChromaMatter-0.8beta-macos-source-app-alpha1.zip.sha256", workflow)
-        self.assertIn("SHA256SUMS-macos-source-app-alpha1.txt", workflow)
+        self.assertIn("root_commit != app_commit", workflow)
+        self.assertIn("ChromaMatter-0.8beta-macos-source-app-alpha2.zip", workflow)
+        self.assertIn("ChromaMatter-0.8beta-macos-source-app-alpha2.zip.sha256", workflow)
+        self.assertIn("SHA256SUMS-macos-source-app-alpha2.txt", workflow)
+        self.assertIn("ChromaMatter-0.8beta-r32.2-win64.zip", workflow)
+        self.assertIn("327268369", workflow)
+        self.assertIn(
+            "2ceada98661bac5d49b759542151c4c484fff4269d6b5d142ec32fec544f06d0",
+            workflow,
+        )
+        self.assertIn("SOFTWARE_PACKAGE_SHA256.txt", workflow)
+        self.assertIn(
+            "shasum -a 256 -c SOFTWARE_PACKAGE_SHA256.txt",
+            workflow,
+        )
         self.assertIn("open -W -n", workflow)
         self.assertIn('--env "CHROMAMATTER_ALPHA_HOME=', workflow)
         self.assertIn('--env "CHROMAMATTER_PYTHON=', workflow)
@@ -300,13 +346,15 @@ class MacOSSourceBackedAppTests(unittest.TestCase):
         guide = TEST_GUIDE.read_text(encoding="utf-8")
         compact = " ".join(guide.split())
         self.assertIn("ChromaMatter Source Alpha.app", guide)
-        self.assertIn("ChromaMatter-0.8beta-macos-source-app-alpha1.zip", guide)
+        self.assertIn("ChromaMatter-0.8beta-macos-source-app-alpha2.zip", guide)
         self.assertIn("README_INSTALL_AND_TEST_EN.md", guide)
         self.assertIn("SOURCE_COMMIT.txt", guide)
+        self.assertIn("SOFTWARE_PACKAGE_SHA256.txt", guide)
+        self.assertIn("DemoData/", guide)
         self.assertIn("source-backed", guide.casefold())
         self.assertIn("does not contain a prebuilt Python runtime", compact)
         self.assertIn("Control-click", guide)
-        self.assertIn("10-minute basic test", guide)
+        self.assertIn("10-minute quick-fixture test", guide)
         self.assertIn("Do not disable Gatekeeper", guide)
         self.assertIn("Do not redistribute", guide)
 

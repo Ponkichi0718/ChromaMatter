@@ -159,10 +159,10 @@ class MacOSAlphaAutomationTests(unittest.TestCase):
     def test_workflow_is_ci_only_and_tester_zip_upload_is_opt_in(self) -> None:
         text = WORKFLOW.read_text(encoding="utf-8")
         self.assertIn("runs-on: macos-15", text)
-        self.assertEqual(text.count('"tooling/generate_macos_app_inventory.py"'), 1)
+        self.assertEqual(text.count('"tooling/generate_macos_app_inventory.py"'), 2)
         self.assertIn("uses: actions/setup-python@v7", text)
         self.assertIn("  push:\n", text)
-        self.assertNotIn("  pull_request:\n", text)
+        self.assertIn("  pull_request:\n", text)
         self.assertIn('python-version: "3.13.14"', text)
         self.assertIn("architecture: arm64", text)
         self.assertIn("upload_tester_alpha:", text)

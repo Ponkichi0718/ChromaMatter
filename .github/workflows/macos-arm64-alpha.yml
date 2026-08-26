@@ -3,7 +3,27 @@ name: macOS Apple Silicon Developer ID unsigned, unnotarized alpha
 on:
   push:
     branches:
-      - "codex/macos-arm64-flat4-test3"
+      - "main"
+    paths:
+      - ".github/ISSUE_TEMPLATE/macos_alpha_report.yml"
+      - ".github/workflows/macos-arm64-alpha.yml"
+      - "AUDIT_MACOS_APP.sh"
+      - "BUILD_MACOS_ARM64.sh"
+      - "licenses/MACOS_ALPHA_COMPLIANCE_NOTICE_*.txt"
+      - "licenses/macos/**"
+      - "publication/MACOS_ALPHA_TESTING_*.md"
+      - "publication/MACOS_ALPHA_TEST_MODEL_EXPECTED.svg"
+      - "samples/LICENSE.txt"
+      - "samples/MACOS_ALPHA_TEST_MODEL_README.md"
+      - "samples/generate_macos_alpha_test_glb.py"
+      - "source/fixed_app/**"
+      - "tooling/audit_macos_source_coverage.py"
+      - "tooling/generate_macos_app_inventory.py"
+      - "tooling/macos_source_coverage_plan.json"
+      - "tooling/stage_macos_corresponding_source.py"
+  pull_request:
+    branches:
+      - "main"
     paths:
       - ".github/ISSUE_TEMPLATE/macos_alpha_report.yml"
       - ".github/workflows/macos-arm64-alpha.yml"

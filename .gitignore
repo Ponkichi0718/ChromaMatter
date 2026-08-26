@@ -21,6 +21,9 @@ outputs/
 # Private validation and user assets
 validation_output*/
 private_samples/
+# The stable r32.2 DemoData used by macOS package staging is supplied and
+# verified out of tree. Never copy that large payload into the repository root.
+/DemoData/
 __tracked_surface.stl
 **/__tracked_surface.stl
 *.3mf
@@ -91,6 +94,7 @@ tooling/*
 !tooling/macos_source_coverage_plan.json
 !tooling/stage_macos_corresponding_source.py
 !tooling/stage_macos_source_app.py
+!tooling/stage_macos_source_package.py
 !tooling/generate_pytetwild_rebuild_lock.py
 !tooling/pytetwild_static_closure_contract.py
 !tooling/pymeshlab_audited_native_identities.json

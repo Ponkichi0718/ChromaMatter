@@ -2253,3 +2253,181 @@ topology, 3MF, palette, security, or source-closure gates.
 - Candidate/Release staging and anonymous re-download copies are under unique
   `C:\Dev\ChromaMatter-macos-source-app-release-*` and `%TEMP%` directories;
   they remain outside Git.
+
+## 2026-08-26 main integration of the macOS source-backed app
+
+### Objective and result
+
+- The owner requested that the default branch contain the same source-backed
+  Finder `.app` implementation as the published Mac alpha instead of only its
+  documentation links.
+- Integration branch `codex/macos-app-main-integration` merges the exact
+  `codex/macos-arm64-tester-alpha` history into the latest `origin/main`.
+- The Finder app depends on Flat Four Test 3 and the macOS runtime port, so the
+  complete reviewed dependency chain is integrated together. Cherry-picking
+  only the wrapper would not reproduce the published app.
+- The immutable Windows r32.2 and Flat Four Test 3 Release tags/assets remain
+  unchanged. The source-backed app remains distinct from the blocked
+  self-contained/frozen Mac build.
+
+### User-facing clarification
+
+- The public four-box GLB can exercise Full Spectrum with 16, 24, or 32 total
+  states and Flat Four. Full Spectrum starts at 16, so testers must explicitly
+  select 32.
+- The fixture contains only flat red, blue, white, and black source colours.
+  It validates the selectable 32-state processing/export path, not simultaneous
+  use or visual coverage of all 32 mixed states.
+- The English app guide and bilingual sample README now state that limitation.
+
+### Changed integration files
+
+- Main and public English/Japanese README aliases now consistently identify the
+  downloadable source-backed Finder app and the 153-gap frozen-app gate.
+- `.github/workflows/macos-source-alpha.yml` and
+  `.github/workflows/macos-arm64-alpha.yml` run for main pushes and pull
+  requests targeting main when relevant files change.
+- `CURRENT_STATE.json`, the English source-app guide, and the public fixture
+  README record the integrated source and exact test scope.
+
+### Validation so far
+
+- Python 3.13.14 focused integration suite: 149 tests passed, one Windows-only
+  bash syntax check skipped, zero failures.
+- `compileall`, `CURRENT_STATE.json` parse, README alias SHA-256 parity, and
+  `git diff --check`: PASS.
+- Full Windows regression, exact GitHub macOS workflows, PR review, and merge
+  are pending and must pass before claiming default-branch completion.
+
+### Do not do
+
+- Do not move or mutate any existing public tag or Release asset.
+- Do not call the source-backed Finder app self-contained, signed, notarized,
+  or stable.
+- Do not claim that the four-box fixture visibly covers all 32 mixed states.
+- Do not weaken topology, palette pending-apply, or 3MF fail-closed contracts.
+
+### Local-only files
+
+- Integration worktree: `C:\Dev\ChromaMatter-macos-main-integration`.
+- Audit-only worktrees, Mac wheels, candidate archives, and private user models
+  remain outside Git and must not be published.
+
+## 2026-08-26 macOS Source-backed App Alpha 2 with stable r32.2 DemoData (current candidate)
+
+### Objective
+
+Prepare a separate Source-backed App Alpha 2 candidate for Apple Silicon on
+macOS 15+. Keep the same Finder-launchable source-backed `.app`, add the quick
+public four-box GLB and the immutable stable r32.2 DemoData beside the app, and
+preserve every Alpha 1 tag and Release asset byte-for-byte.
+
+### Candidate package contract
+
+- The only candidate ZIP name is
+  `ChromaMatter-0.8beta-macos-source-app-alpha2.zip`, with package root
+  `ChromaMatter-0.8beta-macos-source-app-alpha2/`.
+- The root allowlist is exactly `ChromaMatter Source Alpha.app/`,
+  `README_INSTALL_AND_TEST_EN.md`, `SOURCE_BACKED_ALPHA_NOTICE.txt`,
+  `SOURCE_COMMIT.txt`, `ChromaMatter-Public-Four-Color-Test.glb`, its `.sha256`,
+  `DemoData/`, `SOURCE_APP_PACKAGE_MANIFEST.json`, and
+  `SOFTWARE_PACKAGE_SHA256.txt`.
+- `DemoData/` stays beside the Finder app, never inside it. It contains exactly
+  15 canonical files: the original GLB and reference image; one combined and
+  six part-specific Full Spectrum 3MF outputs; the part-output manifest;
+  English/Japanese README and NOTICE documents; and the canonical
+  `DEMO_DATA_MANIFEST.json`. No local validation sidecar or other extra file is
+  allowed.
+- The Alpha 2 outer JSON manifest must independently cover every regular
+  packaged file except itself and `SOFTWARE_PACKAGE_SHA256.txt`, and bind the
+  exact source commit plus the immutable stable r32.2 DemoData source identity.
+  `SOFTWARE_PACKAGE_SHA256.txt` must be sorted; each line contains an uppercase
+  SHA-256 digest, two ASCII spaces, and a POSIX path. It covers every other
+  regular file, including `SOURCE_APP_PACKAGE_MANIFEST.json`, and excludes only
+  itself. The root `/DemoData/` ignore guard prevents the large out-of-tree
+  staging input from being added to Git accidentally.
+
+### Test-scope clarification and mandatory warnings
+
+- The quick four-box fixture checks the selectable Full Spectrum 32-state path
+  and switching to Flat Four. Its four flat source colours do not force or
+  visibly cover all 32 mixed states simultaneously.
+- `DemoData/Original AI model Color.glb` is the realistic multipart,
+  32-state/Hi3D input. The seven included 3MFs are Full Spectrum examples only;
+  they do not prove that a Flat Four output was generated or inspected.
+- Before regenerating DemoData output, select the F slot that physically holds
+  black and enable **Weak Black 5–25%**.
+- Hi3D-derived part names may not match visible regions. Inspect the geometry
+  instead of trusting an individual part filename.
+- Multipart solidification remains unstable beta behavior. The stable r32.2
+  DemoData succeeded, but another multipart GLB can fail solidification or 3MF
+  export; do not weaken the closed-solid or 3MF gates.
+
+### Current state
+
+- Alpha 1 remains the only published source-backed Finder app and is immutable.
+- Alpha 2 is a working-tree candidate only. It has not been frozen to an exact
+  source commit, packaged and independently audited, run through exact-commit
+  Apple Silicon CI, reviewed, merged, tagged, checksummed, uploaded, published,
+  or anonymously re-downloaded.
+- The English install/test guide now records the exact Alpha 2 tree, the quick
+  and extended test paths, the Full Spectrum-only status of the included 3MFs,
+  and all mandatory warnings. Existing README aliases were not changed for
+  this candidate documentation update.
+- `CURRENT_STATE.json` records each remaining Alpha 2 gate explicitly and does
+  not treat stable r32.2 DemoData evidence, Alpha 1 CI, or local staging work as
+  proof of an Alpha 2 Release.
+
+### Next exact task
+
+1. Finish and review the outer-package stager and focused tests without changing
+   workflow, application, or stable DemoData bytes.
+2. Commit an exact candidate source, stage the Finder app and quick GLB, and
+   copy only the ten manifest-listed stable payloads plus five canonical
+   DemoData documents from verified out-of-tree inputs.
+3. Audit the staged tree, create a fresh ZIP, extract it independently, and
+   repeat the outer/app/DemoData manifest, source-identity, path, hash, archive,
+   privacy, native-binary, launcher, and Japanese/English smoke checks.
+4. Run the exact commit on Apple Silicon/macOS 15 CI. Then obtain PR review,
+   default-branch merge and explicit owner publication approval before creating
+   any new tag or Release.
+5. Publish only under a new Alpha 2 identity with a detached checksum, then
+   anonymously re-download and compare all bytes before updating navigation to
+   call Alpha 2 available.
+
+### Documentation/state files changed
+
+- `.gitignore`
+- `publication/MACOS_SOURCE_APP_TESTING_EN.md`
+- `CURRENT_STATE.json`
+- `HANDOFF.md`
+
+The existing bilingual `samples/MACOS_ALPHA_TEST_MODEL_README.md` already
+states the quick fixture's 32-state-path/Flat-Four scope and its lack of
+simultaneous 32-state coverage, so no additional Alpha 2 edit is required there.
+
+### Validation at this checkpoint
+
+- `CURRENT_STATE.json` parse: PASS.
+- Final `git diff --check` and combined focused tests remain to be rerun after
+  the concurrent Alpha 2 stager/test files settle.
+- No package build, macOS CI, PR review, merge, tag, checksum, upload, or
+  publication result is claimed at this checkpoint.
+
+### Do not do
+
+- Do not move, replace, retag, or rebuild the published Source-backed App Alpha
+  1 assets as Alpha 2.
+- Do not commit the large stable DemoData payload, a generated `.app`, candidate
+  package directory, ZIP, checksum, private model, or validation output.
+- Do not place `DemoData/` inside the app or include any file outside its exact
+  15-file canonical allowlist.
+- Do not call Alpha 2 CI-validated, merged, released, signed, notarized,
+  self-contained, generally supported, or physically validated before the
+  corresponding gates actually pass.
+
+### Local-only files
+
+- The verified stable DemoData payload source, staged candidate root, generated
+  app and quick GLB, fresh extraction, archive/checksum, and audit output remain
+  outside Git.

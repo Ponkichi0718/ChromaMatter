@@ -1,9 +1,9 @@
-name: macOS Source Tester Alpha
+name: macOS Source-backed App Alpha 2
 
 on:
   push:
     branches:
-      - "codex/macos-arm64-tester-alpha"
+      - "main"
     tags:
       - "v0.8beta-macos-source-alpha*"
       - "v0.8beta-macos-source-app-alpha*"
@@ -12,6 +12,7 @@ on:
       - ".github/workflows/macos-source-alpha.yml"
       - "START_MACOS_SOURCE_ALPHA.command"
       - "tooling/stage_macos_source_app.py"
+      - "tooling/stage_macos_source_package.py"
       - "publication/MACOS_ALPHA_SOURCE_TESTER_*.md"
       - "publication/MACOS_ALPHA_TESTING_*.md"
       - "publication/MACOS_SOURCE_APP_TESTING_EN.md"
@@ -21,16 +22,44 @@ on:
       - "source/fixed_app/requirements-runtime-macos-arm64.lock"
       - "source/fixed_app/assets/**"
       - "source/fixed_app/licenses/**"
+      - "source/fixed_app/public_binary/DemoData/**"
       - "source/fixed_app/resources/**"
       - "source/fixed_app/spectrum_mapper/**"
       - "source/fixed_app/*.py"
       - "source/fixed_app/TripoSpectrumMapper_fixed.py"
       - "source/fixed_app/test_macos_source_launcher.py"
       - "source/fixed_app/test_macos_source_app.py"
+      - "source/fixed_app/test_macos_source_package.py"
+  pull_request:
+    branches:
+      - "main"
+    paths:
+      - ".github/ISSUE_TEMPLATE/macos_alpha_report.yml"
+      - ".github/workflows/macos-source-alpha.yml"
+      - "START_MACOS_SOURCE_ALPHA.command"
+      - "tooling/stage_macos_source_app.py"
+      - "tooling/stage_macos_source_package.py"
+      - "publication/MACOS_ALPHA_SOURCE_TESTER_*.md"
+      - "publication/MACOS_ALPHA_TESTING_*.md"
+      - "publication/MACOS_SOURCE_APP_TESTING_EN.md"
+      - "samples/LICENSE.txt"
+      - "samples/MACOS_ALPHA_TEST_MODEL_README.md"
+      - "samples/generate_macos_alpha_test_glb.py"
+      - "source/fixed_app/requirements-runtime-macos-arm64.lock"
+      - "source/fixed_app/assets/**"
+      - "source/fixed_app/licenses/**"
+      - "source/fixed_app/public_binary/DemoData/**"
+      - "source/fixed_app/resources/**"
+      - "source/fixed_app/spectrum_mapper/**"
+      - "source/fixed_app/*.py"
+      - "source/fixed_app/TripoSpectrumMapper_fixed.py"
+      - "source/fixed_app/test_macos_source_launcher.py"
+      - "source/fixed_app/test_macos_source_app.py"
+      - "source/fixed_app/test_macos_source_package.py"
   workflow_dispatch:
     inputs:
       upload_source_app_alpha:
-        description: "Upload the tested source-backed .app ZIP as a short-lived workflow artifact"
+        description: "Upload the tested source-backed Alpha 2 package ZIP as a short-lived workflow artifact"
         required: true
         default: false
         type: boolean
@@ -44,7 +73,7 @@ concurrency:
 
 jobs:
   source-launcher-test:
-    name: macOS 15 arm64 source launcher
+    name: macOS 15 arm64 source-backed app Alpha 2
     runs-on: macos-15
     timeout-minutes: 60
     env:
@@ -80,7 +109,8 @@ jobs:
           bash -n ./START_MACOS_SOURCE_ALPHA.command
           python -m unittest \
             source.fixed_app.test_macos_source_launcher \
-            source.fixed_app.test_macos_source_app
+            source.fixed_app.test_macos_source_app \
+            source.fixed_app.test_macos_source_package
 
       - name: Stage and audit Finder source-backed app
         shell: bash
@@ -134,39 +164,79 @@ jobs:
           "$runtime" "$entry" --ui-smoke --ui-smoke-language ja
           "$runtime" "$entry" --ui-smoke --ui-smoke-language en
 
-      - name: Package and fresh-extract the source-backed app
+      - name: Download and extract immutable stable r32.2 DemoData
+        shell: bash
+        run: |
+          set -euo pipefail
+          stable_name="ChromaMatter-0.8beta-r32.2-win64.zip"
+          stable_zip="$RUNNER_TEMP/$stable_name"
+          stable_url="https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2/ChromaMatter-0.8beta-r32.2-win64.zip"
+          stable_sha256="2ceada98661bac5d49b759542151c4c484fff4269d6b5d142ec32fec544f06d0"
+          curl \
+            --fail \
+            --location \
+            --proto '=https' \
+            --proto-redir '=https' \
+            --tlsv1.2 \
+            --show-error \
+            --silent \
+            --retry 3 \
+            --retry-delay 2 \
+            --output "$stable_zip" \
+            "$stable_url"
+          test "$(stat -f %z "$stable_zip")" = "327268369"
+          test "$(shasum -a 256 "$stable_zip" | awk '{print $1}')" = \
+            "$stable_sha256"
+          (
+            cd "$RUNNER_TEMP"
+            printf '%s  %s\n' "$stable_sha256" "$stable_name" \
+              >"$stable_name.sha256"
+            shasum -a 256 -c "$stable_name.sha256"
+          )
+          python tooling/stage_macos_source_package.py extract-demo \
+            --repository-root "$GITHUB_WORKSPACE" \
+            --stable-archive "$stable_zip" \
+            --output "$RUNNER_TEMP/DemoData" \
+            --source-commit "$GITHUB_SHA" \
+            >"$RUNNER_TEMP/chromamatter-stable-demo-data-extract.json"
+
+      - name: Package, audit, and fresh-extract Alpha 2
         shell: bash
         env:
           CHROMAMATTER_ALPHA_HOME: ${{ runner.temp }}/chromamatter-source-alpha
         run: |
           set -euo pipefail
           app="$RUNNER_TEMP/ChromaMatter Source Alpha.app"
-          package_name="ChromaMatter-0.8beta-macos-source-app-alpha1"
+          package_name="ChromaMatter-0.8beta-macos-source-app-alpha2"
           package_root="$RUNNER_TEMP/$package_name"
           archive="$RUNNER_TEMP/$package_name.zip"
-          fresh="$RUNNER_TEMP/chromamatter-source-app-fresh"
+          fresh="$RUNNER_TEMP/chromamatter-source-app-alpha2-fresh"
+          stable_zip="$RUNNER_TEMP/ChromaMatter-0.8beta-r32.2-win64.zip"
+          demo_data="$RUNNER_TEMP/DemoData"
           public_glb="$CHROMAMATTER_ALPHA_HOME/TestData/ChromaMatter-Public-Four-Color-Test.glb"
-          mkdir "$package_root"
-          ditto "$app" "$package_root/ChromaMatter Source Alpha.app"
-          cp publication/MACOS_SOURCE_APP_TESTING_EN.md \
-            "$package_root/README_INSTALL_AND_TEST_EN.md"
-          cp "$public_glb" "$package_root/ChromaMatter-Public-Four-Color-Test.glb"
-          cp "$app/Contents/Resources/SOURCE_BACKED_ALPHA_NOTICE.txt" \
-            "$package_root/SOURCE_BACKED_ALPHA_NOTICE.txt"
-          printf '%s\n' "$GITHUB_SHA" >"$package_root/SOURCE_COMMIT.txt"
-          (
-            cd "$package_root"
-            shasum -a 256 ChromaMatter-Public-Four-Color-Test.glb \
-              >ChromaMatter-Public-Four-Color-Test.glb.sha256
-          )
-          test "$(awk '{print $1}' "$package_root/ChromaMatter-Public-Four-Color-Test.glb.sha256")" = \
-            "1b6092448e62a93f5e29a9c6dda1265a7a2179c2eacd293f7d8f02d1f268c563"
+          python tooling/stage_macos_source_package.py stage \
+            --repository-root "$GITHUB_WORKSPACE" \
+            --app-bundle "$app" \
+            --demo-data-root "$demo_data" \
+            --stable-archive "$stable_zip" \
+            --public-test-glb "$public_glb" \
+            --output "$package_root" \
+            --source-commit "$GITHUB_SHA" \
+            >"$RUNNER_TEMP/chromamatter-source-package-stage.json"
+          python tooling/stage_macos_source_package.py audit \
+            --repository-root "$GITHUB_WORKSPACE" \
+            --package-root "$package_root" \
+            >"$RUNNER_TEMP/chromamatter-source-package-prearchive-audit.json"
           ditto -c -k --keepParent "$package_root" "$archive"
           mkdir "$fresh"
           ditto -x -k "$archive" "$fresh"
           test "$(find "$fresh" -mindepth 1 -maxdepth 1 | wc -l | tr -d ' ')" = 1
           fresh_root="$fresh/$package_name"
           fresh_app="$fresh_root/ChromaMatter Source Alpha.app"
+          python tooling/stage_macos_source_package.py audit \
+            --repository-root "$GITHUB_WORKSPACE" \
+            --package-root "$fresh_root" \
+            >"$RUNNER_TEMP/chromamatter-source-package-fresh-audit.json"
           python tooling/stage_macos_source_app.py audit \
             --app-bundle "$fresh_app" \
             >"$RUNNER_TEMP/chromamatter-source-app-fresh-audit.json"
@@ -175,26 +245,36 @@ jobs:
           test -s "$fresh_root/README_INSTALL_AND_TEST_EN.md"
           test -s "$fresh_root/SOURCE_BACKED_ALPHA_NOTICE.txt"
           test -s "$fresh_root/ChromaMatter-Public-Four-Color-Test.glb"
+          test "$(find "$fresh_root/DemoData" -type f | wc -l | tr -d ' ')" = 15
           (
             cd "$fresh_root"
             shasum -a 256 -c ChromaMatter-Public-Four-Color-Test.glb.sha256
+            shasum -a 256 -c SOFTWARE_PACKAGE_SHA256.txt
           )
           python - \
             "$GITHUB_SHA" \
             "$fresh_root/SOURCE_COMMIT.txt" \
+            "$fresh_root/SOURCE_APP_PACKAGE_MANIFEST.json" \
             "$fresh_app/Contents/Resources/SOURCE_BACKED_APP_MANIFEST.json" <<'PY'
           import json
           from pathlib import Path
           import sys
 
-          workflow_commit = sys.argv[1]
+          workflow_commit = sys.argv[1].casefold()
           root_commit = Path(sys.argv[2]).read_text(encoding="ascii").strip()
           manifest_commit = json.loads(
               Path(sys.argv[3]).read_text(encoding="ascii")
           )["source_commit"]
-          if workflow_commit != root_commit or root_commit != manifest_commit:
+          app_commit = json.loads(
+              Path(sys.argv[4]).read_text(encoding="ascii")
+          )["source_commit"]
+          if (
+              workflow_commit != root_commit
+              or root_commit != manifest_commit
+              or root_commit != app_commit
+          ):
               raise SystemExit(
-                  "workflow, package-root, and app-manifest source commits differ"
+                  "workflow, package-root, outer-manifest, and app-manifest source commits differ"
               )
           PY
           export CHROMAMATTER_PYTHON="$(command -v python)"
@@ -220,17 +300,18 @@ jobs:
           (
             cd "$RUNNER_TEMP"
             shasum -a 256 "$package_name.zip" >"$package_name.zip.sha256"
-            cp "$package_name.zip.sha256" SHA256SUMS-macos-source-app-alpha1.txt
+            shasum -a 256 -c "$package_name.zip.sha256"
+            cp "$package_name.zip.sha256" SHA256SUMS-macos-source-app-alpha2.txt
           )
 
-      - name: Record source tester diagnostics
+      - name: Record Alpha 2 diagnostics
         if: always()
         shell: bash
         env:
           CHROMAMATTER_ALPHA_HOME: ${{ runner.temp }}/chromamatter-source-alpha
         run: |
           set -u
-          diagnostic="$RUNNER_TEMP/chromamatter-source-alpha-diagnostics"
+          diagnostic="$RUNNER_TEMP/chromamatter-source-alpha2-diagnostics"
           mkdir -p "$diagnostic"
           {
             echo "workflow_run=${GITHUB_RUN_ID}"
@@ -248,33 +329,40 @@ jobs:
           fi
           for evidence in \
             "$RUNNER_TEMP/chromamatter-source-app-audit.json" \
+            "$RUNNER_TEMP/chromamatter-stable-demo-data-extract.json" \
+            "$RUNNER_TEMP/chromamatter-source-package-stage.json" \
+            "$RUNNER_TEMP/chromamatter-source-package-prearchive-audit.json" \
+            "$RUNNER_TEMP/chromamatter-source-package-fresh-audit.json" \
             "$RUNNER_TEMP/chromamatter-source-app-fresh-audit.json" \
             "$RUNNER_TEMP/macos-source-app-launchservices-self-test.json" \
-            "$RUNNER_TEMP/ChromaMatter-0.8beta-macos-source-app-alpha1.zip.sha256" \
-            "$RUNNER_TEMP/SHA256SUMS-macos-source-app-alpha1.txt"; do
+            "$RUNNER_TEMP/chromamatter-source-app-alpha2-fresh/ChromaMatter-0.8beta-macos-source-app-alpha2/SOURCE_APP_PACKAGE_MANIFEST.json" \
+            "$RUNNER_TEMP/chromamatter-source-app-alpha2-fresh/ChromaMatter-0.8beta-macos-source-app-alpha2/SOFTWARE_PACKAGE_SHA256.txt" \
+            "$RUNNER_TEMP/ChromaMatter-0.8beta-r32.2-win64.zip.sha256" \
+            "$RUNNER_TEMP/ChromaMatter-0.8beta-macos-source-app-alpha2.zip.sha256" \
+            "$RUNNER_TEMP/SHA256SUMS-macos-source-app-alpha2.txt"; do
             if [[ -f "$evidence" ]]; then
               cp "$evidence" "$diagnostic/"
             fi
           done
 
-      - name: Upload source tester diagnostics
+      - name: Upload Alpha 2 diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ChromaMatter-macOS-source-alpha-diagnostics-${{ github.run_id }}
-          path: ${{ runner.temp }}/chromamatter-source-alpha-diagnostics/
+          name: ChromaMatter-macOS-source-alpha2-diagnostics-${{ github.run_id }}
+          path: ${{ runner.temp }}/chromamatter-source-alpha2-diagnostics/
           if-no-files-found: error
           retention-days: 7
 
-      - name: Upload source-backed app tester
+      - name: Upload source-backed Alpha 2 package
         if: github.event_name == 'workflow_dispatch' && inputs.upload_source_app_alpha == true
         uses: actions/upload-artifact@v4
         with:
-          name: ChromaMatter-0.8beta-macos-source-app-alpha-${{ github.run_id }}
+          name: ChromaMatter-0.8beta-macos-source-app-alpha2-${{ github.run_id }}
           path: |
-            ${{ runner.temp }}/ChromaMatter-0.8beta-macos-source-app-alpha1.zip
-            ${{ runner.temp }}/ChromaMatter-0.8beta-macos-source-app-alpha1.zip.sha256
-            ${{ runner.temp }}/SHA256SUMS-macos-source-app-alpha1.txt
+            ${{ runner.temp }}/ChromaMatter-0.8beta-macos-source-app-alpha2.zip
+            ${{ runner.temp }}/ChromaMatter-0.8beta-macos-source-app-alpha2.zip.sha256
+            ${{ runner.temp }}/SHA256SUMS-macos-source-app-alpha2.txt
           if-no-files-found: error
           retention-days: 7
 
@@ -282,15 +370,34 @@ jobs:
         if: always()
         shell: bash
         run: |
+          demo_status="did not complete"
+          if [[ -s "$RUNNER_TEMP/chromamatter-stable-demo-data-extract.json" ]]; then
+            demo_status="verified and staged exactly 15 canonical files"
+          fi
+          package_status="did not complete"
+          if [[ \
+            -s "$RUNNER_TEMP/chromamatter-source-package-prearchive-audit.json" \
+            && -s "$RUNNER_TEMP/chromamatter-source-package-fresh-audit.json" \
+            && -s "$RUNNER_TEMP/ChromaMatter-0.8beta-macos-source-app-alpha2.zip.sha256" \
+          ]]; then
+            package_status="passed before ZIP creation and after fresh extraction"
+          fi
+          launch_status="did not complete"
+          if [[ -s "$RUNNER_TEMP/macos-source-app-launchservices-self-test.json" ]]; then
+            launch_status="fresh-extracted app opened with \`open -W -n\` and passed self-test"
+          fi
           {
-            echo "## macOS Source Tester Alpha"
+            echo "## macOS Source-backed App Alpha 2"
             echo
             echo "- Exact source: \`$GITHUB_SHA\`"
             echo "- Host: Apple Silicon / macOS 15"
             echo "- Launcher: \`START_MACOS_SOURCE_ALPHA.command\`"
             echo "- Finder bundle: \`ChromaMatter Source Alpha.app\` (source-backed; no bundled Python/runtime/Mach-O)"
-            echo "- Candidate ZIP: \`ChromaMatter-0.8beta-macos-source-app-alpha1.zip\`"
-            echo "- Finder/LaunchServices: fresh-extracted app opened with \`open -W -n\` and the self-test passed."
+            echo "- Candidate ZIP: \`ChromaMatter-0.8beta-macos-source-app-alpha2.zip\`"
+            echo "- Stable DemoData source: exact 327,268,369-byte \`v0.8beta-r32.2\` Windows ZIP; $demo_status."
+            echo "- Package audit: $package_status."
+            echo "- Finder/LaunchServices: $launch_status."
             echo "- The app ZIP is uploaded only when the manual upload input is enabled."
+            echo "- Diagnostics contain audit JSON and checksum text only, not either large ZIP or the DemoData payload."
             echo "- This validates the source-backed tester path only. It is not evidence for the frozen prebuilt or notarized app."
           } >>"$GITHUB_STEP_SUMMARY"

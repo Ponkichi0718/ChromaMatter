@@ -11,13 +11,13 @@
 | Channel | Best for | Open |
 | --- | --- | --- |
 | **Published r32.2** | The current downloadable Windows build and the documented Full Spectrum workflow | **[Download stable r32.2](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2)** |
-| **Experimental Flat Four Test 3** | Testing Flat Four with conservative eye-white preservation and skin-highlight correction, plus the large-static-GLB path and 2D Colour Filter, before integration | **[Download the Windows test ZIP](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2-flat4-test3/ChromaMatter-0.8beta-r32.2-flat4-test3-win64.zip)** · [Release notes](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2-flat4-test3) · [Draft PR #7](https://github.com/Ponkichi0718/ChromaMatter/pull/7) |
+| **Experimental Flat Four Test 3** | Testing Flat Four, topology-aware white/gray highlight correction, the large-static-GLB path, and the 2D Colour Filter before integration | **[Download the Windows test ZIP](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2-flat4-test3/ChromaMatter-0.8beta-r32.2-flat4-test3-win64.zip)** · [Release notes](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2-flat4-test3) · [Draft PR #7](https://github.com/Ponkichi0718/ChromaMatter/pull/7) |
 | **macOS Source-backed App Alpha** | Finder `.app` testing on Apple Silicon / macOS 15+; first launch prepares the hash-locked source runtime | **[Download the macOS app ZIP](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-macos-source-app-alpha1/ChromaMatter-0.8beta-macos-source-app-alpha1.zip)** · [Release/checksum](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-macos-source-app-alpha1) · [English install/test guide](publication/MACOS_SOURCE_APP_TESTING_EN.md) · [Test hub](publication/MACOS_ALPHA_HUB_EN.md) |
 
 The experimental workstream is an integration candidate, not a permanent fork.
-**Flat Four Test 3 is now available as a separate public pre-release.** Extract
-the whole ZIP before starting it. Stable r32.2 below does not contain Flat Four;
-the test Release and Draft PR #7 remain the experimental status hubs.
+**Flat Four Test 3 is available as a separate public pre-release.** Extract the
+whole ZIP before starting it. Stable r32.2 below does not contain Flat Four; the
+Test 3 Release and Draft PR #7 remain the experimental status hubs.
 
 **The macOS Source-backed App Alpha is available for Apple Silicon / macOS
 15+.** Download the fixed ZIP, extract it completely, then Control-click
@@ -26,8 +26,12 @@ Python 3.13.14 and installs only hash-locked dependencies on the tester's Mac.
 It is a Finder app but not a self-contained frozen build. That separate route
 remains blocked because 153 packaged Mach-O files have unresolved
 source/build/relink closure evidence. A `diagnostics` artifact is not the app.
-[Draft PR #12](https://github.com/Ponkichi0718/ChromaMatter/pull/12) contains
-the separate source and review history.
+See [Discussion #9](https://github.com/Ponkichi0718/ChromaMatter/discussions/9)
+for results and setup questions.
+
+The default branch includes the same source-backed Finder app implementation
+as the public alpha tag. The stable Windows r32.2 binaries and the separate
+self-contained macOS build gate are unchanged.
 
 ## Download for Windows
 
