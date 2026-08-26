@@ -12,23 +12,35 @@
 | --- | --- | --- |
 | **公開安定版 r32.2** | 現在ダウンロードできるWindows版と、検証済みのFull Spectrum制作フローを使う | **[安定版r32.2をダウンロード](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2)** |
 | **Flat Four Test 3（実験版）** | Flat Four、白／灰色ハイライト補正、大容量静的GLB、2D彩色フィルターを統合前に試す | **[Windowsテスト版ZIPをダウンロード](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2-flat4-test3/ChromaMatter-0.8beta-r32.2-flat4-test3-win64.zip)** · [説明と注意事項](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2-flat4-test3) · [Draft PR #7](https://github.com/Ponkichi0718/ChromaMatter/pull/7) |
-| **macOS Source-backed App Alpha** | Apple Silicon / macOS 15以降でFinder `.app`を協力テスト。初回にhash-lock済みsource環境を準備します | **[macOS app ZIPをダウンロード](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-macos-source-app-alpha1/ChromaMatter-0.8beta-macos-source-app-alpha1.zip)** · [Release／checksum](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-macos-source-app-alpha1) · [英語の導入・テスト手順](publication/MACOS_SOURCE_APP_TESTING_EN.md) · [日本語案内](publication/MACOS_ALPHA_HUB_JA.md) |
+| **macOS Source-backed App Alpha 2** | Apple Silicon / macOS 15以降で、安定版r32.2の正確な15-file `DemoData`を含むFinder `.app`を協力テスト。初回にhash-lock済みsource環境を準備します | **[Alpha 2 app ZIPをダウンロード](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-macos-source-app-alpha2/ChromaMatter-0.8beta-macos-source-app-alpha2.zip)** · [Release／checksum](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-macos-source-app-alpha2) · [英語の導入・テスト手順](publication/MACOS_SOURCE_APP_TESTING_EN.md) · [日本語案内](publication/MACOS_ALPHA_HUB_JA.md) |
 
 実験テスト版は恒久的な別系統ではなく、検証後に通常版へ統合する候補です。
 **Flat Four Test 3を別の公開プレリリースとしてダウンロードできます。**
 ZIP全体を展開してから起動してください。下の安定版r32.2にはFlat Fourが
 入っていないため、Test 3 ReleaseとDraft PR #7を実験版の案内先にしています。
 
-**macOS Source-backed App AlphaをApple Silicon / macOS 15以降で試せます。**
-固定ZIPをすべて展開し、`ChromaMatter Source Alpha.app`をControl-clickして
-「開く」を選びます。公式Python 3.13.14を検証し、hash-lock済み依存関係だけを
-本人のMacへ導入します。Finder `.app`ですが自己完結型の凍結buildではありません。
-その別経路は153件のMach-Oについてsource／build／再link根拠が未解決で、
-`diagnostics` artifactはapplicationではありません。結果やsetup
-質問は[Discussion #9](https://github.com/Ponkichi0718/ChromaMatter/discussions/9)へ投稿できます。
+**Alpha 2を現在の目立つmacOS downloadとして公開しました。** GitHub prerelease
+[#377168223](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-macos-source-app-alpha2)は
+正確なtag／source commit `34e7ebdc3ec7dae6ad831b5119d574a656b105b0`から公開しています。
+`ChromaMatter-0.8beta-macos-source-app-alpha2.zip`は217,943,261 bytes、
+SHA-256 `C112396513B0EA21CD867ED016E2D5282F830235E3EBF324E45E3B4FDB647989`です。
+`SHA256SUMS-macos-source-app-alpha2.txt`は115 bytes、SHA-256
+`8152D72AD978246D8B41BC1A64B2855897CBD43BAE7E36402192EF3883595129`です。
+exact-tag CI
+[#32974429065](https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32974429065)は
+成功し、公開後に両assetを未認証で再downloadしてsizeとhashの一致を確認しました。
+[Alpha 1 Release](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-macos-source-app-alpha1)は
+変更しない過去の検証記録として残します。
 
-default branchには公開alpha tagと同じsource-backed Finder app実装を収録しています。
-Windows安定版r32.2のbinaryと、自己完結型macOS buildの別gateは変更していません。
+Alpha 2もsource-backed Finder appです。ZIPをすべて展開し、
+`ChromaMatter Source Alpha.app`をControl-clickして「開く」を選びます。公式Python
+3.13.14を検証し、hash-lock済み依存関係だけを本人のMacへ導入します。自己完結型の
+凍結buildではなく、その別経路は153件のMach-Oについてsource／build／再link根拠が
+未解決です。`diagnostics` artifactはapplicationではありません。同梱する7件の
+DemoData 3MFはFull Spectrum例であり、Flat Fourの証拠ではありません。必須の
+Weak Black 5–25%、part名、multipart不安定性の注意はguideで確認してください。
+結果やsetup質問は
+[Discussion #9](https://github.com/Ponkichi0718/ChromaMatter/discussions/9)へ投稿できます。
 
 ## Windows版をダウンロード
 

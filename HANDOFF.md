@@ -2313,7 +2313,10 @@ topology, 3MF, palette, security, or source-closure gates.
 - Audit-only worktrees, Mac wheels, candidate archives, and private user models
   remain outside Git and must not be published.
 
-## 2026-08-26 macOS Source-backed App Alpha 2 with stable r32.2 DemoData (current candidate)
+## 2026-08-26 macOS Source-backed App Alpha 2 with stable r32.2 DemoData (historical prepublication candidate)
+
+This section preserves the local preflight state. The published-prerelease
+section below supersedes its pending gates.
 
 ### Objective
 
@@ -2446,3 +2449,128 @@ simultaneous 32-state coverage, so no additional Alpha 2 edit is required there.
 - The verified stable DemoData payload source, staged candidate root, generated
   app and quick GLB, fresh extraction, archive/checksum, and audit output remain
   outside Git.
+
+## 2026-08-26 macOS Source-backed App Alpha 2 published prerelease (current)
+
+### Objective and outcome
+
+Make Alpha 2 the prominent Apple Silicon/macOS 15+ source-backed Finder app
+download, with the quick four-box fixture and exact stable r32.2 DemoData beside
+the app, while keeping every Alpha 1 tag and asset immutable historical
+evidence.
+
+- [PR #20](https://github.com/Ponkichi0718/ChromaMatter/pull/20) merged the
+  Alpha 2 implementation to exact `main` commit
+  `34e7ebdc3ec7dae6ad831b5119d574a656b105b0`.
+- PR CI runs
+  [#32972636265](https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32972636265)
+  and
+  [#32972636277](https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32972636277),
+  main runs
+  [#32973212994](https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32973212994)
+  and
+  [#32973213199](https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32973213199),
+  manual package run
+  [#32973571220](https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32973571220),
+  and exact-tag run
+  [#32974429065](https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32974429065)
+  all passed.
+- Published GitHub prerelease
+  [#377168223](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-macos-source-app-alpha2)
+  at `2026-08-26T13:33:38Z` from tag
+  `v0.8beta-macos-source-app-alpha2` and the exact source commit above.
+- Frozen public assets:
+  - `ChromaMatter-0.8beta-macos-source-app-alpha2.zip`: 217,943,261 bytes,
+    SHA-256
+    `C112396513B0EA21CD867ED016E2D5282F830235E3EBF324E45E3B4FDB647989`;
+  - `SHA256SUMS-macos-source-app-alpha2.txt`: 115 bytes, SHA-256
+    `8152D72AD978246D8B41BC1A64B2855897CBD43BAE7E36402192EF3883595129`.
+- Both assets were downloaded again without authentication and matched their
+  frozen byte sizes and SHA-256 hashes.
+- A fresh public extraction passed the 260-file outer package audit. DemoData
+  contained exactly 15 files, 10 manifest payloads, and 236,274,418 payload
+  bytes. The nested app audit covered 238 files, found zero bundled native
+  runtime files, and matched source commit
+  `34e7ebdc3ec7dae6ad831b5119d574a656b105b0`.
+
+### Current user-facing state
+
+- Alpha 2 is the prominent current macOS download. Alpha 1 remains available
+  only as immutable historical evidence; it was not moved, replaced, retagged,
+  or rebuilt.
+- The app is still source-backed, unsigned, unnotarized, and `0.8beta`. It does
+  not bundle Python or third-party native libraries; first launch opens the
+  reviewed Terminal setup and prepares exact hash-locked dependencies on the
+  tester's Mac.
+- This success does not approve the separate self-contained/frozen app. That
+  route remains blocked by 153 unresolved Mach-O source/build/relink closures.
+- The package keeps `ChromaMatter Source Alpha.app/`, the quick public
+  four-box GLB, and the exact stable r32.2 15-file `DemoData/` beside one
+  another at package root. DemoData is not inside the app.
+- The quick four-box fixture validates selection of the Full Spectrum 32-state
+  processing path and switching to Flat Four, but its four flat colours do not
+  visibly exercise all 32 states simultaneously.
+- The stable multipart GLB is the realistic 32-state/Hi3D input. Its seven
+  included 3MF files are Full Spectrum examples only and do not prove a Flat
+  Four export.
+- Before regenerating DemoData output, select the F slot that physically holds
+  black and enable **Weak Black 5–25%**. Hi3D-derived part names may not match
+  visible regions. Multipart solidification remains unstable beta behavior and
+  can fail for other multipart inputs.
+- This post-release documentation update makes Alpha 2 the prominent macOS
+  download in the canonical README variants, both macOS hubs, the English
+  install/test guide, and the active Issue form. It does not change the exact
+  release tag or either public asset.
+
+### Next exact task
+
+Collect Alpha 2 results through Discussion #9 and the macOS Issue form while
+preserving canonical README alias parity. Never mutate the exact tag or its two
+public assets.
+
+### Changed files in this post-release navigation update
+
+- `README.md`, `README_EN.md`, `README_PUBLIC_EN.md`
+- `README_JA.md`, `README_PUBLIC_JA.md`
+- `publication/MACOS_ALPHA_HUB_EN.md`
+- `publication/MACOS_ALPHA_HUB_JA.md`
+- `publication/MACOS_SOURCE_APP_TESTING_EN.md`
+- `.github/ISSUE_TEMPLATE/macos_alpha_report.yml`
+- `CURRENT_STATE.json`
+- `HANDOFF.md`
+
+### Validation for this documentation checkpoint
+
+- Canonical README byte parity: PASS. `README.md`, `README_EN.md`, and
+  `README_PUBLIC_EN.md` share SHA-256
+  `9817C10B548ED833F8F9760F32E8FAEF7435988A3027B2B82F9B5F8CEA399490`;
+  `README_JA.md` and `README_PUBLIC_JA.md` share SHA-256
+  `76537FBEAFA7F7A5D509019901398F5890A5D94454BCCAD53868B0F392323D03`.
+- `CURRENT_STATE.json` parse: PASS.
+- Complete `source.fixed_app.test_release_identity` documentation/Release
+  identity module: 12 tests passed.
+- Focused README-parity, source-app-guide contract, and macOS Issue-form
+  privacy/field checks: three tests passed in 9.894 seconds.
+- `git diff --check` and `git diff --cached --check`: PASS.
+- No package rebuild, tag move, or Release-asset mutation is part of this
+  documentation update.
+
+### Do not do
+
+- Do not replace, retag, rebuild, or delete either Alpha 2 Release asset or any
+  Alpha 1 tag/asset.
+- Do not call Alpha 2 self-contained, Developer ID signed, notarized, stable,
+  generally supported, or physically validated.
+- Do not distribute a workflow artifact or diagnostics in place of the exact
+  public Release ZIP.
+- Do not weaken topology, closed-solid, palette-state, or 3MF fail-closed
+  validation, and do not overstate the four-box or included Full Spectrum 3MF
+  evidence.
+- Do not publish private models, generated private output, personal paths,
+  credentials, or validation sidecars.
+
+### Local-only files
+
+- Manual-run downloads, release staging, anonymous re-download copies, fresh
+  extraction roots, Mac wheel caches, generated app/fixture copies, and private
+  models remain outside Git.

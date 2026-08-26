@@ -1,10 +1,12 @@
-# ChromaMatter Source-backed App Alpha 2 Candidate — Install and Test
+# ChromaMatter Source-backed App Alpha 2 — Install and Test
 
 This guide is for the Finder-launchable **ChromaMatter Source Alpha.app** in
-the Alpha 2 candidate package on Apple Silicon Macs running macOS 15 or newer.
-The displayed product version is still `0.8beta`. The already published
-Source-backed App Alpha 1 remains immutable; Alpha 2 is a separate candidate
-and is not a released download until its exact-commit package and CI gates pass.
+the published Alpha 2 package on Apple Silicon Macs running macOS 15 or newer.
+The displayed product version is still `0.8beta`. Source-backed App Alpha 1
+remains an immutable historical Release. Alpha 2 is GitHub prerelease
+[#377168223](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-macos-source-app-alpha2),
+published at `2026-08-26T13:33:38Z` from exact tag/source commit
+`34e7ebdc3ec7dae6ad831b5119d574a656b105b0`.
 
 ## Read this distinction first
 
@@ -21,9 +23,14 @@ run `xattr` commands, or use `sudo` to make it open.
 
 ## Package contents
 
-The official candidate ZIP name is:
+The fixed public ZIP name is:
 
 `ChromaMatter-0.8beta-macos-source-app-alpha2.zip`
+
+Its frozen public identity is 217,943,261 bytes with SHA-256
+`C112396513B0EA21CD867ED016E2D5282F830235E3EBF324E45E3B4FDB647989`.
+The detached `SHA256SUMS-macos-source-app-alpha2.txt` asset is 115 bytes with
+SHA-256 `8152D72AD978246D8B41BC1A64B2855897CBD43BAE7E36402192EF3883595129`.
 
 After extraction, keep this folder together:
 
@@ -68,16 +75,23 @@ other regular file, including `SOURCE_APP_PACKAGE_MANIFEST.json`, and excludes
 only itself. The DemoData manifest remains the stable r32.2 payload allowlist
 and hash authority.
 
-At this candidate stage there is no approved Alpha 2 download. Once the project
-publishes one, use only the ZIP linked by the project testing hub or Release
-page together with this exact filename and its published SHA-256. A local
-staging folder or GitHub artifact with `diagnostics` in its name is not a
-released app package.
+Exact-tag run
+[#32974429065](https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32974429065)
+passed. Both public Release assets were downloaded without authentication and
+matched the sizes and hashes above. A fresh public extraction passed the
+260-file outer package audit; DemoData contained exactly 15 files, 10 manifest
+payloads, and 236,274,418 payload bytes; and the 238-file app audit passed with
+zero native-runtime files and the exact source commit. A local staging folder,
+manual-run artifact, or GitHub artifact with `diagnostics` in its name is not
+the published app package.
 
 ## Download, verify, and extract
 
-1. Download the fixed ZIP and its `.sha256` or `SHA256SUMS` file from the same
-   approved location.
+1. Download the
+   [fixed Alpha 2 ZIP](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-macos-source-app-alpha2/ChromaMatter-0.8beta-macos-source-app-alpha2.zip)
+   and
+   [`SHA256SUMS-macos-source-app-alpha2.txt`](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-macos-source-app-alpha2/SHA256SUMS-macos-source-app-alpha2.txt)
+   from the same approved Release.
 2. In Terminal, type `shasum -a 256 `, including the trailing space. Drag the
    ZIP into Terminal and press Return.
 3. Compare all 64 characters with the supplied checksum. Stop if they differ.
@@ -143,7 +157,7 @@ Spectrum path. This extended test can take much longer than ten minutes.
 
 1. Read `DemoData/README_EN.md`, `DemoData/NOTICE_EN.md`, and
    `DemoData/DEMO_DATA_MANIFEST.json`. Do not add, rename, regenerate, or
-   replace anything in `DemoData/` when checking the candidate package.
+   replace anything in `DemoData/` when checking the published package.
 2. Open `DemoData/Original AI model Color.glb` and, if useful, its adjacent
    `Reference.jpg`. Select **Full Spectrum (Mixed)** and explicitly select 32
    total palette states.
@@ -176,8 +190,9 @@ For one reproducible defect, use the [macOS alpha Issue form](https://github.com
 Include:
 
 ```text
-Test route: Source-backed App Alpha 2 candidate
-ZIP filename and verified SHA-256:
+Test route: Source-backed App Alpha 2
+ZIP filename: ChromaMatter-0.8beta-macos-source-app-alpha2.zip
+Verified ZIP SHA-256: C112396513B0EA21CD867ED016E2D5282F830235E3EBF324E45E3B4FDB647989
 Source commit (SOURCE_COMMIT.txt):
 Mac model/chip/RAM:
 macOS version:

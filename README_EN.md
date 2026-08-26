@@ -12,26 +12,39 @@
 | --- | --- | --- |
 | **Published r32.2** | The current downloadable Windows build and the documented Full Spectrum workflow | **[Download stable r32.2](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2)** |
 | **Experimental Flat Four Test 3** | Testing Flat Four, topology-aware white/gray highlight correction, the large-static-GLB path, and the 2D Colour Filter before integration | **[Download the Windows test ZIP](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2-flat4-test3/ChromaMatter-0.8beta-r32.2-flat4-test3-win64.zip)** · [Release notes](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2-flat4-test3) · [Draft PR #7](https://github.com/Ponkichi0718/ChromaMatter/pull/7) |
-| **macOS Source-backed App Alpha** | Finder `.app` testing on Apple Silicon / macOS 15+; first launch prepares the hash-locked source runtime | **[Download the macOS app ZIP](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-macos-source-app-alpha1/ChromaMatter-0.8beta-macos-source-app-alpha1.zip)** · [Release/checksum](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-macos-source-app-alpha1) · [English install/test guide](publication/MACOS_SOURCE_APP_TESTING_EN.md) · [Test hub](publication/MACOS_ALPHA_HUB_EN.md) |
+| **macOS Source-backed App Alpha 2** | Finder `.app` testing on Apple Silicon / macOS 15+ with the exact 15-file stable r32.2 `DemoData`; first launch prepares the hash-locked source runtime | **[Download the Alpha 2 app ZIP](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-macos-source-app-alpha2/ChromaMatter-0.8beta-macos-source-app-alpha2.zip)** · [Release/checksum](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-macos-source-app-alpha2) · [English install/test guide](publication/MACOS_SOURCE_APP_TESTING_EN.md) · [Test hub](publication/MACOS_ALPHA_HUB_EN.md) |
 
 The experimental workstream is an integration candidate, not a permanent fork.
 **Flat Four Test 3 is available as a separate public pre-release.** Extract the
 whole ZIP before starting it. Stable r32.2 below does not contain Flat Four; the
 Test 3 Release and Draft PR #7 remain the experimental status hubs.
 
-**The macOS Source-backed App Alpha is available for Apple Silicon / macOS
-15+.** Download the fixed ZIP, extract it completely, then Control-click
-`ChromaMatter Source Alpha.app` and choose **Open**. It verifies official
-Python 3.13.14 and installs only hash-locked dependencies on the tester's Mac.
-It is a Finder app but not a self-contained frozen build. That separate route
+**Alpha 2 is now the prominent macOS download.** GitHub prerelease
+[#377168223](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-macos-source-app-alpha2)
+was published from exact tag/source commit
+`34e7ebdc3ec7dae6ad831b5119d574a656b105b0`. Its
+`ChromaMatter-0.8beta-macos-source-app-alpha2.zip` is 217,943,261 bytes with
+SHA-256 `C112396513B0EA21CD867ED016E2D5282F830235E3EBF324E45E3B4FDB647989`.
+`SHA256SUMS-macos-source-app-alpha2.txt` is 115 bytes with SHA-256
+`8152D72AD978246D8B41BC1A64B2855897CBD43BAE7E36402192EF3883595129`.
+Exact-tag CI run
+[#32974429065](https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32974429065)
+passed, and both public assets matched those sizes and hashes after anonymous
+re-download. The first
+[Alpha 1 Release](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-macos-source-app-alpha1)
+remains immutable historical evidence.
+
+Alpha 2 is still a source-backed Finder app: after full extraction,
+Control-click `ChromaMatter Source Alpha.app` and choose **Open**. It verifies
+official Python 3.13.14 and installs only hash-locked dependencies on the
+tester’s Mac. It is not a self-contained frozen build; that separate route
 remains blocked because 153 packaged Mach-O files have unresolved
 source/build/relink closure evidence. A `diagnostics` artifact is not the app.
-See [Discussion #9](https://github.com/Ponkichi0718/ChromaMatter/discussions/9)
+The seven included DemoData 3MFs are Full Spectrum examples, not Flat Four
+evidence. See the guide for the mandatory Weak Black 5–25%, part-name, and
+multipart-instability warnings, and use
+[Discussion #9](https://github.com/Ponkichi0718/ChromaMatter/discussions/9)
 for results and setup questions.
-
-The default branch includes the same source-backed Finder app implementation
-as the public alpha tag. The stable Windows r32.2 binaries and the separate
-self-contained macOS build gate are unchanged.
 
 ## Download for Windows
 
@@ -91,8 +104,9 @@ Snapmaker, OpenAI, Apple, or any other third party.
 - **Published r32.2 test data:** Rights-cleared Hi3D multipart GLB and reference image are included under `DemoData/`
 - **Published demo outputs:** Seven derived 3MF reference outputs under `DemoData/3MF/`; one combined project and six part-specific projects
 - **Physical U1 validation:** The linked public print completed; it does not prove compatibility with every model or production setup
-- **macOS tester path:** Source-backed Finder `.app` available for Apple Silicon/macOS 15+; the guided launcher verifies official Python 3.13.14 and hash-locked dependencies locally
-- **macOS technical status:** Apple Silicon/macOS 15+ CI passes source, native, packaged self-test, Japanese UI, and English UI checks; the latest successful run published diagnostics only
+- **macOS Alpha 2 release:** PR [#20](https://github.com/Ponkichi0718/ChromaMatter/pull/20), PR/main/manual validation, exact-tag run #32974429065, publication, and anonymous re-download verification passed for exact source commit `34e7ebdc3ec7dae6ad831b5119d574a656b105b0`
+- **macOS Alpha 2 package:** the published source-backed Finder `.app` ZIP includes the quick four-box GLB and exact stable r32.2 15-file DemoData set beside the app; the included seven 3MFs are Full Spectrum examples only
+- **macOS Alpha 1:** the first source-backed Finder app remains an immutable historical public download and is not replaced or retagged as Alpha 2
 - **macOS self-contained-app gate:** the source-backed `.app` is separate; all 317 frozen-app Mach-O paths are classified, but 153 still have unresolved source/relink closure evidence
 - **macOS starter test:** The source launcher generates a deterministic CC0 red/blue/white/black four-box GLB; English and Japanese 10-minute guides and the dedicated Issue form are available
 - **Version:** `0.8beta`
