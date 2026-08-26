@@ -172,6 +172,12 @@ class MacOSAlphaAutomationTests(unittest.TestCase):
         self.assertGreaterEqual(text.count("inputs.upload_tester_alpha"), 3)
         self.assertIn("MACOS_ALPHA_TESTER_DISTRIBUTION_APPROVED", text)
         self.assertIn("MACOS_ALPHA_APPROVED_SOURCE_COMMIT", text)
+        self.assertIn(
+            "SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}",
+            text,
+        )
+        self.assertIn("ref: ${{ github.event.pull_request.head.sha || github.sha }}", text)
+        self.assertNotIn("$GITHUB_SHA", text)
         self.assertIn("DISTRIBUTION_APPROVAL.json", text)
         self.assertIn("BINARY_COMPONENT_MAP.json", text)
         self.assertIn("SBOM.spdx.json", text)

@@ -66,12 +66,14 @@ jobs:
       PIP_DISABLE_PIP_VERSION_CHECK: "1"
       PIP_NO_CACHE_DIR: "1"
       PYTHONDONTWRITEBYTECODE: "1"
+      SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
 
     steps:
       - name: Check out exact source
         uses: actions/checkout@v4
         with:
           persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Set up CPython 3.13.14 arm64
         uses: actions/setup-python@v7
@@ -102,7 +104,7 @@ jobs:
             echo "Run this workflow with upload_tester_alpha=false for build diagnostics."
             exit 1
           fi
-          if [[ "$MACOS_ALPHA_APPROVED_SOURCE_COMMIT" != "$GITHUB_SHA" ]]; then
+          if [[ "$MACOS_ALPHA_APPROVED_SOURCE_COMMIT" != "$SOURCE_COMMIT" ]]; then
             echo "::error::The requested source commit has not been explicitly approved for external macOS testing."
             exit 1
           fi
@@ -185,7 +187,7 @@ jobs:
           set -euo pipefail
           python tooling/audit_macos_source_coverage.py \
             --inventory "$RUNNER_TEMP/chromamatter-macos-arm64/validation/MACOS_ALPHA_APP_INVENTORY.json" \
-            --source-commit "$GITHUB_SHA" \
+            --source-commit "$SOURCE_COMMIT" \
             --output "$RUNNER_TEMP/chromamatter-macos-arm64/validation/MACOS_SOURCE_COVERAGE_REPORT.json"
 
       - name: Record diagnostic bundle information
@@ -198,7 +200,7 @@ jobs:
           {
             echo "workflow_run=${GITHUB_RUN_ID}"
             echo "workflow_attempt=${GITHUB_RUN_ATTEMPT}"
-            echo "source_commit=${GITHUB_SHA}"
+            echo "source_commit=${SOURCE_COMMIT}"
             echo "runner_os=${RUNNER_OS}"
             echo "runner_arch=${RUNNER_ARCH}"
             uname -a || true
@@ -298,7 +300,7 @@ jobs:
           EOF
 
           cp licenses/macos/MACOS_ALPHA_SOURCE_OFFER_STATUS.txt "$stage/"
-          printf '%s\n' "$GITHUB_SHA" >"$stage/SOURCE_COMMIT.txt"
+          printf '%s\n' "$SOURCE_COMMIT" >"$stage/SOURCE_COMMIT.txt"
 
           rm -f -- "$archive"
           ditto -c -k --sequesterRsrc --keepParent "$stage" "$archive"
@@ -350,7 +352,7 @@ jobs:
           app="$root/ChromaMatter-macOS-Alpha.app"
           executable="$app/Contents/MacOS/ChromaMatter"
           test -x "$executable"
-          test "$(cat "$root/SOURCE_COMMIT.txt")" = "$GITHUB_SHA"
+          test "$(cat "$root/SOURCE_COMMIT.txt")" = "$SOURCE_COMMIT"
           (
             cd "$root"
             shasum -a 256 -c PUBLIC_TEST_MODEL_SHA256.txt
@@ -432,10 +434,10 @@ jobs:
             echo "# ChromaMatter macOS alpha result"
             echo
             echo "- Job status: **${JOB_STATUS}**"
-            echo "- Source commit: \`${GITHUB_SHA}\`"
+            echo "- Source commit: \`${SOURCE_COMMIT}\`"
             echo "- Workflow run: [${GITHUB_RUN_ID}](${run_url})"
             echo "- Diagnostics artifact: \`ChromaMatter-macOS15-arm64-alpha-diagnostics-${GITHUB_RUN_ID}\` (reports only; not an app)"
-            echo "- [English volunteer test guide](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/blob/${GITHUB_SHA}/publication/MACOS_ALPHA_TESTING_EN.md)"
+            echo "- [English volunteer test guide](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/blob/${SOURCE_COMMIT}/publication/MACOS_ALPHA_TESTING_EN.md)"
             echo "- [Testing board](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/discussions/9)"
             echo "- [Reproducible-problem form](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/issues/new?template=macos_alpha_report.yml)"
             echo
