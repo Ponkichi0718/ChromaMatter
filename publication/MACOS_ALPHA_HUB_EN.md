@@ -34,8 +34,8 @@ for the required test. The supplied CC0 GLB contains only four coloured boxes.
 The Apple Silicon app now builds and passes source tests, native dependency
 probes, packaged native/rendering self-tests, and Japanese and English UI smoke
 tests. The latest successful technical run is
-[#32946348725](https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32946348725)
-at source commit `495b1d86ca6c924a46770a3915fe5c0e514045dc`. It uploaded
+[#32947038458](https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32947038458)
+at source commit `9404926a6aadbb918ade7855f4141e263c3aafba`. It uploaded
 diagnostics only.
 
 Distribution is not approved. All 317 packaged Mach-O paths are classified,
