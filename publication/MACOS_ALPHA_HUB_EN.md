@@ -1,93 +1,92 @@
-# Welcome: ChromaMatter macOS Alpha Testing
+# Welcome: ChromaMatter macOS Source Tester Alpha
 
-Thank you for volunteering. This board is the friendly starting point for the
-separate ChromaMatter **Apple Silicon / macOS 15+ alpha**.
-
-## Download status
-
-**There is no approved tester download yet.** Start with the guide and testing
-board below, and wait for the single approved build entry on this page. A
-GitHub Actions artifact with `diagnostics` in its name is not the application.
-
-When a build is approved, the owner will update this post with exactly one:
-
-- approved workflow run URL and expiry date;
-- application artifact name;
-- source commit from `SOURCE_COMMIT.txt`;
-- ZIP SHA-256.
-
-Do not use an app sent through a comment, mirror, or file-sharing service.
+Thank you for volunteering. This is the starting point for the separate
+**Apple Silicon / macOS 15+** test path.
 
 ## Start here
 
-1. Read the [English volunteer test guide](https://github.com/Ponkichi0718/ChromaMatter/blob/main/publication/MACOS_ALPHA_TESTING_EN.md).
-2. When the approved build appears above, verify its SHA-256.
-3. Run the 10-minute checklist with the supplied public four-colour GLB.
-4. Reply here with a successful or partly successful compatibility result.
-5. For one reproducible defect, use the [macOS alpha Issue form](https://github.com/Ponkichi0718/ChromaMatter/issues/new?template=macos_alpha_report.yml).
+The source-based tester is available now:
 
-No programming knowledge, printer, paid AI account, or private model is needed
-for the required test. The supplied CC0 GLB contains only four coloured boxes.
+1. **[Download the fixed Source Tester Alpha ZIP](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-macos-source-alpha1/ChromaMatter-0.8beta-macos-source-alpha1.zip)** and verify it against `SHA256SUMS-macos-source-alpha1.txt` on the [tag/Release page](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-macos-source-alpha1).
+2. Read the [English setup and 10-minute test guide](MACOS_ALPHA_TESTING_EN.md).
+3. Extract the ZIP, Control-click `START_MACOS_SOURCE_ALPHA.command`, and
+   choose **Open**.
+4. Let the launcher verify/install official Python 3.13.14 and the hash-locked
+   dependencies. After Installer finishes, return to Terminal and press Return;
+   reopen the launcher only if it still cannot find Python.
+5. Run the generated public four-colour GLB test and report the result.
 
-## Current engineering status
+The generated fixture is `ChromaMatter-Public-Four-Color-Test.glb`. The full
+path and click-by-click checks are in the guide.
 
-The Apple Silicon app now builds and passes source tests, native dependency
-probes, packaged native/rendering self-tests, and Japanese and English UI smoke
-tests. The latest successful technical run is
-[#32947038458](https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32947038458)
-at source commit `9404926a6aadbb918ade7855f4141e263c3aafba`. It uploaded
-diagnostics only.
+No programming knowledge, printer, paid AI account, or private model is
+needed. The first setup downloads several hundred MB and may take several
+minutes. Later launches reuse the local environment.
 
-Distribution is not approved. All 317 packaged Mach-O paths are classified,
-but 253 still have unresolved source/relink closure evidence.
-[Draft PR #12](https://github.com/Ponkichi0718/ChromaMatter/pull/12) is the open
-source and review workspace; it is not a tester download.
+## Important: this is not the prebuilt app
 
-## Share a successful result
+The downloadable item above is the tagged source code with a guided launcher.
+There is **no approved prebuilt `.app` ZIP**. Prebuilt distribution remains on
+hold because 253 packaged Mach-O files still have unresolved
+source/build/relink closure evidence. A `diagnostics` artifact is a report,
+not an application.
 
-Copy this template into a reply:
+The Apple Silicon app has already passed source tests, native probes, packaged
+self-test, and Japanese/English UI smoke in
+[technical CI run #32947038458](https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32947038458).
+[Draft PR #12](https://github.com/Ponkichi0718/ChromaMatter/pull/12) remains the
+separate source/review workspace. Neither is a tester download.
+
+## Share a result
+
+Use [macOS Alpha Testing discussion #9](https://github.com/Ponkichi0718/ChromaMatter/discussions/9)
+for a successful/partial result, setup question, or general observation. Copy
+this template into a reply:
 
 ```text
 Overall result: Pass / Partial
-Approved workflow run:
-Artifact name:
-Source commit:
-ZIP SHA-256 verified: Yes / No
+Test route: Source Tester Alpha
+Source tag: v0.8beta-macos-source-alpha1
+Source commit (optional if unknown):
 Mac model and chip:
 RAM:
 macOS version:
+Official Python setup: Pass / Already installed / Fail
+Hash-locked dependency setup: Pass / Fail
+Automatic self-test: Pass / Fail
 Japanese UI: Pass / Fail / Not tested
 English UI: Pass / Fail / Not tested
-Public GLB and view controls: Pass / Fail / Not tested
+Public four-colour GLB and view controls: Pass / Fail / Not tested
 Full Spectrum: Pass / Fail / Not tested
 Flat Four F1-F4 only: Pass / Fail / Not tested
 Manual Fill / Undo / Redo: Pass / Fail / Not tested
 3MF export: Pass / Fail / Not tested
-Snapmaker Orca version and result:
 Project save / reload: Pass / Fail / Not tested
+Snapmaker Orca version and result:
 Notes:
 ```
 
-## What belongs in an Issue
+For one reproducible crash, hang, setup failure, display/input problem, import
+failure, wrong colour assignment, export problem, or documentation defect, use
+the [macOS alpha Issue form](https://github.com/Ponkichi0718/ChromaMatter/issues/new?template=macos_alpha_report.yml).
 
-Use the dedicated Issue form for a repeatable crash, hang, blank preview,
-supported OBJ/GLB import failure, incorrect Flat Four F5+ assignment,
-fail-closed/export problem, Orca-open problem, save/reload change, or a concrete
-documentation error. Please keep one defect per Issue.
+## Privacy and boundaries
 
-Use this Discussion for successful results, setup questions, general
-observations, and comparing Apple Silicon configurations.
+The first setup connects only to obtain the verified official Python installer
+and hash-locked Python dependencies. Model and project processing then stays
+local; ChromaMatter does not intentionally upload them to a project-operated
+server.
 
-## Privacy and alpha boundaries
-
-This alpha is ad-hoc signed, has no Apple Developer ID signature, is not
-notarized, and is not a supported public macOS Release. Do not redistribute it.
-Never upload a private, purchased, customer, confidential, or third-party
+Never attach a private, purchased, customer, confidential, or third-party
 model. Remove user names, home paths, account details, serial numbers, and
-private filenames from screenshots and logs. Do not post credentials or a
-security vulnerability publicly; use the private
-[Report a vulnerability](https://github.com/Ponkichi0718/ChromaMatter/security/advisories/new)
-form instead.
+private filenames from Terminal output and screenshots. Do not redistribute a
+modified tester ZIP; link to the exact tag instead.
 
-The displayed application version remains `0.8beta`. The stable Windows build
-and Windows Flat Four Test 3 remain separate downloads.
+For a suspected security issue, use the private
+[Report a vulnerability](https://github.com/Ponkichi0718/ChromaMatter/security/advisories/new)
+route rather than a public post.
+
+The source launcher is not Developer ID signed or Apple-notarized, the product
+remains `0.8beta`, Intel Macs are unsupported, and this is not a supported
+public macOS Release. The stable Windows build and Windows Flat Four Test 3
+remain separate downloads.

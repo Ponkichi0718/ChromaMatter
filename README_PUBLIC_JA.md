@@ -12,17 +12,19 @@
 | --- | --- | --- |
 | **公開安定版 r32.2** | 現在ダウンロードできるWindows版と、検証済みのFull Spectrum制作フローを使う | **[安定版r32.2をダウンロード](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2)** |
 | **Flat Four Test 3（実験版）** | Flat Four、白／灰色ハイライト補正、大容量静的GLB、2D彩色フィルターを統合前に試す | **[Windowsテスト版ZIPをダウンロード](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2-flat4-test3/ChromaMatter-0.8beta-r32.2-flat4-test3-win64.zip)** · [説明と注意事項](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2-flat4-test3) · [Draft PR #7](https://github.com/Ponkichi0718/ChromaMatter/pull/7) |
-| **macOS Apple Silicon alpha** | macOS 15以降での協力テスト。Developer ID未署名・未公証で、正式Releaseではありません | **[英語のテスターガイドから開始](publication/MACOS_ALPHA_TESTING_EN.md)** · [テスト掲示板](https://github.com/Ponkichi0718/ChromaMatter/discussions/9) · [再現する不具合を報告](https://github.com/Ponkichi0718/ChromaMatter/issues/new?template=macos_alpha_report.yml) |
+| **macOS Source Tester Alpha** | Apple Silicon / macOS 15以降でsourceから協力テスト。事前build appや正式macOS Releaseではありません | **[macOSテスター版ZIPをダウンロード](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-macos-source-alpha1/ChromaMatter-0.8beta-macos-source-alpha1.zip)** · [Release／checksum](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-macos-source-alpha1) · [日本語テスト案内](publication/MACOS_ALPHA_HUB_JA.md) |
 
 実験テスト版は恒久的な別系統ではなく、検証後に通常版へ統合する候補です。
 **Flat Four Test 3を別の公開プレリリースとしてダウンロードできます。**
 ZIP全体を展開してから起動してください。下の安定版r32.2にはFlat Fourが
 入っていないため、Test 3 ReleaseとDraft PR #7を実験版の案内先にしています。
 
-**macOSテスター版はまだ配布承認前です。** Apple Silicon上での技術buildと
-application検査は通過しましたが、配布ライセンス監査は継続中です。監査まで
-通った正確な1つのbuildだけを、上の英語ガイドから案内します。`diagnostics`と
-書かれたartifactはapplicationではありません。
+**macOS Source Tester AlphaをApple Silicon / macOS 15以降で試せます。** 上の固定ZIPを
+展開し、`START_MACOS_SOURCE_ALPHA.command`をControl-clickして「開く」を選びます。
+launcherは公式Python 3.13.14とhash-lock済み依存関係を検証してからGUIを開きます。
+事前buildした`.app`はまだ未公開です。253件のMach-Oについてsource／build／再link
+根拠が未解決で、`diagnostics` artifactはapplicationではありません。結果やsetup
+質問は[Discussion #9](https://github.com/Ponkichi0718/ChromaMatter/discussions/9)へ投稿できます。
 
 ## Windows版をダウンロード
 
