@@ -75,7 +75,19 @@
       "version": "2.5.1",
       "filename": "numpy-2.5.1-cp313-cp313-macosx_14_0_arm64.whl",
       "url": "https://files.pythonhosted.org/packages/88/b3/3c28c558a09fc72100c646dac6d2fce8e834c471b0edca01a29996706117/numpy-2.5.1-cp313-cp313-macosx_14_0_arm64.whl",
-      "sha256": "6165343f81b56ef8f514f396989e529b61d9dc709b99421b07e9f3e698e2287d"
+      "sha256": "6165343f81b56ef8f514f396989e529b61d9dc709b99421b07e9f3e698e2287d",
+      "pypi_publish_attestation": {
+        "status": "metadata-recorded-subject-hash-matches",
+        "provenance_url": "https://pypi.org/integrity/numpy/2.5.1/numpy-2.5.1-cp313-cp313-macosx_14_0_arm64.whl/provenance",
+        "publisher_repository": "numpy/numpy-release",
+        "publisher_workflow": "wheels.yml",
+        "publisher_environment": "pypi",
+        "certificate_source_commit": "115e239fad506b454702f615b542105f97299754",
+        "certificate_source_ref": "refs/heads/maintenance/2.5.x",
+        "workflow_identity": "https://github.com/numpy/numpy-release/.github/workflows/wheels.yml@refs/heads/maintenance/2.5.x",
+        "run_uri": "https://github.com/numpy/numpy-release/actions/runs/28712622127/attempts/1",
+        "rekor_log_index": "2071591530"
+      }
     },
     {
       "distribution": "packaging",
@@ -89,7 +101,19 @@
       "version": "11.2.1",
       "filename": "pillow-11.2.1-cp313-cp313-macosx_11_0_arm64.whl",
       "url": "https://files.pythonhosted.org/packages/b5/09/29d5cd052f7566a63e5b506fac9c60526e9ecc553825551333e1e18a4858/pillow-11.2.1-cp313-cp313-macosx_11_0_arm64.whl",
-      "sha256": "b0e130705d568e2f43a17bcbe74d90958e8a16263868a12c3e0d9c8162690830"
+      "sha256": "b0e130705d568e2f43a17bcbe74d90958e8a16263868a12c3e0d9c8162690830",
+      "pypi_publish_attestation": {
+        "status": "metadata-recorded-subject-hash-matches",
+        "provenance_url": "https://pypi.org/integrity/pillow/11.2.1/pillow-11.2.1-cp313-cp313-macosx_11_0_arm64.whl/provenance",
+        "publisher_repository": "python-pillow/Pillow",
+        "publisher_workflow": "wheels.yml",
+        "publisher_environment": "release-pypi",
+        "certificate_source_commit": "339bc5db93bd95decf65a59fab273f300db6594d",
+        "certificate_source_ref": "refs/tags/11.2.1",
+        "workflow_identity": "https://github.com/python-pillow/Pillow/.github/workflows/wheels.yml@refs/tags/11.2.1",
+        "run_uri": "https://github.com/python-pillow/Pillow/actions/runs/14421635159/attempts/1",
+        "rekor_log_index": "195887335"
+      }
     },
     {
       "distribution": "pip",
@@ -124,7 +148,19 @@
       "version": "0.3.0",
       "filename": "pytetwild-0.3.0-cp312-abi3-macosx_15_0_arm64.whl",
       "url": "https://files.pythonhosted.org/packages/97/9b/4c68c73658e5a0a5f50b82f76312c26e6fc3455baf244326a84a4f53103a/pytetwild-0.3.0-cp312-abi3-macosx_15_0_arm64.whl",
-      "sha256": "e0f7edd8d2e29f1439cf78dde9d2be63b3c0d4091d402b8cb291f5ca75c0312e"
+      "sha256": "e0f7edd8d2e29f1439cf78dde9d2be63b3c0d4091d402b8cb291f5ca75c0312e",
+      "pypi_publish_attestation": {
+        "status": "metadata-recorded-subject-hash-matches",
+        "provenance_url": "https://pypi.org/integrity/pytetwild/0.3.0/pytetwild-0.3.0-cp312-abi3-macosx_15_0_arm64.whl/provenance",
+        "publisher_repository": "pyvista/pytetwild",
+        "publisher_workflow": "build-and-deploy.yml",
+        "publisher_environment": "pypi",
+        "certificate_source_commit": "eea46df87ef58e861956b7a710f42ab58eaa02a0",
+        "certificate_source_ref": "refs/tags/v0.3.0",
+        "workflow_identity": "https://github.com/pyvista/pytetwild/.github/workflows/build-and-deploy.yml@refs/tags/v0.3.0",
+        "run_uri": "https://github.com/pyvista/pytetwild/actions/runs/25986444942/attempts/1",
+        "rekor_log_index": "1559612880"
+      }
     },
     {
       "distribution": "resvg",
@@ -138,14 +174,38 @@
       "version": "1.4.1",
       "filename": "rtree-1.4.1-py3-none-macosx_11_0_arm64.whl",
       "url": "https://files.pythonhosted.org/packages/f3/cf/2710b6fd6b07ea0aef317b29f335790ba6adf06a28ac236078ed9bd8a91d/rtree-1.4.1-py3-none-macosx_11_0_arm64.whl",
-      "sha256": "a7e48d805e12011c2cf739a29d6a60ae852fb1de9fc84220bbcef67e6e595d7d"
+      "sha256": "a7e48d805e12011c2cf739a29d6a60ae852fb1de9fc84220bbcef67e6e595d7d",
+      "pypi_publish_attestation": {
+        "status": "metadata-recorded-subject-hash-matches",
+        "provenance_url": "https://pypi.org/integrity/rtree/1.4.1/rtree-1.4.1-py3-none-macosx_11_0_arm64.whl/provenance",
+        "publisher_repository": "Toblerity/rtree",
+        "publisher_workflow": "test.yml",
+        "publisher_environment": "pypi",
+        "certificate_source_commit": "4a46e61ae96067e7929965e11d93c386435e6723",
+        "certificate_source_ref": "refs/tags/1.4.1",
+        "workflow_identity": "https://github.com/Toblerity/rtree/.github/workflows/test.yml@refs/tags/1.4.1",
+        "run_uri": "https://github.com/Toblerity/rtree/actions/runs/16947064747/attempts/2",
+        "rekor_log_index": "391005688"
+      }
     },
     {
       "distribution": "scipy",
       "version": "1.18.0",
       "filename": "scipy-1.18.0-cp313-cp313-macosx_14_0_arm64.whl",
       "url": "https://files.pythonhosted.org/packages/d3/0f/10ffa0b697a572f4e0d48b92a88895d366422f019f723e7e14a84c050dac/scipy-1.18.0-cp313-cp313-macosx_14_0_arm64.whl",
-      "sha256": "68363b7eaacd8b5dd426df56d782cc156468ac79a127a1b87ca597d6e2e82197"
+      "sha256": "68363b7eaacd8b5dd426df56d782cc156468ac79a127a1b87ca597d6e2e82197",
+      "pypi_publish_attestation": {
+        "status": "metadata-recorded-subject-hash-matches",
+        "provenance_url": "https://pypi.org/integrity/scipy/1.18.0/scipy-1.18.0-cp313-cp313-macosx_14_0_arm64.whl/provenance",
+        "publisher_repository": "scipy/scipy-release",
+        "publisher_workflow": "wheels.yml",
+        "publisher_environment": "pypi",
+        "certificate_source_commit": "b686f516cb0e0fbf573372af3c7b82eef25e27c0",
+        "certificate_source_ref": "refs/heads/maintenance/1.18.x",
+        "workflow_identity": "https://github.com/scipy/scipy-release/.github/workflows/wheels.yml@refs/heads/maintenance/1.18.x",
+        "run_uri": "https://github.com/scipy/scipy-release/actions/runs/27802856230/attempts/1",
+        "rekor_log_index": "1871240820"
+      }
     },
     {
       "distribution": "setuptools",
@@ -159,7 +219,12 @@
       "version": "2.1.2",
       "filename": "shapely-2.1.2-cp313-cp313-macosx_11_0_arm64.whl",
       "url": "https://files.pythonhosted.org/packages/6d/ab/0bee5a830d209adcd3a01f2d4b70e587cdd9fd7380d5198c064091005af8/shapely-2.1.2-cp313-cp313-macosx_11_0_arm64.whl",
-      "sha256": "8cff473e81017594d20ec55d86b54bc635544897e13a7cfc12e36909c5309a2a"
+      "sha256": "8cff473e81017594d20ec55d86b54bc635544897e13a7cfc12e36909c5309a2a",
+      "pypi_publish_attestation": {
+        "status": "not-published-at-audit-time",
+        "provenance_url": "https://pypi.org/integrity/shapely/2.1.2/shapely-2.1.2-cp313-cp313-macosx_11_0_arm64.whl/provenance",
+        "observed_http_status": 404
+      }
     },
     {
       "distribution": "tetgen",
@@ -292,6 +357,15 @@
       "source_commit": "a2e59f0e7065404b44dfe92a28aca47ba1378dc4"
     },
     {
+      "id": "vcglib-pymeshlab-submodule",
+      "component": "VCGLib",
+      "version": "MeshLab d876376e3cc4f92d257e248023d82cbac5b03c7d submodule",
+      "license_declared": "GPL-3.0-only",
+      "identity_kind": "git-commit",
+      "source_url": "https://github.com/cnr-isti-vclab/vcglib.git",
+      "source_commit": "c94ef4e12e9ea3ae986d9af91005be8328d13719"
+    },
+    {
       "id": "qt-5.15.18",
       "component": "Qt",
       "version": "5.15.18",
@@ -317,6 +391,114 @@
       "identity_kind": "git-commit",
       "source_url": "https://github.com/libspatialindex/libspatialindex.git",
       "source_commit": "175b56a9541e76982d13dbbf0c9b8f0b8d752619"
+    },
+    {
+      "id": "numpy-2.5.1",
+      "component": "NumPy",
+      "version": "2.5.1",
+      "license_declared": "BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0",
+      "identity_kind": "git-commit",
+      "source_url": "https://github.com/numpy/numpy.git",
+      "source_commit": "5e1d03ffac5f2c0a9c39bfcaa9fc853b2b83151e"
+    },
+    {
+      "id": "numpy-release-recipe-115e239f",
+      "component": "NumPy release recipe",
+      "version": "PyPI wheel attested recipe",
+      "license_declared": "BSD-3-Clause",
+      "identity_kind": "git-commit",
+      "source_url": "https://github.com/numpy/numpy-release.git",
+      "source_commit": "115e239fad506b454702f615b542105f97299754"
+    },
+    {
+      "id": "scipy-1.18.0",
+      "component": "SciPy",
+      "version": "1.18.0",
+      "license_declared": "BSD-3-Clause",
+      "identity_kind": "git-commit",
+      "source_url": "https://github.com/scipy/scipy.git",
+      "source_commit": "54ef5423f2e4376230ec3bfda6912a07a50958e3"
+    },
+    {
+      "id": "scipy-release-recipe-b686f516",
+      "component": "SciPy release recipe",
+      "version": "PyPI wheel attested recipe",
+      "license_declared": "BSD-3-Clause",
+      "identity_kind": "git-commit",
+      "source_url": "https://github.com/scipy/scipy-release.git",
+      "source_commit": "b686f516cb0e0fbf573372af3c7b82eef25e27c0"
+    },
+    {
+      "id": "pillow-11.2.1",
+      "component": "Pillow",
+      "version": "11.2.1",
+      "license_declared": "MIT-CMU",
+      "identity_kind": "git-commit",
+      "source_url": "https://github.com/python-pillow/Pillow.git",
+      "source_commit": "339bc5db93bd95decf65a59fab273f300db6594d"
+    },
+    {
+      "id": "pillow-multibuild-submodule",
+      "component": "multibuild",
+      "version": "Pillow 11.2.1 submodule",
+      "license_declared": "BSD-2-Clause",
+      "identity_kind": "git-commit",
+      "source_url": "https://github.com/multi-build/multibuild.git",
+      "source_commit": "42d761728d141d8462cd9943f4329f12fe62b155"
+    },
+    {
+      "id": "shapely-2.1.2",
+      "component": "Shapely",
+      "version": "2.1.2",
+      "license_declared": "BSD-3-Clause",
+      "identity_kind": "git-commit",
+      "source_url": "https://github.com/shapely/shapely.git",
+      "source_commit": "5fb639d1056888d135fe56bfaf750c9648addeec"
+    },
+    {
+      "id": "rtree-1.4.1",
+      "component": "Rtree",
+      "version": "1.4.1",
+      "license_declared": "MIT",
+      "identity_kind": "git-commit",
+      "source_url": "https://github.com/Toblerity/rtree.git",
+      "source_commit": "4a46e61ae96067e7929965e11d93c386435e6723"
+    },
+    {
+      "id": "libspatialindex-2.1.0-release-archive",
+      "component": "libspatialindex",
+      "version": "2.1.0 release archive used by Rtree",
+      "license_declared": "MIT",
+      "identity_kind": "archive-sha256",
+      "source_url": "https://github.com/libspatialindex/libspatialindex/archive/2.1.0.zip",
+      "source_sha256": "86aa0925dd151ff9501a5965c4f8d7fb3dcd8accdc386a650dbdd62660399926"
+    },
+    {
+      "id": "pytetwild-0.3.0",
+      "component": "PyTetWild",
+      "version": "0.3.0",
+      "license_declared": "MPL-2.0",
+      "identity_kind": "git-commit",
+      "source_url": "https://github.com/pyvista/pytetwild.git",
+      "source_commit": "eea46df87ef58e861956b7a710f42ab58eaa02a0"
+    },
+    {
+      "id": "ftetwild-pytetwild-submodule",
+      "component": "fTetWild",
+      "version": "PyTetWild v0.3.0 submodule",
+      "license_declared": "MPL-2.0",
+      "identity_kind": "git-commit",
+      "source_url": "https://github.com/wildmeshing/fTetWild.git",
+      "source_commit": "d7d99bb4387a07895b9adce058dc7305f6b6e5ab"
+    },
+    {
+      "id": "gmp-6.3.0",
+      "component": "GNU MP",
+      "version": "6.3.0",
+      "license_declared": "LGPL-3.0-or-later OR GPL-2.0-or-later",
+      "identity_kind": "archive-sha256",
+      "source_url": "https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz",
+      "source_sha256": "a3c2b80201b89e68616f4ad30bc66aee4927c3ce50e33929ca819d5c43538898"
     }
   ],
   "python_runtime_binary_provenance": {
@@ -343,18 +525,115 @@
       "observed_facts": [
         "Homebrew installs coreutils cmake ninja libomp cgal xerces-c tbb and embree without formula revision pins"
       ]
+    },
+    {
+      "id": "numpy-attested-release-workflow-115e239f",
+      "source_url": "https://raw.githubusercontent.com/numpy/numpy-release/115e239fad506b454702f615b542105f97299754/.github/workflows/wheels.yml",
+      "observed_facts": [
+        "PyPI provenance binds the locked wheel SHA-256 to this numpy-release commit and workflow identity",
+        "the arm64 macOS 14 build selects Accelerate and disables OpenBLAS",
+        "the workflow checks out numpy/numpy by maintenance branch name, while the hash-locked wheel's numpy/version.py embeds source commit 5e1d03ffac5f2c0a9c39bfcaa9fc853b2b83151e"
+      ]
+    },
+    {
+      "id": "scipy-attested-release-workflow-b686f516",
+      "source_url": "https://raw.githubusercontent.com/scipy/scipy-release/b686f516cb0e0fbf573372af3c7b82eef25e27c0/.github/workflows/wheels.yml",
+      "observed_facts": [
+        "PyPI provenance binds the locked wheel SHA-256 to this scipy-release commit and workflow identity",
+        "the arm64 macOS 14 build selects Accelerate and uses the macos-14 runner image",
+        "the workflow checks out scipy/scipy by maintenance branch name, while the hash-locked wheel's scipy/version.py embeds source commit 54ef5423f2e4376230ec3bfda6912a07a50958e3"
+      ]
+    },
+    {
+      "id": "pillow-attested-wheel-workflow-11.2.1",
+      "source_url": "https://raw.githubusercontent.com/python-pillow/Pillow/339bc5db93bd95decf65a59fab273f300db6594d/.github/workflows/wheels.yml",
+      "observed_facts": [
+        "PyPI provenance binds the locked wheel SHA-256 to the exact Pillow 11.2.1 tag commit",
+        "the workflow invokes actions by mutable major-version tags and does not bind every build action to a commit"
+      ]
+    },
+    {
+      "id": "pillow-wheel-dependency-script-11.2.1",
+      "source_url": "https://raw.githubusercontent.com/python-pillow/Pillow/339bc5db93bd95decf65a59fab273f300db6594d/.github/workflows/wheels-dependencies.sh",
+      "observed_facts": [
+        "dependency version labels are recorded in the tag source",
+        "the dependency bootstrap downloads pillow-depends-main.zip from a moving branch without a source or payload digest",
+        "the script does not hash-bind every native dependency source archive carried into the published wheel"
+      ]
+    },
+    {
+      "id": "shapely-release-workflow-2.1.2",
+      "source_url": "https://raw.githubusercontent.com/shapely/shapely/5fb639d1056888d135fe56bfaf750c9648addeec/.github/workflows/release.yml",
+      "observed_facts": [
+        "the arm64 wheel recipe selects GEOS 3.13.1",
+        "PyPI exposes no publish attestation for the locked Shapely wheel"
+      ]
+    },
+    {
+      "id": "shapely-geos-install-script-2.1.2",
+      "source_url": "https://raw.githubusercontent.com/shapely/shapely/5fb639d1056888d135fe56bfaf750c9648addeec/ci/install_geos.sh",
+      "observed_facts": [
+        "GEOS 3.13.1 is downloaded over HTTP without a source archive checksum",
+        "cmake is installed without an exact version or artifact digest"
+      ]
+    },
+    {
+      "id": "rtree-attested-wheel-workflow-1.4.1",
+      "source_url": "https://raw.githubusercontent.com/Toblerity/rtree/4a46e61ae96067e7929965e11d93c386435e6723/.github/workflows/test.yml",
+      "observed_facts": [
+        "PyPI provenance binds the locked wheel SHA-256 to the exact Rtree 1.4.1 tag commit",
+        "the wheel workflow invokes the repository's hash-checking libspatialindex build script before packaging"
+      ]
+    },
+    {
+      "id": "rtree-libspatialindex-install-script-1.4.1",
+      "source_url": "https://raw.githubusercontent.com/Toblerity/rtree/4a46e61ae96067e7929965e11d93c386435e6723/scripts/install_libspatialindex.sh",
+      "observed_facts": [
+        "the exact 2.1.0 release archive URL is checked against SHA-256 86aa0925dd151ff9501a5965c4f8d7fb3dcd8accdc386a650dbdd62660399926 before building",
+        "the script builds and installs the two shared libraries bundled in the Rtree wheel"
+      ]
+    },
+    {
+      "id": "pytetwild-attested-wheel-workflow-v0.3.0",
+      "source_url": "https://raw.githubusercontent.com/pyvista/pytetwild/eea46df87ef58e861956b7a710f42ab58eaa02a0/.github/workflows/build-and-deploy.yml",
+      "observed_facts": [
+        "PyPI provenance binds the locked wheel SHA-256 to the exact PyTetWild v0.3.0 tag commit",
+        "the macOS build uses the moving macos-latest image and action version tags rather than fixed action commits",
+        "the workflow does not install or record the exact GMP source or binary identity consumed by the build"
+      ]
     }
   ],
   "required_wheel_inspections": [
+    "numpy",
     "pymeshlab",
-    "pytetwild"
+    "pytetwild",
+    "rtree",
+    "scipy"
   ],
   "wheel_string_probes": [
+    {
+      "distribution": "numpy",
+      "fact": "source-commit-5e1d03ffac5f2c0a9c39bfcaa9fc853b2b83151e",
+      "member_glob": "numpy/version.py",
+      "ascii": "5e1d03ffac5f2c0a9c39bfcaa9fc853b2b83151e"
+    },
     {
       "distribution": "pymeshlab",
       "fact": "qt-version-5.15.18",
       "member_glob": "*/QtCore.framework/Versions/5/QtCore",
       "ascii": "Qt 5.15.18"
+    },
+    {
+      "distribution": "pytetwild",
+      "fact": "gmp-version-6.3.0",
+      "member_glob": "pytetwild/.dylibs/libgmp.10.dylib",
+      "ascii": "6.3.0"
+    },
+    {
+      "distribution": "scipy",
+      "fact": "source-commit-54ef5423f2e4376230ec3bfda6912a07a50958e3",
+      "member_glob": "scipy/version.py",
+      "ascii": "54ef5423f2e4376230ec3bfda6912a07a50958e3"
     }
   ],
   "native_groups": [
@@ -394,7 +673,7 @@
       "id": "pillow-native-closure",
       "path_prefixes": ["Contents/Frameworks/PIL"],
       "distributions": ["pillow"],
-      "source_material_ids": [],
+      "source_material_ids": ["pillow-11.2.1", "pillow-multibuild-submodule"],
       "gap_ids": ["pillow-wheel-native-closure-unfixed"],
       "relink_status": "not-required"
     },
@@ -434,8 +713,8 @@
       "id": "numpy-native-closure",
       "path_prefixes": ["Contents/Frameworks/numpy"],
       "distributions": ["numpy"],
-      "source_material_ids": [],
-      "gap_ids": ["numpy-scipy-wheel-native-closure-unfixed"],
+      "source_material_ids": ["numpy-2.5.1", "numpy-release-recipe-115e239f"],
+      "gap_ids": [],
       "relink_status": "not-required"
     },
     {
@@ -446,6 +725,7 @@
         "pymeshlab-2025.7.post1",
         "meshlab-pymeshlab-submodule",
         "pybind11-pymeshlab-submodule",
+        "vcglib-pymeshlab-submodule",
         "qt-5.15.18"
       ],
       "gap_ids": [
@@ -459,7 +739,11 @@
       "id": "pytetwild-native-closure",
       "path_prefixes": ["Contents/Frameworks/pytetwild"],
       "distributions": ["pytetwild"],
-      "source_material_ids": [],
+      "source_material_ids": [
+        "pytetwild-0.3.0",
+        "ftetwild-pytetwild-submodule",
+        "gmp-6.3.0"
+      ],
       "gap_ids": [
         "pytetwild-build-provenance-unfixed",
         "pytetwild-gmp-source-pairing-unfixed"
@@ -470,23 +754,27 @@
       "id": "rtree-native-closure",
       "path_prefixes": ["Contents/Frameworks/rtree"],
       "distributions": ["rtree"],
-      "source_material_ids": ["libspatialindex-2.1.0"],
-      "gap_ids": ["rtree-libspatialindex-binary-pairing-unfixed"],
+      "source_material_ids": [
+        "rtree-1.4.1",
+        "libspatialindex-2.1.0",
+        "libspatialindex-2.1.0-release-archive"
+      ],
+      "gap_ids": [],
       "relink_status": "not-required"
     },
     {
       "id": "scipy-native-closure",
       "path_prefixes": ["Contents/Frameworks/scipy"],
       "distributions": ["scipy"],
-      "source_material_ids": [],
-      "gap_ids": ["numpy-scipy-wheel-native-closure-unfixed"],
+      "source_material_ids": ["scipy-1.18.0", "scipy-release-recipe-b686f516"],
+      "gap_ids": [],
       "relink_status": "not-required"
     },
     {
       "id": "shapely-geos-native-closure",
       "path_prefixes": ["Contents/Frameworks/shapely"],
       "distributions": ["shapely"],
-      "source_material_ids": ["geos-3.13.1"],
+      "source_material_ids": ["shapely-2.1.2", "geos-3.13.1"],
       "gap_ids": ["shapely-geos-binary-pairing-and-relink-unfixed"],
       "relink_status": "unresolved"
     },
@@ -503,29 +791,37 @@
     {
       "id": "pillow-wheel-native-closure-unfixed",
       "blocks_release": true,
-      "affected_components": ["Pillow", "FreeType", "HarfBuzz", "libjpeg", "Little CMS", "libpng", "libtiff", "libwebp", "OpenJPEG", "Brotli", "Xau", "XCB", "zlib-ng", "XZ"],
-      "reason": "Pillow's sdist is fixed, but it does not by itself pair every dylib carried by the exact arm64 wheel to complete source and license material.",
-      "required_resolution": "Recover wheel build provenance or perform a controlled rebuild with exact source archives, licenses, and a repeatable recipe."
-    },
-    {
-      "id": "numpy-scipy-wheel-native-closure-unfixed",
-      "blocks_release": true,
-      "affected_components": ["NumPy", "SciPy", "compiled and statically carried native subcomponents"],
-      "reason": "Exact sdists are fixed, but the published arm64 wheel build inputs and compiled native closure have not been independently paired to those sources.",
-      "required_resolution": "Audit upstream wheel provenance or controlled-rebuild both wheels and record all native/static components and licenses."
+      "affected_components": ["Pillow", "FreeType", "HarfBuzz", "libjpeg", "Little CMS", "libpng", "libtiff", "libwebp", "libsharpyuv", "OpenJPEG", "Brotli", "Xau", "XCB", "zlib-ng", "XZ"],
+      "observed_dependency_versions": {
+        "Brotli": "1.1.0",
+        "FreeType": "2.13.3",
+        "HarfBuzz": "11.0.1",
+        "libjpeg-turbo": "3.1.0",
+        "Little CMS": "2.17",
+        "libpng": "1.6.47",
+        "libtiff": "4.7.0",
+        "libwebp": "1.5.0",
+        "libXau": "1.0.12",
+        "libxcb": "1.17.0",
+        "OpenJPEG": "2.5.3",
+        "XZ": "5.8.1",
+        "zlib-ng": "2.2.4"
+      },
+      "reason": "PyPI provenance binds the wheel hash to the Pillow 11.2.1 tag, and the dependency script records version labels, but that script consumes a moving pillow-depends-main.zip payload and does not hash-bind every dependency source/archive used for the 17 bundled dylibs.",
+      "required_resolution": "Recover the exact pillow-depends payload and bind every bundled dylib to hash-fixed source and license bytes, or controlled-rebuild Pillow from a fully hash-locked dependency set."
     },
     {
       "id": "pymeshlab-build-provenance-unfixed",
       "blocks_release": true,
-      "affected_components": ["PyMeshLab", "MeshLab", "Qt", "Homebrew-provided build dependencies"],
+      "affected_components": ["PyMeshLab", "MeshLab", "pybind11", "VCGLib", "Qt", "Homebrew-provided build dependencies"],
       "reason": "The official release workflow checks out main after an automated version commit, installs unpinned Homebrew packages, and uses a cache key that is not commit-bound; the exact published wheel build inputs therefore are not reproducible from the tag alone.",
       "required_resolution": "Obtain the upstream build logs/cache/source identities for the locked wheel or controlled-rebuild an equivalent wheel from fully fixed inputs."
     },
     {
       "id": "pymeshlab-third-party-native-closure-unfixed",
       "blocks_release": true,
-      "affected_components": ["lib3mf", "Boost", "Embree", "GLEW", "GMP", "MPFR", "GLib", "gettext", "JPEG", "XZ", "md4c", "OpenMP", "PCRE2", "PNG", "oneTBB", "TIFF", "WebP", "Xerces-C", "zstd", "U3D"],
-      "reason": "Mach-O filenames and load commands expose part of the closure, but exact source revisions and published-wheel binary pairing are not fixed for every carried component.",
+      "affected_components": ["lib3mf", "Boost", "Embree", "GLEW", "FreeType", "GMP", "MPFR", "GLib", "gettext", "JPEG", "XZ", "md4c", "OpenMP", "PCRE2", "PNG", "oneTBB", "TIFF", "WebP", "libsharpyuv", "Xerces-C", "zstd", "U3D"],
+      "reason": "Mach-O filenames and load commands expose part of the closure, but exact source revisions and published-wheel binary pairing are not fixed for every carried component. The wheel's WebP dylibs also load libsharpyuv from the separately packaged Pillow closure, so cross-group dependency pairing must be retained.",
       "required_resolution": "Produce a complete component map from the exact wheel, bind every native binary to source/license material, and validate the reconstructed closure."
     },
     {
@@ -539,29 +835,22 @@
       "id": "pytetwild-build-provenance-unfixed",
       "blocks_release": true,
       "affected_components": ["PyTetWild", "fTetWild", "nanobind", "build backend"],
-      "reason": "The sdist contains fTetWild source, but published-wheel build requirements use lower bounds and runner/tool identities are not fully fixed.",
-      "required_resolution": "Recover the exact upstream wheel build environment or controlled-rebuild the arm64 wheel from a hash-locked toolchain."
+      "reason": "PyPI provenance binds the wheel hash to the exact v0.3.0 tag and the fTetWild submodule commit is fixed, but the build uses macos-latest, action tags, and lower-bounded build dependencies whose resolved artifacts are not recorded.",
+      "required_resolution": "Recover the exact upstream run image and resolved build dependency artifacts, or controlled-rebuild the arm64 wheel from the fixed PyTetWild/fTetWild sources with a hash-locked toolchain."
     },
     {
       "id": "pytetwild-gmp-source-pairing-unfixed",
       "blocks_release": true,
       "affected_components": ["GMP libgmp.10.dylib"],
-      "reason": "The exact arm64 wheel carries GMP, but the binary's precise source/build identity and tested replacement route are not established by the PyTetWild sdist.",
-      "required_resolution": "Bind the carried GMP binary to exact source and license bytes and validate the dynamic replacement/re-sign workflow."
-    },
-    {
-      "id": "rtree-libspatialindex-binary-pairing-unfixed",
-      "blocks_release": true,
-      "affected_components": ["Rtree", "libspatialindex 2.1.0"],
-      "reason": "The likely libspatialindex release source is fixed, but direct evidence tying both wheel dylibs to that exact commit is incomplete.",
-      "required_resolution": "Confirm load-command version/build metadata or controlled-rebuild the wheel from the fixed libspatialindex commit."
+      "reason": "The hash-locked wheel's libgmp.10.dylib identifies itself as GMP 6.3.0 and that release source archive is fixed, but the moving macos-latest image does not establish the exact Homebrew bottle/build identity and the replacement route is untested.",
+      "required_resolution": "Recover the exact GMP bottle/build provenance used by the attested run or controlled-rebuild it from the fixed source, then validate dynamic replacement and ad-hoc re-signing."
     },
     {
       "id": "shapely-geos-binary-pairing-and-relink-unfixed",
       "blocks_release": true,
       "affected_components": ["Shapely", "GEOS 3.13.1"],
-      "reason": "GEOS filenames and a fixed source commit are known, but the exact wheel build pairing and an exercised LGPL library replacement/re-sign path are incomplete.",
-      "required_resolution": "Bind the GEOS dylibs to exact build/source evidence and test replacement with a modified compatible GEOS build."
+      "reason": "The wheel contains version-matching GEOS 3.13.1 dylibs and an exact source commit is fixed, but PyPI publishes no wheel attestation, the release script downloads GEOS without a checksum, and the LGPL replacement/re-sign path has not been exercised.",
+      "required_resolution": "Bind the wheel and both GEOS dylibs to authenticated build/source evidence, then test replacement with a modified compatible GEOS build and ad-hoc re-signing."
     }
   ]
 }

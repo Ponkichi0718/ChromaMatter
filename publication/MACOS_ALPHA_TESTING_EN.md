@@ -1,245 +1,152 @@
-# ChromaMatter macOS alpha volunteer test guide
+# ChromaMatter macOS Source Tester Alpha
 
-Thank you for helping test ChromaMatter on Mac. This page is the single
-starting point for the separate **Apple Silicon / macOS 15+ alpha**. It does
-not replace the stable Windows build or the Windows Flat Four Test 3
-prerelease. The displayed product version remains `0.8beta`.
+This is the short testing guide for **Apple Silicon Macs running macOS 15 or
+newer**. The displayed ChromaMatter version remains `0.8beta`.
 
-## Current availability
+## What is available now
 
-**Approved tester download: not available yet.** The Apple Silicon app now
-passes the technical CI checks, but distribution remains blocked while
-source/relink closure evidence is unresolved for 253 packaged Mach-O files. A
-diagnostics artifact is not an application and cannot be launched. Do not use
-an unreviewed ZIP sent through a comment, mirror, or file-sharing service.
+The **Source Tester Alpha is available now** from the fixed source tag
+`v0.8beta-macos-source-alpha1`:
 
-When a build is approved, its exact workflow run, artifact name, source commit,
-SHA-256, and expiry date will be posted in
-[macOS Alpha Testing discussion #9](https://github.com/Ponkichi0718/ChromaMatter/discussions/9).
-The approved artifact will be short-lived and may require a GitHub account to
-download. If no approved build is listed there, please wait rather than testing
-an older or unofficial copy.
+**[Download the Source Tester Alpha ZIP](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-macos-source-alpha1/ChromaMatter-0.8beta-macos-source-alpha1.zip)**
 
-Once a build is listed, the basic path is:
+The matching [tag/Release page](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-macos-source-alpha1)
+publishes the expected SHA-256 in `SHA256SUMS-macos-source-alpha1.txt`.
 
-1. Download the exact approved artifact.
-2. Verify its SHA-256.
-3. Run the 10-minute checklist below with the supplied public test GLB.
-4. Share a successful result in Discussions, or file a reproducible problem
-   with the [macOS alpha Issue form](https://github.com/Ponkichi0718/ChromaMatter/issues/new?template=macos_alpha_report.yml).
+This is source code with a guided launcher. It is **not a prebuilt `.app` ZIP**
+and not a supported public macOS Release. A prebuilt application is still on
+hold because source/build/relink closure evidence remains unresolved for 253
+packaged Mach-O files. A GitHub Actions artifact with `diagnostics` in its name
+is a report, not the application.
 
-## Who this build is for
+If you prefer a normal app bundle, read the
+[prebuilt `.app` installation and 10-minute test guide](MACOS_APP_TESTING_EN.md).
+That route is documented in advance but is **not downloadable** until its
+separate compliance and fresh-build gate passes.
+
+The source launcher verifies the Mac and setup inputs, uses the official
+Python 3.13.14 installer when needed, installs exact hash-locked dependencies
+on the tester's own Mac, runs the self-test, and starts ChromaMatter from
+source. This route does not remove or bypass the prebuilt-app distribution
+hold.
+
+## Before you start
 
 You need:
 
 - an Apple Silicon Mac (M1, M2, M3, M4, or later), not an Intel Mac;
 - macOS 15 or newer;
-- about 15 minutes for the basic test;
-- permission to share your Mac specifications and sanitized screenshots/logs;
-- Snapmaker Orca only for the optional 3MF-opening check.
+- an internet connection for the first setup;
+- time for a first download of several hundred MB, which may take several
+  minutes; and
+- permission to share your Mac specifications and sanitized Terminal output.
 
-No programming knowledge, printer, paid AI account, or private model is needed
-for the required test. Please do not start with an important or complicated
-model.
+No programming knowledge, printer, paid AI account, or private model is
+needed. Do not start with an important model.
 
-## Download the approved build
+## First setup
 
-Use only the workflow run linked from macOS testing discussion #9. On the run
-page, scroll to **Artifacts** and click the one approved artifact whose name
-begins:
+1. Download the source ZIP above. Compare its SHA-256 with the value on the
+   tag/Release page. In Terminal, run `shasum -a 256 `, drag the ZIP into the
+   Terminal window, and press Return. Stop if the values differ.
+2. Extract the ZIP completely in Finder and open the extracted folder.
+3. Control-click `START_MACOS_SOURCE_ALPHA.command`, choose **Open**, and
+   confirm **Open** if macOS asks. Do not disable Gatekeeper globally.
+4. If Python 3.13.14 is missing, the launcher downloads the official installer,
+   verifies its SHA-256, and opens Apple's Installer. Complete that installer.
+   It may request the Mac administrator password.
+5. Return to the original Terminal window and press Return. If the launcher
+   still cannot find Python, close it and open the `.command` file again.
+6. Leave Terminal open. The launcher creates the test environment under
+   `~/Library/Application Support/ChromaMatter Source Alpha/`, obtains only the
+   hash-locked dependencies, runs the required self-test, and then opens the
+   ChromaMatter window.
 
-`ChromaMatter-macOS15-arm64-developer-id-unsigned-unnotarized-alpha-`
+The first setup is slower because it downloads Python and dependencies. Later
+launches reuse the verified local environment: keep the extracted source
+folder and open the same `.command` file again.
 
-GitHub downloads one **outer artifact ZIP**. Extract that outer ZIP once. It
-contains two files:
+Stop and report the Terminal message if the architecture, macOS version,
+Python download, SHA-256 check, dependency lock, or self-test fails. Do not use
+`sudo` in Terminal, edit the lock file, or replace a failed dependency with an
+unlocked package.
 
-- the **inner application ZIP** beginning
-  `ChromaMatter-0.8beta-flat4-test3-macos15-arm64-...`;
-- the matching `.zip.sha256` checksum file.
+## 10-minute basic test
 
-Do **not** download the similarly named `diagnostics` artifact. It contains
-test reports only, not the app. The approved post must identify the same source
-commit as `SOURCE_COMMIT.txt` inside the tester package.
+The launcher creates a small CC0 test model here:
 
-## Verify the download
+`~/Library/Application Support/ChromaMatter Source Alpha/TestData/ChromaMatter-Public-Four-Color-Test.glb`
 
-In Terminal, type `shasum -a 256 ` (including the final space), drag the
-downloaded inner application ZIP into the Terminal window, and press Return.
-Compare the resulting 64 characters with the first 64 characters in the
-supplied `.zip.sha256` file. They must be identical. Stop and report the
-problem if they differ.
+It contains four closed red, blue, white, and black boxes. It contains no
+character, brand, texture, external resource, or private metadata.
 
-Extract the inner ZIP completely. Do not run the app from inside either ZIP.
-Read `README_TESTING_EN.md` and `MACOS_ALPHA_COMPLIANCE_NOTICE_EN.txt` in the
-extracted folder before opening the app.
+1. Confirm that the automatic self-test passes and the main window remains
+   responsive for 30 seconds.
+2. Switch between Japanese and English. Check that the main buttons remain
+   readable.
+3. Choose **Open OBJ / GLB** and open
+   `ChromaMatter-Public-Four-Color-Test.glb` from the path above.
+4. Orbit, pan, and zoom. All four coloured boxes should remain visible.
+5. Select **Full Spectrum (Mixed)** and confirm that its preview appears.
+6. Select **Flat 4 Colors** and confirm that the preview uses physical F1-F4,
+   without an F5+ mixed state.
+7. Open **Manual Editing**, use **Fill** on one box, then test Undo and Redo.
+8. Export a 3MF. This supplied closed model should export successfully; a safe
+   refusal is still a test failure and must not leave a misleading partial
+   file.
+9. Save a project, quit ChromaMatter, launch it again with the `.command`
+   file, and reload the project. Check that the mode, F1-F4 colours, and manual
+   edit remain unchanged.
+10. Optional: open the 3MF **as a project** in Snapmaker Orca. Do not print for
+    this basic software test.
 
-## First launch on macOS
+Record **Pass**, **Fail**, or **Not tested** for each step. If one operation
+shows no progress for more than 60 seconds, note the wait time and stop that
+test.
 
-This volunteer alpha is ad-hoc signed, but it has no Apple Developer ID
-signature and is not notarized. A first-launch warning is therefore expected.
+## Known alpha limits
 
-1. In Finder, Control-click `ChromaMatter-macOS-Alpha.app` and choose **Open**.
-2. Confirm **Open** in the warning dialog if macOS offers it.
-3. If it is still blocked, open **System Settings > Privacy & Security** and
-   approve this specific copy of ChromaMatter, then repeat step 1.
-4. Do not disable Gatekeeper globally and do not use `sudo`.
+- This is source-based testing, not a normal drag-and-drop Mac application.
+- The source launcher itself is not Developer ID signed or Apple-notarized, so
+  Control-click > Open may be required.
+- Intel Macs and macOS 14 or older are not supported by this alpha.
+- Snapmaker Orca may need to be opened manually.
+- Pen pressure is not part of the first Mac target; use a mouse or trackpad.
+- Some multipart, damaged, compressed, animated, or otherwise unsupported
+  models may be rejected safely.
+- Physical colour accuracy and printer safety are not proven by this software
+  test.
 
-Only after the SHA-256 has matched and those steps still fail, use:
+## Report a result
 
-```bash
-xattr -dr com.apple.quarantine "/path/to/ChromaMatter-macOS-Alpha.app"
-open "/path/to/ChromaMatter-macOS-Alpha.app"
-```
-
-A pass means the main window remains open for at least 30 seconds and its title
-identifies the macOS alpha. A crash, blank window, or permanent beachball is a
-failure worth reporting.
-
-## 10-minute required test
-
-The tester package includes
-`ChromaMatter-Public-Four-Color-Test.glb`, a small CC0 model made only from four
-watertight boxes. It uses exact red, blue, white, and black vertex colours. It
-contains no brand, character, reference image, texture, network resource, or
-private metadata.
-
-![Expected public four-colour test model](MACOS_ALPHA_TEST_MODEL_EXPECTED.svg)
-
-The diagram is an orientation guide, not a colour-calibration target. Your
-lighting and camera angle may differ, but all four blocks must remain separate
-and recognisably red, blue, white, and black.
-
-### Click-by-click basic path
-
-1. Launch the app and leave it open for 30 seconds.
-2. Use the **Language** menu to select **English**. Check that the toolbar and
-   labels remain readable. Select **Japanese**, check again, then return to
-   **English** for the rest of this checklist.
-3. Choose **Open OBJ / GLB**, select
-   `ChromaMatter-Public-Four-Color-Test.glb`, and wait for all three previews
-   to finish.
-4. Under **Color Mode**, choose **Full Spectrum (Mixed)**. Confirm that a
-   mixed palette and converted-colour preview appear.
-5. Choose **Flat 4 Colors**. Confirm that the converted preview uses only
-   physical **F1-F4**, with no F5+ mixed state.
-6. Choose **Manual Editing**. Select **Fill**, select a colour, and click one
-   block. Choose **Undo**, then **Redo**. Finish with **Keep Corrections and
-   Close**.
-7. Choose **Export 3MF**. For this supplied closed model, export must finish
-   successfully. If it does not, record **Fail** even when ChromaMatter safely
-   refuses to leave a partial file.
-8. Choose **Save Project**, close ChromaMatter, relaunch it, choose
-   **Load Project**, and open the saved project. Confirm the selected mode,
-   F1-F4 colours, and manual fill are unchanged.
-9. If Snapmaker Orca is installed, open the exported 3MF **as a project** and
-   check that Flat Four uses only F1-F4 and shows a 0.08 mm normal layer
-   height. Do not print for this basic software test.
-
-Record **Pass**, **Fail**, or **Not tested** for each row.
-
-| Check | Pass condition |
-| --- | --- |
-| First launch | The window stays responsive for at least 30 seconds. |
-| Japanese and English | The app starts in both languages; main labels and buttons are readable and not clipped. |
-| Public GLB | Four separate blocks appear and red, blue, white, and black remain distinguishable. |
-| View controls | Orbit, pan, and zoom respond without a blank preview or crash. |
-| Full Spectrum | A mixed palette and converted-colour preview appear. |
-| Flat Four | The preview uses physical F1-F4 only; no mixed F5+ colour remains. |
-| Manual Editing | Fill one small area, then Undo and Redo; the preview changes and returns exactly. |
-| Output preparation | The supplied closed model is not incorrectly reported as an open surface. |
-| 3MF export | The supplied closed GLB exports successfully. A safe refusal is still a test failure, and it must not leave a misleading partial 3MF. |
-| Snapmaker Orca (if installed) | The 3MF opens as a project; Flat Four uses only F1-F4 and the intended 0.08 mm layer height is visible. |
-| Project save/reload | Mode, four filament colours, and the manual edit are unchanged after quit and reload. |
-
-If any step takes more than 60 seconds with no visible progress, note the wait
-time and stop that test. You are not expected to force-quit repeatedly.
-
-## Expected limitations
-
-These are known alpha boundaries, but a clear report is still useful if the
-documentation does not match what you see:
-
-- the first Gatekeeper warning described above;
-- Snapmaker Orca may need to be opened manually;
-- pen pressure is not part of the first target; use a mouse or trackpad;
-- unsupported GLB extensions should be rejected with an actionable message;
-- some multipart or damaged models may be rejected by Solidify;
-- physical colour accuracy depends on filament, calibration, slicing, and the
-  printer and is not proven by the basic test.
-
-## What counts as a bug
-
-Please file an Issue for one reproducible defect at a time, especially:
-
-- startup crash, blank preview, or repeatable hang;
-- a supported vertex-colour OBJ or static colour GLB cannot be opened;
-- Flat Four leaves F5+ or mixed-colour assignments in the preview or 3MF;
-- Solidify or export fails without a useful warning;
-- a failed export leaves a new incomplete 3MF behind;
-- Snapmaker Orca cannot open the exported project;
-- save/reload changes mode, palette, or manual edits;
-- the documented first-launch procedure cannot open the verified app.
-
-## Collect diagnostic information
-
-For a launch or rendering problem, run the packaged self-test in Terminal:
-
-```bash
-"/path/to/ChromaMatter-macOS-Alpha.app/Contents/MacOS/ChromaMatter" \
-  --macos-alpha-self-test > macos-alpha-self-test.json
-```
-
-Open the JSON in a text editor. A successful gate has top-level `"ok": true`.
-For a failure, attach the JSON only after removing user names, home-folder
-paths, private filenames, account details, and other sensitive data.
-
-## Report your result
-
-- **Successful or partly successful compatibility result, setup question, or
-  general observation:** post in
+- For a successful or partly successful result, setup question, or general
+  observation, use the
   [macOS Alpha Testing discussion](https://github.com/Ponkichi0718/ChromaMatter/discussions/9).
-- **Reproducible crash, hang, display/input problem, wrong colour assignment,
-  export problem, or documentation defect:** use the
+- For one reproducible crash, hang, display/input problem, import failure,
+  wrong colour assignment, export failure, or documentation defect, use the
   [macOS alpha Issue form](https://github.com/Ponkichi0718/ChromaMatter/issues/new?template=macos_alpha_report.yml).
 
-Include the approved workflow run URL, artifact name, SHA-256, source commit,
-Mac model/chip/RAM, macOS version, exact step, expected result, actual result,
-and whether it happens every time. If Snapmaker Orca was used, include its
-version, the number of filaments shown, and the layer height.
+Include the source tag `v0.8beta-macos-source-alpha1`, Mac model/chip/RAM,
+macOS version, launcher/self-test result, exact failing step, expected result,
+actual result, and sanitized self-test JSON or final Terminal lines. The source
+commit is optional when unknown. If the window never opens, the Terminal
+output is the most useful evidence.
 
-## Privacy before posting
+## Privacy and network access
 
-Never upload a private, purchased, customer, confidential, or third-party
-model. Do not attach a private model to a report. A report does not require the
-model itself. Describe only its format,
-approximate triangle count, number of parts, and texture size when relevant.
-Remove personal paths, account details, serial numbers, and private filenames
-from screenshots and logs. Do not post credentials or a security vulnerability
-in a public Issue or Discussion. Use the repository's private
+The first setup connects to the official Python download and the Python
+package index to obtain the verified Python 3.13.14 installer and hash-locked
+dependencies. ChromaMatter then processes OBJ, GLB, project, image, and 3MF
+data locally and does not intentionally upload those files to a project-
+operated server.
+
+Do not attach a private model. Never upload a purchased, customer,
+confidential, or third-party model. Terminal output, projects, and screenshots
+may contain user names, home-folder paths, private filenames, or account
+details; remove them before posting. Use the repository's private
 [Report a vulnerability](https://github.com/Ponkichi0718/ChromaMatter/security/advisories/new)
-form for a suspected security issue.
+route for a suspected security issue.
 
-## Optional extended tests
-
-After the required public-model test passes, you may optionally try:
-
-- the bundled public vertex-colour OBJ;
-- a larger rights-cleared static GLB;
-- a suitable open or multipart model to evaluate Solidify's warnings;
-- a complete slice in Snapmaker Orca;
-- a small physical print after checking all printer and slicer settings.
-
-These are valuable but are not required for a useful first report. Never print
-unattended merely because the project opened successfully.
-
-## License and source information
-
-The test GLB, its generator, and its model README are released under CC0 1.0.
-The ChromaMatter application source remains GPL-3.0-or-later; bundled third-
-party components retain their own terms. Read the compliance notice supplied
-with the exact approved tester artifact. Do not redistribute the application
-alpha or upload it to another service. The public source is available at
-<https://github.com/Ponkichi0718/ChromaMatter>.
-
-This volunteer procedure provides compatibility evidence; it is not a promise
-of production support, print safety, or compatibility with every model.
+Do not redistribute the Source Tester Alpha as a modified ZIP or mirror it on
+another service. Link to the exact source tag instead. ChromaMatter source is
+GPL-3.0-or-later, and third-party components retain their own terms.

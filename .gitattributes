@@ -1,9 +1,13 @@
 * text=auto
 *.py text eol=lf
+*.command text eol=lf
 *.md text eol=lf
 *.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
 *.patch text eol=lf
 source/fixed_app/requirements-build.lock text eol=lf
+source/fixed_app/requirements-runtime-macos-arm64.lock text eol=lf
 tooling/requirements-pytetwild-build.lock text eol=lf
 # Public release manifests hash exact staged bytes. Keep Windows scripts and
 # plain-text metadata byte-for-byte in Git archives instead of normalizing

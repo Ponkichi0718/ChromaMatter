@@ -1,0 +1,296 @@
+name: macOS Source Tester Alpha
+
+on:
+  push:
+    branches:
+      - "codex/macos-arm64-tester-alpha"
+    tags:
+      - "v0.8beta-macos-source-alpha*"
+      - "v0.8beta-macos-source-app-alpha*"
+    paths:
+      - ".github/ISSUE_TEMPLATE/macos_alpha_report.yml"
+      - ".github/workflows/macos-source-alpha.yml"
+      - "START_MACOS_SOURCE_ALPHA.command"
+      - "tooling/stage_macos_source_app.py"
+      - "publication/MACOS_ALPHA_SOURCE_TESTER_*.md"
+      - "publication/MACOS_ALPHA_TESTING_*.md"
+      - "publication/MACOS_SOURCE_APP_TESTING_EN.md"
+      - "samples/LICENSE.txt"
+      - "samples/MACOS_ALPHA_TEST_MODEL_README.md"
+      - "samples/generate_macos_alpha_test_glb.py"
+      - "source/fixed_app/requirements-runtime-macos-arm64.lock"
+      - "source/fixed_app/assets/**"
+      - "source/fixed_app/licenses/**"
+      - "source/fixed_app/resources/**"
+      - "source/fixed_app/spectrum_mapper/**"
+      - "source/fixed_app/*.py"
+      - "source/fixed_app/TripoSpectrumMapper_fixed.py"
+      - "source/fixed_app/test_macos_source_launcher.py"
+      - "source/fixed_app/test_macos_source_app.py"
+  workflow_dispatch:
+    inputs:
+      upload_source_app_alpha:
+        description: "Upload the tested source-backed .app ZIP as a short-lived workflow artifact"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-source-alpha-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-launcher-test:
+    name: macOS 15 arm64 source launcher
+    runs-on: macos-15
+    timeout-minutes: 60
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+
+      - name: Set up CPython 3.13.14 arm64
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13.14"
+          architecture: arm64
+
+      - name: Verify source tester host
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(uname -s)" = Darwin
+          test "$(uname -m)" = arm64
+          test "$(python -c 'import platform; print(platform.machine())')" = arm64
+          test "$(python -c 'import sys; print(".".join(map(str, sys.version_info[:3])))')" = 3.13.14
+          test "$(sw_vers -productVersion | awk -F. '{print $1}')" -ge 15
+
+      - name: Validate launcher contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n ./START_MACOS_SOURCE_ALPHA.command
+          python -m unittest \
+            source.fixed_app.test_macos_source_launcher \
+            source.fixed_app.test_macos_source_app
+
+      - name: Stage and audit Finder source-backed app
+        shell: bash
+        run: |
+          set -euo pipefail
+          app="$RUNNER_TEMP/ChromaMatter Source Alpha.app"
+          python tooling/stage_macos_source_app.py stage \
+            --repository-root "$GITHUB_WORKSPACE" \
+            --output "$app" \
+            --source-commit "$GITHUB_SHA"
+          test -x "$app/Contents/MacOS/ChromaMatterSourceAlpha"
+          test -x "$app/Contents/Resources/ChromaMatterSource/START_MACOS_SOURCE_ALPHA.command"
+          bash -n "$app/Contents/MacOS/ChromaMatterSourceAlpha"
+          bash -n "$app/Contents/Resources/ChromaMatterSource/START_MACOS_SOURCE_ALPHA.command"
+          python tooling/stage_macos_source_app.py audit \
+            --app-bundle "$app" \
+            >"$RUNNER_TEMP/chromamatter-source-app-audit.json"
+
+      - name: Run source tester setup and native/render gate
+        shell: bash
+        env:
+          CHROMAMATTER_ALPHA_HOME: ${{ runner.temp }}/chromamatter-source-alpha
+        run: |
+          set -euo pipefail
+          export CHROMAMATTER_PYTHON="$(command -v python)"
+          app_entry="$RUNNER_TEMP/ChromaMatter Source Alpha.app/Contents/MacOS/ChromaMatterSourceAlpha"
+          "$app_entry" --self-test-only
+          test -s "$CHROMAMATTER_ALPHA_HOME/TestData/ChromaMatter-Public-Four-Color-Test.glb"
+          test -s "$CHROMAMATTER_ALPHA_HOME/Validation/macos-alpha-self-test.json"
+          python - "$CHROMAMATTER_ALPHA_HOME/Validation/macos-alpha-self-test.json" <<'PY'
+          import json
+          from pathlib import Path
+          import sys
+
+          payload = json.loads(Path(sys.argv[1]).read_text(encoding="ascii"))
+          if payload.get("ok") is not True:
+              raise SystemExit("Source launcher self-test did not report ok=true")
+          PY
+
+      - name: Smoke-test Japanese and English source UI
+        shell: bash
+        env:
+          CHROMAMATTER_ALPHA_HOME: ${{ runner.temp }}/chromamatter-source-alpha
+          CHROMAMATTER_DATA_DIRECTORY: ${{ runner.temp }}/chromamatter-source-alpha/Profile
+        run: |
+          set -euo pipefail
+          runtime="$CHROMAMATTER_ALPHA_HOME/venv-3.13.14/bin/python"
+          source_root="$RUNNER_TEMP/ChromaMatter Source Alpha.app/Contents/Resources/ChromaMatterSource"
+          export PYTHONPATH="$source_root:$source_root/source/fixed_app"
+          entry="$source_root/source/fixed_app/TripoSpectrumMapper_fixed.py"
+          "$runtime" "$entry" --ui-smoke --ui-smoke-language ja
+          "$runtime" "$entry" --ui-smoke --ui-smoke-language en
+
+      - name: Package and fresh-extract the source-backed app
+        shell: bash
+        env:
+          CHROMAMATTER_ALPHA_HOME: ${{ runner.temp }}/chromamatter-source-alpha
+        run: |
+          set -euo pipefail
+          app="$RUNNER_TEMP/ChromaMatter Source Alpha.app"
+          package_name="ChromaMatter-0.8beta-macos-source-app-alpha1"
+          package_root="$RUNNER_TEMP/$package_name"
+          archive="$RUNNER_TEMP/$package_name.zip"
+          fresh="$RUNNER_TEMP/chromamatter-source-app-fresh"
+          public_glb="$CHROMAMATTER_ALPHA_HOME/TestData/ChromaMatter-Public-Four-Color-Test.glb"
+          mkdir "$package_root"
+          ditto "$app" "$package_root/ChromaMatter Source Alpha.app"
+          cp publication/MACOS_SOURCE_APP_TESTING_EN.md \
+            "$package_root/README_INSTALL_AND_TEST_EN.md"
+          cp "$public_glb" "$package_root/ChromaMatter-Public-Four-Color-Test.glb"
+          cp "$app/Contents/Resources/SOURCE_BACKED_ALPHA_NOTICE.txt" \
+            "$package_root/SOURCE_BACKED_ALPHA_NOTICE.txt"
+          printf '%s\n' "$GITHUB_SHA" >"$package_root/SOURCE_COMMIT.txt"
+          (
+            cd "$package_root"
+            shasum -a 256 ChromaMatter-Public-Four-Color-Test.glb \
+              >ChromaMatter-Public-Four-Color-Test.glb.sha256
+          )
+          test "$(awk '{print $1}' "$package_root/ChromaMatter-Public-Four-Color-Test.glb.sha256")" = \
+            "1b6092448e62a93f5e29a9c6dda1265a7a2179c2eacd293f7d8f02d1f268c563"
+          ditto -c -k --keepParent "$package_root" "$archive"
+          mkdir "$fresh"
+          ditto -x -k "$archive" "$fresh"
+          test "$(find "$fresh" -mindepth 1 -maxdepth 1 | wc -l | tr -d ' ')" = 1
+          fresh_root="$fresh/$package_name"
+          fresh_app="$fresh_root/ChromaMatter Source Alpha.app"
+          python tooling/stage_macos_source_app.py audit \
+            --app-bundle "$fresh_app" \
+            >"$RUNNER_TEMP/chromamatter-source-app-fresh-audit.json"
+          test -x "$fresh_app/Contents/MacOS/ChromaMatterSourceAlpha"
+          test -x "$fresh_app/Contents/Resources/ChromaMatterSource/START_MACOS_SOURCE_ALPHA.command"
+          test -s "$fresh_root/README_INSTALL_AND_TEST_EN.md"
+          test -s "$fresh_root/SOURCE_BACKED_ALPHA_NOTICE.txt"
+          test -s "$fresh_root/ChromaMatter-Public-Four-Color-Test.glb"
+          (
+            cd "$fresh_root"
+            shasum -a 256 -c ChromaMatter-Public-Four-Color-Test.glb.sha256
+          )
+          python - \
+            "$GITHUB_SHA" \
+            "$fresh_root/SOURCE_COMMIT.txt" \
+            "$fresh_app/Contents/Resources/SOURCE_BACKED_APP_MANIFEST.json" <<'PY'
+          import json
+          from pathlib import Path
+          import sys
+
+          workflow_commit = sys.argv[1]
+          root_commit = Path(sys.argv[2]).read_text(encoding="ascii").strip()
+          manifest_commit = json.loads(
+              Path(sys.argv[3]).read_text(encoding="ascii")
+          )["source_commit"]
+          if workflow_commit != root_commit or root_commit != manifest_commit:
+              raise SystemExit(
+                  "workflow, package-root, and app-manifest source commits differ"
+              )
+          PY
+          export CHROMAMATTER_PYTHON="$(command -v python)"
+          "$fresh_app/Contents/MacOS/ChromaMatterSourceAlpha" --self-test-only
+          self_test_report="$CHROMAMATTER_ALPHA_HOME/Validation/macos-alpha-self-test.json"
+          rm -f "$self_test_report"
+          open -W -n \
+            --env "CHROMAMATTER_ALPHA_HOME=$CHROMAMATTER_ALPHA_HOME" \
+            --env "CHROMAMATTER_PYTHON=$CHROMAMATTER_PYTHON" \
+            "$fresh_app" --args --self-test-only
+          test -s "$self_test_report"
+          python - "$self_test_report" <<'PY'
+          import json
+          from pathlib import Path
+          import sys
+
+          payload = json.loads(Path(sys.argv[1]).read_text(encoding="ascii"))
+          if payload.get("ok") is not True:
+              raise SystemExit("LaunchServices source-app self-test did not report ok=true")
+          PY
+          cp "$self_test_report" \
+            "$RUNNER_TEMP/macos-source-app-launchservices-self-test.json"
+          (
+            cd "$RUNNER_TEMP"
+            shasum -a 256 "$package_name.zip" >"$package_name.zip.sha256"
+            cp "$package_name.zip.sha256" SHA256SUMS-macos-source-app-alpha1.txt
+          )
+
+      - name: Record source tester diagnostics
+        if: always()
+        shell: bash
+        env:
+          CHROMAMATTER_ALPHA_HOME: ${{ runner.temp }}/chromamatter-source-alpha
+        run: |
+          set -u
+          diagnostic="$RUNNER_TEMP/chromamatter-source-alpha-diagnostics"
+          mkdir -p "$diagnostic"
+          {
+            echo "workflow_run=${GITHUB_RUN_ID}"
+            echo "workflow_attempt=${GITHUB_RUN_ATTEMPT}"
+            echo "source_commit=${GITHUB_SHA}"
+            echo "runner_os=${RUNNER_OS}"
+            echo "runner_arch=${RUNNER_ARCH}"
+            uname -a || true
+            sw_vers || true
+            python --version || true
+          } >"$diagnostic/CI_ENVIRONMENT.txt"
+          report="$CHROMAMATTER_ALPHA_HOME/Validation/macos-alpha-self-test.json"
+          if [[ -f "$report" ]]; then
+            cp "$report" "$diagnostic/"
+          fi
+          for evidence in \
+            "$RUNNER_TEMP/chromamatter-source-app-audit.json" \
+            "$RUNNER_TEMP/chromamatter-source-app-fresh-audit.json" \
+            "$RUNNER_TEMP/macos-source-app-launchservices-self-test.json" \
+            "$RUNNER_TEMP/ChromaMatter-0.8beta-macos-source-app-alpha1.zip.sha256" \
+            "$RUNNER_TEMP/SHA256SUMS-macos-source-app-alpha1.txt"; do
+            if [[ -f "$evidence" ]]; then
+              cp "$evidence" "$diagnostic/"
+            fi
+          done
+
+      - name: Upload source tester diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ChromaMatter-macOS-source-alpha-diagnostics-${{ github.run_id }}
+          path: ${{ runner.temp }}/chromamatter-source-alpha-diagnostics/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload source-backed app tester
+        if: github.event_name == 'workflow_dispatch' && inputs.upload_source_app_alpha == true
+        uses: actions/upload-artifact@v4
+        with:
+          name: ChromaMatter-0.8beta-macos-source-app-alpha-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/ChromaMatter-0.8beta-macos-source-app-alpha1.zip
+            ${{ runner.temp }}/ChromaMatter-0.8beta-macos-source-app-alpha1.zip.sha256
+            ${{ runner.temp }}/SHA256SUMS-macos-source-app-alpha1.txt
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Publish result summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## macOS Source Tester Alpha"
+            echo
+            echo "- Exact source: \`$GITHUB_SHA\`"
+            echo "- Host: Apple Silicon / macOS 15"
+            echo "- Launcher: \`START_MACOS_SOURCE_ALPHA.command\`"
+            echo "- Finder bundle: \`ChromaMatter Source Alpha.app\` (source-backed; no bundled Python/runtime/Mach-O)"
+            echo "- Candidate ZIP: \`ChromaMatter-0.8beta-macos-source-app-alpha1.zip\`"
+            echo "- Finder/LaunchServices: fresh-extracted app opened with \`open -W -n\` and the self-test passed."
+            echo "- The app ZIP is uploaded only when the manual upload input is enabled."
+            echo "- This validates the source-backed tester path only. It is not evidence for the frozen prebuilt or notarized app."
+          } >>"$GITHUB_STEP_SUMMARY"

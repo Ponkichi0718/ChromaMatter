@@ -1999,3 +1999,257 @@ no-download status and PR #12 as Draft until those steps pass.
 - Downloaded diagnostic ZIPs, extracted inventory/coverage reports, exact wheel
   inspection caches, generated GLB copies, app bundles, and any tester ZIP stay
   outside Git.
+
+## 2026-08-26 macOS Source Tester Alpha 1 publication (current)
+
+### Current objective
+
+Let Apple Silicon/macOS 15+ volunteers run the current ChromaMatter source with
+one guided launcher now, without representing or bypassing the separately
+blocked prebuilt-app distribution gate.
+
+### Completed in this session
+
+- Created branch `codex/macos-arm64-tester-alpha` in a clean worktree because
+  the owner's primary worktree contained unresolved conflicts that were left
+  untouched.
+- Added executable `START_MACOS_SOURCE_ALPHA.command`. It checks Apple Silicon
+  and macOS 15+, verifies the official CPython 3.13.14 installer URL, SHA-256,
+  and macOS signature, creates a private Application Support virtual
+  environment, installs only runtime packages from an exact hash lock,
+  generates the deterministic CC0 four-colour GLB, runs the PyTetWild,
+  PyMeshLab, and ModernGL gate, and opens the source GUI only after success.
+- The launcher does not use `sudo`, invoke the installer CLI, disable
+  Gatekeeper, remove quarantine attributes, or consume the prebuilt-app gate.
+- Added `.github/workflows/macos-source-alpha.yml`. Exact branch commit
+  `41d57d8960191f6fb2182461b620a044a0d3966a` passed run
+  <https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32953820494>.
+  The exact tag passed again in run
+  <https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32953920272>,
+  including runtime lock installation, public GLB generation, native/render
+  self-test, and Japanese/English UI smoke.
+- Published prerelease
+  <https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-macos-source-alpha1>
+  from tag `v0.8beta-macos-source-alpha1` at the exact source commit above.
+  The source ZIP is 4,926,388 bytes with SHA-256
+  `a28d7723957e7cafda1e7db2638fd4fc5e9cb52aa5eca870c81bb48bd292942a`.
+  `SHA256SUMS-macos-source-alpha1.txt` is 111 bytes with SHA-256
+  `a232cc261b740fdd01f3bb76dae3625f3e56b6eb34a53cca348ce76eff3e8695`.
+- Redownloaded both assets without authentication and reverified byte size,
+  SHA-256, the 456-file inventory, case-fold path uniqueness, absence of
+  packaged native/app payloads, LF launcher bytes, and executable mode 100755.
+- Updated Discussion #9 to the public source tester route and added the result
+  template. Draft PR #17 is the source-review delta against the prior Mac
+  branch and remains distinct from the release tag.
+- Merged documentation-only PR #18 to default branch commit
+  `2297bc21932a2bf55bc8b250d3827f74080c80c1`. The public English and Japanese
+  READMEs now expose the direct ZIP, Release/checksum, bilingual test hubs, and
+  Issue form while preserving the blocked prebuilt-app warning.
+- Hardened a future opt-in prebuilt-app workflow so its source-coverage audit
+  requires the engineering gate to pass whenever a tester ZIP is requested.
+
+### Current state
+
+- Apple Silicon/macOS 15+ testers have a public, fixed, source-based download
+  that was verified on the exact tag. It is not a prebuilt, signed, notarized,
+  or generally supported app.
+- The prebuilt `.app` remains blocked. The last packaged-app inventory still
+  has 253 unresolved source/build/relink closures, and diagnostics artifacts
+  are not tester applications.
+- Published Windows stable r32.2 and Flat Four Test 3 assets are unchanged.
+
+### Next exact task
+
+Collect Source Tester Alpha results through Discussion #9 and one reproducible
+defect per macOS Issue form. In parallel, resolve the 253 native closure gaps
+before any prebuilt app ZIP can be separately approved. Do not infer prebuilt
+app eligibility from source tester success.
+
+### Changed files
+
+- `.gitattributes`, `.gitignore`
+- `.github/workflows/macos-source-alpha.yml`
+- `.github/workflows/macos-arm64-alpha.yml`
+- `.github/ISSUE_TEMPLATE/macos_alpha_report.yml`
+- `START_MACOS_SOURCE_ALPHA.command`
+- `source/fixed_app/requirements-runtime-macos-arm64.lock`
+- `source/fixed_app/test_macos_source_launcher.py`
+- `source/fixed_app/test_macos_packaging.py`
+- `README.md`, `README_EN.md`, `README_JA.md`, `README_PUBLIC_EN.md`,
+  `README_PUBLIC_JA.md`
+- `publication/MACOS_ALPHA_HUB_EN.md`,
+  `publication/MACOS_ALPHA_HUB_JA.md`,
+  `publication/MACOS_ALPHA_TESTING_EN.md`, and
+  `publication/MACOS_ALPHA_TESTING_JA.md`
+- `CURRENT_STATE.json` and `HANDOFF.md`
+
+### Tests run
+
+- Windows focused macOS launcher/packaging/CLI/source-coverage/compliance set:
+  52 passed, one bash-only syntax check skipped on Windows.
+- YAML parsing: both workflows and the macOS Issue form passed; Issue-form IDs
+  are unique.
+- README parity: three English variants and two Japanese variants are exact.
+- Documentation: 174 Markdown links inspected, including 54 local links with
+  zero missing targets in the default-branch documentation set.
+- Generated public GLB: 1,524 bytes and exact SHA-256
+  `1b6092448e62a93f5e29a9c6dda1265a7a2179c2eacd293f7d8f02d1f268c563`.
+- Exact-tag Apple Silicon/macOS 15 arm64 Actions run #32953920272: all launcher,
+  dependency, native/render, public-fixture, and Japanese/English UI steps
+  passed.
+- Public assets: anonymous redownload and SHA-256/archive audit passed.
+- `git diff --check`, `git diff --cached --check`, and JSON parse passed before
+  the source implementation commit; rerun for this state-only follow-up before
+  commit.
+
+### Do not do
+
+- Do not describe the Source Tester Alpha ZIP as a `.app`, signed application,
+  notarized build, or evidence that the prebuilt-app gate passed.
+- Do not distribute a `diagnostics` artifact as the app.
+- Do not attach private, purchased, customer, confidential, or third-party
+  models to public reports.
+- Do not weaken topology, 3MF, palette-state, or source-closure gates to turn a
+  failure into a pass.
+
+### Local-only files
+
+- Release staging and anonymous redownload copies are under
+  `C:\Dev\ChromaMatter-macos-source-alpha-release` and remain outside Git.
+- The temporary generated GLB and temporary YAML parser installation are not
+  repository inputs or release payloads.
+
+## 2026-08-26 macOS Source-backed App Alpha 1 publication (current)
+
+### Objective
+
+Provide Apple Silicon/macOS 15+ volunteers with a normal Finder-launchable
+`.app` and an English installation/test guide without distributing the still
+unapproved frozen native runtime.
+
+### Completed
+
+- Added `tooling/stage_macos_source_app.py`, which creates
+  `ChromaMatter Source Alpha.app` from exact committed Git blobs. The app
+  contains ChromaMatter source/data, a shell Finder entry point, icon, notice,
+  and a complete SHA-256 manifest. It rejects symlinks, wheels, virtual
+  environments, Mach-O, ELF, PE, native libraries, archives, and runtime
+  caches fail closed.
+- Finder launch opens the existing reviewed source launcher in Terminal. CLI
+  arguments, including `--self-test-only`, go directly to that launcher. No
+  `sudo`, Gatekeeper disablement, quarantine removal, bundled Python, or
+  bundled third-party native runtime is used.
+- Added the English installation and 10-minute test guide at
+  `publication/MACOS_SOURCE_APP_TESTING_EN.md`. It explains the source-backed
+  distinction, supported host, checksum, normal Finder Open flow, possible
+  Apple Installer administrator prompt, functional checks, privacy, and report
+  template.
+- Extended `.github/workflows/macos-source-alpha.yml` to stage/audit the app,
+  exercise its embedded launcher, run Japanese/English UI smoke, package a
+  one-root ZIP, fresh-extract and re-audit it, compare workflow/root/manifest
+  source identities, run direct and Finder/LaunchServices self-tests, and
+  upload the ZIP only for an explicit manual input.
+- The first manual run exposed only a missing step-local
+  `CHROMAMATTER_ALPHA_HOME` environment binding and failed before packaging.
+  That binding and its regression assertion were added. Candidate run
+  <https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32964917126>
+  then passed on Apple Silicon/macOS 15.
+- Tagged exact commit `aaf6665eca20180129e7b4eade3df941d7d28433` as
+  `v0.8beta-macos-source-app-alpha1`. Exact-tag workflow-dispatch run
+  <https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32965133450>
+  repeated the full test and passed.
+- Published prerelease
+  <https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-macos-source-app-alpha1>
+  with:
+  - `ChromaMatter-0.8beta-macos-source-app-alpha1.zip`: 5,608,874 bytes,
+    SHA-256
+    `271D65D330A97C3DE45FEFDC4F891990BDDFEAA77C223B5B39420FFF1729879E`;
+  - `SHA256SUMS-macos-source-app-alpha1.txt`: 115 bytes, SHA-256
+    `CB7AFF611044C3D2987F129E9D915B0FBAD015844F5815F70888DDFDAD76A86F`.
+- Downloaded both public assets without authentication. The checksum matched,
+  the ZIP extracted to one root, and the 238-file app manifest passed with
+  zero bundled native runtime binaries and the exact source commit above.
+- Merged documentation-only PR #19 to default-branch commit
+  `80845d1c9a72b7d0da45c58101a9b62ce268b58d`. README EN/JA and both macOS
+  hubs now provide the direct app ZIP, checksum, English guide, and reporting
+  route. Discussion #9 comment
+  <https://github.com/Ponkichi0718/ChromaMatter/discussions/9#discussioncomment-18161984>
+  announces the test package.
+- Updated Draft PR #17 to describe the source-backed Finder app and preserve
+  the separate self-contained-app hold.
+- Improved the frozen-app source audit without approving it: all 317 Mach-O
+  paths are mapped, required NumPy/PyMeshLab/PyTetWild/Rtree/SciPy wheel
+  inspections pass, and unresolved source/build/relink paths decreased from
+  253 to 153. Seven known gaps remain and the engineering status stays
+  `candidate-only`.
+
+### Current state
+
+- macOS testers can download and launch a normal Finder `.app`, but first
+  setup remains visible in Terminal and installs the verified runtime on their
+  own Mac.
+- The source-backed app is unsigned and unnotarized. It is not a self-contained
+  frozen app and it is not a supported stable macOS release.
+- The frozen/prebuilt app remains blocked by 153 unresolved native
+  source/build/relink closures. Source-backed app success is not evidence that
+  this separate gate passed.
+- Published Windows stable r32.2 and Flat Four Test 3 assets are unchanged.
+
+### Next exact task
+
+Collect real Apple Silicon/macOS 15+ compatibility reports through Discussion
+#9 and the macOS Issue form. Separately resolve and verify the 153 frozen-app
+closure gaps before any self-contained app is considered. Do not weaken
+topology, 3MF, palette, security, or source-closure gates.
+
+### Changed files
+
+- `.github/workflows/macos-arm64-alpha.yml`
+- `.github/workflows/macos-source-alpha.yml`
+- `.github/ISSUE_TEMPLATE/macos_alpha_report.yml`
+- `.gitignore`
+- `README_EN.md`, `README_JA.md`
+- `publication/MACOS_ALPHA_HUB_EN.md`
+- `publication/MACOS_ALPHA_HUB_JA.md`
+- `publication/MACOS_ALPHA_TESTING_EN.md`
+- `publication/MACOS_APP_TESTING_EN.md`
+- `publication/MACOS_SOURCE_APP_TESTING_EN.md`
+- `source/fixed_app/test_macos_packaging.py`
+- `source/fixed_app/test_macos_source_app.py`
+- `source/fixed_app/test_macos_source_coverage.py`
+- `tooling/macos_source_coverage_plan.json`
+- `tooling/stage_macos_source_app.py`
+- `CURRENT_STATE.json`, `HANDOFF.md`
+
+### Validation
+
+- Windows focused source-app/launcher/packaging/source-coverage suite: 48
+  tests passed; one bash-only syntax check skipped on Windows.
+- Post-commit local app stage/audit: 238 files, zero bundled native runtime
+  binaries, exact source commit, PASS.
+- Exact old packaged-app inventory plus five official required wheels: 317/317
+  mapped, zero missing wheel inspections, zero failed probes, 153 unresolved,
+  seven known gaps, `candidate-only`.
+- Apple Silicon/macOS 15 candidate and exact-tag runs listed above: PASS,
+  including fresh extraction and Finder/LaunchServices opening.
+- Anonymous Release re-download, SHA-256, extraction, and app-manifest audit:
+  PASS.
+- `git diff --check`, JSON parse, focused tests, and status must be rerun after
+  this state update before commit.
+
+### Do not do
+
+- Do not call the source-backed `.app` self-contained, signed, notarized, or a
+  stable macOS release.
+- Do not distribute a diagnostics artifact as the app or bypass Gatekeeper.
+- Do not approve the frozen app while 153 native closure paths remain.
+- Do not publish private models, purchased assets, personal paths, or
+  credentials in reports or repository files.
+
+### Local-only files
+
+- Official macOS audit wheels are under
+  `C:\Dev\ChromaMatter-macos-wheel-audit` and remain outside Git.
+- Candidate/Release staging and anonymous re-download copies are under unique
+  `C:\Dev\ChromaMatter-macos-source-app-release-*` and `%TEMP%` directories;
+  they remain outside Git.
