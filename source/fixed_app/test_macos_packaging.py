@@ -138,7 +138,7 @@ class MacOSAlphaAutomationTests(unittest.TestCase):
         self.assertIn("codesign --verify --deep --strict", audit)
         self.assertIn("Signature=adhoc", audit)
         self.assertIn("PyfTetWildWrapper*.so", audit)
-        self.assertIn("pytetwild/.dylibs/libgmp.10.dylib", audit)
+        self.assertIn("pytetwild/__dot__dylibs/libgmp.10.dylib", audit)
         self.assertIn("pymeshlab/PlugIns", audit)
         self.assertIn("otool -L", audit)
         self.assertIn("Non-relocatable Mach-O dependency", audit)

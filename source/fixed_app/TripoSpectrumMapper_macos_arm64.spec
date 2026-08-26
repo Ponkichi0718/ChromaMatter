@@ -179,6 +179,9 @@ if not PYTETWILD_WRAPPERS or not PYTETWILD_DYLIBS:
 
 VOLUME_BINARIES = [
     *((str(path), "pytetwild") for path in PYTETWILD_WRAPPERS),
+    # PyInstaller preserves the wheel input path here, then encodes the
+    # leading-dot directory as ``__dot__dylibs`` inside the final .app and
+    # rewrites the Mach-O dependency to that packaged location.
     *((str(path), "pytetwild/.dylibs") for path in PYTETWILD_DYLIBS),
 ]
 

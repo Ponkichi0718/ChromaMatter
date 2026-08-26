@@ -100,14 +100,14 @@ if find "$APP_BUNDLE" -path '*/licenses/native-closure/*' -print -quit | grep -q
 fi
 
 wrapper_count="$(find "$APP_BUNDLE" -type f -name 'PyfTetWildWrapper*.so' | wc -l | tr -d ' ')"
-gmp_count="$(find "$APP_BUNDLE" -type f -path '*/pytetwild/.dylibs/libgmp.10.dylib' | wc -l | tr -d ' ')"
+gmp_count="$(find "$APP_BUNDLE" -type f -path '*/pytetwild/__dot__dylibs/libgmp.10.dylib' | wc -l | tr -d ' ')"
 plugin_count="$(find "$APP_BUNDLE" -type f -path '*/pymeshlab/PlugIns/*' | wc -l | tr -d ' ')"
 [[ "$wrapper_count" == "1" ]] || {
     echo "Expected one packaged PyTetWild .so wrapper; found $wrapper_count" >&2
     exit 1
 }
 [[ "$gmp_count" == "1" ]] || {
-    echo "Expected pytetwild/.dylibs/libgmp.10.dylib; found $gmp_count" >&2
+    echo "Expected PyInstaller-packaged pytetwild/__dot__dylibs/libgmp.10.dylib; found $gmp_count" >&2
     exit 1
 }
 ((plugin_count > 0)) || {
