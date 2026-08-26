@@ -918,3 +918,64 @@ Keep these outside Git and do not copy them to the public release by default:
   failures. This is not a completed r32.2 release gate; the exact-commit clean
   build, packaged/fresh-extracted smoke, complete corresponding-source stage,
   final archive, and checksum gates remain pending.
+
+## 2026-08-26 macOS volunteer navigation documentation
+
+### Current objective
+
+Expose a clear, tester-first macOS path from the default README without merging
+the separate Mac application workstream or implying that a download is already
+approved.
+
+### Completed in this session
+
+- Added the Apple Silicon/macOS 15+ alpha row to the English and Japanese
+  default README aliases.
+- Added the English ten-minute volunteer guide, companion Japanese guide, and
+  English Discussion hub source.
+- Added a dedicated reproducible-problem Issue form and the Discussion #9
+  contact link. Successful results and setup questions go to Discussion #9;
+  one reproducible defect goes to the form.
+- Kept the stable Windows r32.2 download first and left all frozen Release
+  assets unchanged.
+
+### Current state
+
+- GitHub Discussions is enabled and Discussion #9 exists.
+- No macOS application is approved for download. The README and guide say so
+  explicitly; diagnostics must not be presented as an app.
+- This documentation branch contains no application port, `.app`, ZIP, GLB
+  binary, generated 3MF, or private model.
+
+### Next exact task
+
+Publish this documentation-only branch through a pull request to `main`. Update
+Discussion #9 only after one exact Mac CI build and its distribution evidence
+pass; do not replace the no-download notice before then.
+
+### Changed files
+
+- README English/Japanese canonical aliases, `.gitignore`,
+  `.github/ISSUE_TEMPLATE/config.yml`,
+  `.github/ISSUE_TEMPLATE/macos_alpha_report.yml`,
+  `publication/MACOS_ALPHA_TESTING_EN.md`,
+  `publication/MACOS_ALPHA_TESTING_JA.md`,
+  `publication/MACOS_ALPHA_HUB_EN.md`, `CURRENT_STATE.json`, and `HANDOFF.md`.
+
+### Tests run
+
+- `source.fixed_app.test_release_identity`: 12 tests, zero failures.
+- Issue/config YAML parse and dropdown-string validation: PASS.
+- README canonical English/Japanese byte parity and `git diff --check`: PASS.
+
+### Do not do
+
+- Do not merge the Mac application branch merely to expose documentation.
+- Do not advertise an Actions diagnostics artifact as a runnable app.
+- Do not commit or distribute private models, generated binaries, or incomplete
+  3MF outputs.
+
+### Local-only files
+
+- Mac app builds, diagnostics, test ZIPs, generated GLBs, and user models remain
+  outside this documentation branch.

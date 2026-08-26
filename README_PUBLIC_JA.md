@@ -12,11 +12,16 @@
 | --- | --- | --- |
 | **公開安定版 r32.2** | 現在ダウンロードできるWindows版と、検証済みのFull Spectrum制作フローを使う | **[安定版r32.2をダウンロード](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2)** |
 | **Flat Four Test 3（実験版）** | Flat Four、白／灰色ハイライト補正、大容量静的GLB、2D彩色フィルターを統合前に試す | **[Windowsテスト版ZIPをダウンロード](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2-flat4-test3/ChromaMatter-0.8beta-r32.2-flat4-test3-win64.zip)** · [説明と注意事項](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2-flat4-test3) · [Draft PR #7](https://github.com/Ponkichi0718/ChromaMatter/pull/7) |
+| **macOS Apple Silicon alpha** | macOS 15以降での協力テスト。Developer ID未署名・未公証で、正式Releaseではありません | **[英語のテスターガイドから開始](publication/MACOS_ALPHA_TESTING_EN.md)** · [テスト掲示板](https://github.com/Ponkichi0718/ChromaMatter/discussions/9) · [再現する不具合を報告](https://github.com/Ponkichi0718/ChromaMatter/issues/new?template=macos_alpha_report.yml) |
 
 実験テスト版は恒久的な別系統ではなく、検証後に通常版へ統合する候補です。
 **Flat Four Test 3を別の公開プレリリースとしてダウンロードできます。**
 ZIP全体を展開してから起動してください。下の安定版r32.2にはFlat Fourが
 入っていないため、Test 3 ReleaseとDraft PR #7を実験版の案内先にしています。
+
+**macOSテスター版はまだ配布承認前です。** Apple Silicon上のCIと配布確認が
+通った正確な1つのbuildだけを、上の英語ガイドから案内します。`diagnostics`と
+書かれたartifactはapplicationではありません。
 
 ## Windows版をダウンロード
 
@@ -36,7 +41,7 @@ Windows package、完全対応source、SBOM、component map、操作動画、det
 
 **0.8 betaの重要な制限:** パーツ化モデルの閉立体化はまだ不安定です。同梱の`DemoData`は閉立体化・3MF出力の成功を確認していますが、他の分割ファイルでは閉立体化または3MF出力に失敗することがあります。この互換性が未完成であることが、ChromaMatterを`0.8beta`としている理由の一つです。
 
-ChromaMatter — AI Model Print Studioは、AI生成された頂点カラー付きOBJまたはUV baseColor付きGLBを、Snapmaker OrcaのFull Spectrum／Color Mixingワークフロー向け3MFへ変換・調整するWindowsデスクトップツールです。独立プロジェクトであり、TripoAI、Hi3D AI、Snapmaker、OpenAIその他第三者の公式・提携製品ではありません。
+ChromaMatter — AI Model Print Studioは、AI生成された頂点カラー付きOBJまたはUV baseColor付きGLBを、Snapmaker OrcaのFull Spectrum／Color Mixingワークフロー向け3MFへ変換・調整するデスクトップツールです。公開安定版はWindows用で、Apple Silicon macOS版は別alphaとして協力検証中です。独立プロジェクトであり、TripoAI、Hi3D AI、Snapmaker、OpenAI、Appleその他第三者の公式・提携製品ではありません。
 
 **AIで作った3Dを、画面の中だけで終わらせない。** ChromaMatterは、AI 3D生成に「カラー造形という出口」を、3Dプリンタに「AIモデルという新しい入力」をつくり、それぞれの利用価値を高めるための橋渡しを目指しています。
 
