@@ -267,7 +267,7 @@
     "base_commit": "9c7be309bc2a8268d0fa9a4a0c63ad444759120d",
     "display_version": "0.8beta",
     "bundle_short_version": "0.8.0",
-    "status": "local source port and tester-first workflow implemented; the macOS CI and app bundle have not yet run on a Mac",
+    "status": "technical-ci-passed; no approved tester download; distribution blocked by 253 unresolved Mach-O source/relink closures",
     "windows_release_impact": "none; the published Windows stable and Flat Four test assets remain unchanged",
     "runtime_scope": [
       "Uses the normal macOS Application Support directory while preserving the legacy Windows settings path.",
@@ -289,32 +289,67 @@
       "reproducible_problem_form": ".github/ISSUE_TEMPLATE/macos_alpha_report.yml",
       "basic_test": "10-minute Pass/Fail/Not-tested checklist before optional large-model or physical-print testing",
       "public_test_model": "deterministic CC0 static GLB generated during approved tester staging; 32 vertices, 48 triangles, four watertight bodies, exact red/blue/white/black COLOR_0, no texture or third-party/private metadata",
-      "availability": "no approved tester download yet; Discussion #9 is the single status and future approved-build hub"
+      "availability": "no approved tester download yet; Discussion #9 is the single status and future approved-build hub",
+      "draft_pull_request": {
+        "number": 12,
+        "url": "https://github.com/Ponkichi0718/ChromaMatter/pull/12",
+        "status": "open Draft; source and review workspace only; not an approved tester download"
+      }
     },
     "validation": {
-      "windows_regression": "exact-current working tree: 1463 tests in 702.607s, 0 failures, 2 optional skips after all macOS port, gate, packaging, and handoff changes",
-      "final_targeted": "58 tests in 3.398s, 0 failures after the final macOS gate and packaging refinements",
+      "windows_regression": "1478 tests in 686.573s, 0 failures, 2 optional skips after the macOS port and source-coverage audit; the later workflow/source-identity test-only follow-up passed its 26 focused tests",
+      "final_targeted": "35 macOS packaging/source-coverage tests passed after the hardened stager review; 26 focused tests passed after binding CI diagnostics to the exact source head",
       "tester_workflow_focused": "49 tests passed after adding the public GLB fixture, workflow summary, English tester guide, Issue form, README path, and Discussion hub; YAML parse, shell syntax, Python compile, and diff checks passed",
-      "current_windows_full_regression": "1468 tests in 697.983s, 0 failures, 2 optional skips on exact commit 748c05b before the macOS test-portability follow-up; the 11 changed portability targets and the 43-test hotfix module passed after the follow-up edits",
+      "current_windows_full_regression": "1478 tests in 686.573s, 0 failures, 2 optional skips; subsequent source-audit and exact-source workflow refinements were tooling/test-only and passed their focused suites",
       "windows_ui_smoke": "source Japanese and English visible-window smoke passed",
       "mac_lock_dry_run": "all 23 exact macOS 15 arm64 CPython 3.13 wheels resolved with hash enforcement and no source distributions",
-      "mac_actual_build": "GitHub Actions run 32938795209 reached a real macos-15 arm64 runner: host verification, all 23 hash-locked wheels, native dependency probes, and the real PyTetWild/PyMeshLab/ModernGL source gate passed. The run stopped before PyInstaller because 11 source tests retained Windows modifier, Tk geometry, path, or floating-point assumptions; no app was distributed.",
+      "mac_actual_build": "The latest Apple Silicon run completed app packaging and all technical checks successfully; diagnostics only were uploaded and no tester application was distributed.",
+      "latest_successful_ci_run": {
+        "url": "https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32946348725",
+        "source_commit": "495b1d86ca6c924a46770a3915fe5c0e514045dc",
+        "result": "success",
+        "source_tests": "passed",
+        "native_dependency_probe": "passed",
+        "packaged_native_render_self_test": "passed",
+        "packaged_ui_smoke": {
+          "ja": "passed",
+          "en": "passed"
+        },
+        "published_artifact": "diagnostics only",
+        "tester_artifact": false,
+        "inventory_sha256": "6159B1BD1855C58A7B5BEB2EA5B0B3B445D14C9D4AEEC42B6F8F01CCA8E9D6C6",
+        "source_coverage_report_sha256": "C55E8058A617EB0DC9638A81D3AC1DF782F6C5B6F35ADDA7F526B0684A17C80C"
+      },
+      "source_closure_audit": {
+        "inventory_run": "https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32946348725",
+        "inventory_source_commit": "495b1d86ca6c924a46770a3915fe5c0e514045dc",
+        "mach_o_total": 317,
+        "mach_o_mapped": 317,
+        "mach_o_unresolved_source_or_relink_closure": 253,
+        "status": "candidate-only",
+        "engineering_gate_passed": false,
+        "legal_conclusion": false
+      },
       "first_ci_run": {
         "url": "https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32938795209",
         "source_commit": "748c05b5d3faaa1987a67ccd1e73b824a5fde44d",
         "result": "failed before packaging on test portability only",
         "native_gate": "passed",
         "tester_artifact": false,
-        "fix_status": "minimal cross-platform test fixes implemented locally; next CI run pending"
+        "fix_status": "superseded by later successful technical CI; retained as historical diagnosis"
       }
     },
     "distribution_gate": {
-      "status": "blocked",
-      "reason": "the macOS native binary component map, SPDX SBOM, corresponding-source manifest, relinking materials, and reviewed approval are not yet complete",
+      "status": "blocked-native-source-closure",
+      "reason": "All 317 packaged Mach-O paths are classified, but 253 still have unresolved exact source, build-provenance, or relinking evidence.",
+      "native_mach_o_total": 317,
+      "native_mach_o_mapped": 317,
+      "native_mach_o_unresolved_source_or_relink_closure": 253,
       "public_release": false,
-      "tester_distribution": false
+      "tester_distribution": false,
+      "owner_approval": false
     },
-    "next_exact_task": "Commit and push the first-run portability fixes, inspect the next diagnostics-only macos-15 run through actual app packaging and UI smoke, then complete exact-commit macOS compliance evidence before enabling any tester ZIP."
+    "next_exact_task": "Resolve and review the exact source/build/relink evidence for the 253 unresolved Mach-O files, produce the exact-commit corresponding-source evidence, then obtain explicit owner approval and rerun the fail-closed tester-distribution gate. Until then keep Discussion #9 no-download and PR #12 Draft."
   },
   "current_features": {
     "public_main_window": [
@@ -730,8 +765,8 @@
   "known_pending": [
     "Validate the final Manual Editing interaction on physical XP-PEN hardware.",
     "Run a physical printer matrix and confirm exported projects in Snapmaker Orca slice preview.",
-    "Run the first Apple Silicon macOS 15 CI build and inspect its native, rendering, bundle, and Japanese/English UI diagnostics.",
-    "Complete and approve the macOS native binary component map, SPDX SBOM, corresponding-source manifest, and relinking materials before any volunteer tester receives the app bundle.",
+    "Complete and review exact macOS source/build/relink closure for the 253 unresolved Mach-O files.",
+    "After the distribution gate passes and owner approval is explicit, publish one approved tester ZIP and begin the 10-minute volunteer matrix through Discussion #9 and the macOS Issue form.",
     "Complete the Innovation Fund submission materials and community post using the published immutable v0.8beta-r32.2 prerelease.",
     "Improve multipart solidification coverage: the bundled DemoData succeeds, but other multipart files may still fail solidification or 3MF export.",
     "Keep the retained Decal beta implementation inaccessible until it is separately revalidated and explicitly reintroduced."

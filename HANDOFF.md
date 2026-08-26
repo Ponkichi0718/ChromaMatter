@@ -1904,3 +1904,95 @@ self-test, and Japanese/English UI smoke. Do not request a tester ZIP yet.
 
 - Downloaded CI logs and diagnostics remain in a unique temporary directory and
   are not Git inputs or package payloads.
+
+## 2026-08-26 macOS technical CI success and distribution hold (current)
+
+### Current objective
+
+Keep the first macOS volunteer path simple and public-facing while completing
+the exact native source/relink evidence required before an external tester ZIP
+can be approved.
+
+### Completed in this session
+
+- The volunteer route is the English guide, Discussion #9, and the dedicated
+  macOS Issue form. The first approved kit will use the deterministic CC0
+  four-box GLB and the 10-minute checklist; no private or complex model is
+  needed.
+- Apple Silicon technical CI run
+  <https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32946348725>
+  succeeded from exact source commit
+  `495b1d86ca6c924a46770a3915fe5c0e514045dc`.
+- Source tests, native probes, app packaging, packaged native/rendering
+  self-test, and Japanese/English UI smoke passed. The run uploaded diagnostics
+  only; all tester ZIP steps remained skipped.
+- The deterministic app inventory recorded 859 regular files, 207 symlinks,
+  317 arm64 Mach-O files, and 20 packaged Python distributions. Its SHA-256 is
+  `6159B1BD1855C58A7B5BEB2EA5B0B3B445D14C9D4AEEC42B6F8F01CCA8E9D6C6`.
+- The fail-closed source-coverage audit maps all 317 Mach-O files uniquely and
+  reports 253 with unresolved source/build/relink evidence. Its SHA-256 is
+  `C55E8058A617EB0DC9638A81D3AC1DF782F6C5B6F35ADDA7F526B0684A17C80C`;
+  `engineering_gate_passed=false` and `legal_conclusion=false`.
+- Draft PR #12 remains the separate macOS source/review workspace and is not a
+  tester download.
+
+### Current state
+
+- The Apple Silicon `.app` builds and passes the technical CI gate on macOS
+  15.7.7 arm64 with CPython 3.13.14.
+- There is no approved macOS tester download. A `diagnostics` artifact is not
+  the application and must not be given to testers.
+- External tester distribution remains blocked by the 253 unresolved native
+  source/build/relink closures. The audit cannot create a complete source stage
+  while any gap remains and cannot make a legal approval decision.
+- This section supersedes the earlier statements that no real Mac app build had
+  completed or that the next technical CI run was pending. The first failed run
+  remains above as historical diagnosis.
+
+### Next exact task
+
+Resolve and review the 253 source/build/relink closures, generate the
+exact-commit corresponding-source evidence, obtain explicit owner approval,
+and rerun the fail-closed tester-distribution gate. Keep Discussion #9 in
+no-download status and PR #12 as Draft until those steps pass.
+
+### Changed files
+
+- `.github/workflows/macos-arm64-alpha.yml`
+- `.gitignore`
+- `tooling/audit_macos_source_coverage.py`
+- `tooling/macos_source_coverage_plan.json`
+- `tooling/stage_macos_corresponding_source.py`
+- `source/fixed_app/test_macos_source_coverage.py`
+- `source/fixed_app/test_macos_packaging.py`
+- `README.md`, `README_EN.md`, and `README_PUBLIC_EN.md`
+- `publication/MACOS_ALPHA_TESTING_EN.md`
+- `publication/MACOS_ALPHA_HUB_EN.md`
+- `CURRENT_STATE.json` and `HANDOFF.md`
+
+### Tests run
+
+- Full Windows regression: 1,478 tests passed with two optional skips and zero
+  failures in 686.573 seconds.
+- Hardened app-inventory/compliance/source-coverage/packaging suite: 35 passed.
+- Exact-source checkout/recording follow-up: 26 focused tests passed.
+- Independent adversarial review confirmed input/output overwrite protection,
+  exact archive/git-source binding, case/Unicode/path collision rejection, and
+  non-legal engineering-gate terminology.
+- Final Apple Silicon CI run #32946348725: success; source commit in both
+  `CI_ENVIRONMENT.txt` and the coverage report exactly matches `495b1d8...`.
+- Final diagnostics privacy and false-approval scan: passed.
+
+### Do not do
+
+- Do not distribute or describe a diagnostics artifact as the app.
+- Do not publish a tester ZIP while any source/relink closure remains open.
+- Do not call the alpha Developer ID signed, notarized, generally supported,
+  legally approved, or physically validated.
+- Do not weaken topology or 3MF fail-closed validation.
+
+### Local-only files
+
+- Downloaded diagnostic ZIPs, extracted inventory/coverage reports, exact wheel
+  inspection caches, generated GLB copies, app bundles, and any tester ZIP stay
+  outside Git.
