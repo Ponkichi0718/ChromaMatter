@@ -1,35 +1,56 @@
-# Welcome: ChromaMatter macOS Source Tester Alpha
+# Welcome: ChromaMatter macOS testing
 
 Thank you for volunteering. This is the starting point for the separate
 **Apple Silicon / macOS 15+** test path.
 
+## Choose the correct test route
+
+- **Recommended — Source-backed App Alpha:** a normal Finder `.app` that opens
+  the reviewed, hash-locked setup in Terminal. Use the download below.
+- **Alternative — Source Tester Alpha:** the older ZIP starts the same source
+  path directly with `START_MACOS_SOURCE_ALPHA.command`.
+- **Pending — self-contained prebuilt app:** the beginner-friendly
+  [prebuilt app installation and 10-minute test guide](MACOS_APP_TESTING_EN.md)
+  is ready, but the app itself is **not available for download yet**. It will
+  be linked only after the separate native-component, corresponding-source,
+  relinking, packaging, and fresh-build approval gate passes.
+
+Do not treat a GitHub Actions artifact with `diagnostics` in its name as an
+application. It contains reports, not a runnable tester.
+
 ## Start here
 
-The source-based tester is available now:
+The Finder-launchable source-backed app is available now:
 
-1. **[Download the fixed Source Tester Alpha ZIP](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-macos-source-alpha1/ChromaMatter-0.8beta-macos-source-alpha1.zip)** and verify it against `SHA256SUMS-macos-source-alpha1.txt` on the [tag/Release page](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-macos-source-alpha1).
-2. Read the [English setup and 10-minute test guide](MACOS_ALPHA_TESTING_EN.md).
-3. Extract the ZIP, Control-click `START_MACOS_SOURCE_ALPHA.command`, and
+1. **[Download ChromaMatter Source Alpha.app for macOS](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-macos-source-app-alpha1/ChromaMatter-0.8beta-macos-source-app-alpha1.zip)** and verify it against `SHA256SUMS-macos-source-app-alpha1.txt` on the [Release page](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-macos-source-app-alpha1).
+2. Read the [English installation and 10-minute test guide](MACOS_SOURCE_APP_TESTING_EN.md).
+3. Extract the whole ZIP, Control-click `ChromaMatter Source Alpha.app`, and
    choose **Open**.
 4. Let the launcher verify/install official Python 3.13.14 and the hash-locked
    dependencies. After Installer finishes, return to Terminal and press Return;
    reopen the launcher only if it still cannot find Python.
 5. Run the generated public four-colour GLB test and report the result.
 
-The generated fixture is `ChromaMatter-Public-Four-Color-Test.glb`. The full
-path and click-by-click checks are in the guide.
+The public fixture is beside the app as
+`ChromaMatter-Public-Four-Color-Test.glb`. The click-by-click checks are in the
+guide. The older command-based [Source Tester Alpha](MACOS_ALPHA_TESTING_EN.md)
+remains available as a fallback.
 
 No programming knowledge, printer, paid AI account, or private model is
 needed. The first setup downloads several hundred MB and may take several
 minutes. Later launches reuse the local environment.
 
-## Important: this is not the prebuilt app
+## Important: what this `.app` contains
 
-The downloadable item above is the tagged source code with a guided launcher.
-There is **no approved prebuilt `.app` ZIP**. Prebuilt distribution remains on
-hold because 253 packaged Mach-O files still have unresolved
-source/build/relink closure evidence. A `diagnostics` artifact is a report,
-not an application.
+The downloadable item is a Finder `.app`, but it is **source-backed**: it does
+not bundle Python or third-party native libraries. It opens a visible Terminal
+setup, verifies official Python 3.13.14 and installs exact hash-locked
+dependencies on the tester's Mac. There is **no approved self-contained
+prebuilt app**. That separate route remains on hold because 153 packaged native
+files still have unresolved source/build/relink closure evidence. The future
+self-contained route has its own
+[English installation and test guide](MACOS_APP_TESTING_EN.md), but that guide
+does not make the app downloadable or approved.
 
 The Apple Silicon app has already passed source tests, native probes, packaged
 self-test, and Japanese/English UI smoke in
@@ -45,9 +66,9 @@ this template into a reply:
 
 ```text
 Overall result: Pass / Partial
-Test route: Source Tester Alpha
-Source tag: v0.8beta-macos-source-alpha1
-Source commit (optional if unknown):
+Test route: Source-backed App Alpha
+ZIP: ChromaMatter-0.8beta-macos-source-app-alpha1.zip
+Source commit (SOURCE_COMMIT.txt):
 Mac model and chip:
 RAM:
 macOS version:

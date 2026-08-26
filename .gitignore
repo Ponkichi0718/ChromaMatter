@@ -72,6 +72,8 @@ publication/*
 !publication/RELEASE_NOTES_r32.2_FLAT4_TEST3_20260826.md
 !publication/MACOS_ALPHA_TESTING_EN.md
 !publication/MACOS_ALPHA_TESTING_JA.md
+!publication/MACOS_APP_TESTING_EN.md
+!publication/MACOS_SOURCE_APP_TESTING_EN.md
 !publication/MACOS_ALPHA_HUB_EN.md
 !publication/MACOS_ALPHA_HUB_JA.md
 !publication/MACOS_ALPHA_TEST_MODEL_EXPECTED.svg
@@ -88,6 +90,7 @@ tooling/*
 !tooling/audit_macos_source_coverage.py
 !tooling/macos_source_coverage_plan.json
 !tooling/stage_macos_corresponding_source.py
+!tooling/stage_macos_source_app.py
 !tooling/generate_pytetwild_rebuild_lock.py
 !tooling/pytetwild_static_closure_contract.py
 !tooling/pymeshlab_audited_native_identities.json

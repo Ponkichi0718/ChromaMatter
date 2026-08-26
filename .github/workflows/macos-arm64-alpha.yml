@@ -145,10 +145,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          wheelhouse="$RUNNER_TEMP/chromamatter-macos-wheelhouse"
+          mkdir -p "$wheelhouse"
+          python -m pip download \
+            --require-hashes \
+            --only-binary=:all: \
+            --no-deps \
+            --dest "$wheelhouse" \
+            -r source/fixed_app/requirements-build-macos-arm64.lock
           python -m pip install \
             --require-hashes \
             --only-binary=:all: \
             --no-deps \
+            --no-index \
+            --find-links "$wheelhouse" \
             -r source/fixed_app/requirements-build-macos-arm64.lock
           python -m pip check
 
@@ -167,10 +177,17 @@ jobs:
           TESTER_ZIP_REQUESTED: ${{ github.event_name == 'workflow_dispatch' && inputs.upload_tester_alpha }}
         run: |
           set -euo pipefail
+          wheelhouse="$RUNNER_TEMP/chromamatter-macos-wheelhouse"
+          test -d "$wheelhouse"
           coverage_args=(
             --inventory "$RUNNER_TEMP/chromamatter-macos-arm64/validation/MACOS_ALPHA_APP_INVENTORY.json"
             --source-commit "$SOURCE_COMMIT"
             --output "$RUNNER_TEMP/chromamatter-macos-arm64/validation/MACOS_SOURCE_COVERAGE_REPORT.json"
+            --wheel "$wheelhouse/numpy-2.5.1-cp313-cp313-macosx_14_0_arm64.whl"
+            --wheel "$wheelhouse/pymeshlab-2025.7.post1-cp313-cp313-macosx_11_0_arm64.whl"
+            --wheel "$wheelhouse/pytetwild-0.3.0-cp312-abi3-macosx_15_0_arm64.whl"
+            --wheel "$wheelhouse/rtree-1.4.1-py3-none-macosx_11_0_arm64.whl"
+            --wheel "$wheelhouse/scipy-1.18.0-cp313-cp313-macosx_14_0_arm64.whl"
           )
           if [[ "$TESTER_ZIP_REQUESTED" == "true" ]]; then
             coverage_args+=(--require-engineering-gate-passed)

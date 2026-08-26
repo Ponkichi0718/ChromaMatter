@@ -204,6 +204,19 @@ class MacOSAlphaAutomationTests(unittest.TestCase):
         self.assertIn("TESTER ZIP CREATED", text)
         self.assertIn("DIAGNOSTICS ONLY", text)
         self.assertIn("--require-engineering-gate-passed", text)
+        self.assertIn("python -m pip download", text)
+        self.assertIn('--dest "$wheelhouse"', text)
+        self.assertIn('--no-index', text)
+        self.assertIn('--find-links "$wheelhouse"', text)
+        for required_wheel in (
+            "numpy-2.5.1-cp313-cp313-macosx_14_0_arm64.whl",
+            "pymeshlab-2025.7.post1-cp313-cp313-macosx_11_0_arm64.whl",
+            "pytetwild-0.3.0-cp312-abi3-macosx_15_0_arm64.whl",
+            "rtree-1.4.1-py3-none-macosx_11_0_arm64.whl",
+            "scipy-1.18.0-cp313-cp313-macosx_14_0_arm64.whl",
+        ):
+            with self.subTest(required_wheel=required_wheel):
+                self.assertIn(f'--wheel "$wheelhouse/{required_wheel}"', text)
         self.assertGreaterEqual(text.count("MACOS_ALPHA_APP_INVENTORY.json"), 2)
         self.assertIn("discussions/9", text)
         self.assertNotIn("gh release", text.casefold())
@@ -217,18 +230,21 @@ class MacOSAlphaAutomationTests(unittest.TestCase):
         self.assertIn('ref: ${{ github.sha }}', text)
         self.assertIn("bash -n ./START_MACOS_SOURCE_ALPHA.command", text)
         self.assertIn(
-            "bash ./START_MACOS_SOURCE_ALPHA.command --self-test-only",
+            '"$app_entry" --self-test-only',
             text,
+        )
+        self.assertIn("tooling/stage_macos_source_app.py stage", text)
+        self.assertGreaterEqual(
+            text.count("tooling/stage_macos_source_app.py audit"),
+            2,
         )
         self.assertIn("CHROMAMATTER_ALPHA_HOME", text)
         self.assertIn("ChromaMatter-Public-Four-Color-Test.glb", text)
         self.assertIn('payload.get("ok") is not True', text)
         self.assertIn("--ui-smoke --ui-smoke-language ja", text)
         self.assertIn("--ui-smoke --ui-smoke-language en", text)
-        self.assertIn(
-            "It is not evidence for a packaged or notarized app.",
-            text,
-        )
+        self.assertIn("no bundled Python/runtime/Mach-O", text)
+        self.assertIn("not evidence for the frozen prebuilt or notarized app", text)
         self.assertNotIn("actions/upload-release-asset", text)
 
     def test_tester_documents_and_issue_form_protect_private_models(self) -> None:

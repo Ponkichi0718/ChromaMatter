@@ -19,6 +19,11 @@ hold because source/build/relink closure evidence remains unresolved for 253
 packaged Mach-O files. A GitHub Actions artifact with `diagnostics` in its name
 is a report, not the application.
 
+If you prefer a normal app bundle, read the
+[prebuilt `.app` installation and 10-minute test guide](MACOS_APP_TESTING_EN.md).
+That route is documented in advance but is **not downloadable** until its
+separate compliance and fresh-build gate passes.
+
 The source launcher verifies the Mac and setup inputs, uses the official
 Python 3.13.14 installer when needed, installs exact hash-locked dependencies
 on the tester's own Mac, runs the self-test, and starts ChromaMatter from
