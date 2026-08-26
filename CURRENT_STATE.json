@@ -295,9 +295,18 @@
       "windows_regression": "exact-current working tree: 1463 tests in 702.607s, 0 failures, 2 optional skips after all macOS port, gate, packaging, and handoff changes",
       "final_targeted": "58 tests in 3.398s, 0 failures after the final macOS gate and packaging refinements",
       "tester_workflow_focused": "49 tests passed after adding the public GLB fixture, workflow summary, English tester guide, Issue form, README path, and Discussion hub; YAML parse, shell syntax, Python compile, and diff checks passed",
+      "current_windows_full_regression": "1468 tests in 697.983s, 0 failures, 2 optional skips on exact commit 748c05b before the macOS test-portability follow-up; the 11 changed portability targets and the 43-test hotfix module passed after the follow-up edits",
       "windows_ui_smoke": "source Japanese and English visible-window smoke passed",
       "mac_lock_dry_run": "all 23 exact macOS 15 arm64 CPython 3.13 wheels resolved with hash enforcement and no source distributions",
-      "mac_actual_build": "pending; no Mac host is available in the current Windows environment"
+      "mac_actual_build": "GitHub Actions run 32938795209 reached a real macos-15 arm64 runner: host verification, all 23 hash-locked wheels, native dependency probes, and the real PyTetWild/PyMeshLab/ModernGL source gate passed. The run stopped before PyInstaller because 11 source tests retained Windows modifier, Tk geometry, path, or floating-point assumptions; no app was distributed.",
+      "first_ci_run": {
+        "url": "https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32938795209",
+        "source_commit": "748c05b5d3faaa1987a67ccd1e73b824a5fde44d",
+        "result": "failed before packaging on test portability only",
+        "native_gate": "passed",
+        "tester_artifact": false,
+        "fix_status": "minimal cross-platform test fixes implemented locally; next CI run pending"
+      }
     },
     "distribution_gate": {
       "status": "blocked",
@@ -305,7 +314,7 @@
       "public_release": false,
       "tester_distribution": false
     },
-    "next_exact_task": "Commit and push the explicitly approved branch, run the default diagnostics-only macos-15 CI for the first real build, inspect and fix its results, then complete exact-commit macOS compliance evidence before enabling any tester ZIP."
+    "next_exact_task": "Commit and push the first-run portability fixes, inspect the next diagnostics-only macos-15 run through actual app packaging and UI smoke, then complete exact-commit macOS compliance evidence before enabling any tester ZIP."
   },
   "current_features": {
     "public_main_window": [

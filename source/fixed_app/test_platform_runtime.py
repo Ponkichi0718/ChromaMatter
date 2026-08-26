@@ -28,8 +28,8 @@ class ApplicationDataPathTests(unittest.TestCase):
         )
 
         self.assertEqual(
-            result,
-            Path("/tmp/chromamatter-isolated-profile"),
+            result.resolve(strict=False),
+            Path("/tmp/chromamatter-isolated-profile").resolve(strict=False),
         )
 
     def test_relative_application_data_override_is_rejected(self) -> None:

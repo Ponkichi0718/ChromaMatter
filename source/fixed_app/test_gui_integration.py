@@ -351,29 +351,35 @@ class RealTkGpuIntegrationTests(unittest.TestCase):
             self.assertEqual(editor._hotfix_brush_shape_var.get(), "round")
 
             ids = np.asarray(editor.face_ids)
-            best_y = 0
-            best_run = np.empty(0, dtype=np.int64)
-            for y in range(ids.shape[0]):
-                run = np.flatnonzero(ids[y] >= 0)
-                if len(run) > len(best_run):
-                    best_y = y
-                    best_run = run
-            self.assertGreater(len(best_run), 12)
-            rx0 = int(best_run[len(best_run) // 3])
-            rx1 = int(best_run[2 * len(best_run) // 3])
             left, top, width, height, render_width, render_height = (
                 editor.target_mapping
             )
-
-            def canvas_point(rx: int, ry: int) -> tuple[int, int]:
-                return (
-                    int(round(left + (rx + 0.5) * width / render_width)),
-                    int(round(top + (ry + 0.5) * height / render_height)),
-                )
-
-            start = canvas_point(rx0, best_y)
-            end = canvas_point(rx1, best_y)
+            render_x = np.minimum(
+                render_width - 1,
+                np.arange(width, dtype=np.int64) * render_width // width,
+            )
+            render_y = np.minimum(
+                render_height - 1,
+                np.arange(height, dtype=np.int64) * render_height // height,
+            )
+            canvas_ids = ids[np.ix_(render_y, render_x)]
+            best_y = max(
+                range(canvas_ids.shape[0]),
+                key=lambda y: int(np.count_nonzero(canvas_ids[y] >= 0)),
+            )
+            visible_x = np.flatnonzero(canvas_ids[best_y] >= 0)
+            self.assertGreater(len(visible_x), 12)
+            start = (
+                left + int(visible_x[len(visible_x) // 3]),
+                top + best_y,
+            )
+            end = (
+                left + int(visible_x[2 * len(visible_x) // 3]),
+                top + best_y,
+            )
             start_face = editor._face_at(*start)
+            self.assertGreaterEqual(start_face, 0)
+            self.assertGreaterEqual(editor._face_at(*end), 0)
             before = int(editor._session.effective_indices()[start_face])
             editor.paint_state_var.set((before + 2) % 10)
             editor.tool_var.set("brush")
@@ -403,17 +409,17 @@ class RealTkGpuIntegrationTests(unittest.TestCase):
             )
 
             editor._on_left_press(
-                SimpleNamespace(x=start[0], y=start[1], state=0x0008)
+                SimpleNamespace(x=start[0], y=start[1], state=0)
             )
             for amount in np.linspace(0.0, 1.0, 12)[1:]:
                 x = int(round(start[0] + amount * (end[0] - start[0])))
                 y = int(round(start[1] + amount * (end[1] - start[1])))
                 editor._on_left_motion(
-                    SimpleNamespace(x=x, y=y, state=0x0108)
+                    SimpleNamespace(x=x, y=y, state=0x0100)
                 )
                 root.update()
             editor._on_left_release(
-                SimpleNamespace(x=end[0], y=end[1], state=0x0008)
+                SimpleNamespace(x=end[0], y=end[1], state=0)
             )
             self.assertTrue(
                 _pump(

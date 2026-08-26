@@ -164,6 +164,7 @@ class MacOSAlphaSelfTestTests(unittest.TestCase):
         gate.assert_called_once_with()
         windows_gate.assert_not_called()
 
+    @unittest.skipIf(sys.platform == "darwin", "non-macOS entrypoint rejection")
     def test_entrypoint_emits_only_ascii_json_on_non_macos(self) -> None:
         environment = os.environ.copy()
         environment["PYTHONPATH"] = str(FIXED_APP)

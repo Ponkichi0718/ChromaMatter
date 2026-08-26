@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ctypes
+import os
 from types import SimpleNamespace
 import unittest
 
@@ -63,6 +64,7 @@ class _UnavailableApi(_FakeApi):
 
 
 class PenPressureTests(unittest.TestCase):
+    @unittest.skipUnless(os.name == "nt", "Win32 ABI layout")
     def test_win32_constants_and_native_layout_match_64_bit_headers(self) -> None:
         self.assertEqual(pressure.WM_POINTERUPDATE, 0x0245)
         self.assertEqual(pressure.WM_POINTERDOWN, 0x0246)

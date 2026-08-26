@@ -6,8 +6,10 @@ separate ChromaMatter **Apple Silicon / macOS 15+ alpha**.
 ## Download status
 
 **There is no approved tester download yet.** The first real Apple Silicon CI
-build and its distribution review are in progress. A GitHub Actions artifact
-with `diagnostics` in its name is not the application.
+run reached the Mac runner and passed dependency installation plus the native
+PyTetWild, PyMeshLab, and OpenGL gate, but stopped on portable source-test
+assumptions before a package could be approved. Fix validation is in progress.
+A GitHub Actions artifact with `diagnostics` in its name is not the application.
 
 When a build is approved, the owner will update this post with exactly one:
 
@@ -20,7 +22,7 @@ Do not use an app sent through a comment, mirror, or file-sharing service.
 
 ## Start here
 
-1. Read the [English volunteer test guide](https://github.com/Ponkichi0718/ChromaMatter/blob/codex/macos-arm64-flat4-test3/publication/MACOS_ALPHA_TESTING_EN.md).
+1. Read the [English volunteer test guide](https://github.com/Ponkichi0718/ChromaMatter/blob/main/publication/MACOS_ALPHA_TESTING_EN.md).
 2. When the approved build appears above, verify its SHA-256.
 3. Run the 10-minute checklist with the supplied public four-colour GLB.
 4. Reply here with a successful or partly successful compatibility result.

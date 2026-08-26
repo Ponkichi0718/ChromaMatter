@@ -1832,3 +1832,75 @@ through a documentation-only PR; do not merge the Mac application branch into
 
 - Local environments, caches, generated GLB copies, Mac build roots, app
   bundles, diagnostics downloads, and tester ZIPs remain outside Git.
+
+## 2026-08-26 first Apple Silicon CI diagnosis
+
+### Current objective
+
+Carry the first real `macos-15` run through packaging without hiding a Mac app
+defect or weakening Windows, topology, or 3MF coverage.
+
+### Completed in this session
+
+- Pushed commit `748c05b5d3faaa1987a67ccd1e73b824a5fde44d` and ran
+  `https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32938795209`.
+- Confirmed on a real Apple Silicon runner that CPython 3.13.14 arm64, all 23
+  hash-locked wheels, PyTetWild tetrahedralization, required PyMeshLab filters,
+  and ModernGL framebuffer draw/read pass.
+- Identified all 10 failures and one error as test portability assumptions:
+  Windows modifier masks and Win32 ABI, macOS `/tmp` canonicalization, Aqua
+  window clamping, canvas-coordinate rounding, a non-Mac rejection subprocess,
+  and a 1.35e-6 ARM64 Delta-E round-off.
+- Preserved the behavior coverage by explicitly emulating Windows for the two
+  Windows modifier tests, using neutral ordinary-button states elsewhere,
+  selecting real accepted canvas pixels, retaining exact Windows layout tests,
+  retaining a live positive-size Aqua layout test, and isolating preferences
+  with the cross-platform data-directory override.
+- Updated Discussion #9 with the accurate no-download first-run status.
+
+### Current state
+
+- The first run did not reach PyInstaller and created diagnostics only. No Mac
+  app or tester ZIP was exposed.
+- Portability fixes are implemented locally and pass their 11 exact regression
+  targets; the full 43-test hotfix module also passes.
+- Windows exact commit `748c05b` passed 1,468 tests in 697.983 seconds with two
+  optional skips before these test-only portability refinements.
+
+### Next exact task
+
+Commit and push the portability fixes, then follow the automatically triggered
+Mac run. If packaging passes, inspect the app audit, packaged native/render
+self-test, and Japanese/English UI smoke. Do not request a tester ZIP yet.
+
+### Changed files
+
+- `source/fixed_app/test_hotfix.py`
+- `source/fixed_app/test_extended_palette.py`
+- `source/fixed_app/test_gui_integration.py`
+- `source/fixed_app/test_macos_alpha_cli.py`
+- `source/fixed_app/test_manual_paint_r25.py`
+- `source/fixed_app/test_new_obj_defaults.py`
+- `source/fixed_app/test_pen_pressure.py`
+- `source/fixed_app/test_platform_runtime.py`
+- `publication/MACOS_ALPHA_HUB_EN.md`
+- `CURRENT_STATE.json` and `HANDOFF.md`
+
+### Tests run
+
+- Exact 11 first-run failure targets: 11 passed.
+- Entire `source.fixed_app.test_hotfix` module: 43 passed.
+- Exact commit `748c05b` Windows full suite: 1,468 passed with two optional
+  skips and zero failures.
+
+### Do not do
+
+- Do not remove broad test modules from the Mac runner to make it green.
+- Do not interpret the first CI failure as a native-library failure; the strict
+  native/render gate passed before the portable source suite stopped.
+- Do not distribute the diagnostics artifact or request the gated tester ZIP.
+
+### Local-only files
+
+- Downloaded CI logs and diagnostics remain in a unique temporary directory and
+  are not Git inputs or package payloads.
