@@ -1,34 +1,38 @@
-# ChromaMatter macOS Source Tester Alpha テスト案内
+# ChromaMatter macOS Alpha テスト案内
 
 協力ありがとうございます。これは、**Apple Silicon / macOS 15以降**向けの
 独立したtest経路です。
 
-## ここから開始
+## 推奨：Finderから起動する.app
 
-sourceから起動するテスター版を今すぐ試せます。
+Apple Silicon／macOS 15以降で、通常の`.app`としてFinderから起動できます。
+ただしPythonなどを内蔵した自己完結版ではなく、初回にTerminalで検証済み環境を
+準備するsource-backed版です。
 
-1. **[固定Source Tester Alpha ZIPをダウンロード](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-macos-source-alpha1/ChromaMatter-0.8beta-macos-source-alpha1.zip)**し、[tag／Releaseページ](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-macos-source-alpha1)の`SHA256SUMS-macos-source-alpha1.txt`と照合します。
-2. [日本語の初回setup・10分テスト手順](MACOS_ALPHA_TESTING_JA.md)を読みます。
-3. ZIPを展開し、`START_MACOS_SOURCE_ALPHA.command`をControl-clickして
+1. **[ChromaMatter Source Alpha.appをダウンロード](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-macos-source-app-alpha1/ChromaMatter-0.8beta-macos-source-app-alpha1.zip)**し、[Releaseページ](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-macos-source-app-alpha1)の`SHA256SUMS-macos-source-app-alpha1.txt`と照合します。
+2. [英語の導入・10分テスト手順](MACOS_SOURCE_APP_TESTING_EN.md)を読みます。
+3. ZIP全体を展開し、`ChromaMatter Source Alpha.app`をControl-clickして
    **「開く」**を選びます。
 4. launcherに公式Python 3.13.14とhash-lock済み依存関係を検証・導入させます。
    Installer完了後はTerminalへ戻ってReturnを押し、Pythonが見つからない場合だけ
    launcherを開き直します。
 5. 自動生成される公開4色GLBで確認し、結果を報告します。
 
-生成されるfixtureは`ChromaMatter-Public-Four-Color-Test.glb`です。保存先と
-click-by-click手順は日本語guideに記載しています。
+公開fixtureの`ChromaMatter-Public-Four-Color-Test.glb`はappと同じfolderに
+入っています。従来の`.command`版は[日本語guide](MACOS_ALPHA_TESTING_JA.md)から
+引き続き利用できます。
 
 programming知識、printer、有料AI account、private modelは不要です。初回のみ
 数百MB程度のdownloadがあり、数分かかる場合があります。2回目以降はlocal環境を
 再利用します。
 
-## 重要：事前buildしたappではありません
+## 重要：自己完結型appではありません
 
-上のdownloadは、案内付きlauncherを含む固定source codeです。
-**承認済みの事前build `.app` ZIPはありません。** 253件のMach-Oについて
-source／build／再link根拠が未解決のため、app配布は保留中です。`diagnostics`と
-書かれたartifactは診断reportであり、applicationではありません。
+上のdownloadはFinderで起動できる`.app`ですが、Python runtimeや第三者native
+libraryは内蔵していません。初回にTerminalが開き、公式Python 3.13.14と
+hash-lock済み依存関係を本人のMacへ準備します。**自己完結型の事前build appは
+まだ未公開です。** 153件のMach-Oについてsource／build／再link根拠が未解決で、
+`diagnostics` artifactはapplicationではありません。
 
 Apple Siliconでのsource test、native probe、packaged self-test、日英UI smokeは
 [技術CI #32947038458](https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32947038458)で
@@ -43,9 +47,9 @@ sourceとreviewの作業場所です。どちらもtester downloadではあり�
 
 ```text
 全体結果: 成功 / 一部成功
-test経路: Source Tester Alpha
-source tag: v0.8beta-macos-source-alpha1
-source commit（不明なら省略）:
+test経路: Source-backed App Alpha
+ZIP: ChromaMatter-0.8beta-macos-source-app-alpha1.zip
+source commit（SOURCE_COMMIT.txt）:
 Mac model / chip:
 RAM:
 macOS version:
