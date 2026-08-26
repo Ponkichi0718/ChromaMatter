@@ -35,6 +35,7 @@ from .mixer import (
     coerce_palette_state_count,
     optimize_global_mix_ratios,
 )
+from .platform_runtime import application_data_directory
 
 
 OWNED_FILAMENT_INVENTORY_FILENAME = "owned_filaments.json"
@@ -65,9 +66,9 @@ def resolve_owned_filament_inventory_path(
 
     if explicit_path is not None:
         return Path(explicit_path).expanduser().resolve()
-    app_data = os.environ.get("APPDATA")
-    base = Path(app_data) if app_data else Path.home() / "AppData" / "Roaming"
-    return (base / "TripoSpectrumMapper" / OWNED_FILAMENT_INVENTORY_FILENAME).resolve()
+    return (
+        application_data_directory() / OWNED_FILAMENT_INVENTORY_FILENAME
+    ).resolve()
 
 
 def _product_preference_key(product: FilamentProduct) -> tuple[object, ...]:

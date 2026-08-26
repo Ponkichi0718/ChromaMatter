@@ -1615,3 +1615,220 @@ is ready for normal-version integration.
 
 - Private models, generated 3MF files, build roots, caches, local environments,
   and owner-only archives remain outside Git.
+
+## 2026-08-26 Apple Silicon macOS 15+ separate alpha source port
+
+### Current objective
+
+Port the current ChromaMatter source to a clearly separate Apple Silicon macOS
+15+ alpha without changing the published Windows releases, weakening topology
+or 3MF fail-closed validation, or implying that a Mac build has already been
+tested on hardware.
+
+### Completed in this session
+
+- Created local branch `codex/macos-arm64-flat4-test3` from exact source commit
+  `9c7be309bc2a8268d0fa9a4a0c63ad444759120d`.
+- Added a shared platform runtime for the macOS Application Support directory,
+  Finder folder opening, Snapmaker Orca discovery/launch, and a manual
+  Snapmaker Orca `Open as project` fallback. The existing Windows settings path
+  and launch behavior remain intact.
+- Made PyTetWild wrapper discovery understand the packaged macOS `.so` and
+  `.dylibs` layout as well as the existing Windows `.pyd` and DLL layout.
+- Added a strict hidden macOS alpha self-test. It requires Darwin arm64 and
+  executes a real PyTetWild tetrahedralization, the required PyMeshLab filters,
+  and a real ModernGL OpenGL 3.3 framebuffer draw/read in both source and
+  packaged-app gates.
+- Added a separate PyInstaller app spec, exact hash-locked Apple Silicon wheel
+  set, macOS build script, fail-closed bundle/native audit, Japanese/English
+  compliance notices, volunteer testing guides, and a structured private-data-
+  safe issue form.
+- Added a `macos-15` GitHub Actions workflow using CPython 3.13.14 arm64.
+  Ordinary push and pull-request runs upload diagnostics only.
+- Added a deliberately closed external-tester gate. A tester ZIP cannot be
+  uploaded unless the exact commit is approved and the macOS binary component
+  map, SPDX SBOM, corresponding-source manifest, relinking documents, source
+  status, and bilingual notices all pass.
+- Kept the in-app display version at `0.8beta`; the Apple bundle uses numeric
+  version `0.8.0`, alpha bundle identifier
+  `io.github.ponkichi0718.chromamatter.alpha`, ad-hoc signing, and no Developer
+  ID signing or Apple notarization.
+
+### Current state
+
+- The source-level port and Windows-hosted validation are complete locally.
+  No macOS app, ZIP, GitHub artifact, commit, push, or Release was created.
+- A Mac host is not available in this environment. The first real app build,
+  native-library audit, OpenGL check, and Japanese/English packaged UI smoke
+  therefore remain pending for GitHub Actions on `macos-15`.
+- The volunteer testing route is prepared in documentation and CI, but binary
+  distribution remains fail-closed because macOS-specific compliance evidence
+  is not complete.
+- Published Windows stable r32.2 and Flat Four Test assets are unchanged.
+
+### Next exact task
+
+After explicit owner approval, commit and push
+`codex/macos-arm64-flat4-test3`. Let the normal diagnostics-only macOS workflow
+perform the first build, inspect every uploaded diagnostic, and fix any Mac-only
+failure. Do not run the opt-in tester upload until all compliance evidence files
+exist, are reviewed for the exact commit, and the gate passes without overrides.
+
+### Changed files
+
+- Runtime and application:
+  `source/fixed_app/TripoSpectrumMapper_fixed.py`,
+  `source/fixed_app/spectrum_mapper/platform_runtime.py`,
+  `source/fixed_app/spectrum_mapper/cli.py`,
+  `source/fixed_app/spectrum_mapper/gui.py`,
+  `source/fixed_app/spectrum_mapper/calibration_chart.py`,
+  `source/fixed_app/spectrum_mapper/i18n.py`,
+  `source/fixed_app/spectrum_mapper/owned_filaments.py`,
+  `source/fixed_app/spectrum_mapper/renderer.py`,
+  `source/fixed_app/spectrum_mapper/volume_partition.py`, and
+  `source/fixed_app/spectrum_mapper_hotfix.py`.
+- macOS packaging and CI:
+  `source/fixed_app/TripoSpectrumMapper_macos_arm64.spec`,
+  `source/fixed_app/requirements-build-macos-arm64.lock`,
+  `BUILD_MACOS_ARM64.sh`, `AUDIT_MACOS_APP.sh`,
+  `.github/workflows/macos-arm64-alpha.yml`, and `.gitignore`.
+- Tests:
+  `source/fixed_app/test_platform_runtime.py`,
+  `source/fixed_app/test_macos_alpha_cli.py`,
+  `source/fixed_app/test_macos_packaging.py`, and
+  `source/fixed_app/test_calibration_chart_gui.py`.
+- Tester/compliance guidance:
+  `.github/ISSUE_TEMPLATE/macos_alpha_report.yml`,
+  `publication/MACOS_ALPHA_TESTING_EN.md`,
+  `publication/MACOS_ALPHA_TESTING_JA.md`,
+  `licenses/MACOS_ALPHA_COMPLIANCE_NOTICE_EN.txt`, and
+  `licenses/MACOS_ALPHA_COMPLIANCE_NOTICE_JA.txt`.
+- State records: `CURRENT_STATE.json` and `HANDOFF.md`.
+
+### Tests run
+
+- Exact-current Windows full regression after all Mac port, gate, packaging,
+  and handoff changes: 1,463 tests in 702.607 seconds, zero failures, two
+  optional skips.
+- Final targeted runtime, native-gate, packaging, i18n, release-identity, and
+  packaged-language suite: 58 tests in 3.398 seconds, zero failures.
+- Windows source visible-window UI smoke: Japanese and English both passed.
+- macOS lock dry-run for macOS 15 arm64, CPython 3.13/`cp313`/`abi3`: all 23
+  exact hashed wheels resolved; no source distribution was selected.
+- `bash -n` for both macOS scripts, Python `py_compile`, workflow and issue-form
+  YAML parsing, `CURRENT_STATE.json` parsing, and `git diff --check`: passed.
+- Actual Mac app build and packaged execution: not run; no Mac host is present.
+
+### Do not do
+
+- Do not merge this alpha branch into `main` or modify the published Windows
+  releases merely to expose an unverified Mac build.
+- Do not weaken the existing topology, closed-solid, or 3MF fail-closed gates
+  to make a Mac CI run pass.
+- Do not enable external tester ZIP upload by setting repository variables
+  alone. The exact-commit approval and every reviewed compliance evidence file
+  must also pass the workflow gate.
+- Do not call the app Developer ID signed, notarized, generally supported, or
+  physically validated.
+- Do not commit private models, generated 3MF/toolpath files, local build roots,
+  caches, environments, or binary archives.
+
+### Local-only files
+
+- `.venv`, caches, private models, generated output, and future Mac build roots
+  remain local-only and outside Git.
+- During an earlier packaging cleanup, the ignored local `build_output/`
+  directory was removed in full instead of only its intended temporary child.
+  No tracked source was removed and the current changes are intact, but any
+  older generated artifacts that existed there are not recoverable from Git.
+- No Mac `.app` or tester ZIP exists locally.
+
+## 2026-08-26 macOS volunteer test path and public fixture
+
+### Current objective
+
+Make the separate Apple Silicon macOS alpha easy for a first-time volunteer to
+download safely, test in about ten minutes, and report without sharing a
+private model, while retaining the exact-commit compliance and fail-closed 3MF
+distribution gates.
+
+### Completed in this session
+
+- Enabled GitHub Discussions and created the English macOS testing board at
+  `https://github.com/Ponkichi0718/ChromaMatter/discussions/9`.
+- Reworked the English tester guide around current availability, exact approved
+  build identity, checksum verification, Finder first launch, a required
+  ten-minute checklist, known limitations, diagnostics, privacy, and clear
+  Discussion-versus-Issue reporting.
+- Reworked the macOS Issue form to collect workflow/artifact identity, Mac
+  hardware, Pass/Fail/Not-tested results, exact reproduction, fail-closed 3MF
+  behavior, Orca details, and sanitized self-test evidence.
+- Added README routes for the separate Mac alpha without presenting an
+  unapproved download as available.
+- Added a deterministic CC0 test-model generator. The generated static GLB has
+  32 vertices, 48 triangles, four positive-volume watertight boxes, exact red,
+  blue, white, and black normalized `COLOR_0`, and no texture, brand, character,
+  AI-generated asset, external URI, or private metadata. The binary is generated
+  only during approved tester staging and is not committed.
+- Added a human-readable GitHub Actions job summary that distinguishes the
+  diagnostics artifact from a real tester ZIP and records the exact commit,
+  artifact name, SHA-256, seven-day retention, guide, board, and Issue route.
+
+### Current state
+
+- Discussions is live, but this branch and its documentation/Issue form are not
+  pushed yet, and the main README does not yet show the Mac route.
+- There is no approved Mac application download. Ordinary CI is diagnostics
+  only; tester ZIP creation remains blocked by the exact-commit macOS compliance
+  evidence gate.
+- No real Apple Silicon build or packaged execution has run yet.
+
+### Next exact task
+
+Commit and push `codex/macos-arm64-flat4-test3`, start the first `macos-15`
+diagnostics build through its pull request, inspect the run and fix Mac-only
+failures. Keep Discussion #9 marked as no-download until an exact build passes
+and the macOS distribution evidence is complete. Expose the guide from `main`
+through a documentation-only PR; do not merge the Mac application branch into
+`main` merely to create the navigation.
+
+### Changed files
+
+- Mac source, package, CI, and tests listed in the preceding macOS handoff.
+- Tester UX: `README.md`, `README_EN.md`, `README_PUBLIC_EN.md`,
+  `README_JA.md`, `README_PUBLIC_JA.md`,
+  `publication/MACOS_ALPHA_TESTING_EN.md`,
+  `publication/MACOS_ALPHA_HUB_EN.md`,
+  `.github/ISSUE_TEMPLATE/config.yml`, and
+  `.github/ISSUE_TEMPLATE/macos_alpha_report.yml`.
+- Public fixture: `samples/generate_macos_alpha_test_glb.py`,
+  `samples/MACOS_ALPHA_TEST_MODEL_README.md`, `samples/LICENSE.txt`,
+  `samples/README_JA.md`, and `source/fixed_app/test_public_macos_glb.py`.
+- State: `CURRENT_STATE.json` and `HANDOFF.md`.
+
+### Tests run
+
+- Current tester/package/runtime/release focused suite: 49 tests, zero
+  failures.
+- Public GLB checks include byte identity, static embedded structure, four exact
+  colours, zero boundary/non-manifold edges, four positive watertight bodies,
+  existing loader/preflight compatibility, and staging-only generation.
+- Workflow and Issue YAML parse: PASS.
+- `bash -n` for both Mac scripts, Python compile, README canonical parity tests,
+  and `git diff --check`: PASS.
+- The preceding exact-current full regression remains valid for the application
+  changes; a final full regression will run while the first Mac CI is active.
+
+### Do not do
+
+- Do not call the diagnostics artifact an app or direct testers to it.
+- Do not post an approved download in Discussion #9 until the exact Mac build,
+  native audit, self-test, UI smoke, and compliance gate all pass.
+- Do not commit the generated GLB binary, an `.app`, ZIP, private model, or
+  generated 3MF.
+- Do not weaken topology, Solidify, or 3MF fail-closed behavior for a CI pass.
+
+### Local-only files
+
+- Local environments, caches, generated GLB copies, Mac build roots, app
+  bundles, diagnostics downloads, and tester ZIPs remain outside Git.

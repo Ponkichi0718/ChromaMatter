@@ -1181,6 +1181,13 @@ def _inspect_3mf(
 
 def _font(size: int, *, bold: bool = False) -> ImageFont.ImageFont:
     candidates = (
+        Path(
+            "/System/Library/Fonts/ヒラギノ角ゴシック W6.ttc"
+            if bold
+            else "/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc"
+        ),
+        Path("/System/Library/Fonts/ヒラギノ丸ゴ ProN W4.ttc"),
+        Path("/System/Library/Fonts/Supplemental/Arial Unicode.ttf"),
         Path("C:/Windows/Fonts/meiryob.ttc")
         if bold
         else Path("C:/Windows/Fonts/meiryo.ttc"),

@@ -1580,6 +1580,9 @@ def _contain_on_panel(image: Image.Image, size: tuple[int, int], background: RGB
 
 def _font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
     candidates = (
+        Path("/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc"),
+        Path("/System/Library/Fonts/ヒラギノ丸ゴ ProN W4.ttc"),
+        Path("/System/Library/Fonts/Supplemental/Arial Unicode.ttf"),
         Path(r"C:\Windows\Fonts\YuGothM.ttc"),
         Path(r"C:\Windows\Fonts\meiryo.ttc"),
         Path(r"C:\Windows\Fonts\msgothic.ttc"),

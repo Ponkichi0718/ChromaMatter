@@ -260,6 +260,53 @@
       "release_note": "Flat Four Test 3 is a separate public prerelease built from exact tag v0.8beta-r32.2-flat4-test3 at beddc110922fdccc4a8c48def286014ad23cd0ed. Its five assets passed exact-source/build/compliance gates, anonymous post-publication redownload with byte-size and SHA-256 parity, and fresh-extracted Windows self-test plus Japanese/English UI smoke. It preserves eye whites conservatively while absorbing only small high-confidence baked white/gray highlights; it is not semantic recognition. The Test 3 package contains no DemoData, physical-printer validation remains pending, and multipart solidification/part-specific 3MF remain input-dependent beta behavior. Published stable r32.2 is unchanged and preferred; Flat Four Test 2 remains immutable historical prerelease evidence."
     }
   },
+  "macos_alpha_workstream": {
+    "channel": "separate Developer ID unsigned and unnotarized alpha",
+    "target": "Apple Silicon arm64 on macOS 15 or newer",
+    "branch": "codex/macos-arm64-flat4-test3",
+    "base_commit": "9c7be309bc2a8268d0fa9a4a0c63ad444759120d",
+    "display_version": "0.8beta",
+    "bundle_short_version": "0.8.0",
+    "status": "local source port and tester-first workflow implemented; the macOS CI and app bundle have not yet run on a Mac",
+    "windows_release_impact": "none; the published Windows stable and Flat Four test assets remain unchanged",
+    "runtime_scope": [
+      "Uses the normal macOS Application Support directory while preserving the legacy Windows settings path.",
+      "Replaces Windows-only folder opening and Snapmaker Orca discovery with platform-specific behavior and a manual Open as project fallback.",
+      "Loads PyTetWild native wrappers from Windows or macOS layouts without weakening topology or 3MF fail-closed checks.",
+      "Provides a strict source and packaged self-test that executes PyTetWild, required PyMeshLab filters, and a real ModernGL framebuffer draw and readback."
+    ],
+    "ci": {
+      "workflow": ".github/workflows/macos-arm64-alpha.yml",
+      "runner": "macos-15 arm64",
+      "python": "CPython 3.13.14 arm64 with exact hash-locked wheels",
+      "default_output": "seven-day diagnostics only; no app archive",
+      "tester_archive": "fail-closed until the exact source commit and macOS compliance evidence are explicitly approved"
+    },
+    "volunteer_testing": {
+      "github_discussions_enabled": true,
+      "testing_board": "https://github.com/Ponkichi0718/ChromaMatter/discussions/9",
+      "english_guide": "publication/MACOS_ALPHA_TESTING_EN.md",
+      "reproducible_problem_form": ".github/ISSUE_TEMPLATE/macos_alpha_report.yml",
+      "basic_test": "10-minute Pass/Fail/Not-tested checklist before optional large-model or physical-print testing",
+      "public_test_model": "deterministic CC0 static GLB generated during approved tester staging; 32 vertices, 48 triangles, four watertight bodies, exact red/blue/white/black COLOR_0, no texture or third-party/private metadata",
+      "availability": "no approved tester download yet; Discussion #9 is the single status and future approved-build hub"
+    },
+    "validation": {
+      "windows_regression": "exact-current working tree: 1463 tests in 702.607s, 0 failures, 2 optional skips after all macOS port, gate, packaging, and handoff changes",
+      "final_targeted": "58 tests in 3.398s, 0 failures after the final macOS gate and packaging refinements",
+      "tester_workflow_focused": "49 tests passed after adding the public GLB fixture, workflow summary, English tester guide, Issue form, README path, and Discussion hub; YAML parse, shell syntax, Python compile, and diff checks passed",
+      "windows_ui_smoke": "source Japanese and English visible-window smoke passed",
+      "mac_lock_dry_run": "all 23 exact macOS 15 arm64 CPython 3.13 wheels resolved with hash enforcement and no source distributions",
+      "mac_actual_build": "pending; no Mac host is available in the current Windows environment"
+    },
+    "distribution_gate": {
+      "status": "blocked",
+      "reason": "the macOS native binary component map, SPDX SBOM, corresponding-source manifest, relinking materials, and reviewed approval are not yet complete",
+      "public_release": false,
+      "tester_distribution": false
+    },
+    "next_exact_task": "Commit and push the explicitly approved branch, run the default diagnostics-only macos-15 CI for the first real build, inspect and fix its results, then complete exact-commit macOS compliance evidence before enabling any tester ZIP."
+  },
   "current_features": {
     "public_main_window": [
       "Compact Filament and Output pages leave more room for the preview.",
@@ -674,6 +721,8 @@
   "known_pending": [
     "Validate the final Manual Editing interaction on physical XP-PEN hardware.",
     "Run a physical printer matrix and confirm exported projects in Snapmaker Orca slice preview.",
+    "Run the first Apple Silicon macOS 15 CI build and inspect its native, rendering, bundle, and Japanese/English UI diagnostics.",
+    "Complete and approve the macOS native binary component map, SPDX SBOM, corresponding-source manifest, and relinking materials before any volunteer tester receives the app bundle.",
     "Complete the Innovation Fund submission materials and community post using the published immutable v0.8beta-r32.2 prerelease.",
     "Improve multipart solidification coverage: the bundled DemoData succeeds, but other multipart files may still fail solidification or 3MF export.",
     "Keep the retained Decal beta implementation inaccessible until it is separately revalidated and explicitly reintroduced."

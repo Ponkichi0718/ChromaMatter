@@ -1,0 +1,427 @@
+name: macOS Apple Silicon Developer ID unsigned, unnotarized alpha
+
+on:
+  push:
+    paths:
+      - ".github/ISSUE_TEMPLATE/macos_alpha_report.yml"
+      - ".github/workflows/macos-arm64-alpha.yml"
+      - "AUDIT_MACOS_APP.sh"
+      - "BUILD_MACOS_ARM64.sh"
+      - "licenses/MACOS_ALPHA_COMPLIANCE_NOTICE_*.txt"
+      - "licenses/macos/**"
+      - "publication/MACOS_ALPHA_TESTING_*.md"
+      - "samples/LICENSE.txt"
+      - "samples/MACOS_ALPHA_TEST_MODEL_README.md"
+      - "samples/generate_macos_alpha_test_glb.py"
+      - "source/fixed_app/**"
+  pull_request:
+    paths:
+      - ".github/ISSUE_TEMPLATE/macos_alpha_report.yml"
+      - ".github/workflows/macos-arm64-alpha.yml"
+      - "AUDIT_MACOS_APP.sh"
+      - "BUILD_MACOS_ARM64.sh"
+      - "licenses/MACOS_ALPHA_COMPLIANCE_NOTICE_*.txt"
+      - "licenses/macos/**"
+      - "publication/MACOS_ALPHA_TESTING_*.md"
+      - "samples/LICENSE.txt"
+      - "samples/MACOS_ALPHA_TEST_MODEL_README.md"
+      - "samples/generate_macos_alpha_test_glb.py"
+      - "source/fixed_app/**"
+  workflow_dispatch:
+    inputs:
+      upload_tester_alpha:
+        description: "Upload a 7-day tester ZIP only after the macOS compliance gate is approved"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-arm64-alpha-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test-alpha:
+    name: macOS 15 arm64 build and test
+    runs-on: macos-15
+    timeout-minutes: 180
+    env:
+      MACOSX_DEPLOYMENT_TARGET: "15.0"
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+      PIP_NO_CACHE_DIR: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up CPython 3.13.14 arm64
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13.14"
+          architecture: arm64
+
+      - name: Verify Apple Silicon host
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(uname -s)" = Darwin
+          test "$(uname -m)" = arm64
+          test "$(python -c 'import platform; print(platform.machine())')" = arm64
+          test "$(python -c 'import sys; print(".".join(map(str, sys.version_info[:3])))')" = 3.13.14
+          test "$(sw_vers -productVersion | awk -F. '{print $1}')" -ge 15
+
+      - name: Enforce external tester distribution approval
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.upload_tester_alpha }}
+        shell: bash
+        env:
+          MACOS_ALPHA_TESTER_DISTRIBUTION_APPROVED: ${{ vars.MACOS_ALPHA_TESTER_DISTRIBUTION_APPROVED }}
+          MACOS_ALPHA_APPROVED_SOURCE_COMMIT: ${{ vars.MACOS_ALPHA_APPROVED_SOURCE_COMMIT }}
+        run: |
+          set -euo pipefail
+          if [[ "$MACOS_ALPHA_TESTER_DISTRIBUTION_APPROVED" != "true" ]]; then
+            echo "::error::Tester ZIP upload is blocked until the macOS native-component, corresponding-source, and relinking audits are complete."
+            echo "Run this workflow with upload_tester_alpha=false for build diagnostics."
+            exit 1
+          fi
+          if [[ "$MACOS_ALPHA_APPROVED_SOURCE_COMMIT" != "$GITHUB_SHA" ]]; then
+            echo "::error::The requested source commit has not been explicitly approved for external macOS testing."
+            exit 1
+          fi
+
+          evidence_root="licenses/macos"
+          required_evidence=(
+            "$evidence_root/DISTRIBUTION_APPROVAL.json"
+            "$evidence_root/BINARY_COMPONENT_MAP.json"
+            "$evidence_root/SBOM.spdx.json"
+            "$evidence_root/CORRESPONDING_SOURCE_MANIFEST.json"
+            "$evidence_root/RELINKING_EN.md"
+            "$evidence_root/RELINKING_JA.md"
+            "$evidence_root/MACOS_ALPHA_SOURCE_OFFER_STATUS.txt"
+          )
+          for evidence in "${required_evidence[@]}"; do
+            if [[ ! -f "$evidence" || -L "$evidence" || ! -s "$evidence" ]]; then
+              echo "::error::Required reviewed macOS distribution evidence is missing: $evidence"
+              exit 1
+            fi
+          done
+          python - "$evidence_root" <<'PY'
+          import json
+          from pathlib import Path
+          import sys
+
+          root = Path(sys.argv[1])
+          approval = json.loads(
+              (root / "DISTRIBUTION_APPROVAL.json").read_text(encoding="utf-8")
+          )
+          component_map = json.loads(
+              (root / "BINARY_COMPONENT_MAP.json").read_text(encoding="utf-8")
+          )
+          sbom = json.loads((root / "SBOM.spdx.json").read_text(encoding="utf-8"))
+          sources = json.loads(
+              (root / "CORRESPONDING_SOURCE_MANIFEST.json").read_text(
+                  encoding="utf-8"
+              )
+          )
+          if approval.get("schema") != "chromamatter.macos-distribution-approval.v1":
+              raise SystemExit("Unsupported macOS distribution approval schema")
+          if approval.get("status") != "approved":
+              raise SystemExit("macOS distribution approval is not approved")
+          if component_map.get("status") != "approved":
+              raise SystemExit("macOS binary component map is not approved")
+          if not str(sbom.get("spdxVersion", "")).startswith("SPDX-"):
+              raise SystemExit("macOS SBOM is not a valid SPDX document")
+          if sources.get("status") != "release-approved":
+              raise SystemExit("macOS corresponding-source manifest is not approved")
+          PY
+          if grep -Eiq 'not yet|pending|未完了' \
+              licenses/MACOS_ALPHA_COMPLIANCE_NOTICE_EN.txt \
+              licenses/MACOS_ALPHA_COMPLIANCE_NOTICE_JA.txt; then
+            echo "::error::The packaged macOS compliance notices still declare pending work."
+            exit 1
+          fi
+
+      - name: Install hash-locked macOS alpha dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install \
+            --require-hashes \
+            --only-binary=:all: \
+            --no-deps \
+            -r source/fixed_app/requirements-build-macos-arm64.lock
+          python -m pip check
+
+      - name: Build and validate arm64 app
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash ./BUILD_MACOS_ARM64.sh \
+            --python "$(command -v python)" \
+            --output-root "$RUNNER_TEMP/chromamatter-macos-arm64" \
+            --ui-smoke required
+
+      - name: Record diagnostic bundle information
+        if: always()
+        shell: bash
+        run: |
+          set -u
+          diagnostic="$RUNNER_TEMP/chromamatter-macos-diagnostics"
+          mkdir -p "$diagnostic"
+          {
+            echo "workflow_run=${GITHUB_RUN_ID}"
+            echo "workflow_attempt=${GITHUB_RUN_ATTEMPT}"
+            echo "source_commit=${GITHUB_SHA}"
+            echo "runner_os=${RUNNER_OS}"
+            echo "runner_arch=${RUNNER_ARCH}"
+            uname -a || true
+            sw_vers || true
+            python --version || true
+          } >"$diagnostic/CI_ENVIRONMENT.txt"
+          report="$RUNNER_TEMP/chromamatter-macos-arm64/validation/MACOS_ALPHA_BUILD_REPORT.txt"
+          if [[ -f "$report" ]]; then
+            cp "$report" "$diagnostic/"
+          fi
+          app_audit="$RUNNER_TEMP/chromamatter-macos-arm64/validation/MACOS_ALPHA_APP_AUDIT.txt"
+          if [[ -f "$app_audit" ]]; then
+            cp "$app_audit" "$diagnostic/"
+          fi
+          for gate_json in "$RUNNER_TEMP/chromamatter-macos-arm64/validation/"MACOS_ALPHA_*_SELF_TEST.json; do
+            if [[ -f "$gate_json" ]]; then
+              cp "$gate_json" "$diagnostic/"
+            fi
+          done
+
+      - name: Upload diagnostics only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ChromaMatter-macOS15-arm64-alpha-diagnostics-${{ github.run_id }}
+          path: ${{ runner.temp }}/chromamatter-macos-diagnostics/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Stage opt-in tester artifact
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.upload_tester_alpha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          app="$RUNNER_TEMP/chromamatter-macos-arm64/dist/ChromaMatter-macOS-Alpha.app"
+          test -d "$app"
+
+          artifact_name="ChromaMatter-0.8beta-flat4-test3-macos15-arm64-developer-id-unsigned-unnotarized-alpha"
+          stage_parent="$RUNNER_TEMP/chromamatter-macos-alpha-stage"
+          stage="$stage_parent/$artifact_name"
+          archive="$RUNNER_TEMP/$artifact_name.zip"
+          rm -rf -- "$stage_parent"
+          mkdir -p "$stage"
+
+          # ditto preserves the .app's executable bits, symlinks, resource
+          # forks, and extended attributes. Do not upload a bare .app with
+          # upload-artifact, which would not preserve the bundle faithfully.
+          ditto "$app" "$stage/ChromaMatter-macOS-Alpha.app"
+          cp publication/MACOS_ALPHA_TESTING_EN.md "$stage/README_TESTING_EN.md"
+          cp publication/MACOS_ALPHA_TESTING_JA.md "$stage/README_TESTING_JA.md"
+          cp licenses/MACOS_ALPHA_COMPLIANCE_NOTICE_EN.txt "$stage/"
+          cp licenses/MACOS_ALPHA_COMPLIANCE_NOTICE_JA.txt "$stage/"
+          mkdir -p "$stage/COMPLIANCE_EVIDENCE"
+          for evidence_name in \
+            DISTRIBUTION_APPROVAL.json \
+            BINARY_COMPONENT_MAP.json \
+            SBOM.spdx.json \
+            CORRESPONDING_SOURCE_MANIFEST.json \
+            RELINKING_EN.md \
+            RELINKING_JA.md; do
+            cp "licenses/macos/$evidence_name" "$stage/COMPLIANCE_EVIDENCE/"
+          done
+          cp LICENSE "$stage/LICENSE_APPLICATION_GPL-3.0.txt"
+          cp source/fixed_app/requirements-build-macos-arm64.lock "$stage/"
+          cp "$RUNNER_TEMP/chromamatter-macos-arm64/validation/MACOS_ALPHA_BUILD_REPORT.txt" "$stage/"
+          cp "$RUNNER_TEMP/chromamatter-macos-arm64/validation/MACOS_ALPHA_APP_AUDIT.txt" "$stage/"
+          cp "$RUNNER_TEMP/chromamatter-macos-arm64/validation/MACOS_ALPHA_SOURCE_SELF_TEST.json" "$stage/"
+          cp "$RUNNER_TEMP/chromamatter-macos-arm64/validation/MACOS_ALPHA_PACKAGED_SELF_TEST.json" "$stage/"
+          python samples/generate_macos_alpha_test_glb.py \
+            --output "$stage/ChromaMatter-Public-Four-Color-Test.glb"
+          cp samples/MACOS_ALPHA_TEST_MODEL_README.md \
+            "$stage/README_PUBLIC_TEST_MODEL.md"
+          cp samples/LICENSE.txt "$stage/LICENSE_PUBLIC_TEST_MODEL_CC0.txt"
+          (
+            cd "$stage"
+            shasum -a 256 ChromaMatter-Public-Four-Color-Test.glb
+          ) >"$stage/PUBLIC_TEST_MODEL_SHA256.txt"
+
+          cat >"$stage/TESTER_ONLY_NOT_A_RELEASE.txt" <<'EOF'
+          ChromaMatter Apple Silicon macOS 15+ Developer ID unsigned,
+          unnotarized alpha (ad-hoc signed)
+
+          TESTER ONLY. NOT A PUBLIC RELEASE. NOT COMPLIANCE OR SUPPORT EVIDENCE.
+          DO NOT REDISTRIBUTE. Read both the testing guide and the macOS alpha
+          compliance notice before first launch. The app is not Developer ID
+          signed and is not notarized by Apple.
+          EOF
+
+          cp licenses/macos/MACOS_ALPHA_SOURCE_OFFER_STATUS.txt "$stage/"
+          printf '%s\n' "$GITHUB_SHA" >"$stage/SOURCE_COMMIT.txt"
+
+          rm -f -- "$archive"
+          ditto -c -k --sequesterRsrc --keepParent "$stage" "$archive"
+          test -s "$archive"
+          (
+            cd "$RUNNER_TEMP"
+            shasum -a 256 "$artifact_name.zip"
+          ) >"$archive.sha256"
+
+      - name: Audit and fresh-test opt-in ZIP
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.upload_tester_alpha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          artifact_name="ChromaMatter-0.8beta-flat4-test3-macos15-arm64-developer-id-unsigned-unnotarized-alpha"
+          archive="$RUNNER_TEMP/$artifact_name.zip"
+          python - "$archive" "$artifact_name" <<'PY'
+          from pathlib import PurePosixPath
+          import sys
+          import zipfile
+
+          archive, expected_root = sys.argv[1:]
+          with zipfile.ZipFile(archive) as handle:
+              infos = handle.infolist()
+              if not infos:
+                  raise SystemExit("Empty tester archive")
+              roots = set()
+              for info in infos:
+                  name = info.filename
+                  if "\\" in name or name.startswith("/") or "\x00" in name:
+                      raise SystemExit(f"Unsafe archive path: {name!r}")
+                  pure = PurePosixPath(name)
+                  if any(part in {"", ".", ".."} for part in pure.parts):
+                      raise SystemExit(f"Noncanonical archive path: {name!r}")
+                  if info.flag_bits & 0x1:
+                      raise SystemExit(f"Encrypted archive member: {name!r}")
+                  if pure.parts[0] == "__MACOSX":
+                      continue
+                  roots.add(pure.parts[0])
+              if roots != {expected_root}:
+                  raise SystemExit(f"Unexpected archive roots: {sorted(roots)}")
+          PY
+
+          extract="$RUNNER_TEMP/chromamatter-macos-alpha-fresh"
+          rm -rf -- "$extract"
+          mkdir -p "$extract"
+          ditto -x -k "$archive" "$extract"
+          root="$extract/$artifact_name"
+          app="$root/ChromaMatter-macOS-Alpha.app"
+          executable="$app/Contents/MacOS/ChromaMatter"
+          test -x "$executable"
+          test "$(cat "$root/SOURCE_COMMIT.txt")" = "$GITHUB_SHA"
+          (
+            cd "$root"
+            shasum -a 256 -c PUBLIC_TEST_MODEL_SHA256.txt
+          )
+          PYTHON_BIN="$(command -v python)" bash ./AUDIT_MACOS_APP.sh \
+            "$app" \
+            "$RUNNER_TEMP/MACOS_ALPHA_FRESH_APP_AUDIT.txt"
+          "$executable" --self-test
+          gate_json="$RUNNER_TEMP/MACOS_ALPHA_FRESH_SELF_TEST.json"
+          "$executable" --macos-alpha-self-test >"$gate_json"
+          python - "$gate_json" <<'PY'
+          import json
+          from pathlib import Path
+          import sys
+
+          payload = json.loads(Path(sys.argv[1]).read_text(encoding="ascii"))
+          if payload.get("ok") is not True:
+              raise SystemExit("Fresh-extracted macOS alpha gate lacks ok=true")
+          PY
+
+          smoke_root="$RUNNER_TEMP/chromamatter-macos-alpha-fresh-ui-smoke"
+          rm -rf -- "$smoke_root"
+          for language in ja en; do
+            profile="$smoke_root/$language"
+            mkdir -p "$profile/data" "$profile/tmp"
+            python - "$executable" "$language" "$profile/data" "$profile/tmp" <<'PY'
+          import os
+          import subprocess
+          import sys
+
+          executable, language, data_directory, temporary_directory = sys.argv[1:]
+          environment = os.environ.copy()
+          environment["CHROMAMATTER_DATA_DIRECTORY"] = data_directory
+          environment["TMPDIR"] = temporary_directory
+          environment["CHROMAMATTER_UI_SMOKE_LANGUAGE"] = language
+          try:
+              completed = subprocess.run(
+                  [executable, "--ui-smoke", "--ui-smoke-language", language],
+                  env=environment,
+                  timeout=45,
+                  check=False,
+              )
+          except subprocess.TimeoutExpired as exc:
+              raise SystemExit(
+                  f"{language} fresh UI smoke timed out after 45 seconds"
+              ) from exc
+          if completed.returncode != 0:
+              raise SystemExit(
+                  f"{language} fresh UI smoke exited with {completed.returncode}"
+              )
+          PY
+          done
+
+      - name: Upload opt-in tester-only alpha ZIP
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.upload_tester_alpha }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ChromaMatter-macOS15-arm64-developer-id-unsigned-unnotarized-alpha-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/ChromaMatter-0.8beta-flat4-test3-macos15-arm64-developer-id-unsigned-unnotarized-alpha.zip
+            ${{ runner.temp }}/ChromaMatter-0.8beta-flat4-test3-macos15-arm64-developer-id-unsigned-unnotarized-alpha.zip.sha256
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+
+      - name: Publish human-readable workflow summary
+        if: always()
+        shell: bash
+        env:
+          JOB_STATUS: ${{ job.status }}
+          TESTER_ZIP_REQUESTED: ${{ github.event_name == 'workflow_dispatch' && inputs.upload_tester_alpha }}
+        run: |
+          set -u
+          artifact_name="ChromaMatter-0.8beta-flat4-test3-macos15-arm64-developer-id-unsigned-unnotarized-alpha"
+          archive="$RUNNER_TEMP/$artifact_name.zip"
+          checksum="$archive.sha256"
+          run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          {
+            echo "# ChromaMatter macOS alpha result"
+            echo
+            echo "- Job status: **${JOB_STATUS}**"
+            echo "- Source commit: \`${GITHUB_SHA}\`"
+            echo "- Workflow run: [${GITHUB_RUN_ID}](${run_url})"
+            echo "- Diagnostics artifact: \`ChromaMatter-macOS15-arm64-alpha-diagnostics-${GITHUB_RUN_ID}\` (reports only; not an app)"
+            echo "- [English volunteer test guide](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/blob/${GITHUB_SHA}/publication/MACOS_ALPHA_TESTING_EN.md)"
+            echo "- [Testing board](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/discussions/9)"
+            echo "- [Reproducible-problem form](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/issues/new?template=macos_alpha_report.yml)"
+            echo
+            if [[ -s "$archive" && -s "$checksum" ]]; then
+              digest="$(awk 'NR == 1 {print $1}' "$checksum")"
+              echo "## TESTER ZIP CREATED"
+              echo
+              echo "- Artifact: \`ChromaMatter-macOS15-arm64-developer-id-unsigned-unnotarized-alpha-${GITHUB_RUN_ID}\`"
+              echo "- Inner ZIP: \`${artifact_name}.zip\`"
+              echo "- ZIP SHA-256: \`${digest}\`"
+              echo "- Retention: 7 days from this workflow run"
+              echo "- Approval scope: this exact source commit and checksum only"
+            elif [[ "$TESTER_ZIP_REQUESTED" == "true" ]]; then
+              echo "## TESTER ZIP NOT CREATED"
+              echo
+              echo "The requested tester package failed or was blocked. Do not distribute diagnostics or an unreviewed local build."
+            else
+              echo "## DIAGNOSTICS ONLY"
+              echo
+              echo "No tester app was requested. This run can validate the build, but its diagnostics artifact cannot be launched or distributed as ChromaMatter."
+            fi
+          } >>"$GITHUB_STEP_SUMMARY"

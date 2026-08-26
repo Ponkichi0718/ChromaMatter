@@ -70,6 +70,9 @@ publication/*
 !publication/RELEASE_NOTES_r32.2.md
 !publication/RELEASE_NOTES_r32.2_EXPERIMENTAL_TEST_20260825.md
 !publication/RELEASE_NOTES_r32.2_FLAT4_TEST3_20260826.md
+!publication/MACOS_ALPHA_TESTING_EN.md
+!publication/MACOS_ALPHA_TESTING_JA.md
+!publication/MACOS_ALPHA_HUB_EN.md
 
 # Historical local probes and recovery utilities stay in the private workspace.
 tooling/*

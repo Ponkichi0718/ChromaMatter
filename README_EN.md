@@ -12,11 +12,16 @@
 | --- | --- | --- |
 | **Published r32.2** | The current downloadable Windows build and the documented Full Spectrum workflow | **[Download stable r32.2](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2)** |
 | **Experimental Flat Four Test 3** | Testing Flat Four with conservative eye-white preservation and skin-highlight correction, plus the large-static-GLB path and 2D Colour Filter, before integration | **[Download the Windows test ZIP](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2-flat4-test3/ChromaMatter-0.8beta-r32.2-flat4-test3-win64.zip)** · [Release notes](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2-flat4-test3) · [Draft PR #7](https://github.com/Ponkichi0718/ChromaMatter/pull/7) |
+| **macOS Apple Silicon alpha** | Volunteer testing on macOS 15+; Developer ID unsigned and unnotarized; not a public Release | **[Start with the English tester guide](publication/MACOS_ALPHA_TESTING_EN.md)** · [Testing board](https://github.com/Ponkichi0718/ChromaMatter/discussions/9) · [Report a reproducible problem](https://github.com/Ponkichi0718/ChromaMatter/issues/new?template=macos_alpha_report.yml) |
 
 The experimental workstream is an integration candidate, not a permanent fork.
 **Flat Four Test 3 is now available as a separate public pre-release.** Extract
 the whole ZIP before starting it. Stable r32.2 below does not contain Flat Four;
 the test Release and Draft PR #7 remain the experimental status hubs.
+
+**The macOS tester download is not approved yet.** The guide above shows the
+exact readiness state and will point to one verified build when Apple Silicon
+CI and the distribution review pass. A `diagnostics` artifact is not the app.
 
 ## Download for Windows
 
@@ -63,7 +68,10 @@ The privacy-reviewed, captioned [Simple Workflow Demo (about two minutes)](https
 
 This is a practical print observation, not a guarantee that every model, filament set, slicer profile, or printer will reproduce the same result. Inspect the generated project and slice preview before printing.
 
-ChromaMatter is an independent Windows desktop project. It is not an official or affiliated product of TripoAI, Hi3D AI, Snapmaker, OpenAI, or any other third party.
+ChromaMatter is an independent desktop project. The published stable build is
+for Windows; a separate Apple Silicon macOS alpha is being validated by
+volunteers. It is not an official or affiliated product of TripoAI, Hi3D AI,
+Snapmaker, OpenAI, Apple, or any other third party.
 
 ## Current status
 
@@ -73,6 +81,8 @@ ChromaMatter is an independent Windows desktop project. It is not an official or
 - **Published r32.2 test data:** Rights-cleared Hi3D multipart GLB and reference image are included under `DemoData/`
 - **Published demo outputs:** Seven derived 3MF reference outputs under `DemoData/3MF/`; one combined project and six part-specific projects
 - **Physical U1 validation:** The linked public print completed; it does not prove compatibility with every model or production setup
+- **macOS alpha:** Apple Silicon and macOS 15+ only; real CI validation and the distribution audit are in progress, so no tester download is approved yet
+- **macOS test kit:** A deterministic CC0 red/blue/white/black GLB and a 10-minute English checklist are prepared for the first approved tester package
 - **Version:** `0.8beta`
 
 The documentation on the default branch may receive corrections after publication. For the exact source that produced the downloadable r32.2 files, use the frozen tag and commit above.
