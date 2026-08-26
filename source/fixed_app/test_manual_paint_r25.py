@@ -448,10 +448,16 @@ class ManualPaintRealTkR25Tests(unittest.TestCase):
                 all(after >= before for before, after in zip(initial_opacities, held_opacities))
             )
             self.assertGreater(held_opacities[1], initial_opacities[1])
-            # Density growth changes only the O(1) current-head geometry.  It
-            # must not rebuild a 16-band, backdrop-preblended trail.
+            # Density growth touches only the O(1) current head.  On a compact
+            # Aqua canvas the 1.5 px minimum can keep the core at the same
+            # geometry, so require it to stay stable or grow rather than
+            # assuming a Windows-sized preview radius.  It must not rebuild a
+            # 16-band, backdrop-preblended trail.
             self.assertEqual(len(held_coords), 2)
-            self.assertNotEqual(held_coords, initial_coords)
+            self.assertEqual(held_coords[0], initial_coords[0])
+            initial_core_width = initial_coords[1][2] - initial_coords[1][0]
+            held_core_width = held_coords[1][2] - held_coords[1][0]
+            self.assertGreaterEqual(held_core_width, initial_core_width)
             self.assertEqual(held_fills, initial_fills)
 
             same_face_pixels = np.argwhere(np.asarray(editor.face_ids) == face)
