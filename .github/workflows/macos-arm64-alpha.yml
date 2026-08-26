@@ -19,6 +19,8 @@ on:
       - "source/fixed_app/**"
       - "tooling/generate_macos_app_inventory.py"
   pull_request:
+    branches:
+      - "codex/r32-2-experimental-flat4-large-glb-2d-filter"
     paths:
       - ".github/ISSUE_TEMPLATE/macos_alpha_report.yml"
       - ".github/workflows/macos-arm64-alpha.yml"
