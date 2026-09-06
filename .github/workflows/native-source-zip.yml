@@ -59,13 +59,21 @@ jobs:
       BUILD_TARGET: ${{ matrix.target }}
       SOURCE_REVISION: ${{ inputs.source_revision }}
       SOURCE_ARCHIVE_SHA256: ${{ inputs.source_sha256 }}
-      BUILD_ROOT: ${{ runner.temp }}/chromamatter-native-build
-      SOURCE_ROOT: ${{ runner.temp }}/chromamatter-source
-      WHEELHOUSE: ${{ runner.temp }}/chromamatter-wheelhouse
-      DIAGNOSTICS: ${{ runner.temp }}/chromamatter-diagnostics
-      PACKAGE_ROOT: ${{ runner.temp }}/chromamatter-approved-package
 
     steps:
+      - name: Initialize runner-local build paths
+        run: |
+          set -euo pipefail
+          for binding in \
+            BUILD_ROOT:chromamatter-native-build \
+            SOURCE_ROOT:chromamatter-source \
+            WHEELHOUSE:chromamatter-wheelhouse \
+            DIAGNOSTICS:chromamatter-diagnostics \
+            PACKAGE_ROOT:chromamatter-approved-package
+          do
+            printf '%s=%s/%s\n' "${binding%%:*}" "$RUNNER_TEMP" "${binding#*:}" >> "$GITHUB_ENV"
+          done
+
       - name: Set up exact build Python (never required on the user's computer)
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
