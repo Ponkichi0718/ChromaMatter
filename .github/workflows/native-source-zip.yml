@@ -1,0 +1,346 @@
+name: Native builds from reviewed source ZIP
+run-name: Native ZIP build - ${{ inputs.target }}
+
+# The application is supplied separately; this workflow never pushes its source,
+# publishes a Release, or deploys the website. Dispatch only reviewed public ZIPs.
+on:
+  workflow_dispatch:
+    inputs:
+      source_url:
+        description: Public HTTPS source ZIP URL (no password, token, or query)
+        required: true
+        type: string
+      source_sha256:
+        description: Lowercase SHA-256 of the exact reviewed source ZIP
+        required: true
+        type: string
+      source_revision:
+        description: Exact local source commit (40 lowercase hex, must match Git ZIP comment)
+        required: true
+        type: string
+      target:
+        description: Native build target
+        required: true
+        default: both
+        type: choice
+        options:
+          - both
+          - macos-arm64
+          - linux-x86_64
+      approved_package:
+        description: Package only after exact-source native distribution review
+        required: true
+        default: false
+        type: boolean
+
+permissions: {}
+
+concurrency:
+  group: native-source-zip-${{ inputs.target }}
+  cancel-in-progress: false
+
+jobs:
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJSON(inputs.target == 'both' && '["macos-arm64","linux-x86_64"]' || inputs.target == 'macos-arm64' && '["macos-arm64"]' || '["linux-x86_64"]') }}
+    runs-on: ${{ matrix.target == 'macos-arm64' && 'macos-15' || 'ubuntu-22.04' }}
+    timeout-minutes: 180
+    defaults:
+      run:
+        shell: bash
+    env:
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      PIP_NO_CACHE_DIR: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      MACOSX_DEPLOYMENT_TARGET: '15.0'
+      LIBGL_ALWAYS_SOFTWARE: '1'
+      BUILD_TARGET: ${{ matrix.target }}
+      SOURCE_REVISION: ${{ inputs.source_revision }}
+      SOURCE_ARCHIVE_SHA256: ${{ inputs.source_sha256 }}
+      BUILD_ROOT: ${{ runner.temp }}/chromamatter-native-build
+      SOURCE_ROOT: ${{ runner.temp }}/chromamatter-source
+      WHEELHOUSE: ${{ runner.temp }}/chromamatter-wheelhouse
+      DIAGNOSTICS: ${{ runner.temp }}/chromamatter-diagnostics
+      PACKAGE_ROOT: ${{ runner.temp }}/chromamatter-approved-package
+
+    steps:
+      - name: Set up exact build Python (never required on the user's computer)
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: '3.13.14'
+          architecture: ${{ matrix.target == 'macos-arm64' && 'arm64' || 'x64' }}
+
+      - name: Verify and safely extract the reviewed source ZIP
+        env:
+          SOURCE_URL: ${{ inputs.source_url }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib, ipaddress, json, os, re, shutil, socket, stat, time
+          import unicodedata, urllib.parse, urllib.request, zipfile
+          from pathlib import Path
+
+          expected = os.environ['SOURCE_ARCHIVE_SHA256']
+          revision = os.environ['SOURCE_REVISION']
+          if not re.fullmatch(r'[0-9a-f]{64}', expected):
+              raise SystemExit('A 64-hex source ZIP SHA-256 is required')
+          if not re.fullmatch(r'[0-9a-f]{40}', revision):
+              raise SystemExit('An exact 40-hex local source commit is required')
+          source_url = os.environ['SOURCE_URL']
+          if urllib.parse.urlsplit(source_url).query:
+              raise SystemExit('Use a public source URL without query credentials')
+
+          def checked_url(url):
+              parsed = urllib.parse.urlsplit(url)
+              host = (parsed.hostname or '').lower()
+              allowed = host in {'chromamatter.app', 'github.com', 'raw.githubusercontent.com',
+                                 'objects.githubusercontent.com', 'release-assets.githubusercontent.com'}
+              allowed = allowed or bool(re.fullmatch(
+                  r'github-production-(?:user-asset|release-asset)-[0-9a-f]+\.s3\.amazonaws\.com', host))
+              if (parsed.scheme != 'https' or parsed.username or parsed.password or
+                      parsed.fragment or parsed.port not in (None, 443) or not allowed):
+                  raise ValueError('Source host or HTTPS URL is not permitted')
+              addresses = socket.getaddrinfo(host, 443, type=socket.SOCK_STREAM)
+              if not addresses or any(not ipaddress.ip_address(item[4][0]).is_global for item in addresses):
+                  raise ValueError('Source host must resolve to public IP addresses')
+              return url
+
+          class CheckedRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self, request, fp, code, msg, headers, newurl):
+                  return super().redirect_request(request, fp, code, msg, headers, checked_url(newurl))
+
+          archive = Path(os.environ['RUNNER_TEMP']) / 'reviewed-source.zip'
+          limit = 128 * 1024 * 1024
+          digest, size = hashlib.sha256(), 0
+          deadline = time.monotonic() + 300
+          try:
+              opener = urllib.request.build_opener(CheckedRedirect())
+              with opener.open(checked_url(source_url), timeout=30) as response, archive.open('xb') as output:
+                  while chunk := response.read(1024 * 1024):
+                      size += len(chunk)
+                      if size > limit or time.monotonic() > deadline:
+                          raise ValueError('Source download exceeds its size or time limit')
+                      digest.update(chunk)
+                      output.write(chunk)
+          except Exception:
+              raise SystemExit('Public source download failed; URL details are not logged') from None
+          if digest.hexdigest() != expected:
+              raise SystemExit('Source ZIP SHA-256 mismatch; no source was executed')
+
+          root = Path(os.environ['SOURCE_ROOT'])
+          root.mkdir(exist_ok=False)
+          forbidden_dirs = {'.git', '.venv', 'venv', 'node_modules', '__pycache__', 'dist'}
+          forbidden_suffixes = {'.dll', '.exe', '.pyd', '.dylib', '.so', '.whl', '.zip', '.7z',
+                                '.glb', '.gltf', '.3mf', '.stl', '.blend', '.npz', '.npy', '.pt', '.onnx'}
+          allowed_obj = {'samples/synthetic_multipart_vertex_color.obj', 'source/fixed_app/test_tetra.obj'}
+          allowed_binary_data = {'source/fixed_app/assets/mixer_model.npz'}
+          demo_docs_root = 'source/fixed_app/public_binary/DemoData'
+          demo_docs = {demo_docs_root + '/' + name for name in (
+              'DEMO_DATA_MANIFEST.json', 'NOTICE_EN.md', 'NOTICE_JA.md', 'README_EN.md', 'README_JA.md')}
+          records, seen, roots, expanded = [], {}, set(), 0
+          with zipfile.ZipFile(archive) as zipped:
+              if zipped.comment != revision.encode('ascii'):
+                  raise SystemExit('Git source ZIP comment does not match the requested source commit')
+              entries = zipped.infolist()
+              if not entries or len(entries) > 10000:
+                  raise SystemExit('Empty or overlarge source ZIP inventory')
+              for item in entries:
+                  name = item.filename[:-1] if item.is_dir() else item.filename
+                  parts = name.split('/')
+                  mode = item.external_attr >> 16
+                  kind = stat.S_IFMT(mode)
+                  if (not name or chr(92) in name or ':' in name or
+                          any(ord(c) < 32 or ord(c) == 127 for c in name) or
+                          any(p in ('', '.', '..') or p.rstrip(' .') != p for p in parts) or
+                          any(unicodedata.normalize('NFC', p) != p for p in parts) or
+                          item.flag_bits & 1 or mode & 0o7000 or
+                          kind not in (0, stat.S_IFDIR if item.is_dir() else stat.S_IFREG)):
+                      raise SystemExit('Unsafe source ZIP member')
+                  key = name.casefold()
+                  if key in seen:
+                      raise SystemExit('Duplicate or case-colliding source member')
+                  seen[key] = item.is_dir()
+                  roots.add(parts[0])
+                  if len(parts) == 1 and not item.is_dir():
+                      raise SystemExit('Source ZIP must have one enclosing directory')
+                  relative = '/'.join(parts[1:])
+                  if (any(p.casefold() in forbidden_dirs for p in parts[1:]) or
+                          (Path(relative).suffix.lower() in forbidden_suffixes and relative not in allowed_binary_data) or
+                          (any(p.casefold() == 'demodata' for p in parts[1:]) and
+                           relative not in demo_docs and not (relative == demo_docs_root and item.is_dir())) or
+                          (Path(relative).suffix.lower() == '.obj' and relative not in allowed_obj)):
+                      raise SystemExit('Runtime, demo, private-model, or cache payload in source ZIP')
+                  expanded += item.file_size
+                  if item.file_size > 32 * 1024 * 1024 or expanded > 512 * 1024 * 1024:
+                      raise SystemExit('Expanded source ZIP exceeds limits')
+                  records.append((item, relative))
+              if len(roots) != 1:
+                  raise SystemExit('Source ZIP must have exactly one enclosing directory')
+              for name in seen:
+                  parts = name.split('/')
+                  if any(seen.get('/'.join(parts[:i])) is False for i in range(1, len(parts))):
+                      raise SystemExit('Source ZIP file/directory conflict')
+              manifest = []
+              for item, relative in records:
+                  if not relative:
+                      continue
+                  destination = root / relative
+                  if item.is_dir():
+                      destination.mkdir(parents=True, exist_ok=True)
+                  else:
+                      destination.parent.mkdir(parents=True, exist_ok=True)
+                      with zipped.open(item) as stream, destination.open('xb') as output:
+                          shutil.copyfileobj(stream, output, 1024 * 1024)
+                      destination.chmod(0o755 if item.external_attr >> 16 & 0o111 else 0o644)
+                      manifest.append({'path': relative, 'bytes': item.file_size,
+                                       'sha256': hashlib.sha256(destination.read_bytes()).hexdigest()})
+          target = os.environ['BUILD_TARGET']
+          suffix = 'macos-arm64' if target == 'macos-arm64' else 'linux-x86_64'
+          required = ['LICENSE', 'CURRENT_STATE.json', 'source/fixed_app/TripoSpectrumMapper_fixed.py',
+                      'BUILD_MACOS_ARM64.sh' if target == 'macos-arm64' else 'BUILD_LINUX_X86_64.sh',
+                      'source/fixed_app/requirements-build-' + suffix + '.lock']
+          if any(not (root / path).is_file() for path in required):
+              raise SystemExit('Incomplete native build source snapshot')
+          diagnostics = Path(os.environ['DIAGNOSTICS'])
+          diagnostics.mkdir(exist_ok=False)
+          (diagnostics / 'SOURCE_ARCHIVE.json').write_text(json.dumps({
+              'source_commit': revision, 'source_archive_sha256': expected,
+              'workflow_config_commit': os.environ['GITHUB_SHA'], 'archive_bytes': size,
+              'target': target, 'files': manifest,
+              'note': 'Archive hash is authoritative; Git ZIP comment matches the supplied local commit.'
+          }, indent=2) + '\n', encoding='utf-8')
+          print('Verified source ZIP:', expected, '- files:', len(manifest))
+          PY
+
+      - name: Install Linux build-host display and audit prerequisites
+        if: matrix.target == 'linux-x86_64'
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            binutils file fonts-noto-cjk libdbus-1-3 libegl1 libfontconfig1 \
+            libfreetype6 libgl1-mesa-dri libglu1-mesa libglx-mesa0 libopengl0 \
+            libtk8.6 libx11-xcb1 libxcb-cursor0 libxcb-xinerama0 \
+            libxkbcommon-x11-0 patchelf tk8.6 xauth xdg-utils \
+            xfonts-base xfonts-intl-japanese xfonts-intl-japanese-big xvfb
+
+      - name: Install only exact hash-locked native wheels
+        run: |
+          set -euo pipefail
+          mkdir -p "$WHEELHOUSE"
+          lock="$SOURCE_ROOT/source/fixed_app/requirements-build-$BUILD_TARGET.lock"
+          python -m pip download --require-hashes --only-binary=:all: --no-deps \
+            --dest "$WHEELHOUSE" -r "$lock"
+          python -m pip install --require-hashes --only-binary=:all: --no-deps \
+            --no-index --find-links "$WHEELHOUSE" -r "$lock"
+          python -m pip check
+
+      - name: Build bundled app and run source, native, render and JA/EN gates
+        run: |
+          set -euo pipefail
+          cd "$SOURCE_ROOT"
+          if [[ "$BUILD_TARGET" == macos-arm64 ]]; then
+            script=BUILD_MACOS_ARM64.sh
+          else
+            script=BUILD_LINUX_X86_64.sh
+          fi
+          bash "$script" --python "$(command -v python)" \
+            --output-root "$BUILD_ROOT" --ui-smoke required 2>&1 | tee "$DIAGNOSTICS/BUILD_LOG.txt"
+
+      - name: Record current macOS native source coverage
+        if: matrix.target == 'macos-arm64'
+        run: |
+          set -euo pipefail
+          cd "$SOURCE_ROOT"
+          wheels=()
+          for wheel in "$WHEELHOUSE"/*.whl; do wheels+=(--wheel "$wheel"); done
+          python tooling/audit_macos_source_coverage.py \
+            --inventory "$BUILD_ROOT/validation/MACOS_ALPHA_APP_INVENTORY.json" \
+            --source-commit "$SOURCE_REVISION" "${wheels[@]}" \
+            --output "$BUILD_ROOT/validation/MACOS_SOURCE_COVERAGE_REPORT.json"
+
+      # Future reviewed source snapshots provide this packaging entry point.
+      # A successful technical build alone NEVER enables binary artifact upload.
+      - name: Package only an independently approved exact source snapshot
+        if: inputs.approved_package
+        env:
+          APPROVED_SHA256: ${{ vars.NATIVE_PACKAGE_APPROVED_SOURCE_SHA256 }}
+        run: |
+          set -euo pipefail
+          test -n "$APPROVED_SHA256"
+          test "$APPROVED_SHA256" = "$SOURCE_ARCHIVE_SHA256"
+          cd "$SOURCE_ROOT"
+          test -f tooling/ci_native_release.py
+          python tooling/ci_native_release.py \
+            --target "$BUILD_TARGET" --build-root "$BUILD_ROOT" \
+            --source-archive "$RUNNER_TEMP/reviewed-source.zip" \
+            --source-sha256 "$SOURCE_ARCHIVE_SHA256" \
+            --output "$PACKAGE_ROOT" --require-all-distribution-gates
+          test -s "$PACKAGE_ROOT/DISTRIBUTION_APPROVAL.json"
+          python tooling/ci_native_release.py \
+            --target "$BUILD_TARGET" --audit-package "$PACKAGE_ROOT" \
+            --source-sha256 "$SOURCE_ARCHIVE_SHA256" --require-all-distribution-gates
+
+      - name: Upload approved package (never publish a Release or website)
+        if: inputs.approved_package
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ChromaMatter-approved-${{ matrix.target }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/chromamatter-approved-package/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+
+      - name: Collect only explicit technical diagnostics
+        id: collect_diagnostics
+        if: always()
+        env:
+          JOB_RESULT: ${{ job.status }}
+        run: |
+          python - <<'PY'
+          import json, os, platform
+          from pathlib import Path
+          raw = Path(os.environ['DIAGNOSTICS'])
+          diagnostics = Path(os.environ['RUNNER_TEMP']) / 'chromamatter-final-diagnostics'
+          diagnostics.mkdir(exist_ok=False)
+          validation = Path(os.environ['BUILD_ROOT']) / 'validation'
+          allowed = {
+              'MACOS_ALPHA_BUILD_REPORT.txt', 'MACOS_ALPHA_APP_AUDIT.txt',
+              'MACOS_ALPHA_APP_INVENTORY.json', 'MACOS_SOURCE_COVERAGE_REPORT.json',
+              'MACOS_ALPHA_SOURCE_SELF_TEST.json', 'MACOS_ALPHA_PACKAGED_SELF_TEST.json',
+              'LINUX_ALPHA_BUILD_REPORT.txt', 'LINUX_ALPHA_APP_AUDIT.txt',
+              'LINUX_ALPHA_APP_INVENTORY.json', 'LINUX_ALPHA_SOURCE_SELF_TEST.json',
+              'LINUX_ALPHA_PACKAGED_SELF_TEST.json',
+          }
+          inputs = [(validation / name, name) for name in allowed]
+          inputs += [(raw / name, name) for name in ('BUILD_LOG.txt', 'SOURCE_ARCHIVE.json')]
+          for path, name in inputs:
+              if path.is_file() and not path.is_symlink() and path.stat().st_size <= 16 * 1024 * 1024:
+                  content = path.read_text(encoding='utf-8')
+                  for value in (os.environ['RUNNER_TEMP'], os.environ['GITHUB_WORKSPACE']):
+                      content = content.replace(value, '<CI_PATH>')
+                  (diagnostics / name).write_text(content, encoding='utf-8')
+          (diagnostics / 'RESULT.json').write_text(json.dumps({
+              'target': os.environ['BUILD_TARGET'], 'job_result': os.environ['JOB_RESULT'],
+              'python': platform.python_version(), 'machine': platform.machine(),
+              'source_sha256': os.environ['SOURCE_ARCHIVE_SHA256'],
+              'workflow_config_commit': os.environ['GITHUB_SHA'],
+              'note': 'Technical CI diagnostics only. Not a distributable or physical printer test. '
+                      'Linux hosted-runner results are not the historical WSL/Ubuntu validation.'
+          }, indent=2) + '\n', encoding='utf-8')
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as summary:
+              summary.write('## Native source-ZIP build\n\n'
+                            'Application source is identified by SOURCE_ARCHIVE.json, not the workflow commit.\n\n'
+                            'Existing downloads are unchanged. Native binaries require separate distribution approval.\n')
+          PY
+
+      - name: Upload diagnostics only (no app, models, wheels or runtime)
+        if: always() && steps.collect_diagnostics.outcome == 'success'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ChromaMatter-native-diagnostics-${{ matrix.target }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/chromamatter-final-diagnostics/
+          if-no-files-found: error
+          retention-days: 7
