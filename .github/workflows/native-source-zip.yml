@@ -86,8 +86,8 @@ jobs:
         run: |
           set -euo pipefail
           python - <<'PY'
-          import hashlib, ipaddress, json, os, re, shutil, socket, stat, time
-          import unicodedata, urllib.parse, urllib.request, zipfile
+          import hashlib, ipaddress, json, os, re, shutil, socket, stat, subprocess, threading
+          import unicodedata, urllib.parse, zipfile
           from pathlib import Path
 
           expected = os.environ['SOURCE_ARCHIVE_SHA256']
@@ -115,27 +115,82 @@ jobs:
                   raise ValueError('Source host must resolve to public IP addresses')
               return url
 
-          class CheckedRedirect(urllib.request.HTTPRedirectHandler):
-              def redirect_request(self, request, fp, code, msg, headers, newurl):
-                  return super().redirect_request(request, fp, code, msg, headers, checked_url(newurl))
+          def download_source_with_curl(url, archive, expected):
+              # Use the runner's standard curl identity, never browser headers/cookies.
+              # No redirect is followed: another source URL needs explicit review.
+              curl = shutil.which('curl')
+              if curl is None:
+                  raise SystemExit('Public source download failed (curl unavailable)')
+              checked_url(url)
+              partial = archive.with_name(archive.name + '.part')
+              if archive.exists() or partial.exists():
+                  raise SystemExit('Source download destination already exists; no reuse')
+              limit, size = 128 * 1024 * 1024, 0
+              digest, tail = hashlib.sha256(), bytearray()
+              expired = threading.Event()
+              owned_partial = False
+              try:
+                  with partial.open('xb') as output:
+                      owned_partial = True
+                      process = subprocess.Popen([
+                          curl, '--disable', '--silent', '--show-error', '--fail',
+                          '--globoff', '--proto', '=https', '--proto-redir', '=https',
+                          '--max-redirs', '0', '--connect-timeout', '30',
+                          '--max-time', '280', '--max-filesize', str(limit),
+                          '--write-out', '%{stderr}CM_HTTP_STATUS:%{http_code}',
+                          '--url', url,
+                      ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                      def expire():
+                          expired.set()
+                          if process.poll() is None:
+                              process.kill()
+                      def collect_status():
+                          while chunk := process.stderr.read(1024):
+                              tail.extend(chunk)
+                              del tail[:-256]
+                      timer = threading.Timer(290, expire)
+                      reader = threading.Thread(target=collect_status, daemon=True)
+                      timer.start()
+                      reader.start()
+                      try:
+                          while chunk := process.stdout.read(1024 * 1024):
+                              size += len(chunk)
+                              if size > limit:
+                                  raise SystemExit('Public source download exceeds 128 MiB')
+                              digest.update(chunk)
+                              output.write(chunk)
+                          code = process.wait()
+                      finally:
+                          timer.cancel()
+                          if process.poll() is None:
+                              process.kill()
+                          process.wait(timeout=5)
+                          reader.join(timeout=5)
+                          process.stdout.close()
+                          process.stderr.close()
+                      status_match = re.search(rb'CM_HTTP_STATUS:([0-9]{3})$', tail)
+                      status = status_match.group(1).decode('ascii') if status_match else 'unknown'
+                      # Never print stderr, headers, URL strings, or exception details.
+                      if expired.is_set() or code == 28:
+                          raise SystemExit('Public source download failed (timeout)')
+                      if code != 0:
+                          raise SystemExit(f'Public source download failed (curl exit {code}, HTTP {status})')
+                      if status != '200':
+                          raise SystemExit(f'Public source download rejected (HTTP {status}; redirects are not followed)')
+                      if not size or digest.hexdigest() != expected:
+                          raise SystemExit('Source ZIP SHA-256 mismatch or empty response; no source was executed')
+                  partial.rename(archive)
+                  return size
+              except SystemExit:
+                  raise
+              except Exception as error:
+                  raise SystemExit('Public source download failed (' + type(error).__name__ + ')') from None
+              finally:
+                  if owned_partial:
+                      partial.unlink(missing_ok=True)
 
           archive = Path(os.environ['RUNNER_TEMP']) / 'reviewed-source.zip'
-          limit = 128 * 1024 * 1024
-          digest, size = hashlib.sha256(), 0
-          deadline = time.monotonic() + 300
-          try:
-              opener = urllib.request.build_opener(CheckedRedirect())
-              with opener.open(checked_url(source_url), timeout=30) as response, archive.open('xb') as output:
-                  while chunk := response.read(1024 * 1024):
-                      size += len(chunk)
-                      if size > limit or time.monotonic() > deadline:
-                          raise ValueError('Source download exceeds its size or time limit')
-                      digest.update(chunk)
-                      output.write(chunk)
-          except Exception:
-              raise SystemExit('Public source download failed; URL details are not logged') from None
-          if digest.hexdigest() != expected:
-              raise SystemExit('Source ZIP SHA-256 mismatch; no source was executed')
+          size = download_source_with_curl(source_url, archive, expected)
 
           root = Path(os.environ['SOURCE_ROOT'])
           root.mkdir(exist_ok=False)
