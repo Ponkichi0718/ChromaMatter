@@ -33,6 +33,12 @@ on:
         default: false
         type: boolean
 
+      retain_tested_candidate:
+        description: Retain fully tested package for final owner review (not a public Release)
+        required: true
+        default: false
+        type: boolean
+
 permissions: {}
 
 concurrency:
@@ -325,32 +331,46 @@ jobs:
             --output "$BUILD_ROOT/validation/MACOS_SOURCE_COVERAGE_REPORT.json"
 
       # Future reviewed source snapshots provide this packaging entry point.
-      # A successful technical build alone NEVER enables binary artifact upload.
-      - name: Package only an independently approved exact source snapshot
-        if: inputs.approved_package
+      # Runtime, complete-source and archive checks remain mandatory in both modes.
+      - name: Package the reviewed snapshot after all technical distribution checks
+        if: inputs.approved_package || inputs.retain_tested_candidate
         env:
           APPROVED_SHA256: ${{ vars.NATIVE_PACKAGE_APPROVED_SOURCE_SHA256 }}
+          APPROVED_PACKAGE: ${{ inputs.approved_package }}
+          RETAIN_CANDIDATE: ${{ inputs.retain_tested_candidate }}
         run: |
           set -euo pipefail
           test -n "$APPROVED_SHA256"
           test "$APPROVED_SHA256" = "$SOURCE_ARCHIVE_SHA256"
+          if [[ "$APPROVED_PACKAGE" == true && "$RETAIN_CANDIDATE" == true ]]; then
+            echo "Choose final approved packaging OR tested-candidate retention, not both" >&2
+            exit 2
+          fi
+          mode=--require-all-distribution-gates
+          if [[ "$RETAIN_CANDIDATE" == true ]]; then
+            mode=--require-all-technical-gates
+          fi
           cd "$SOURCE_ROOT"
           test -f tooling/ci_native_release.py
           python tooling/ci_native_release.py \
             --target "$BUILD_TARGET" --build-root "$BUILD_ROOT" \
             --source-archive "$RUNNER_TEMP/reviewed-source.zip" \
             --source-sha256 "$SOURCE_ARCHIVE_SHA256" \
-            --output "$PACKAGE_ROOT" --require-all-distribution-gates
-          test -s "$PACKAGE_ROOT/DISTRIBUTION_APPROVAL.json"
+            --output "$PACKAGE_ROOT" "$mode"
+          if [[ "$RETAIN_CANDIDATE" == true ]]; then
+            test ! -e "$PACKAGE_ROOT/DISTRIBUTION_APPROVAL.json"
+          else
+            test -s "$PACKAGE_ROOT/DISTRIBUTION_APPROVAL.json"
+          fi
           python tooling/ci_native_release.py \
             --target "$BUILD_TARGET" --audit-package "$PACKAGE_ROOT" \
-            --source-sha256 "$SOURCE_ARCHIVE_SHA256" --require-all-distribution-gates
+            --source-sha256 "$SOURCE_ARCHIVE_SHA256" "$mode"
 
-      - name: Upload approved package (never publish a Release or website)
-        if: inputs.approved_package
+      - name: Retain checked package (never publish a Release or website)
+        if: inputs.approved_package || inputs.retain_tested_candidate
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: ChromaMatter-approved-${{ matrix.target }}-${{ github.run_id }}
+          name: ChromaMatter-${{ inputs.approved_package && 'approved' || 'tested-candidate' }}-${{ matrix.target }}-${{ github.run_id }}
           path: ${{ runner.temp }}/chromamatter-approved-package/
           if-no-files-found: error
           compression-level: 0
