@@ -13,8 +13,8 @@ body:
     id: version
     attributes:
       label: ChromaMatter version or commit
-      description: For example, 0.8beta r32 or a Git commit SHA.
-      placeholder: 0.8beta r32
+      description: For example, 0.9 r33 or a Git commit SHA.
+      placeholder: 0.9 r33
     validations:
       required: true
 

@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import sys
 
-if "--macos-alpha-self-test" in sys.argv[1:]:
-    # Keep the packaged macOS admission probe independent from application
+if any(
+    flag in sys.argv[1:]
+    for flag in ("--macos-alpha-self-test", "--linux-alpha-self-test")
+):
+    # Keep the packaged platform admission probes independent from application
     # hotfix imports.  In particular, PyMeshLab and ModernGL must be loaded by
     # the gate itself so their native/plugin failures become explicit JSON
     # checks instead of unrelated startup output.

@@ -103,7 +103,7 @@ class MacOSSourceLauncherTests(unittest.TestCase):
 
     def test_ci_overrides_and_self_test_only_mode_are_explicit(self) -> None:
         self.assertIn(
-            'SOURCE_ALPHA_TAG="v0.8beta-macos-source-alpha1"',
+            'SOURCE_ALPHA_TAG="0.9-macos-source-app"',
             self.launcher,
         )
         self.assertIn('printf \'Source tester tag: %s\\n\'', self.launcher)
@@ -151,13 +151,18 @@ class MacOSSourceLauncherTests(unittest.TestCase):
         bash = shutil.which("bash")
         if bash is None:
             self.skipTest("bash is not available on this test host")
+        # Bash may be WSL's launcher on Windows. Check the same complete script
+        # through stdin so shell syntax validation needs no host-path conversion.
+        # Binary input preserves LF instead of Windows text-mode CRLF conversion.
         completed = subprocess.run(
-            [bash, "-n", str(LAUNCHER)],
+            [bash, "-n"],
+            input=self.launcher.encode("utf-8"),
             capture_output=True,
-            text=True,
             check=False,
         )
-        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual(
+            completed.returncode, 0, completed.stderr.decode("utf-8", errors="replace")
+        )
 
 
 if __name__ == "__main__":

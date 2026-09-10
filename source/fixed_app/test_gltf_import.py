@@ -18,6 +18,7 @@ from PIL import Image
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from spectrum_mapper.gltf_import import (
+    GLTF_REDUCED_SOURCE_FACE_LIMIT,
     GltfImportError,
     GltfImportPlan,
     _sample_image_linear,
@@ -321,7 +322,7 @@ class GltfImportTests(unittest.TestCase):
             ):
                 load_gltf_asset(path)
 
-    def test_reduced_admission_is_inclusive_at_five_million_faces(self) -> None:
+    def test_reduced_admission_is_inclusive_at_supported_face_limit(self) -> None:
         document = _base_document()
         document["accessors"] = [
             {
@@ -331,7 +332,7 @@ class GltfImportTests(unittest.TestCase):
             },
             {
                 "componentType": 5125,
-                "count": 15_000_000,
+                "count": GLTF_REDUCED_SOURCE_FACE_LIMIT * 3,
                 "type": "SCALAR",
             },
         ]
@@ -349,16 +350,34 @@ class GltfImportTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             path = _write_glb(Path(temporary), document, b"")
             plan = inspect_gltf_asset(path)
-        self.assertEqual(plan.triangle_count, 5_000_000)
+        self.assertEqual(
+            plan.triangle_count, GLTF_REDUCED_SOURCE_FACE_LIMIT
+        )
         self.assertTrue(plan.requires_reduced_mode)
         self.assertTrue(plan.supports_reduced_mode)
 
-        document["accessors"][1]["count"] = 15_000_003
+        document["accessors"][1]["count"] = (
+            GLTF_REDUCED_SOURCE_FACE_LIMIT + 1
+        ) * 3
         with tempfile.TemporaryDirectory() as temporary:
             path = _write_glb(Path(temporary), document, b"")
             above = inspect_gltf_asset(path)
-        self.assertEqual(above.triangle_count, 5_000_001)
-        self.assertFalse(above.supports_reduced_mode)
+            self.assertEqual(
+                above.triangle_count, GLTF_REDUCED_SOURCE_FACE_LIMIT + 1
+            )
+            self.assertFalse(above.supports_reduced_mode)
+            with (
+                patch(
+                    "spectrum_mapper.gltf_import._read_document",
+                    side_effect=AssertionError("BIN reader must not run"),
+                ) as binary_read,
+                self.assertRaisesRegex(
+                    GltfImportError,
+                    f"{GLTF_REDUCED_SOURCE_FACE_LIMIT:,}面以下",
+                ),
+            ):
+                load_gltf_asset(path, allow_large_reduced_source=True)
+            binary_read.assert_not_called()
 
     def test_chunked_texture_sampling_matches_single_chunk(self) -> None:
         image = np.asarray(

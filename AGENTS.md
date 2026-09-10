@@ -18,8 +18,8 @@ These instructions apply to the entire repository.
   archives, build output, `dist`, virtual environments, caches, validation
   output, credentials, tokens, personal paths, personal email addresses, or
   other identifying information.
-- Do not change public version `0.8beta` unless the project owner explicitly
-  requests that version change.
+- Do not change public version `0.9` unless the project owner explicitly
+  requests another version change. The owner advanced it to 0.9 on 2026-09-05.
 - Do not publish or mark a Windows binary release eligible while
   `CURRENT_STATE.json` or `HANDOFF.md` records an unresolved binary compliance,
   corresponding-source, build, test, archive, privacy, or checksum gate.
@@ -28,12 +28,21 @@ These instructions apply to the entire repository.
 
 ## Functional safety contracts
 
+- Owner-authorized exception (2026-09-06): explicit export-only validation
+  levels high (default), medium, low and ignore are requested. High retains
+  the existing contract. Lower levels may turn their documented geometry
+  defects into truthful warnings; ignore must be labelled non-recommended.
+  Imported metadata cannot authorize relaxation. Nonempty finite geometry,
+  valid integer indices, archive structure, colours/materials, pending palette
+  checks and distribution/compliance gates remain mandatory at every level.
+  Do not alter repair algorithms or silently fall back to a lower level.
 - Do not weaken topology, watertightness, winding, positive-volume,
   self-intersection policy, or 3MF fail-closed validation merely to make an
-  export succeed.
+  export succeed outside the explicit owner-selected export policy above.
 - Preserve the existing safe GLB seam-weld and export-time solidification
-  boundaries. True holes, ambiguous seams, non-manifold geometry, and invalid
-  3MF must continue to fail with an actionable message.
+  boundaries. True holes, ambiguous seams and non-manifold geometry must
+  continue to stop strict repair/high export; archive or colour corruption
+  must stop every export policy with an actionable message.
 - Preserve manual palette assignment/display separation and the pending-apply
   export guard. Do not allow preview colors and exported colors to diverge
   silently.

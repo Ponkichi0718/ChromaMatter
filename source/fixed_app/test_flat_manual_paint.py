@@ -326,6 +326,183 @@ class FlatManualPaintStateTests(unittest.TestCase):
         np.testing.assert_array_equal(changed, [0])
         np.testing.assert_array_equal(session.overrides, [2, 5, 6, -1])
 
+    def test_material_fill_uses_target_faces_only_as_unchanged_bridges(
+        self,
+    ) -> None:
+        palette = _flat_palette()
+        level = _connected_flat_level()
+        state_map = _effective_paint_state_map(
+            palette,
+            palette_rgb=_palette_rgb(palette),
+        )
+        session = PaintSession(
+            level,
+            100.0,
+            np.asarray((2, 0, 0, 0), dtype=np.int8),
+        )
+        material_labels = np.asarray((2, 2, 2, -1), dtype=np.int8)
+
+        changed = session.fill(
+            0,
+            2,
+            connectivity_state_map=state_map,
+            connectivity_face_labels=material_labels,
+        )
+
+        # Face 0 is already automatic red and is only a traversal bridge.
+        np.testing.assert_array_equal(changed, [1, 2])
+        np.testing.assert_array_equal(session.overrides, [-1, 2, 2, -1])
+        session.undo()
+        np.testing.assert_array_equal(session.overrides, [-1, -1, -1, -1])
+
+    def test_material_fill_stops_at_a_negative_material_label(self) -> None:
+        level = _connected_flat_level()
+        session = PaintSession(
+            level,
+            100.0,
+            np.asarray((2, 0, 0, 0), dtype=np.int8),
+        )
+
+        changed = session.fill(
+            0,
+            2,
+            connectivity_face_labels=np.asarray((2, 2, -1, 2), dtype=np.int8),
+        )
+
+        np.testing.assert_array_equal(changed, [1])
+        np.testing.assert_array_equal(session.overrides, [-1, 2, -1, -1])
+
+    def test_opt_in_material_fill_reaches_dark_red_but_not_true_black(
+        self,
+    ) -> None:
+        palette = _flat_palette()
+        level = _connected_flat_level()
+        session = PaintSession(
+            level,
+            100.0,
+            np.asarray((2, 0, 0, 0), dtype=np.int8),
+        )
+        editor = PaintEditorWindow.__new__(PaintEditorWindow)
+        editor.paint_state_var = _Var(2)
+        editor.material_fill_var = _Var(True)
+        editor.palette_rgb = _palette_rgb(palette)
+        editor._active_palette = lambda: palette
+        editor.level = level
+        editor._session = session
+        editor._auto_colors = SimpleNamespace(
+            palette_indices=np.asarray((2, 0, 0, 0), dtype=np.int8),
+            source_face_rgb=np.asarray(
+                (
+                    (0.75, 0.10, 0.10),
+                    (0.10, 0.025, 0.025),
+                    (0.12, 0.12, 0.12),
+                    (0.75, 0.10, 0.10),
+                ),
+                dtype=np.float64,
+            ),
+        )
+        editor._worker_refresh_after_edit = lambda *_args: None
+        editor._submit = lambda _kind, work: work()
+        editor.i18n = SimpleNamespace(text=lambda key, **_values: key)
+        editor._drag_mode = None
+        editor._stroke_faces = []
+        editor._stroke_pressures = []
+        editor._airbrush_started_at = None
+
+        editor._queue_fill(0)
+
+        np.testing.assert_array_equal(session.overrides, [-1, 2, -1, -1])
+
+    def test_opt_in_material_fill_preserves_a_manual_non_target_color(
+        self,
+    ) -> None:
+        palette = _flat_palette()
+        level = _connected_flat_level()
+        session = PaintSession(
+            level,
+            100.0,
+            np.asarray((2, 0, 0, 0), dtype=np.int8),
+        )
+        session.overrides[1] = 0
+        editor = PaintEditorWindow.__new__(PaintEditorWindow)
+        editor.paint_state_var = _Var(2)
+        editor.material_fill_var = _Var(True)
+        editor.palette_rgb = _palette_rgb(palette)
+        editor._active_palette = lambda: palette
+        editor.level = level
+        editor._session = session
+        editor._auto_colors = SimpleNamespace(
+            palette_indices=np.asarray((2, 0, 0, 0), dtype=np.int8),
+            source_face_rgb=np.asarray(
+                (
+                    (0.75, 0.10, 0.10),
+                    (0.10, 0.025, 0.025),
+                    (0.12, 0.12, 0.12),
+                    (0.75, 0.10, 0.10),
+                ),
+                dtype=np.float64,
+            ),
+        )
+        editor._worker_refresh_after_edit = lambda *_args: None
+        editor._submit = lambda _kind, work: work()
+        editor.i18n = SimpleNamespace(text=lambda key, **_values: key)
+        editor._drag_mode = None
+        editor._stroke_faces = []
+        editor._stroke_pressures = []
+        editor._airbrush_started_at = None
+
+        editor._queue_fill(0)
+
+        np.testing.assert_array_equal(session.overrides, [-1, 0, -1, -1])
+
+    def test_opt_in_material_fill_uses_an_equal_rgb_slot_as_a_bridge(
+        self,
+    ) -> None:
+        palette = PaletteSettings(
+            color_mode=COLOR_MODE_FLAT_FOUR,
+            palette_state_count=32,
+            physical_hex=["#D62D32", "#F0F0F0", "#101010", "#D62D32"],
+            enabled_states=[True] * 32,
+        )
+        level = _connected_flat_level()
+        session = PaintSession(
+            level,
+            100.0,
+            np.asarray((0, 2, 2, 2), dtype=np.int8),
+        )
+        editor = PaintEditorWindow.__new__(PaintEditorWindow)
+        editor.paint_state_var = _Var(3)
+        editor.material_fill_var = _Var(True)
+        editor.palette_rgb = _palette_rgb(palette)
+        editor._active_palette = lambda: palette
+        editor.level = level
+        editor._session = session
+        editor._auto_colors = SimpleNamespace(
+            palette_indices=np.asarray((0, 2, 2, 2), dtype=np.int8),
+            source_face_rgb=np.asarray(
+                (
+                    (0.75, 0.10, 0.10),
+                    (0.10, 0.025, 0.025),
+                    (0.12, 0.12, 0.12),
+                    (0.75, 0.10, 0.10),
+                ),
+                dtype=np.float64,
+            ),
+        )
+        editor._worker_refresh_after_edit = lambda *_args: None
+        editor._submit = lambda _kind, work: work()
+        editor.i18n = SimpleNamespace(text=lambda key, **_values: key)
+        editor._drag_mode = None
+        editor._stroke_faces = []
+        editor._stroke_pressures = []
+        editor._airbrush_started_at = None
+
+        editor._queue_fill(0)
+
+        # Existing F1 red is a traversal bridge but keeps its automatic ID;
+        # only the connected dark-red face receives the requested F4 override.
+        np.testing.assert_array_equal(session.overrides, [-1, 3, -1, -1])
+
 
 class FlatAdaptivePaintRoutingTests(unittest.TestCase):
     def test_capture_helpers_filter_new_states_without_mutating_palette(self) -> None:

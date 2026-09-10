@@ -1,0 +1,163 @@
+name: Linux x86_64 technical alpha build
+
+on:
+  push:
+    branches:
+      - "codex/linux-x86_64-flat4-test3"
+    paths:
+      - ".github/workflows/linux-x86_64-alpha.yml"
+      - "AUDIT_LINUX_APP.sh"
+      - "BUILD_LINUX_X86_64.sh"
+      - "source/fixed_app/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: linux-x86-64-alpha-${{ github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  build-test-technical-alpha:
+    name: Ubuntu 22.04 x86_64 build and test
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    env:
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+      PIP_NO_CACHE_DIR: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      LIBGL_ALWAYS_SOFTWARE: "1"
+      SOURCE_COMMIT: ${{ github.sha }}
+
+    steps:
+      - name: Check out exact source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+
+      - name: Set up exact CPython x64
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13.14"
+          architecture: x64
+
+      - name: Install Linux display and native audit prerequisites
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            binutils \
+            file \
+            fonts-noto-cjk \
+            libdbus-1-3 \
+            libegl1 \
+            libfontconfig1 \
+            libfreetype6 \
+            libgl1-mesa-dri \
+            libglu1-mesa \
+            libglx-mesa0 \
+            libopengl0 \
+            libtk8.6 \
+            libx11-xcb1 \
+            libxcb-cursor0 \
+            libxcb-xinerama0 \
+            libxkbcommon-x11-0 \
+            patchelf \
+            tk8.6 \
+            xauth \
+            xdg-utils \
+            xfonts-base \
+            xfonts-intl-japanese \
+            xfonts-intl-japanese-big \
+            xvfb
+
+      - name: Verify exact Linux host baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(uname -s)" = Linux
+          test "$(uname -m)" = x86_64
+          test "$(python -c 'import platform; print(platform.machine())')" = x86_64
+          test "$(python -c 'import sys; print(".".join(map(str, sys.version_info[:3])))')" = 3.13.14
+          python - <<'PY'
+          import platform
+          version = tuple(int(value) for value in platform.libc_ver()[1].split(".")[:2])
+          if version < (2, 35):
+              raise SystemExit(f"glibc 2.35+ is required; found {platform.libc_ver()[1]}")
+          PY
+
+      - name: Install hash-locked Linux x86_64 dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install \
+            --require-hashes \
+            --only-binary=:all: \
+            --no-deps \
+            -r source/fixed_app/requirements-build-linux-x86_64.lock
+          python -m pip check
+
+      - name: Build and validate diagnostics-only technical alpha
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash ./BUILD_LINUX_X86_64.sh \
+            --python "$(command -v python)" \
+            --output-root "$RUNNER_TEMP/chromamatter-linux-x86-64" \
+            --ui-smoke required
+
+      - name: Record diagnostics without application files
+        if: always()
+        shell: bash
+        run: |
+          set -u
+          diagnostic="$RUNNER_TEMP/chromamatter-linux-diagnostics"
+          mkdir -p "$diagnostic"
+          {
+            echo "workflow_run=${GITHUB_RUN_ID}"
+            echo "workflow_attempt=${GITHUB_RUN_ATTEMPT}"
+            echo "source_commit=${SOURCE_COMMIT}"
+            echo "runner_os=${RUNNER_OS}"
+            echo "runner_arch=${RUNNER_ARCH}"
+            uname -a || true
+            getconf GNU_LIBC_VERSION || true
+            python --version || true
+          } >"$diagnostic/CI_ENVIRONMENT.txt"
+          validation="$RUNNER_TEMP/chromamatter-linux-x86-64/validation"
+          if [[ -d "$validation" ]]; then
+            find "$validation" -maxdepth 1 -type f -print0 | while IFS= read -r -d '' report; do
+              cp "$report" "$diagnostic/"
+            done
+          fi
+
+      - name: Upload validation reports only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ChromaMatter-Linux-x86_64-alpha-diagnostics-${{ github.run_id }}
+          path: ${{ runner.temp }}/chromamatter-linux-diagnostics/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Publish technical-build summary
+        if: always()
+        shell: bash
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          set -u
+          run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          {
+            echo "# ChromaMatter Linux technical alpha"
+            echo
+            echo "- Job status: **${JOB_STATUS}**"
+            echo "- Source commit: \`${SOURCE_COMMIT}\`"
+            echo "- Workflow run: [${GITHUB_RUN_ID}](${run_url})"
+            echo "- Target: Ubuntu 22.04+ x86_64, CPython 3.13.14"
+            echo "- Artifact: diagnostics and validation reports only"
+            echo "- Launchable application artifact uploaded: **no**"
+            echo "- Public/tester distribution approved: **no**"
+          } >>"$GITHUB_STEP_SUMMARY"

@@ -30,7 +30,9 @@ SCHEMA_VERSION = 1
 MANIFEST_ID = "chromamatter-pytetwild-static-closure"
 MANIFEST_REPOSITORY_PATH = "tooling/pytetwild_static_closure.json"
 APPLICATION_LOCK_REPOSITORY_PATH = "source/fixed_app/requirements-build.lock"
-RECIPE_REPOSITORY_PATH = "tooling/BUILD_PYTETWILD_WINDOWS.ps1"
+# This is the immutable recipe that produced the approved wheel, not the
+# independently evolving developer recipe at tooling/BUILD_PYTETWILD_WINDOWS.ps1.
+RECIPE_REPOSITORY_PATH = "tooling/recipes/BUILD_PYTETWILD_WINDOWS_20260823.ps1"
 LICENSE_REPOSITORY_PREFIX = PurePosixPath(
     "source/fixed_app/licenses/pytetwild-closure"
 )

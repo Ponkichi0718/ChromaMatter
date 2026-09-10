@@ -1,7 +1,7 @@
 VSVersionInfo(
   ffi=FixedFileInfo(
-    filevers=(0, 8, 0, 0),
-    prodvers=(0, 8, 0, 0),
+    filevers=(0, 9, 0, 0),
+    prodvers=(0, 9, 0, 0),
     mask=0x3f,
     flags=0x0,
     OS=0x40004,
@@ -14,12 +14,12 @@ VSVersionInfo(
       StringTable(
         u'040904B0',
         [StringStruct(u'CompanyName', u'ChromaMatter project'),
-         StringStruct(u'FileDescription', u'ChromaMatter — AI Model Print Studio 0.8beta'),
-         StringStruct(u'FileVersion', u'0.8beta'),
+         StringStruct(u'FileDescription', u'ChromaMatter — AI Model Print Studio 0.9'),
+         StringStruct(u'FileVersion', u'0.9'),
          StringStruct(u'InternalName', u'ChromaMatter'),
          StringStruct(u'OriginalFilename', u'ChromaMatter.exe'),
          StringStruct(u'ProductName', u'ChromaMatter — AI Model Print Studio'),
-         StringStruct(u'ProductVersion', u'0.8beta')])
+         StringStruct(u'ProductVersion', u'0.9')])
     ]),
     VarFileInfo([VarStruct(u'Translation', [1033, 1200])])
   ]

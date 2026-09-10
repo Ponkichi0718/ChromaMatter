@@ -12,6 +12,9 @@ import numpy as np
 
 from spectrum_mapper.radial_export import (
     COLOR_DEPTH_EXPORT_SCHEMA,
+    RADIAL_PROCESS_PROFILE_BLACK_COUPON_010,
+    RADIAL_PROCESS_PROFILE_GENERAL_ARACHNE_010,
+    RADIAL_PROCESS_PROFILE_GENERAL_CLASSIC_010,
     RADIAL_SCHEMA,
     RadialExportError,
     RadialExportPackage,
@@ -104,7 +107,133 @@ def _package(*, black_extruder: int = 1) -> RadialExportPackage:
     )
 
 
+def _radial_shell_result() -> SimpleNamespace:
+    core = _box(
+        "core",
+        "pure_black_core",
+        1,
+        (0.0, 0.0, 0.0),
+        (1.0, 1.0, 1.0),
+    )
+    shell = _box(
+        "shell",
+        "partner_outer_shell",
+        3,
+        (1.0, 0.0, 0.0),
+        (2.0, 1.0, 1.0),
+    )
+    raw_parts = tuple(
+        SimpleNamespace(
+            name=part.name,
+            role=part.role,
+            vertices_mm=part.vertices_mm,
+            faces=part.faces,
+            extruder=part.extruder,
+            solid_infill=True,
+            metadata={},
+        )
+        for part in (core, shell)
+    )
+    return SimpleNamespace(
+        parts=raw_parts,
+        skin_thickness_mm=0.3770796327,
+        partner_extruder=3,
+        black_extruder=1,
+        eligible_state_id=12,
+        eligible_area_fraction=0.25,
+        source_volume_mm3=2.0,
+        output_volume_mm3=2.0,
+        interfaces=(
+            {
+                "exact_coordinate_triangles": True,
+                "opposite_winding": True,
+                "gap_mm": 0.0,
+                "positive_overlap_mm3": 0.0,
+            },
+        ),
+        metadata={
+            "builder": "probe",
+            "source_exterior_preserved_exactly": True,
+            "positive_overlap_mm3": 0.0,
+            "gap_mm": 0.0,
+        },
+    )
+
+
 class RadialExportTests(unittest.TestCase):
+    def test_coupon_profile_allows_only_explicit_010_layer_contract(self) -> None:
+        base = _package()
+        coupon_metadata = {
+            "black_radial_coupon": {
+                "schema": "chromamatter.black-radial-coupon.v1",
+                "method": "radial-physical-thickness",
+                "geometry_version": "multi-surface-prism-v1",
+                "experimental": True,
+                "slice_only": True,
+                "print_allowed": False,
+                "physical_materials_only": True,
+            }
+        }
+        coupon = RadialExportPackage(
+            parts=base.parts,
+            physical_hex=base.physical_hex,
+            black_extruder=base.black_extruder,
+            metadata=coupon_metadata,
+            layer_height_mm=0.10,
+            initial_layer_height_mm=0.20,
+            process_profile=RADIAL_PROCESS_PROFILE_BLACK_COUPON_010,
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "coupon_010.3mf"
+            written = write_radial_3mf_atomic(path, coupon)
+            self.assertTrue(written.static_validation_ok)
+            with zipfile.ZipFile(path) as archive:
+                project = json.loads(
+                    archive.read("Metadata/project_settings.config")
+                )
+                metadata = json.loads(
+                    archive.read("Metadata/radial_shell_experimental.json")
+                )
+            self.assertEqual(project["layer_height"], "0.1")
+            self.assertEqual(project["initial_layer_print_height"], "0.2")
+            self.assertEqual(project["top_shell_layers"], "5")
+            self.assertEqual(project["bottom_shell_layers"], "5")
+            self.assertEqual(project["only_one_wall_top"], "0")
+            self.assertEqual(project["wall_loops"], "2")
+            self.assertEqual(project["detect_thin_wall"], "0")
+            self.assertEqual(project["inner_wall_line_width"], "0.45")
+            self.assertEqual(
+                metadata["process_profile"],
+                RADIAL_PROCESS_PROFILE_BLACK_COUPON_010,
+            )
+
+        implicit = RadialExportPackage(
+            parts=base.parts,
+            physical_hex=base.physical_hex,
+            black_extruder=base.black_extruder,
+            layer_height_mm=0.10,
+            initial_layer_height_mm=0.20,
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaisesRegex(RadialExportError, "requires layer height"):
+                write_radial_3mf_atomic(Path(directory) / "implicit.3mf", implicit)
+
+        non_coupon = RadialExportPackage(
+            parts=base.parts,
+            physical_hex=base.physical_hex,
+            black_extruder=base.black_extruder,
+            metadata={"purpose": "not an authorised coupon"},
+            layer_height_mm=0.10,
+            initial_layer_height_mm=0.20,
+            process_profile=RADIAL_PROCESS_PROFILE_BLACK_COUPON_010,
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaisesRegex(RadialExportError, "coupon-only"):
+                write_radial_3mf_atomic(
+                    Path(directory) / "profile_escape.3mf",
+                    non_coupon,
+                )
+
     def test_color_depth_round_trip_uses_generic_physical_unions(self) -> None:
         first = _box(
             "ColorDepth F1", "pure_black_core", 1,
@@ -238,65 +367,163 @@ class RadialExportTests(unittest.TestCase):
                     metadata["safety"]["flush_to_model_enabled"]
                 )
                 self.assertEqual(
+                    metadata["safety"]["sparse_infill_density_percent"],
+                    100,
+                )
+                self.assertTrue(
+                    metadata["safety"]["closed_physical_volumes"]
+                )
+                self.assertTrue(
+                    all(
+                        part["closed_physical_volume"]
+                        for part in metadata["parts"]
+                    )
+                )
+                self.assertTrue(
+                    all("solid_infill" not in part for part in metadata["parts"])
+                )
+                self.assertEqual(
                     [part["role"] for part in metadata["parts"]],
                     ["pure_black_core", "partner_outer_shell"],
                 )
 
-    def test_adapter_accepts_geometry_builder_contract(self) -> None:
-        core = _box(
-            "core",
-            "pure_black_core",
-            1,
-            (0.0, 0.0, 0.0),
-            (1.0, 1.0, 1.0),
-        )
-        shell = _box(
-            "shell",
-            "partner_outer_shell",
-            3,
-            (1.0, 0.0, 0.0),
-            (2.0, 1.0, 1.0),
-        )
-        raw_parts = tuple(
-            SimpleNamespace(
-                name=part.name,
-                role=part.role,
-                vertices_mm=part.vertices_mm,
-                faces=part.faces,
-                extruder=part.extruder,
-                solid_infill=True,
-                metadata={},
-            )
-            for part in (core, shell)
-        )
-        result = SimpleNamespace(
-            parts=raw_parts,
-            skin_thickness_mm=0.3770796327,
-            partner_extruder=3,
-            black_extruder=1,
-            eligible_state_id=12,
-            eligible_area_fraction=0.25,
-            source_volume_mm3=2.0,
-            output_volume_mm3=2.0,
-            interfaces=(
-                {
-                    "exact_coordinate_triangles": True,
-                    "opposite_winding": True,
-                    "gap_mm": 0.0,
-                    "positive_overlap_mm3": 0.0,
-                },
+    def test_round_trip_preserves_binary64_coordinate_precision(self) -> None:
+        boundary = 50.0
+        narrow_boundary = boundary + 2.0e-11
+        package = RadialExportPackage(
+            parts=(
+                _box(
+                    "physical black core",
+                    "pure_black_core",
+                    1,
+                    (49.0, 0.0, 0.0),
+                    (boundary, 1.0, 1.0),
+                ),
+                _box(
+                    "thin physical shell",
+                    "partner_outer_shell",
+                    3,
+                    (boundary, 0.0, 0.0),
+                    (narrow_boundary, 1.0, 1.0),
+                ),
             ),
-            metadata={
-                "builder": "probe",
-                "source_exterior_preserved_exactly": True,
-                "positive_overlap_mm3": 0.0,
-                "gap_mm": 0.0,
-            },
+            physical_hex=PHYSICAL,
+            black_extruder=1,
         )
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "binary64_precision.3mf"
+            written = write_radial_3mf_atomic(path, package)
+            self.assertTrue(written.static_validation_ok)
+            with zipfile.ZipFile(path) as archive:
+                model = ET.fromstring(
+                    archive.read("3D/Objects/radial_parts.model")
+                )
+            objects = model.findall(
+                f".//{{{CORE_NS}}}resources/{{{CORE_NS}}}object"
+            )
+            shell_vertices = objects[1].findall(
+                f".//{{{CORE_NS}}}vertex"
+            )
+            shell_x = {float(vertex.attrib["x"]) for vertex in shell_vertices}
+            self.assertEqual(shell_x, {boundary, narrow_boundary})
+
+    def test_adapter_accepts_geometry_builder_contract(self) -> None:
+        result = _radial_shell_result()
         package = package_from_radial_shell(result, PHYSICAL)
         self.assertEqual(package.black_extruder, 1)
         self.assertEqual([part.extruder for part in package.parts], [1, 3])
         self.assertEqual(package.metadata["skin_thickness_mm"], 0.3770796327)
+        self.assertEqual(package.process_profile, "radial-mvp-0p20")
+        self.assertEqual(package.layer_height_mm, 0.20)
+        self.assertEqual(package.initial_layer_height_mm, 0.20)
+
+    def test_general_010_profiles_need_no_coupon_metadata(self) -> None:
+        cases = (
+            (
+                RADIAL_PROCESS_PROFILE_GENERAL_CLASSIC_010,
+                {
+                    "wall_generator": "classic",
+                    "detect_thin_wall": "1",
+                },
+                frozenset(),
+            ),
+            (
+                RADIAL_PROCESS_PROFILE_GENERAL_ARACHNE_010,
+                {
+                    "wall_generator": "arachne",
+                    "detect_thin_wall": "0",
+                    "wall_distribution_count": "1",
+                    "min_bead_width": "25%",
+                    "initial_layer_min_bead_width": "85%",
+                    "min_feature_size": "20%",
+                    "wall_transition_length": "100%",
+                    "wall_transition_filter_deviation": "25%",
+                    "wall_transition_angle": "10",
+                },
+                frozenset(
+                    {
+                        "wall_distribution_count",
+                        "min_bead_width",
+                        "initial_layer_min_bead_width",
+                        "min_feature_size",
+                        "wall_transition_length",
+                        "wall_transition_filter_deviation",
+                        "wall_transition_angle",
+                    }
+                ),
+            ),
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            for profile, expected, arachne_only_keys in cases:
+                with self.subTest(profile=profile):
+                    package = package_from_radial_shell(
+                        _radial_shell_result(),
+                        PHYSICAL,
+                        process_profile=profile,
+                        layer_height_mm=0.10,
+                    )
+                    self.assertEqual(package.process_profile, profile)
+                    self.assertEqual(package.layer_height_mm, 0.10)
+                    self.assertEqual(package.initial_layer_height_mm, 0.20)
+                    path = Path(directory) / f"{profile}.3mf"
+                    written = write_radial_3mf_atomic(path, package)
+                    self.assertTrue(written.static_validation_ok)
+                    with zipfile.ZipFile(path) as archive:
+                        project = json.loads(
+                            archive.read("Metadata/project_settings.config")
+                        )
+                        metadata = json.loads(
+                            archive.read(
+                                "Metadata/radial_shell_experimental.json"
+                            )
+                        )
+                    self.assertEqual(project["layer_height"], "0.1")
+                    self.assertEqual(
+                        project["initial_layer_print_height"], "0.2"
+                    )
+                    self.assertEqual(project["wall_loops"], "1")
+                    self.assertEqual(project["top_shell_layers"], "2")
+                    self.assertEqual(project["bottom_shell_layers"], "2")
+                    self.assertEqual(project["sparse_infill_density"], "15%")
+                    for key, value in expected.items():
+                        self.assertEqual(project[key], value)
+                    if not arachne_only_keys:
+                        self.assertTrue(
+                            all(key not in project for key in cases[1][2])
+                        )
+                    self.assertEqual(metadata["process_profile"], profile)
+                    self.assertEqual(
+                        metadata["safety"][
+                            "sparse_infill_density_percent"
+                        ],
+                        15,
+                    )
+                    generator_metadata = metadata["generator_metadata"]
+                    self.assertNotIn("black_radial_coupon", generator_metadata)
+                    self.assertNotIn(
+                        "compact_black_radial_coupon", generator_metadata
+                    )
 
     def test_rejects_virtual_tool_and_does_not_leave_destination(self) -> None:
         package = _package()
@@ -369,7 +596,10 @@ class RadialExportTests(unittest.TestCase):
             solid_infill=False,
         )
         with tempfile.TemporaryDirectory() as directory:
-            with self.assertRaisesRegex(RadialExportError, "is not solid"):
+            with self.assertRaisesRegex(
+                RadialExportError,
+                "not a closed physical volume",
+            ):
                 write_radial_3mf_atomic(
                     Path(directory) / "not_solid.3mf",
                     RadialExportPackage(

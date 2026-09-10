@@ -183,49 +183,97 @@ $distPath = Join-Path $buildOutput "dist"
 $workPath = Join-Path $buildOutput "work"
 $spec = Join-Path $fixedApp "TripoSpectrumMapper_fixed.spec"
 
-& $pyinstaller --noconfirm --clean --distpath $distPath --workpath $workPath $spec
-if ($LASTEXITCODE -ne 0) {
-    throw "PyInstaller build failed."
+# PyInstaller resolves native dependencies through PATH.  A developer shell can
+# carry unrelated SDK, codec, or tool-bundle directories whose DLLs happen to
+# share dependency names with the application.  Build and smoke in a small,
+# deterministic search path so those host-only files cannot enter the package
+# or make a non-standalone package appear healthy.  The compliance inventory
+# remains fail-closed if a reviewed component is genuinely added later.
+$previousBuildPath = $env:Path
+$systemRoot = [Environment]::GetEnvironmentVariable(
+    "SystemRoot",
+    [EnvironmentVariableTarget]::Process
+)
+if ([string]::IsNullOrWhiteSpace($systemRoot)) {
+    throw "SystemRoot is unavailable; cannot construct an isolated build PATH."
 }
-
-# PyInstaller 6 one-folder builds expose bundled datas below sys._MEIPASS,
-# which maps to the `_internal` directory beside the executable.  Verify the
-# exact runtime-relative resource set before running packaged smoke tests.
-$bundledFilamentRoot = Join-Path $distPath `
-    "ChromaMatter\_internal\resources\filament_db"
-foreach ($filename in $filamentResourceFiles) {
-    $resource = Join-Path $bundledFilamentRoot $filename
-    if (-not (Test-Path -LiteralPath $resource -PathType Leaf)) {
-        throw "Packaged filament database resource is missing: $resource"
+$cleanBuildPathEntries = @(
+    (Join-Path $RuntimeRoot "Scripts"),
+    $RuntimeRoot,
+    (Join-Path $systemRoot "System32"),
+    $systemRoot,
+    (Join-Path $systemRoot "System32\Wbem"),
+    (Join-Path $systemRoot "System32\WindowsPowerShell\v1.0"),
+    (Join-Path $systemRoot "System32\OpenSSH")
+)
+$cleanBuildPath = New-Object System.Collections.Generic.List[string]
+$seenBuildPaths = New-Object System.Collections.Generic.HashSet[string] `
+    ([System.StringComparer]::OrdinalIgnoreCase)
+foreach ($candidate in $cleanBuildPathEntries) {
+    if (-not (Test-Path -LiteralPath $candidate -PathType Container)) {
+        continue
+    }
+    $resolvedCandidate = [System.IO.Path]::GetFullPath($candidate).TrimEnd(
+        [char[]]"\/"
+    )
+    if ($seenBuildPaths.Add($resolvedCandidate)) {
+        $cleanBuildPath.Add($resolvedCandidate)
     }
 }
-
-$exe = Join-Path $distPath "ChromaMatter\ChromaMatter.exe"
-$selfTest = Start-Process -FilePath $exe -ArgumentList "--self-test" -Wait -PassThru -WindowStyle Hidden
-if ($selfTest.ExitCode -ne 0) {
-    throw "Packaged self-test failed."
-}
-foreach ($language in @("ja", "en")) {
-    Invoke-PackagedUiSmoke -Executable $exe -Language $language
+if ($cleanBuildPath.Count -lt 4) {
+    throw "The isolated build PATH is incomplete."
 }
 
-$inventoryScript = Join-Path $handoffRoot `
-    "tooling\generate_binary_compliance_inventory.py"
-if (-not (Test-Path -LiteralPath $inventoryScript -PathType Leaf)) {
-    throw "Binary compliance inventory generator is missing: $inventoryScript"
+try {
+    $env:Path = $cleanBuildPath -join [System.IO.Path]::PathSeparator
+
+    & $pyinstaller --noconfirm --clean --distpath $distPath --workpath $workPath $spec
+    if ($LASTEXITCODE -ne 0) {
+        throw "PyInstaller build failed."
+    }
+
+    # PyInstaller 6 one-folder builds expose bundled datas below sys._MEIPASS,
+    # which maps to the `_internal` directory beside the executable.  Verify the
+    # exact runtime-relative resource set before running packaged smoke tests.
+    $bundledFilamentRoot = Join-Path $distPath `
+        "ChromaMatter\_internal\resources\filament_db"
+    foreach ($filename in $filamentResourceFiles) {
+        $resource = Join-Path $bundledFilamentRoot $filename
+        if (-not (Test-Path -LiteralPath $resource -PathType Leaf)) {
+            throw "Packaged filament database resource is missing: $resource"
+        }
+    }
+
+    $exe = Join-Path $distPath "ChromaMatter\ChromaMatter.exe"
+    $selfTest = Start-Process -FilePath $exe -ArgumentList "--self-test" -Wait -PassThru -WindowStyle Hidden
+    if ($selfTest.ExitCode -ne 0) {
+        throw "Packaged self-test failed."
+    }
+    foreach ($language in @("ja", "en")) {
+        Invoke-PackagedUiSmoke -Executable $exe -Language $language
+    }
+
+    $inventoryScript = Join-Path $handoffRoot `
+        "tooling\generate_binary_compliance_inventory.py"
+    if (-not (Test-Path -LiteralPath $inventoryScript -PathType Leaf)) {
+        throw "Binary compliance inventory generator is missing: $inventoryScript"
+    }
+    $complianceRoot = Join-Path $buildOutput "compliance"
+    New-Item -ItemType Directory -Path $complianceRoot -Force | Out-Null
+    $sbomOutput = Join-Path $complianceRoot "SBOM.cdx.json"
+    $componentMapOutput = Join-Path $complianceRoot `
+        "BINARY_COMPONENT_MAP.json"
+    $packageRoot = Split-Path -Parent $exe
+    & $python $inventoryScript `
+        --package-root $packageRoot `
+        --sbom-output $sbomOutput `
+        --component-map-output $componentMapOutput
+    if ($LASTEXITCODE -ne 0) {
+        throw "Built binary compliance inventory failed."
+    }
 }
-$complianceRoot = Join-Path $buildOutput "compliance"
-New-Item -ItemType Directory -Path $complianceRoot -Force | Out-Null
-$sbomOutput = Join-Path $complianceRoot "SBOM.cdx.json"
-$componentMapOutput = Join-Path $complianceRoot `
-    "BINARY_COMPONENT_MAP.json"
-$packageRoot = Split-Path -Parent $exe
-& $python $inventoryScript `
-    --package-root $packageRoot `
-    --sbom-output $sbomOutput `
-    --component-map-output $componentMapOutput
-if ($LASTEXITCODE -ne 0) {
-    throw "Built binary compliance inventory failed."
+finally {
+    $env:Path = $previousBuildPath
 }
 
 Write-Host "Build and smoke tests completed: $exe"

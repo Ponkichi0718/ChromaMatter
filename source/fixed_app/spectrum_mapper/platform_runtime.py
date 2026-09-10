@@ -1,9 +1,9 @@
 """Small platform boundary for desktop paths and application launching.
 
 The geometry and 3MF code stays platform-neutral.  This module contains the
-few desktop operations that genuinely differ between Windows and macOS so the
-Windows release path remains unchanged while the macOS alpha can be built and
-tested independently.
+few desktop operations that genuinely differ between Windows, macOS, and Linux
+so the Windows release path remains unchanged while separate alpha builds can
+be built and tested independently.
 """
 
 from __future__ import annotations
@@ -86,11 +86,30 @@ def application_window_title(
     *,
     platform_name: str | None = None,
 ) -> str:
-    """Mark only the macOS build as an alpha without changing its version."""
+    """Mark non-Windows alpha builds without changing the display version."""
 
-    if _platform_name(platform_name) == "darwin":
+    platform_value = _platform_name(platform_name)
+    if platform_value == "darwin":
         return f"{base_title} — macOS alpha"
+    if platform_value.startswith("linux"):
+        return f"{base_title} — Linux alpha"
     return str(base_title)
+
+
+def snapmaker_orca_picker_patterns(
+    *,
+    platform_name: str | None = None,
+) -> tuple[str, ...]:
+    """Return safe file-picker patterns for a manual Orca selection.
+
+    Windows keeps the established executable filter.  Linux launchers commonly
+    have no filename extension, so restricting the picker to ``*.exe`` would
+    make a valid executable impossible to select there.
+    """
+
+    if _platform_name(platform_name).startswith("win"):
+        return ("*.exe",)
+    return ("*",)
 
 
 def open_folder_command(

@@ -283,6 +283,8 @@ class BinaryComplianceInventoryTests(unittest.TestCase):
                     set(component["license_asset_sha256"]),
                     component_id,
                 )
+            self.assertEqual(component_by_id["chromamatter"]["version"], "0.9")
+            self.assertEqual(component_map["package"]["version"], "0.9")
             self.assertEqual(
                 component_by_id["chromamatter"]["license_assets"],
                 ["_internal/licenses/LICENSE_APP.txt"],
@@ -299,6 +301,7 @@ class BinaryComplianceInventoryTests(unittest.TestCase):
             )
             self.assertEqual(sbom["bomFormat"], "CycloneDX")
             self.assertEqual(sbom["specVersion"], "1.5")
+            self.assertEqual(sbom["metadata"]["component"]["version"], "0.9")
             library_by_ref = {
                 item["bom-ref"]: item
                 for item in sbom["components"]
@@ -941,6 +944,56 @@ class BinaryComplianceInventoryTests(unittest.TestCase):
                 "_internal/untrusted/api-ms-win-core-fake-l1-1-0.dll",
                 component_map["validation"]["unmapped_native_files"],
             )
+
+    def test_unreviewed_bundled_ucrt_still_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            package = base / "package"
+            package.mkdir()
+            self._fixture(package)
+            (package / "_internal" / "ucrtbase.dll").write_bytes(
+                b"synthetic-host-path-ucrt"
+            )
+            destination = base / "report"
+
+            result = self._run(package, destination)
+
+            self.assertEqual(result.returncode, 2)
+            component_map = json.loads(
+                (destination / "BINARY_COMPONENT_MAP.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertIn(
+                {
+                    "component": "microsoft-ucrt-10.0.19041.1",
+                    "path": "",
+                    "reason": "no-license-assets-declared",
+                    "expected_sha256": "",
+                    "actual_sha256": "",
+                },
+                component_map["validation"][
+                    "invalid_component_license_assets"
+                ],
+            )
+
+    def test_windows_build_uses_an_isolated_native_search_path(self) -> None:
+        build = BUILD.read_text(encoding="utf-8")
+        self.assertIn("$previousBuildPath = $env:Path", build)
+        self.assertIn("$cleanBuildPathEntries = @(", build)
+        self.assertIn(
+            "$env:Path = $cleanBuildPath -join [System.IO.Path]::PathSeparator",
+            build,
+        )
+        self.assertIn("$env:Path = $previousBuildPath", build)
+        self.assertLess(
+            build.index("$env:Path = $cleanBuildPath -join"),
+            build.index("& $pyinstaller --noconfirm --clean"),
+        )
+        self.assertLess(
+            build.index("& $python $inventoryScript"),
+            build.index("$env:Path = $previousBuildPath"),
+        )
 
     def test_outputs_must_be_distinct_and_outside_package_tree(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

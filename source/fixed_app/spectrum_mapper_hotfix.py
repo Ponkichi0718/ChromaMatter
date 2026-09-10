@@ -42,7 +42,7 @@ from spectrum_mapper import (
 
 # Public version is user-pinned.  Bug fixes and beta features must not advance
 # this string until the user explicitly requests a version change.
-HOTFIX_VERSION = "0.8beta"
+HOTFIX_VERSION = "0.9"
 spectrum_mapper_package.__version__ = HOTFIX_VERSION
 engine.__version__ = HOTFIX_VERSION
 gui.__version__ = HOTFIX_VERSION
@@ -837,7 +837,14 @@ def _write_3mf_atomic_fixed(
     palette,
     part_palettes=None,
     print_uses_global_palette=False,
+    *,
+    export_validation_level="high",
 ):
+    # Preserve legacy writer mocks/callers for the unchanged high default.
+    validation_kwargs = (
+        {} if export_validation_level == "high"
+        else {"export_validation_level": export_validation_level}
+    )
     palette = models.without_surface_shell_output(palette)
     flat_four = palette.color_mode == models.COLOR_MODE_FLAT_FOUR
     if part_palettes:
@@ -853,6 +860,7 @@ def _write_3mf_atomic_fixed(
         palette,
         part_palettes,
         print_uses_global_palette,
+        **validation_kwargs,
     )
     palette_hex = _normalize_palette_hex(palette)
     state_names = mixer.palette_state_names(
@@ -1071,7 +1079,13 @@ def _validate_3mf_fixed(
     trusted_multipart_pre_qem_face_counts=None,
     trusted_multipart_warning_policies=None,
     trusted_multipart_export_records=None,
+    *,
+    export_validation_level="high",
 ):
+    validation_kwargs = (
+        {} if export_validation_level == "high"
+        else {"export_validation_level": export_validation_level}
+    )
     validation = _original_validate_3mf(
         path,
         expected_vertices,
@@ -1084,6 +1098,7 @@ def _validate_3mf_fixed(
         trusted_multipart_pre_qem_face_counts,
         trusted_multipart_warning_policies,
         trusted_multipart_export_records,
+        **validation_kwargs,
     )
     try:
         validation.update(
@@ -1265,6 +1280,7 @@ def _connected_fill_faces_fixed(
     seed_face,
     *,
     connectivity_state_map=None,
+    connectivity_face_labels=None,
 ):
     """Run large connected fills in SciPy's compiled graph traversal."""
     connectivity_options = (
@@ -1272,6 +1288,10 @@ def _connected_fill_faces_fixed(
         if connectivity_state_map is not None
         else {}
     )
+    if connectivity_face_labels is not None:
+        connectivity_options["connectivity_face_labels"] = (
+            connectivity_face_labels
+        )
     seed = int(seed_face)
     face_count = len(self.faces)
     if seed < 0 or seed >= face_count:
@@ -1302,10 +1322,28 @@ def _connected_fill_faces_fixed(
         from scipy.sparse import csr_matrix
         from scipy.sparse.csgraph import breadth_first_order
 
-        labels = paint.PaintSession._fill_connectivity_labels(
-            self,
-            connectivity_state_map,
-        )
+        if connectivity_face_labels is None:
+            labels = paint.PaintSession._fill_connectivity_labels(
+                self,
+                connectivity_state_map,
+            )
+        else:
+            labels = np.asarray(connectivity_face_labels)
+            if (
+                labels.shape != (face_count,)
+                or not np.issubdtype(labels.dtype, np.integer)
+                or (len(labels) and int(labels.min()) < -1)
+                or (
+                    len(labels)
+                    and int(labels.max()) >= mixer.PALETTE_STATE_COUNT
+                )
+                or int(labels[seed]) < 0
+            ):
+                return _original_connected_fill_faces(
+                    self,
+                    seed_face,
+                    **connectivity_options,
+                )
         target = labels[seed]
         neighbors = np.asarray(self.neighbors, dtype=np.int32)
         sources = np.repeat(np.arange(face_count, dtype=np.int32), neighbors.shape[1])
@@ -1346,16 +1384,22 @@ def _fill_fixed(
     state,
     *,
     connectivity_state_map=None,
+    connectivity_face_labels=None,
 ):
     connectivity_options = (
         {"connectivity_state_map": connectivity_state_map}
         if connectivity_state_map is not None
         else {}
     )
+    if connectivity_face_labels is not None:
+        connectivity_options["connectivity_face_labels"] = (
+            connectivity_face_labels
+        )
     seed = int(seed_face)
     requested = int(state)
     if (
-        0 <= seed < len(self.faces)
+        connectivity_face_labels is None
+        and 0 <= seed < len(self.faces)
         and 0 <= requested < mixer.PALETTE_STATE_COUNT
     ):
         labels = paint.PaintSession._fill_connectivity_labels(
@@ -1748,7 +1792,15 @@ def _adaptive_preview_context(level):
     return adaptive_trees, getattr(level, "_hotfix_palette", None)
 
 
-def _compose_adaptive_preview_target(image, level, adaptive_trees, face_ids, camera):
+def _compose_adaptive_preview_target(
+    image,
+    level,
+    adaptive_trees,
+    face_ids,
+    camera,
+    *,
+    projection_mvp=None,
+):
     adaptive_palette = getattr(level, "_hotfix_palette", None)
     if adaptive_trees is None or adaptive_palette is None:
         return image
@@ -1757,6 +1809,7 @@ def _compose_adaptive_preview_target(image, level, adaptive_trees, face_ids, cam
         level,
         adaptive_trees,
         camera=camera,
+        projection_mvp=projection_mvp,
         face_ids=face_ids,
         palette=adaptive_palette,
         part_palette_rgb_tables=getattr(
@@ -1793,11 +1846,39 @@ def _render_front_preview_fixed(
     size=(600, 740),
     background=(9, 10, 13),
     shaded=True,
+    direction="front",
 ):
     """Reuse the OpenGL context for the two preview panels and later updates."""
     thread_id = threading.get_ident()
     normalized_size = (int(size[0]), int(size[1]))
     normalized_background = tuple(int(value) for value in background)
+    if direction != "front":
+        # Named views use the canonical renderer, which creates a temporary
+        # standalone OpenGL context on this same worker thread.  On Windows,
+        # releasing that temporary context can leave the older cached front
+        # renderer without a current native context.  Reusing it then returns
+        # only the clear colour (a visually black preview) without necessarily
+        # raising an exception.  Close it before crossing renderer paths so a
+        # later return to Front creates a fresh, current context.
+        _discard_preview_renderer(thread_id)
+        if mode == "target" and _original_render_front_preview_pair is not None:
+            return _render_front_preview_pair_fixed(
+                level,
+                result,
+                size=normalized_size,
+                background=normalized_background,
+                shaded=shaded,
+                direction=direction,
+            ).target
+        return _original_render_front_preview(
+            level,
+            result,
+            mode=mode,
+            size=normalized_size,
+            background=normalized_background,
+            shaded=shaded,
+            direction=direction,
+        )
     try:
         interactive = _cached_preview_renderer(
             level, normalized_size, normalized_background
@@ -1834,6 +1915,7 @@ def _render_front_preview_fixed(
             size=normalized_size,
             background=normalized_background,
             shaded=shaded,
+            direction=direction,
         )
 
 
@@ -1847,6 +1929,7 @@ def _render_front_preview_pair_fixed(
     active_part_id=None,
     outline_color=(36, 224, 255),
     outline_thickness=2,
+    direction="front",
 ):
     """Render both comparison panels through the cached adaptive pipeline.
 
@@ -1868,6 +1951,68 @@ def _render_front_preview_pair_fixed(
             raise renderer.RendererError(
                 f"unknown active part ID: {active_part_id}"
             )
+
+    # The cached interactive renderer is an orbit camera whose vertical range
+    # intentionally stops short of the poles. Named top/bottom previews must
+    # be exact orthographic directions, so all non-front named views use the
+    # canonical paired renderer. Adaptive sub-face paint is then composed with
+    # that renderer's exact named-view MVP before the part outline is added.
+    if direction != "front":
+        # Do not retain an interactive front renderer across the temporary
+        # canonical context used below.  Some Windows OpenGL drivers otherwise
+        # let the stale renderer run but produce a background-only frame when
+        # the user returns to Front.
+        _discard_preview_renderer(threading.get_ident())
+        pair = _original_render_front_preview_pair(
+            level,
+            result,
+            size=normalized_size,
+            background=normalized_background,
+            shaded=shaded,
+            active_part_id=None,
+            outline_color=outline_color,
+            outline_thickness=outline_thickness,
+            direction=direction,
+        )
+        adaptive_trees, _adaptive_palette = _adaptive_preview_context(level)
+        projection_mvp = renderer._camera_mvp(
+            np.asarray(level.vertices_unit),
+            normalized_size,
+            direction,
+        )
+        source = pair.source
+        target = _compose_adaptive_preview_target(
+            pair.target,
+            level,
+            adaptive_trees,
+            pair.face_ids,
+            None,
+            projection_mvp=projection_mvp,
+        )
+        if selected_part is not None and face_part_ids is not None:
+            outline_options = {
+                "color": outline_color,
+                "thickness": outline_thickness,
+            }
+            source = renderer.overlay_active_part_outline(
+                source,
+                pair.face_ids,
+                face_part_ids,
+                selected_part,
+                **outline_options,
+            )
+            target = renderer.overlay_active_part_outline(
+                target,
+                pair.face_ids,
+                face_part_ids,
+                selected_part,
+                **outline_options,
+            )
+        return renderer.FrontPreviewPair(
+            source=source,
+            target=target,
+            face_ids=pair.face_ids,
+        )
 
     thread_id = threading.get_ident()
     try:
@@ -1928,6 +2073,7 @@ def _render_front_preview_pair_fixed(
             active_part_id=active_part_id,
             outline_color=outline_color,
             outline_thickness=outline_thickness,
+            direction=direction,
         )
 
 
@@ -2078,7 +2224,7 @@ def _comparison_draw_fixed(self):
                 bottom - 28,
                 text=self.i18n.text("preview.open_manual"),
                 fill=gui.ACCENT,
-                font=("Yu Gothic UI", 9, "bold"),
+                font=gui.ui_font(9, "bold"),
                 width=max(80, panel_width - 24),
                 tags=("hotfix-paint-hint",),
             )
@@ -2138,12 +2284,12 @@ def _launch_orca_fixed(self):
         return _original_launch_orca(self)
     try:
         gui.launch_snapmaker_orca(official)
-        self.status_var.set(
-            "Snapmaker Orca 2.3.5を起動しました。3MFはプロジェクトとして開いてください"
-        )
+        self.status_var.set(self.i18n.text("state.orca_launched"))
     except OSError as exc:
         gui.messagebox.showerror(
-            "Snapmaker Orcaを起動できません", str(exc), parent=self.root
+            self.i18n.text("dialog.launch_orca_error"),
+            self.i18n.dialog_detail_text(exc),
+            parent=self.root,
         )
 
 

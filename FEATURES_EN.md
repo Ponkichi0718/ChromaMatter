@@ -10,7 +10,28 @@ ChromaMatter — AI Model Print Studio turns AI-generated coloured 3D models int
 
 This is more than a file-format converter. The project gives AI 3D generation a route into physical colour printing and gives a colour 3D printer a new source of printable models.
 
-> **Windows prerelease:** [Download ChromaMatter 0.8beta r32.2 directly](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2/ChromaMatter-0.8beta-r32.2-win64.zip). Extract the whole ZIP before launching it. See the [r32.2 prerelease page](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2) for checksums, source, and the other matching assets.
+## 0.9 development focus: improved 3MF output accuracy and success
+
+The principal 0.9 version upgrade is a more reliable path from ordinary
+single-logical GLB input to a valid 3MF. ChromaMatter can weld exact duplicate
+seams and may locally cap only strictly planar tiny openings no wider than
+2.0 mm. Every result must still pass the existing fail-closed checks for
+watertightness, non-manifold edges, winding, positive volume, degenerate faces,
+and self-intersections before it is written. Complex multipart repair remains
+input-dependent and is not claimed as solved.
+When microscopic embedded debris blocks the ordinary seam proof, a bounded
+dominant-surface fallback can retry only after proving that one surface owns at
+least 99.5% of the faces, every removed component is a tiny internal inverted
+shell or bounded open fragment, and the retained surface closes with the same
+selective seam weld. It rejects separate positive solids and performs no
+remeshing or voxelization.
+This repair path is part of the shared engine and is therefore intended for
+the next separately validated Windows, macOS, and Linux 0.9 builds.
+
+The source tree is now `0.9 (r33)` development source. No 0.9 binary has been
+packaged or published from these bytes yet.
+
+> **Latest published Windows prerelease (historical 0.8 build):** [Download ChromaMatter 0.8beta r32.2 directly](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2/ChromaMatter-0.8beta-r32.2-win64.zip). Extract the whole ZIP before launching it. See the [r32.2 prerelease page](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2) for checksums, source, and the other matching assets.
 
 > **r32.2 published prerelease:** the package includes one combined and six
 > part-specific derived demo 3MF projects. The exact build, complete source,
@@ -156,19 +177,26 @@ Catalogue colours and on-screen previews are estimates, not promises of physical
 
 Before export, ChromaMatter checks the prepared geometry. An eligible GLB can safely weld apparent openings only when coincident boundary edges prove exact 1:1 reversed UV or texture seams. Supported multipart assets are normalised independently per source part, without welding separate parts together, while source and repair-generated faces remain distinguishable. Hi3D-style categorical identification colour is suppressed only when exporter, node, material, texture, and known-palette evidence all agree; ordinary authored colour remains intact. If export needs solidification, the app announces it, processes the model, and resumes only after success.
 
-This is deliberately not a universal hole repair tool. During supported multipart repair, only a closed unmatched boundary loop with a span of at most 2.0 mm and planarity deviation of at most 0.02 mm may receive a strictly local planar cap. Larger, non-planar, ambiguous, or non-manifold openings remain fail-closed; the single-GLB UV-seam welding path never adds caps.
+This is deliberately not a universal hole repair tool. In the 0.9 development
+source, a single-logical GLB first receives only the proven exact seam weld;
+any remaining closed boundary loop may receive a local cap only when its span
+is at most 2.0 mm and its planarity deviation is at most 0.02 mm. Supported
+multipart repair uses the same strict tiny-opening limits. Larger, non-planar,
+ambiguous, or non-manifold openings remain fail-closed, and every repaired mesh
+is revalidated before export.
 
 The exported project records a conservative Full Spectrum layer-cycle and prime-tower baseline. Experimental Local Z, advanced dithering, and pointillism remain disabled. Support, material calibration, temperature, flow, speed, and retraction stay under the user's control in Snapmaker Orca.
 
-## Why the project is still beta
+## Published 0.8 beta status
 
-ChromaMatter is currently `0.8beta`.
+The latest downloadable Windows binary is the historical `0.8beta r32.2`
+prerelease. The working source has advanced to `0.9 (r33)` development.
 
 - Published `v0.8beta-r32` is immutable previous evidence; its tag, assets, and checksums are not replaced.
 - `v0.8beta-r32.2` is available as a **prerelease** for evaluation: [direct Windows ZIP download](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2/ChromaMatter-0.8beta-r32.2-win64.zip). Use the matching source, compliance assets, and checksums on the same prerelease page rather than an independently copied executable.
 - The published `DemoData/3MF/` contains one combined project and six part-specific projects derived from the demo GLB. Hi3D-derived part labels can disagree with visible geometry, so inspect each project rather than trusting its filename. When regenerating the demo, always apply the **Weak Black 5–25%** preset before export.
 - The bundled `DemoData/` multipart GLB is confirmed to complete ChromaMatter's solidification and 3MF-export workflow. It is **Generated by Hi3D**, and support remains unofficial beta compatibility.
-- Success with the bundled demo is not a guarantee for other multipart models. Different topology, open boundaries, non-manifold geometry, unsupported GLB features, or ambiguous part provenance can cause solidification or 3MF export to stop safely. This model-dependent limitation is one reason the application remains `0.8beta`.
+- Success with the bundled demo is not a guarantee for other multipart models. Different topology, open boundaries, non-manifold geometry, unsupported GLB features, or ambiguous part provenance can cause solidification or 3MF export to stop safely. This model-dependent limitation is one reason the published r32.2 application was labelled `0.8beta`.
 - A public physical U1 result has been observed; exact release-bound reproducibility validation remains in progress.
 
 The project is independent and is not an official or affiliated product of TripoAI, Hi3D AI, Snapmaker, OpenAI, or any other third party.

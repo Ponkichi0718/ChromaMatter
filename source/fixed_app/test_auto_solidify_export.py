@@ -59,9 +59,10 @@ class ExportAutoSolidificationTests(unittest.TestCase):
         self.assertTrue(started)
         title, message = confirm.call_args.args[:2]
         self.assertIn("自動閉立体化", title)
-        self.assertIn("実際の穴", message)
+        self.assertIn("幅2.0 mm以下", message)
+        self.assertIn("検証に合格した場合だけ", message)
         app.solidify_parts_var.set.assert_called_once_with(True)
-        app.repair_unmatched_boundaries_var.set.assert_called_once_with(False)
+        app.repair_unmatched_boundaries_var.set.assert_called_once_with(True)
         app._process_geometry.assert_called_once()
         call = app._process_geometry.call_args
         self.assertTrue(call.kwargs["reuse_asset"])
@@ -81,8 +82,8 @@ class ExportAutoSolidificationTests(unittest.TestCase):
         self.assertFalse(started)
         title, message = confirm.call_args.args[:2]
         self.assertIn("Automatically Solidify", title)
-        self.assertIn("resume 3MF export after it succeeds", message)
-        self.assertIn("will not automatically cap", message)
+        self.assertIn("strictly planar tiny holes up to 2.0 mm", message)
+        self.assertIn("only after watertightness", message)
         app._process_geometry.assert_not_called()
         app.solidify_parts_var.set.assert_not_called()
         app.repair_unmatched_boundaries_var.set.assert_not_called()
@@ -91,14 +92,17 @@ class ExportAutoSolidificationTests(unittest.TestCase):
         app = _app(unmatched=2, boundary_edges=18)
         settings = AppSettings()
 
-        with patch(
-            "spectrum_mapper.gui.messagebox.askyesno", return_value=False
-        ) as recovery:
+        with patch("spectrum_mapper.gui.messagebox.showerror") as recovery, patch(
+            "spectrum_mapper.gui.messagebox.askyesno"
+        ) as inspect_prompt:
             started = app._start_export_auto_solidification(settings)
 
         self.assertFalse(started)
         self.assertIn("実際の開口", recovery.call_args.args[0])
         self.assertIn("自動閉立体化では塞ぎません", recovery.call_args.args[1])
+        self.assertNotIn("3D", recovery.call_args.args[1])
+        inspect_prompt.assert_not_called()
+        app._show_boundary_diagnostics.assert_not_called()
         app._process_geometry.assert_not_called()
         app.solidify_parts_var.set.assert_not_called()
         app.repair_unmatched_boundaries_var.set.assert_not_called()
@@ -168,13 +172,16 @@ class ExportAutoSolidificationTests(unittest.TestCase):
         settings = AppSettings()
         settings.geometry.solidify_parts = True
 
-        with patch(
-            "spectrum_mapper.gui.messagebox.askyesno", return_value=False
-        ) as recovery:
+        with patch("spectrum_mapper.gui.messagebox.showerror") as recovery, patch(
+            "spectrum_mapper.gui.messagebox.askyesno"
+        ) as inspect_prompt:
             started = app._start_export_auto_solidification(settings)
 
         self.assertFalse(started)
         self.assertIn("Solidification Incomplete", recovery.call_args.args[0])
+        self.assertNotIn("3D", recovery.call_args.args[1])
+        inspect_prompt.assert_not_called()
+        app._show_boundary_diagnostics.assert_not_called()
         app._process_geometry.assert_not_called()
 
 

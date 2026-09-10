@@ -1,9 +1,24 @@
-# ChromaMatter — AI Model Print Studio 0.8beta (r32.1) provenance
+# ChromaMatter — AI Model Print Studio 0.9 (r33) provenance
 
-更新日: 2026-08-24
-対象revision: `r32.1-ai-model-print-studio`
+更新日: 2026-09-05
+現在の開発revision: `r33-ai-model-print-studio`
 
-## 1. プロジェクトとidentity
+## 0.9開発チェックポイント
+
+0.9の主なversion-up機能は、通常の単一論理GLBから3MFへ出力する際の精度と
+成功率の向上です。同一座標の重複シームを結合し、幅2.0 mm以下で厳密に平面な
+微小開口だけを局所補修できます。補修後も閉立体、非多様体辺、面向き、正体積、
+縮退面、自己交差の最終検証をfail-closedで行います。複雑なパーツ化モデルの修復は
+入力依存であり、0.9で完全解決したとは主張しません。
+
+失敗後の3D開口確認導線は削除し、ラジアル実験は公開UIから削除して設定読込時にも
+無効化します。互換性と研究記録のため実験sourceは保持します。現時点では0.9の
+実行ファイル、archive、tag、releaseを作成・公開していません。
+
+以下は公開済み0.8beta系列の由来と固定済み証拠です。既存tag、asset、checksum、
+commitを0.9として読み替えたり差し替えたりしません。
+
+## 1. 公開済み0.8beta系列のプロジェクトとidentity
 
 ChromaMatter — AI Model Print Studioは、AI生成された頂点カラー付きOBJまたはUV baseColor texture付きGLBを、Snapmaker OrcaのFull Spectrum／Color Mixingワークフロー向け3MFへ変換・調整する独立プロジェクトです。Hi3D AI、TripoAI、Snapmaker、Blender、ZBrush、Substance 3D Painter、OpenAIまたは各社の公式・提携製品ではありません。
 
@@ -105,7 +120,7 @@ r30は、Hi3D AI等から出力されるstatic GLB／glTF 2.0 meshを直接読�
 
 ## 3. 継続する公開契約
 
-- public version: `0.8beta`
+- latest published r32.2 public version: `0.8beta`（現在の未公開開発sourceは`0.9`）
 - published r32.2 project schema: `obj-adjuster.project.v12`
 - experimental test workstream project schema: `obj-adjuster.project.v13`（v12は旧来のFull Spectrum modeとして読込。v11以前で素材指定がないprojectはPLAとして読込）
 - portable bundle v2: `source.obj`または`source.glb`、`project.json`、`prepared_geometry.npz`、optional reference image（v1 OBJ bundleも読込可）

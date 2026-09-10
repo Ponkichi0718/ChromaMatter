@@ -424,6 +424,33 @@ class ManualPaintR24RealTkTests(unittest.TestCase):
                 {editor.paint_tool_buttons[name].grid_info()["row"] for name in ("fill", "smooth", "erase")},
                 {1},
             )
+
+            tool_windows = (
+                editor.palette_tool_window,
+                editor.parts_tool_window,
+                editor.help_tool_window,
+            )
+
+            def tool_windows_have_stable_geometry() -> bool:
+                try:
+                    return all(
+                        window.winfo_ismapped()
+                        and window.winfo_x() >= 0
+                        and window.winfo_y() >= 0
+                        and window.winfo_width() > 1
+                        and window.winfo_height() > 1
+                        for window in tool_windows
+                    )
+                except tk.TclError:
+                    return False
+
+            self.assertTrue(
+                _pump(root, tool_windows_have_stable_geometry, timeout=5.0),
+                [
+                    (window.state(), window.geometry())
+                    for window in tool_windows
+                ],
+            )
             palette_x = editor.palette_tool_window.winfo_x()
             parts_x = editor.parts_tool_window.winfo_x()
             help_x = editor.help_tool_window.winfo_x()

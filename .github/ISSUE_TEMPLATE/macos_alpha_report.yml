@@ -7,63 +7,32 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thank you for helping test ChromaMatter. This form accepts the Source-backed App Alpha, the older command-based Source Tester Alpha, and a future gated self-contained app. Use Discussions for successful results, setup questions, and general observations. Use this form for one reproducible defect. Do **not** upload a private, purchased, customer, or third-party model. Remove names, home paths, account details, and other sensitive data from evidence.
-
-  - type: dropdown
-    id: test_route
-    attributes:
-      label: Test route
-      options:
-        - Source-backed App Alpha (ChromaMatter Source Alpha.app)
-        - Source Tester Alpha (tagged source + START_MACOS_SOURCE_ALPHA.command)
-        - Future gated self-contained app artifact
-    validations:
-      required: true
-
-  - type: input
-    id: source_tag
-    attributes:
-      label: Source tag (Source Tester Alpha)
-      description: Enter the exact tag for the Source-backed App or Source Tester. A future gated self-contained app tester may enter N/A.
-      placeholder: v0.8beta-macos-source-app-alpha1
-    validations:
-      required: true
+        Thank you for helping test ChromaMatter. Use Discussions for successful results, setup questions, and general observations. Use this form for one reproducible defect. Do **not** upload a private, purchased, customer, or third-party model. Remove names, home paths, account details, and other sensitive data from evidence.
 
   - type: input
     id: workflow_run
     attributes:
-      label: Approved workflow run URL or run ID (gated .app only)
-      description: Leave blank for either source-backed route. A future gated self-contained app tester must copy the approved run from macOS Alpha Testing discussion #9.
-      placeholder: "Future self-contained app only: https://github.com/Ponkichi0718/ChromaMatter/actions/runs/..."
+      label: Approved workflow run URL or run ID
+      description: Copy it from macOS Alpha Testing discussion #9.
+      placeholder: https://github.com/Ponkichi0718/ChromaMatter/actions/runs/...
+    validations:
+      required: true
 
   - type: input
     id: artifact
     attributes:
       label: Artifact filename and ZIP SHA-256
-      description: Source-backed App users enter the downloaded ZIP and verified SHA-256. Command-based Source Tester users may leave this blank. A future self-contained app tester must include the approved artifact identity.
-      placeholder: "ChromaMatter-0.8beta-macos-source-app-alpha1.zip / abcdef..."
+      description: Include the downloaded artifact name and the verified 64-character SHA-256.
+      placeholder: ChromaMatter-macOS15-arm64-...-1234567890 / abcdef...
+    validations:
+      required: true
 
   - type: input
     id: source_commit
     attributes:
       label: Alpha source commit
-      description: Source-backed App users copy this from SOURCE_COMMIT.txt. It is optional for command-based Source Tester users.
+      description: Copy the commit from SOURCE_COMMIT.txt in the tester package.
       placeholder: 40-character Git commit
-
-  - type: dropdown
-    id: source_launcher
-    attributes:
-      label: Source launcher result
-      description: Both source-backed routes use the same visible, hash-locked setup in Terminal.
-      options:
-        - Python installed; Return pressed; dependencies and self-test passed
-        - Python was already installed; dependencies and self-test passed
-        - Failed while checking Mac or macOS version
-        - Failed while downloading or verifying Python
-        - Failed while installing hash-locked dependencies
-        - Failed during automatic self-test
-        - Window failed after self-test passed
-        - Not applicable - future self-contained app artifact
     validations:
       required: true
 
@@ -88,13 +57,9 @@ body:
     attributes:
       label: First-launch result
       options:
-        - Source-backed app opened with Control-click > Open
-        - Source-backed app opened normally after first setup
-        - Source launcher opened with Control-click > Open
-        - Source launcher opened normally after first setup
-        - Future self-contained app opened normally
-        - Future self-contained app opened with Finder Open
-        - Future self-contained app opened after Privacy & Security approval
+        - Opened normally
+        - Opened with Finder Open
+        - Opened after Privacy & Security approval
         - Still blocked by macOS
         - Crashed or closed immediately
     validations:
@@ -202,10 +167,8 @@ body:
     id: self_test
     attributes:
       label: Sanitized macOS alpha self-test result
-      description: Source testers should paste the sanitized self-test JSON result or final Terminal lines. Gated app testers should state whether top-level ok was true. Remove personal paths and filenames.
-      placeholder: Source launcher self-test passed/failed, ok=true, or sanitized final Terminal lines
-    validations:
-      required: true
+      description: Optional, especially if the app never opened. State whether top-level ok was true. For a failure, drag in the sanitized JSON. Remove personal paths and filenames.
+      placeholder: ok=true, Could not run, or attach sanitized macos-alpha-self-test.json
 
   - type: textarea
     id: sanitized_evidence
@@ -222,5 +185,5 @@ body:
           required: true
         - label: I removed personal paths, account information, serial numbers, and other sensitive data.
           required: true
-        - label: I understand the current Finder app and Source Tester are source-backed, a future self-contained app has a separate approval gate, and none is a supported public macOS Release.
+        - label: I understand this is a Developer ID unsigned, unnotarized, ad-hoc signed tester-only alpha and not a supported public macOS Release.
           required: true

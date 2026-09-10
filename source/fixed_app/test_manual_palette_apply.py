@@ -370,20 +370,32 @@ class ManualPaletteGuiTests(unittest.TestCase):
         except Exception:
             pass
 
-    def test_apply_button_is_visible_and_bilingual(self) -> None:
+    def test_apply_action_is_hidden_for_immediate_flat_and_bilingual_for_full(self) -> None:
         root, app = self._app()
         try:
             button = app.apply_physical_palette_button
+            help_label = app.flat_physical_palette_help_label
+            app.color_mode_var.set(COLOR_MODE_FLAT_FOUR)
+            app._refresh_color_mode_widgets()
+            self.assertEqual(button.winfo_manager(), "")
+            self.assertEqual(help_label.winfo_manager(), "grid")
+            self.assertEqual(
+                help_label.cget("text"),
+                Translator("ja").text("palette.flat_physical_common_auto"),
+            )
+            app.color_mode_var.set(COLOR_MODE_FULL_SPECTRUM)
+            app._refresh_color_mode_widgets()
             self.assertEqual(button.winfo_manager(), "grid")
+            self.assertEqual(help_label.winfo_manager(), "")
             self.assertEqual(int(button.grid_info()["row"]), 6)
             self.assertEqual(
                 button.cget("text"),
-                Translator("ja").text("palette.apply_physical"),
+                Translator("ja").text("palette.apply_physical_common"),
             )
             app.set_language("en", persist=False)
             self.assertEqual(
                 button.cget("text"),
-                Translator("en").text("palette.apply_physical"),
+                Translator("en").text("palette.apply_physical_common"),
             )
         finally:
             self._close(root, app)
@@ -403,6 +415,7 @@ class ManualPaletteGuiTests(unittest.TestCase):
             editor = SimpleNamespace(
                 settings=AppSettings(),
                 reapply_palette_settings=Mock(),
+                reapply_shading_settings=Mock(),
                 mix_optimization_undo_button=None,
                 _hotfix_tree_store=adaptive_tree,
             )
@@ -424,11 +437,13 @@ class ManualPaletteGuiTests(unittest.TestCase):
 
             app._schedule_preview.assert_called_once_with(immediate=True)
             self.assertEqual(app._pending_physical_palette_targets, set())
-            editor.reapply_palette_settings.assert_called_once()
-            applied_key, applied_palette = editor.reapply_palette_settings.call_args.args
-            self.assertIsNone(applied_key)
-            self.assertEqual(applied_palette.physical_hex[1], "#00FF40")
-            self.assertIsNotNone(applied_palette.assignment_palette_hex)
+            editor.reapply_palette_settings.assert_not_called()
+            editor.reapply_shading_settings.assert_called_once()
+            applied_settings = editor.reapply_shading_settings.call_args.args[0]
+            self.assertEqual(applied_settings.palette.physical_hex[1], "#00FF40")
+            self.assertIsNotNone(
+                applied_settings.palette.assignment_palette_hex
+            )
             np.testing.assert_array_equal(app.manual_overrides, manual)
             self.assertEqual(editor._hotfix_tree_store[2].state, 7)
         finally:
@@ -464,6 +479,7 @@ class ManualPaletteGuiTests(unittest.TestCase):
             editor = SimpleNamespace(
                 settings=AppSettings(),
                 reapply_palette_settings=Mock(),
+                reapply_shading_settings=Mock(),
                 mix_optimization_undo_button=None,
             )
             app.paint_editor = editor
@@ -483,11 +499,167 @@ class ManualPaletteGuiTests(unittest.TestCase):
             self.assertEqual(palette.output_mix_ratios_b, output)
             self.assertEqual(app._pending_physical_palette_targets, set())
             app._schedule_preview.assert_called_once_with(immediate=True)
-            editor.reapply_palette_settings.assert_called_once()
-            target_key, editor_palette = editor.reapply_palette_settings.call_args.args
-            self.assertIsNone(target_key)
-            self.assertEqual(editor_palette.physical_hex[0], "#D04030")
-            self.assertIsNone(editor_palette.assignment_palette_hex)
+            editor.reapply_palette_settings.assert_not_called()
+            editor.reapply_shading_settings.assert_called_once()
+            editor_settings = editor.reapply_shading_settings.call_args.args[0]
+            self.assertEqual(
+                editor_settings.palette.physical_hex[0], "#D04030"
+            )
+            self.assertIsNone(
+                editor_settings.palette.assignment_palette_hex
+            )
+        finally:
+            self._close(root, app)
+
+    def test_flat_common_hex_edit_shares_physical_colors_but_keeps_part_recipes(self) -> None:
+        root, app = self._app()
+        common = PaletteSettings(
+            color_mode=COLOR_MODE_FLAT_FOUR,
+            physical_hex=list(SCREENSHOT_BASE),
+            enabled_states=[True] * 32,
+            mix_ratios_b=[11, 22, 33, 44, 55, 66],
+        )
+        arm = PaletteSettings(
+            color_mode=COLOR_MODE_FLAT_FOUR,
+            physical_hex=["#111111", "#222222", "#333333", "#444444"],
+            enabled_states=[True] * 32,
+            mix_ratios_b=[12, 24, 36, 48, 60, 72],
+            assignment_palette_hex=palette_snapshot(common),
+        )
+        leg = PaletteSettings(
+            color_mode=COLOR_MODE_FLAT_FOUR,
+            physical_hex=["#AAAAAA", "#BBBBBB", "#CCCCCC", "#DDDDDD"],
+            enabled_states=[True] * 32,
+            mix_ratios_b=[13, 26, 39, 52, 65, 78],
+            assignment_palette_hex=palette_snapshot(common),
+        )
+        try:
+            app.settings = AppSettings(
+                palette=common,
+                part_palettes={"arm": arm, "leg": leg},
+            )
+            app.active_part_key = None
+            app._load_palette_variables(common)
+            app.manual_overrides = np.asarray([-1, 3, -1], dtype=np.int8)
+            editor = SimpleNamespace(
+                settings=AppSettings(),
+                reapply_palette_settings=Mock(),
+                reapply_shading_settings=Mock(),
+                mix_optimization_undo_button=None,
+            )
+            app.paint_editor = editor
+            app._schedule_preview = Mock()
+
+            app.physical_vars[0].set("#D04030")
+
+            expected = ["#D04030", *SCREENSHOT_BASE[1:]]
+            self.assertEqual(app.settings.palette.physical_hex, expected)
+            self.assertEqual(
+                app.settings.part_palettes["arm"].physical_hex, expected
+            )
+            self.assertEqual(
+                app.settings.part_palettes["leg"].physical_hex, expected
+            )
+            self.assertEqual(
+                app.settings.part_palettes["arm"].mix_ratios_b,
+                [12, 24, 36, 48, 60, 72],
+            )
+            self.assertEqual(
+                app.settings.part_palettes["leg"].mix_ratios_b,
+                [13, 26, 39, 52, 65, 78],
+            )
+            self.assertIsNone(
+                app.settings.part_palettes["arm"].assignment_palette_hex
+            )
+            self.assertIsNone(
+                app.settings.part_palettes["leg"].assignment_palette_hex
+            )
+            np.testing.assert_array_equal(
+                app.manual_overrides,
+                np.asarray([-1, 3, -1], dtype=np.int8),
+            )
+            self.assertEqual(app._pending_physical_palette_targets, set())
+            app._schedule_preview.assert_called_once_with(immediate=True)
+            editor.reapply_palette_settings.assert_not_called()
+            editor.reapply_shading_settings.assert_called_once()
+        finally:
+            self._close(root, app)
+
+    def test_full_common_hex_edit_shares_identity_and_applies_all_at_once(self) -> None:
+        root, app = self._app()
+        common = PaletteSettings(
+            color_mode=COLOR_MODE_FULL_SPECTRUM,
+            palette_state_count=32,
+            physical_hex=list(SCREENSHOT_BASE),
+            enabled_states=[True] * 32,
+        )
+        arm = PaletteSettings(
+            color_mode=COLOR_MODE_FULL_SPECTRUM,
+            palette_state_count=32,
+            physical_hex=["#101010", "#303030", "#505050", "#707070"],
+            enabled_states=[True] * 32,
+            mix_ratios_b=[12, 24, 36, 48, 60, 72],
+        )
+        arm_assignment = palette_snapshot(arm)
+        try:
+            app.settings = AppSettings(
+                palette=common,
+                part_palettes={"arm": arm},
+            )
+            app.active_part_key = None
+            app._load_palette_variables(common)
+            editor = SimpleNamespace(
+                settings=AppSettings(),
+                reapply_palette_settings=Mock(),
+                reapply_shading_settings=Mock(),
+                mix_optimization_undo_button=None,
+            )
+            app.paint_editor = editor
+            app._schedule_preview = Mock()
+
+            app.physical_vars[1].set("#00FF40")
+
+            expected = [SCREENSHOT_BASE[0], "#00FF40", *SCREENSHOT_BASE[2:]]
+            part_palette = app.settings.part_palettes["arm"]
+            self.assertEqual(part_palette.physical_hex, expected)
+            self.assertEqual(part_palette.mix_ratios_b, [12, 24, 36, 48, 60, 72])
+            self.assertEqual(part_palette.assignment_palette_hex, arm_assignment)
+            self.assertEqual(app._pending_physical_palette_targets, {None})
+            app._schedule_preview.assert_not_called()
+
+            app._apply_physical_palette_to_conversion()
+
+            self.assertEqual(app._pending_physical_palette_targets, set())
+            app._schedule_preview.assert_called_once_with(immediate=True)
+            editor.reapply_palette_settings.assert_not_called()
+            editor.reapply_shading_settings.assert_called_once()
+            applied = editor.reapply_shading_settings.call_args.args[0]
+            self.assertEqual(applied.part_palettes["arm"].physical_hex, expected)
+            self.assertEqual(
+                applied.part_palettes["arm"].assignment_palette_hex,
+                arm_assignment,
+            )
+        finally:
+            self._close(root, app)
+
+    def test_copy_all_action_is_only_shown_for_an_individual_part(self) -> None:
+        root, app = self._app()
+        try:
+            copy_button = app.copy_palette_to_all_parts_button
+            self.assertEqual(copy_button.winfo_manager(), "")
+            app.active_part_key = "arm"
+            app._refresh_color_mode_widgets()
+            self.assertEqual(copy_button.winfo_manager(), "grid")
+            self.assertEqual(
+                app.flat_physical_palette_help_label.cget("text"),
+                Translator("ja").text("palette.flat_physical_part_auto"),
+            )
+            app.color_mode_var.set(COLOR_MODE_FULL_SPECTRUM)
+            app._refresh_color_mode_widgets()
+            self.assertEqual(
+                app.apply_physical_palette_button.cget("text"),
+                Translator("ja").text("palette.apply_physical_part"),
+            )
         finally:
             self._close(root, app)
 
@@ -511,6 +683,7 @@ class ManualPaletteGuiTests(unittest.TestCase):
             editor = SimpleNamespace(
                 settings=AppSettings(),
                 reapply_palette_settings=Mock(),
+                reapply_shading_settings=Mock(),
                 mix_optimization_undo_button=None,
             )
             app.paint_editor = editor
@@ -525,8 +698,11 @@ class ManualPaletteGuiTests(unittest.TestCase):
             self.assertEqual(palette.assignment_palette_hex, assignment)
             self.assertEqual(app._pending_physical_palette_targets, set())
             app._schedule_preview.assert_called_once_with(immediate=True)
-            editor.reapply_palette_settings.assert_called_once()
-            editor_palette = editor.reapply_palette_settings.call_args.args[1]
+            editor.reapply_palette_settings.assert_not_called()
+            editor.reapply_shading_settings.assert_called_once()
+            editor_palette = (
+                editor.reapply_shading_settings.call_args.args[0].palette
+            )
             self.assertEqual(editor_palette.assignment_palette_hex, assignment)
 
             recolored = recolor_level(

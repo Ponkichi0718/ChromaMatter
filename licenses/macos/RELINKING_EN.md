@@ -1,6 +1,6 @@
 # macOS LGPL replacement and relinking guide (DRAFT)
 
-Product display version: **0.8beta**
+Product display version: **0.9**
 
 Target: Apple Silicon, macOS 15 or newer
 State: **not yet validated on a volunteer Mac; not distribution approval**

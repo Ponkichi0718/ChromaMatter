@@ -25,6 +25,7 @@ import adaptive_gpu_overlay
 import smooth_paint
 from spectrum_mapper import parts as part_palette_module
 from spectrum_mapper.paint import exact_face_paint_identity
+from spectrum_mapper.i18n import Translator
 from spectrum_mapper.pen_pressure import (
     PenPressureBridge,
     pressure_or_taper_scales,
@@ -86,6 +87,27 @@ _AUTO_SHADING_QUALITY_PRESETS = {
         "batch_faces": 2048,
     },
 }
+
+
+_FALLBACK_TRANSLATOR = Translator("ja")
+
+
+def _ui_text(owner: object, key: str, **values: object) -> str:
+    """Translate patched worker copy even on minimal recovery/test hosts."""
+
+    translator = getattr(owner, "i18n", _FALLBACK_TRANSLATOR)
+    if not callable(getattr(translator, "text", None)):
+        translator = _FALLBACK_TRANSLATOR
+    return translator.text(key, **values)
+
+
+def _ui_dialog_detail(owner: object, detail: object) -> str:
+    """Keep patched error dialogs in the selected interface language."""
+
+    translator = getattr(owner, "i18n", _FALLBACK_TRANSLATOR)
+    if not callable(getattr(translator, "dialog_detail_text", None)):
+        translator = _FALLBACK_TRANSLATOR
+    return translator.dialog_detail_text(detail)
 
 
 @dataclass(frozen=True, slots=True)
@@ -524,6 +546,7 @@ def compose_target_image(
     paint_trees: dict[int, smooth_paint.PaintNode],
     *,
     camera: Any,
+    projection_mvp: np.ndarray | None = None,
     face_ids: np.ndarray | None,
     palette: Any,
     part_palette_rgb_tables: np.ndarray | None = None,
@@ -550,9 +573,14 @@ def compose_target_image(
     if ids.shape != (height, width):
         return image
 
-    mvp, _state, _pixels_per_unit = renderer_module._orbit_camera_mvp(
-        level.vertices_unit, (width, height), camera
-    )
+    if projection_mvp is None:
+        mvp, _state, _pixels_per_unit = renderer_module._orbit_camera_mvp(
+            level.vertices_unit, (width, height), camera
+        )
+    else:
+        mvp = np.asarray(projection_mvp, dtype=np.float32)
+        if mvp.shape != (4, 4) or not bool(np.all(np.isfinite(mvp))):
+            raise ValueError("projection_mvp must be a finite 4x4 matrix")
     palette_rgb = _preview_palette_table(
         palette, _palette_rgb(palette, mixer_module)
     )
@@ -1120,12 +1148,17 @@ def apply_smooth_paint_hotfix(
         state,
         *,
         connectivity_state_map=None,
+        connectivity_face_labels=None,
     ):
         connectivity_options = (
             {"connectivity_state_map": connectivity_state_map}
             if connectivity_state_map is not None
             else {}
         )
+        if connectivity_face_labels is not None:
+            connectivity_options["connectivity_face_labels"] = (
+                connectivity_face_labels
+            )
         store, _owner = session_context(self)
         if not store:
             return original_fill(
@@ -1134,7 +1167,10 @@ def apply_smooth_paint_hotfix(
                 state,
                 **connectivity_options,
             )
-        if connectivity_state_map is not None:
+        if (
+            connectivity_state_map is not None
+            and connectivity_face_labels is None
+        ):
             seed = int(seed_face)
             requested = int(state)
             if (
@@ -1153,6 +1189,11 @@ def apply_smooth_paint_hotfix(
             ),
             dtype=np.int32,
         )
+        if connectivity_face_labels is not None and len(faces):
+            visible = self._fill_connectivity_labels(
+                connectivity_state_map
+            )
+            faces = faces[visible[faces] != int(state)]
         keys = {int(face) for face in faces if int(face) in store}
         if not keys:
             return original_fill(
@@ -1447,6 +1488,10 @@ def apply_smooth_paint_hotfix(
                     shading,
                     text=self.i18n.text("paint.auto_shading"),
                     style="PaintPanel.TLabel",
+                    wraplength=(
+                        140 if shading.tk.call("tk", "windowingsystem") == "x11" else 0
+                    ),
+                    justify=tk.LEFT,
                 ).grid(row=0, column=0, sticky="w")
                 ttk.Label(
                     shading,
@@ -1551,7 +1596,9 @@ def apply_smooth_paint_hotfix(
             render_target=True,
             render_face_ids=True,
         )
-        return self._worker_snapshot(frame, "滑らかブラシの色修正を復元しました")
+        return self._worker_snapshot(
+            frame, self.i18n.text("paint.smooth_restored")
+        )
 
     def feedback_color(self, erase: bool) -> str:
         if erase:
@@ -2458,7 +2505,7 @@ def apply_smooth_paint_hotfix(
             if not bool(np.any(scope)):
                 return auto_shading_snapshot(
                     self,
-                    "手描き修正を除く陰影補正対象がありません",
+                    _ui_text(self, "paint.auto_shading_no_target"),
                 )
 
             palette = editor_palette(self)
@@ -2501,7 +2548,7 @@ def apply_smooth_paint_hotfix(
             if not shading_result.trees:
                 return auto_shading_snapshot(
                     self,
-                    "補正できる面内グラデーションは見つかりませんでした",
+                    _ui_text(self, "paint.auto_shading_no_gradient"),
                     result=shading_result,
                 )
 
@@ -2542,7 +2589,7 @@ def apply_smooth_paint_hotfix(
                     changed_roots,
                     before_values,
                     after_values.copy(),
-                    "面内グラデーション補正",
+                    _ui_text(self, "paint.auto_shading"),
                 )
                 _attach_tree_history(
                     command,
@@ -2560,9 +2607,15 @@ def apply_smooth_paint_hotfix(
             # The original snapshot consumer appends ``changed`` as
             # ``（N面）``.  Keep the message itself count-free so the status
             # bar does not display the same face count twice.
-            label = "面内グラデーションを生成しました"
-            if shading_result.budget_limited:
-                label += "・品質上限内で適用"
+            limit_note = (
+                _ui_text(self, "paint.auto_shading_limit_note")
+                if shading_result.budget_limited
+                else ""
+            )
+            label = _ui_text(
+                self,
+                "paint.auto_shading_done", limit_note=limit_note
+            )
             snapshot = self._worker_refresh_after_edit(
                 label,
                 len(changed_roots),
@@ -2582,7 +2635,7 @@ def apply_smooth_paint_hotfix(
             details = f"{type(exc).__name__}: {exc}"
             return auto_shading_snapshot(
                 self,
-                "陰影の自動補正を適用できませんでした",
+                _ui_text(self, "paint.auto_shading_error"),
                 error=details,
             )
 
@@ -2590,7 +2643,7 @@ def apply_smooth_paint_hotfix(
         if bool(getattr(self, "_close_requested", False)):
             return
         if bool(getattr(self, "_hotfix_auto_shading_active", False)):
-            self.status_var.set("陰影の自動補正を処理中です…")
+            self.status_var.set(_ui_text(self, "paint.auto_shading_busy"))
             return
 
         self._commit_active_stroke()
@@ -2609,7 +2662,7 @@ def apply_smooth_paint_hotfix(
         button = getattr(self, "_hotfix_auto_shading_button", None)
         if button is not None:
             button.configure(state="disabled")
-        self.status_var.set("面内グラデーションを生成しています…")
+        self.status_var.set(_ui_text(self, "paint.auto_shading_generating"))
         try:
             self._submit(
                 "edit",
@@ -2947,17 +3000,28 @@ def apply_smooth_paint_hotfix(
 
         _bump_revision(self._hotfix_tree_owner)
         if capture.erase:
-            label = "滑らかブラシで自動色へ戻しました"
+            label = self.i18n.text("paint.smooth_erased_status")
         elif is_airbrush:
-            label = f"色 {capture.selected_state + 1} をエアブラシで重ねました"
+            label = self.i18n.text(
+                "paint.smooth_airbrush_status",
+                state=capture.selected_state + 1,
+            )
         else:
             if capture.shape == "marker":
-                nib = "マーカー"
+                nib = self.i18n.text("paint.marker_nib")
             elif capture.shape == "pressure_taper":
-                nib = "筆圧ペン" if request.width_source == "pressure" else "先細りペン"
+                nib = self.i18n.text(
+                    "paint.pressure_nib"
+                    if request.width_source == "pressure"
+                    else "paint.tapered_nib"
+                )
             else:
-                nib = "滑らか"
-            label = f"色 {capture.selected_state + 1} で{nib}に塗りました"
+                nib = self.i18n.text("paint.smooth_nib")
+            label = self.i18n.text(
+                "paint.smooth_painted_status",
+                state=capture.selected_state + 1,
+                nib=nib,
+            )
         return _SmoothStrokeResult(
             request.feedback_token,
             current_tree_revision(self),
@@ -2975,13 +3039,19 @@ def apply_smooth_paint_hotfix(
         failed = [result for result in results if result.error]
         succeeded = len(results) - len(failed)
         if failed:
-            label = f"{succeeded}筆を確定、{len(failed)}筆を処理できませんでした"
+            label = self.i18n.text(
+                "paint.smooth_batch_failed_status",
+                succeeded=succeeded,
+                failed=len(failed),
+            )
         elif len(results) > 1:
-            label = f"{len(results)}筆を順番に確定しました"
+            label = self.i18n.text(
+                "paint.smooth_batch_done_status", count=len(results)
+            )
         elif results:
             label = results[0].label
         else:
-            label = "筆跡はありません"
+            label = self.i18n.text("paint.no_strokes_status")
 
         snapshot = self._worker_refresh_after_edit(label, changed)
         if isinstance(snapshot, dict):
@@ -3262,8 +3332,8 @@ def apply_smooth_paint_hotfix(
                 if error and not bool(getattr(self, "_close_requested", False)):
                     try:
                         paint_gui.messagebox.showerror(
-                            "面内グラデーションを生成できません",
-                            str(error),
+                            _ui_text(self, "paint.auto_shading_error_title"),
+                            _ui_dialog_detail(self, error),
                             parent=self.window,
                         )
                     except Exception:

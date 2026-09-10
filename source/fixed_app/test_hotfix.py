@@ -525,6 +525,31 @@ class HotfixTests(unittest.TestCase):
         self.assertIs(result, image)
         self.assertEqual(smooth_paint_hotfix._gpu_overlay_revision(image), 17)
 
+    def test_adaptive_composite_accepts_an_exact_named_view_matrix(self):
+        image = Image.new("RGB", (32, 32), (16, 16, 16))
+        tree = smooth_paint.PaintNode(0)
+        tree.split_four()
+        tree.children[0].make_leaf(1)
+        orbit_camera = mock.Mock(
+            side_effect=AssertionError("named view must not use orbit camera")
+        )
+        fake_renderer = SimpleNamespace(_orbit_camera_mvp=orbit_camera)
+
+        result = smooth_paint_hotfix.compose_target_image(
+            image,
+            tiny_level(),
+            {0: tree},
+            camera=None,
+            projection_mvp=np.eye(4, dtype=np.float32),
+            face_ids=np.zeros((32, 32), dtype=np.int32),
+            palette=PaletteSettings(),
+            renderer_module=fake_renderer,
+            mixer_module=mixer,
+        )
+
+        orbit_camera.assert_not_called()
+        self.assertFalse(np.array_equal(np.asarray(result), np.asarray(image)))
+
     def test_stroke_feedback_waits_for_exact_post_commit_render(self):
         old_image = Image.new("RGB", (2, 2), "black")
         fresh_image = Image.new("RGB", (2, 2), "white")
@@ -1107,6 +1132,29 @@ class HotfixTests(unittest.TestCase):
 
         np.testing.assert_array_equal(np.sort(selected), np.arange(16_000))
 
+    def test_large_sparse_fill_uses_explicit_shadow_connectivity_labels(self):
+        count = 25_000
+        neighbors = np.full((count, 2), -1, dtype=np.int32)
+        neighbors[1:, 0] = np.arange(count - 1, dtype=np.int32)
+        neighbors[:-1, 1] = np.arange(1, count, dtype=np.int32)
+        visible_labels = np.zeros(count, dtype=np.int8)
+        shadow_labels = np.full(count, -1, dtype=np.int8)
+        shadow_labels[:16_000] = 2
+        dummy = SimpleNamespace(
+            faces=np.zeros((count, 3), dtype=np.int32),
+            neighbors=neighbors,
+            allowed_face_mask=np.ones(count, dtype=bool),
+            effective_indices=lambda: visible_labels,
+        )
+
+        selected = hotfix._connected_fill_faces_fixed(
+            dummy,
+            0,
+            connectivity_face_labels=shadow_labels,
+        )
+
+        np.testing.assert_array_equal(np.sort(selected), np.arange(16_000))
+
     def test_3mf_contains_portable_and_orca_materials(self):
         prepared = tiny_closed_prepared()
         with tempfile.TemporaryDirectory() as folder:
@@ -1142,7 +1190,7 @@ class HotfixTests(unittest.TestCase):
             self.assertEqual(validation["project_settings_warning_count"], 0)
             self.assertEqual(validation["snapmaker_orca_import_mode"], "open_as_project")
             self.assertEqual(validation["snapmaker_orca_tested_version"], "2.3.5")
-            self.assertEqual(validation["hotfix_version"], "0.8beta")
+            self.assertEqual(validation["hotfix_version"], "0.9")
             self.assertEqual(validation["portable_material_state_counts"][0], 1)
             self.assertEqual(validation["portable_material_state_counts"][9], 1)
             self.assertNotIn(b'key="enable_support" value="1"', model_settings)
@@ -1589,7 +1637,7 @@ class HotfixTests(unittest.TestCase):
         self.assertEqual(
             settings["filament_settings_id"], ["Generic PLA"] * 4
         )
-        self.assertEqual(settings["tripo_spectrum_mapper_hotfix"], "0.8beta")
+        self.assertEqual(settings["tripo_spectrum_mapper_hotfix"], "0.9")
 
     def test_portable_project_settings_repairs_grouped_cycle_t17_conditions(self):
         source = json.dumps(

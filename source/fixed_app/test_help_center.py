@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import replace
 from pathlib import Path
 import sys
+import time
 import unittest
 
 
@@ -37,6 +38,18 @@ def _geometry_rect(geometry: str) -> tuple[int, int, int, int]:
     size, x_text, y_text = geometry.split("+", 2)
     width_text, height_text = size.split("x", 1)
     return int(x_text), int(y_text), int(width_text), int(height_text)
+
+
+def _pump(root, predicate, timeout: float = 2.0) -> bool:
+    """Let Tk deliver queued X11 events before checking transient state."""
+
+    deadline = time.perf_counter() + timeout
+    while time.perf_counter() < deadline:
+        root.update()
+        if predicate():
+            return True
+        time.sleep(0.003)
+    return False
 
 
 class HelpContentTests(unittest.TestCase):
@@ -186,9 +199,13 @@ class HelpCenterWindowTests(unittest.TestCase):
         center.show("export_3mf")
         self.root.update()
         assert center.window is not None
-        center.window.event_generate("<Escape>")
+        center.window.focus_force()
         self.root.update()
-        self.assertFalse(center.is_visible)
+        center.window.event_generate("<Escape>", when="tail")
+        self.assertTrue(
+            _pump(self.root, lambda: not center.is_visible),
+            "Escape was not delivered to the mapped help window",
+        )
         self.assertIs(center.window, original_window)
 
     def test_only_available_actions_for_current_topic_are_shown(self) -> None:

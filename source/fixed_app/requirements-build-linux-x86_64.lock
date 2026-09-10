@@ -1,0 +1,59 @@
+# ChromaMatter Linux x86_64 / Ubuntu 22.04+ / CPython 3.13.14 technical-build lock.
+#
+# This file is intentionally separate from requirements-build.lock, which is
+# the frozen Windows x64 release lock. Every hash below is the SHA-256
+# published by the official PyPI JSON API for the CPython 3.13 x86_64,
+# compatible abi3, or pure-Python wheel selected for this technical build.
+# Install this file with --require-hashes and --only-binary=:all:. Do not add
+# an sdist hash here.
+#
+# PyMeshLab currently supplies a manylinux_2_35_x86_64 wheel, which sets the
+# glibc floor for this lock and is compatible with Ubuntu 22.04 (glibc 2.35).
+# PyTetWild uses its official cp312-abi3 manylinux wheel; it is not the
+# controlled Windows rebuild and requires a separate Linux native/source audit
+# before any external binary distribution.
+
+altgraph==0.17.5 \
+    --hash=sha256:f3a22400bce1b0c701683820ac4f3b159cd301acab067c51c653e06961600597
+glcontext==3.0.0 \
+    --hash=sha256:89ad50d34aa62f03f6aaf6ae39fc27afd1b0eaefb0281aac51f686dc5672d473
+manifold3d==3.5.2 \
+    --hash=sha256:bbfd7a445aeeb24d1e17749e742c637db69fd15f6005ace3fb1a8bfa52beae45
+mapbox-earcut==2.0.0 \
+    --hash=sha256:40218d887798451932f3c335992834aa807c35cd497c6e0733470fdbd77f9521
+moderngl==5.12.0 \
+    --hash=sha256:071042dd4846e58cbe204cf49341b62cd209fdcb6d48018feb5a61c66707fcb2
+networkx==3.5 \
+    --hash=sha256:0030d386a9a06dee3565298b4a734b68589749a544acbb6c412dc9e2489ec6ec
+numpy==2.5.1 \
+    --hash=sha256:9726558e8db4a5bf7929a70ae50f63abda4daf0efe810e3bfbab95976f75fc1a
+packaging==26.2 \
+    --hash=sha256:5fc45236b9446107ff2415ce77c807cee2862cb6fac22b8a73826d0693b0980e
+pillow==11.2.1 \
+    --hash=sha256:ad275964d52e2243430472fc5d2c2334b4fc3ff9c16cb0a19254e25efa03a155
+pip==26.2.1 \
+    --hash=sha256:71138adf1f4ca900cdb7d289c21b7494329f2332b6d85f0e1c42108c0384ed3e
+pyinstaller==6.20.0 \
+    --hash=sha256:03696bb6350177c6bc23bcaf78e71a33c4a89b6754dd90d1be2f318e978c918b
+pyinstaller-hooks-contrib==2026.6 \
+    --hash=sha256:fd13b8ac126b35361175edacd41a0d97080b75dd5f4b594ecefefff969509dd3
+pymeshlab==2025.7.post1 \
+    --hash=sha256:99bb0f83ad20c61bdc63beb8d7f0c9ed3af6912a4770da170ce8d4bd02a7ecb0
+pytetwild==0.3.0 \
+    --hash=sha256:387730c725a2dde82be4ae1269f0827a39d57a2a9401bb64d15574d4161960c0
+resvg==0.2.0 \
+    --hash=sha256:41d194c1003f0a216a566543fae3fd155911ddfec68f30c986b5edf95ed13901
+rtree==1.4.1 \
+    --hash=sha256:12de4578f1b3381a93a655846900be4e3d5f4cd5e306b8b00aa77c1121dc7e8c
+scipy==1.18.0 \
+    --hash=sha256:a46f9273dbd0eb1cefba61c9b8648b4dfe3cbc14a080176f9a73e44b8336dc7f
+setuptools==83.0.0 \
+    --hash=sha256:29b23c360f22f414dc7336bb39178cc7bcbf6021ed2733cde173f09dba19abb3
+shapely==2.1.2 \
+    --hash=sha256:7ed1a5bbfb386ee8332713bf7508bc24e32d24b74fc9a7b9f8529a55db9f4ee6
+tetgen==0.8.3 \
+    --hash=sha256:32ea369a2397ca1d4a8edb151bf3404b96c82c57ffa4bec3232a9611fa118e21
+trimesh==5.0.0 \
+    --hash=sha256:51ec67d7f9f74b918f2a695da5fd511b9c084e96307648ae83f45b58f13f8009
+wheel==0.46.3 \
+    --hash=sha256:4b399d56c9d9338230118d705d9737a2a468ccca63d5e813e2a4fc7815d8bc4d

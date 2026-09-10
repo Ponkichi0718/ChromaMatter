@@ -3,7 +3,7 @@
   "catalog_status": "engineering-input-not-legal-approval",
   "application": {
     "name": "ChromaMatter",
-    "version": "0.8beta",
+    "version": "0.9",
     "license_declared": "GPL-3.0-or-later",
     "source_url": "https://github.com/Ponkichi0718/ChromaMatter"
   },

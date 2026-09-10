@@ -56,7 +56,7 @@ EXTERNAL_ARCHIVE_PROVENANCE_KINDS = {
 APPLICATION_REQUIREMENTS_LOCK_PATH = "source/fixed_app/requirements-build.lock"
 COMPONENT_MANIFEST_PATH = "tooling/corresponding_source_components.json"
 EXTERNAL_ARCHIVE_LOCK_PATH = "tooling/meshlab_windows_external_archives.lock.json"
-PYTETWILD_BUILD_RECIPE_PATH = "tooling/BUILD_PYTETWILD_WINDOWS.ps1"
+PYTETWILD_BUILD_RECIPE_PATH = "tooling/recipes/BUILD_PYTETWILD_WINDOWS_20260823.ps1"
 PYTETWILD_BUILD_REQUIREMENTS_PATH = "tooling/requirements-pytetwild-build.lock"
 PYTETWILD_REBUILD_TEMPLATE_PATH = "tooling/pytetwild_rebuild_lock.template.json"
 PYTETWILD_SOURCE_PATCH_PATH = (
@@ -2803,6 +2803,30 @@ def _verify_pytetwild_audit_logs(
     return evidence, files
 
 
+def _pytetwild_layout_input_contract(recipe_sha256: str) -> dict:
+    # Select from the already byte-bound recipe, never from an attestation's
+    # self-declared layout. The immutable approved wheel predates the later
+    # developer recipe and was built with the original 714-file layout.
+    if recipe_sha256 == (
+        "d00cc6cdbc61abeaa040dfc81a3dfe7086ac0027685d798ac70f46e14e4360c8"
+    ):
+        return {
+            "visual_studio_layout_sha256": "9707247b5e1c5ffdbd2ec97889db8e16ad97361840427a846e21f697c28ed494",
+            "visual_studio_installer_opc_sha256": "e2c0a268ec9b678169ed5ff9c0162ea135d8868c27e7ac67a754b09d16841b71",
+            "visual_studio_layout_file_count": 714,
+            "visual_studio_layout_total_bytes": 2651377645,
+            "visual_studio_layout_tree_sha256": "2b6a89bb69aa7de013fc055828258a3a91c7c333f0c6be831a750990922fed3a",
+        }
+    return {
+        "visual_studio_layout_sha256": "f8da7bbaed18d9e26dbf5eeee0e0fad01758656727c5afa959844c623c23943a",
+        "visual_studio_installer_opc_sha256": "854ca62cdd88af1f9c57ce176fde8db1ba62c97b64325038896cc2fd2cbd135e",
+        "visual_studio_installer_root_certificate_sha256": "df545bf919a2439c36983b54cdfc903dfa4f37d3996d8d84b4c31eec6f3c163e",
+        "visual_studio_layout_file_count": 677,
+        "visual_studio_layout_total_bytes": 2651027432,
+        "visual_studio_layout_tree_sha256": "c3e3ee7cb01e2a2e73be7e9fba4b7c298ef9687bbaed302965e3270c38d37bba",
+    }
+
+
 def _verify_pytetwild_attestation_binding(
     path: Path,
     bound_evidence: dict[str, dict],
@@ -2909,11 +2933,7 @@ def _verify_pytetwild_attestation_binding(
         "visual_studio_bootstrapper_sha256": "236367b68ba9a51708263ab10a1c85546cc4a8eca78b365168811d19c4fb2f29",
         "visual_studio_catalog_sha256": "3891c3018a07338b3880cbb28088bb22ef7762eb9206523655b2e3972b9d527e",
         "visual_studio_channel_manifest_sha256": "4c81e902fb7fe2acea779b828e6dc548fe0bbb693df50eda0224263c16686bdd",
-        "visual_studio_layout_sha256": "9707247b5e1c5ffdbd2ec97889db8e16ad97361840427a846e21f697c28ed494",
-        "visual_studio_installer_opc_sha256": "e2c0a268ec9b678169ed5ff9c0162ea135d8868c27e7ac67a754b09d16841b71",
-        "visual_studio_layout_file_count": 714,
-        "visual_studio_layout_total_bytes": 2651377645,
-        "visual_studio_layout_tree_sha256": "2b6a89bb69aa7de013fc055828258a3a91c7c333f0c6be831a750990922fed3a",
+        **_pytetwild_layout_input_contract(bound_evidence["build_recipe"]["sha256"]),
         "microsoft_visual_studio_layout_verifier_exit_code": 0,
     }
     _require_exact_keys(

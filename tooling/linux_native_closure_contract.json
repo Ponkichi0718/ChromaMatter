@@ -1,0 +1,104 @@
+{
+  "schema": "chromamatter.linux-native-closure-contract.v1",
+  "scope": "linux-x86_64-technical-alpha",
+  "contract_status": "blocked-unverified",
+  "expected_owner_count": 16,
+  "owners": {
+    "native-runtime:bundled-linux-system-library-closure": {
+      "declared_status": "blocked-pending-per-file-package-version-source-and-license-map",
+      "verification_status": "blocked-unverified",
+      "required_evidence": ["native-file-identity", "corresponding-source", "license-assets", "controlled-build", "runtime-dependency-map", "relink-validation", "functional-validation"],
+      "proof": null
+    },
+    "native-runtime:cpython-3.13.14-linux-runtime": {
+      "declared_status": "source-identified-rebuild-not-yet-verified",
+      "verification_status": "blocked-unverified",
+      "required_evidence": ["native-file-identity", "corresponding-source", "license-assets", "controlled-build", "runtime-dependency-map", "relink-validation", "functional-validation"],
+      "proof": null
+    },
+    "native-runtime:tcl-tk-9.0.4-linux-runtime": {
+      "declared_status": "blocked-pending-exact-tcl-and-tk-source-identities",
+      "verification_status": "blocked-unverified",
+      "required_evidence": ["native-file-identity", "corresponding-source", "license-assets", "controlled-build", "runtime-dependency-map", "relink-validation", "functional-validation"],
+      "proof": null
+    },
+    "python-distribution:glcontext": {
+      "declared_status": "source-identified-rebuild-not-yet-verified",
+      "verification_status": "blocked-unverified",
+      "required_evidence": ["native-file-identity", "corresponding-source", "license-assets", "controlled-build", "runtime-dependency-map", "relink-validation", "functional-validation"],
+      "proof": null
+    },
+    "python-distribution:manifold3d": {
+      "declared_status": "source-identified-rebuild-not-yet-verified",
+      "verification_status": "blocked-unverified",
+      "required_evidence": ["native-file-identity", "corresponding-source", "license-assets", "controlled-build", "runtime-dependency-map", "relink-validation", "functional-validation"],
+      "proof": null
+    },
+    "python-distribution:mapbox-earcut": {
+      "declared_status": "source-identified-rebuild-not-yet-verified",
+      "verification_status": "blocked-unverified",
+      "required_evidence": ["native-file-identity", "corresponding-source", "license-assets", "controlled-build", "runtime-dependency-map", "relink-validation", "functional-validation"],
+      "proof": null
+    },
+    "python-distribution:moderngl": {
+      "declared_status": "source-identified-rebuild-not-yet-verified",
+      "verification_status": "blocked-unverified",
+      "required_evidence": ["native-file-identity", "corresponding-source", "license-assets", "controlled-build", "runtime-dependency-map", "relink-validation", "functional-validation"],
+      "proof": null
+    },
+    "python-distribution:numpy": {
+      "declared_status": "blocked-pending-vendored-library-source-and-relink-proof",
+      "verification_status": "blocked-unverified",
+      "required_evidence": ["native-file-identity", "corresponding-source", "license-assets", "controlled-build", "runtime-dependency-map", "relink-validation", "functional-validation"],
+      "proof": null
+    },
+    "python-distribution:pillow": {
+      "declared_status": "blocked-pending-vendored-library-source-and-relink-proof",
+      "verification_status": "blocked-unverified",
+      "required_evidence": ["native-file-identity", "corresponding-source", "license-assets", "controlled-build", "runtime-dependency-map", "relink-validation", "functional-validation"],
+      "proof": null
+    },
+    "python-distribution:pyinstaller": {
+      "declared_status": "source-identified-rebuild-not-yet-verified",
+      "verification_status": "blocked-unverified",
+      "required_evidence": ["native-file-identity", "corresponding-source", "license-assets", "controlled-build", "runtime-dependency-map", "relink-validation", "functional-validation"],
+      "proof": null
+    },
+    "python-distribution:pymeshlab": {
+      "declared_status": "blocked-pending-meshlab-qt-system-library-source-and-relink-proof",
+      "verification_status": "blocked-unverified",
+      "required_evidence": ["native-file-identity", "corresponding-source", "license-assets", "controlled-build", "runtime-dependency-map", "relink-validation", "functional-validation"],
+      "proof": null
+    },
+    "python-distribution:pytetwild": {
+      "declared_status": "blocked-pending-ftetwild-gmp-libgomp-source-and-relink-proof",
+      "verification_status": "blocked-unverified",
+      "required_evidence": ["native-file-identity", "corresponding-source", "license-assets", "controlled-build", "runtime-dependency-map", "relink-validation", "functional-validation"],
+      "proof": null
+    },
+    "python-distribution:rtree": {
+      "declared_status": "blocked-pending-libspatialindex-source-and-relink-proof",
+      "verification_status": "blocked-unverified",
+      "required_evidence": ["native-file-identity", "corresponding-source", "license-assets", "controlled-build", "runtime-dependency-map", "relink-validation", "functional-validation"],
+      "proof": null
+    },
+    "python-distribution:scipy": {
+      "declared_status": "blocked-pending-vendored-library-source-and-relink-proof",
+      "verification_status": "blocked-unverified",
+      "required_evidence": ["native-file-identity", "corresponding-source", "license-assets", "controlled-build", "runtime-dependency-map", "relink-validation", "functional-validation"],
+      "proof": null
+    },
+    "python-distribution:shapely": {
+      "declared_status": "blocked-pending-geos-source-and-relink-proof",
+      "verification_status": "blocked-unverified",
+      "required_evidence": ["native-file-identity", "corresponding-source", "license-assets", "controlled-build", "runtime-dependency-map", "relink-validation", "functional-validation"],
+      "proof": null
+    },
+    "python-distribution:tetgen": {
+      "declared_status": "blocked-pending-tetgen-core-source-and-rebuild-proof",
+      "verification_status": "blocked-unverified",
+      "required_evidence": ["native-file-identity", "corresponding-source", "license-assets", "controlled-build", "runtime-dependency-map", "relink-validation", "functional-validation"],
+      "proof": null
+    }
+  }
+}

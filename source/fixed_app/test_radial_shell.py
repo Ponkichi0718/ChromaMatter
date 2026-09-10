@@ -80,6 +80,17 @@ class RadialShellTests(unittest.TestCase):
         )
         self.assertEqual([part.extruder for part in result.parts], [1, 3])
         self.assertTrue(all(part.solid_infill for part in result.parts))
+        self.assertTrue(result.metadata["closed_physical_volumes"])
+        self.assertNotIn("solid_infill_percent", result.metadata)
+        self.assertTrue(
+            all(part.metadata["closed_physical_volume"] for part in result.parts)
+        )
+        self.assertTrue(
+            all(
+                "sparse_infill_density_percent" not in part.metadata
+                for part in result.parts
+            )
+        )
         self.assertEqual(result.skin_thickness_mm, 0.15)
         self.assertAlmostEqual(
             result.source_volume_mm3, result.output_volume_mm3, places=9

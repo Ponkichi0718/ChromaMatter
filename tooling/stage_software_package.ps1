@@ -1,10 +1,11 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
     [Alias("BuildRoot")]
     [string]$BuiltAppRoot,
     [string]$Destination = "",
     [string]$ArchivePath = "",
+    [switch]$BundleCorrespondingSource,
     [string]$CorrespondingSourceUrl = "",
     [string]$CorrespondingSourceArchivePath = "",
     [string]$CorrespondingSourceManifestPath = "",
@@ -33,7 +34,7 @@ if (-not (Test-Path -LiteralPath $builtRoot -PathType Container)) {
 if (-not $Destination) {
     $Destination = Join-Path `
         $repoRoot `
-        "artifacts\ChromaMatter-0.8beta-r32.2-win64"
+        "artifacts\ChromaMatter-0.9-win64"
 }
 elseif (-not [System.IO.Path]::IsPathRooted($Destination)) {
     $Destination = Join-Path $repoRoot $Destination
@@ -290,7 +291,8 @@ if ($demoDataEnabled) {
         -Value $demoDataManifest `
         -Expected @(
             "schema_version", "document_id", "release_status",
-            "expected_documents", "payloads", "publication_gate"
+            "payload_profile", "expected_documents", "payloads",
+            "publication_gate"
     ) `
         -Context "DemoData manifest"
     if (
@@ -298,10 +300,13 @@ if ($demoDataEnabled) {
         $demoDataManifest.schema_version.GetType().FullName -notin @(
             "System.Int32", "System.Int64"
         ) -or
-        [long]$demoDataManifest.schema_version -ne 2 -or
+        [long]$demoDataManifest.schema_version -ne 3 -or
         $demoDataManifest.document_id -isnot [string] -or
         $demoDataManifest.document_id -cne
-            "chromamatter.demo-data.r32.2"
+            "chromamatter.demo-data.source-only.v1" -or
+        $demoDataManifest.payload_profile -isnot [string] -or
+        $demoDataManifest.payload_profile -cne
+            "source-model-and-reference-only"
     ) {
         throw "DemoData manifest has an unsupported identity or schema version."
     }
@@ -323,8 +328,8 @@ if ($demoDataEnabled) {
         -Expected @(
             "status", "raw_glb_redistribution_confirmed",
             "reference_image_redistribution_confirmed",
-            "derived_3mf_redistribution_confirmed",
-            "hi3d_plan_terms_confirmed"
+            "hi3d_plan_terms_confirmed",
+            "derived_3mf_payloads_included"
         ) `
         -Context "DemoData publication gate"
     if (
@@ -337,10 +342,10 @@ if ($demoDataEnabled) {
         $publicationGate.raw_glb_redistribution_confirmed -ne $true -or
         $publicationGate.reference_image_redistribution_confirmed -isnot [bool] -or
         $publicationGate.reference_image_redistribution_confirmed -ne $true -or
-        $publicationGate.derived_3mf_redistribution_confirmed -isnot [bool] -or
-        $publicationGate.derived_3mf_redistribution_confirmed -ne $true -or
         $publicationGate.hi3d_plan_terms_confirmed -isnot [bool] -or
-        $publicationGate.hi3d_plan_terms_confirmed -ne $true
+        $publicationGate.hi3d_plan_terms_confirmed -ne $true -or
+        $publicationGate.derived_3mf_payloads_included -isnot [bool] -or
+        $publicationGate.derived_3mf_payloads_included -ne $false
     ) {
         throw (
             "DemoData publication is not approved by the canonical rights " +
@@ -348,16 +353,6 @@ if ($demoDataEnabled) {
         )
     }
 
-    # Windows PowerShell 5.1 can decode UTF-8-without-BOM script literals via
-    # the active ANSI code page.  Build the one Japanese payload basename from
-    # code points so the manifest identity remains stable on every workstation.
-    $individualPartsManifestName = (
-        [string][char]0x30D1 +
-        [string][char]0x30FC +
-        [string][char]0x30C4 +
-        [string][char]0x5225 +
-        "3MF_manifest.json"
-    )
     $demoDataPayloadSpecs = @(
         [pscustomobject]@{
             Path = "Original AI model Color.glb"
@@ -368,73 +363,20 @@ if ($demoDataEnabled) {
             Path = "Reference.jpg"
             MediaType = "image/jpeg"
             Role = "reference-image"
-        },
-        [pscustomobject]@{
-            Path = "3MF/Original AI model Color_FullSpectrum.3mf"
-            MediaType = "model/3mf"
-            Role = "combined-full-spectrum-3mf-demo"
-        },
-        [pscustomobject]@{
-            Path = (
-                "3MF/Original AI model Color_FullSpectrum_parts_2/" +
-                "01_RightArm_FullSpectrum.3mf"
-            )
-            MediaType = "model/3mf"
-            Role = "individual-part-3mf-demo"
-        },
-        [pscustomobject]@{
-            Path = (
-                "3MF/Original AI model Color_FullSpectrum_parts_2/" +
-                "02_LeftLeg_FullSpectrum.3mf"
-            )
-            MediaType = "model/3mf"
-            Role = "individual-part-3mf-demo"
-        },
-        [pscustomobject]@{
-            Path = (
-                "3MF/Original AI model Color_FullSpectrum_parts_2/" +
-                "03_Head_FullSpectrum.3mf"
-            )
-            MediaType = "model/3mf"
-            Role = "individual-part-3mf-demo"
-        },
-        [pscustomobject]@{
-            Path = (
-                "3MF/Original AI model Color_FullSpectrum_parts_2/" +
-                "04_LeftArm_FullSpectrum.3mf"
-            )
-            MediaType = "model/3mf"
-            Role = "individual-part-3mf-demo"
-        },
-        [pscustomobject]@{
-            Path = (
-                "3MF/Original AI model Color_FullSpectrum_parts_2/" +
-                "05_Torso_FullSpectrum.3mf"
-            )
-            MediaType = "model/3mf"
-            Role = "individual-part-3mf-demo"
-        },
-        [pscustomobject]@{
-            Path = (
-                "3MF/Original AI model Color_FullSpectrum_parts_2/" +
-                "06_RightLeg_FullSpectrum.3mf"
-            )
-            MediaType = "model/3mf"
-            Role = "individual-part-3mf-demo"
-        },
-        [pscustomobject]@{
-            Path = (
-                "3MF/Original AI model Color_FullSpectrum_parts_2/" +
-                $individualPartsManifestName
-            )
-            MediaType = "application/json"
-            Role = "individual-part-3mf-manifest"
         }
     )
     if ($demoDataManifest.payloads -isnot [System.Array]) {
         throw "DemoData manifest payloads must be a JSON array."
     }
     $manifestPayloads = @($demoDataManifest.payloads)
+    if (@(
+        $manifestPayloads | Where-Object {
+            $_.path -is [string] -and
+            [System.IO.Path]::GetExtension([string]$_.path) -ieq ".3mf"
+        }
+    ).Count -ne 0) {
+        throw "DemoData source-only profile forbids every 3MF payload."
+    }
     if ($manifestPayloads.Count -ne $demoDataPayloadSpecs.Count) {
         throw (
             "DemoData manifest must declare exactly " +
@@ -1095,14 +1037,14 @@ Assert-ExactJsonProperties `
         "historical_audited_package", "controlled_rebuild"
     ) `
     -Context "PyTetWild static-closure build binding"
-if ([string]$pytetwildBuildBinding.recipe_path -cne "tooling/BUILD_PYTETWILD_WINDOWS.ps1") {
+if ([string]$pytetwildBuildBinding.recipe_path -cne "tooling/recipes/BUILD_PYTETWILD_WINDOWS_20260823.ps1") {
     throw "PyTetWild controlled build recipe path changed."
 }
 Assert-ExactStringSet `
     -Actual @($pytetwildBuildBinding.required_cmake_definitions) `
     -Expected $pytetwildExpectedCmakeDefinitions `
     -Context "PyTetWild controlled CMake definitions"
-$pytetwildRecipePath = Join-Path $repoRoot "tooling\BUILD_PYTETWILD_WINDOWS.ps1"
+$pytetwildRecipePath = Join-Path $repoRoot "tooling\recipes\BUILD_PYTETWILD_WINDOWS_20260823.ps1"
 if (-not (Test-Path -LiteralPath $pytetwildRecipePath -PathType Leaf)) {
     throw "PyTetWild controlled build recipe is missing."
 }
@@ -1854,22 +1796,30 @@ function Assert-SbomComponentMatchesMap {
     }
 }
 
-if (Test-IncompleteReleaseValue -Value $CorrespondingSourceUrl -ReleaseUrl) {
-    throw "CorrespondingSourceUrl is required and must not contain a placeholder."
+$correspondingSourceAssetName = "ChromaMatter-0.9-complete-corresponding-source.zip"
+if ($BundleCorrespondingSource) {
+    if (-not [string]::IsNullOrWhiteSpace($CorrespondingSourceUrl)) {
+        throw "Bundled corresponding source must not also declare a network source URL."
+    }
 }
-$sourceUri = $null
-if (
-    -not [Uri]::TryCreate($CorrespondingSourceUrl, [UriKind]::Absolute, [ref]$sourceUri) -or
-    $sourceUri.Scheme -ne "https" -or
-    $sourceUri.Host -match "(?i)^(?:example\.(?:com|org|net)|localhost)$"
-) {
-    throw "CorrespondingSourceUrl must be a final public HTTPS release URL."
-}
-$correspondingSourceAssetName = [Uri]::UnescapeDataString(
-    [System.IO.Path]::GetFileName($sourceUri.AbsolutePath)
-)
-if ([string]::IsNullOrWhiteSpace($correspondingSourceAssetName)) {
-    throw "CorrespondingSourceUrl must identify one release asset."
+else {
+    if (Test-IncompleteReleaseValue -Value $CorrespondingSourceUrl -ReleaseUrl) {
+        throw "CorrespondingSourceUrl is required and must not contain a placeholder."
+    }
+    $sourceUri = $null
+    if (
+        -not [Uri]::TryCreate($CorrespondingSourceUrl, [UriKind]::Absolute, [ref]$sourceUri) -or
+        $sourceUri.Scheme -ne "https" -or
+        $sourceUri.Host -match "(?i)^(?:example\.(?:com|org|net)|localhost)$"
+    ) {
+        throw "CorrespondingSourceUrl must be a final public HTTPS release URL."
+    }
+    $correspondingSourceAssetName = [Uri]::UnescapeDataString(
+        [System.IO.Path]::GetFileName($sourceUri.AbsolutePath)
+    )
+    if ([string]::IsNullOrWhiteSpace($correspondingSourceAssetName)) {
+        throw "CorrespondingSourceUrl must identify one release asset."
+    }
 }
 if (Test-IncompleteReleaseValue -Value $CorrespondingSourceArchivePath) {
     throw "CorrespondingSourceArchivePath is required for the final complete source bundle."
@@ -1889,7 +1839,7 @@ if (-not (Test-Path -LiteralPath $correspondingSourceArchiveFullPath -PathType L
 }
 $correspondingSourceArchiveLeaf = Split-Path -Leaf $correspondingSourceArchiveFullPath
 if (-not $correspondingSourceArchiveLeaf.Equals(
-    "ChromaMatter-0.8beta-r32.2-complete-corresponding-source.zip",
+    "ChromaMatter-0.9-complete-corresponding-source.zip",
     [System.StringComparison]::Ordinal
 )) {
     throw (
@@ -2077,7 +2027,7 @@ if (-not $generatedInventory) {
     }
     if (
         [string]$componentMap.package.name -ne "ChromaMatter" -or
-        [string]$componentMap.package.version -ne "0.8beta-r32.2"
+        [string]$componentMap.package.version -ne "0.9"
     ) {
         throw "Generated binary component inventory has the wrong package identity."
     }
@@ -2656,7 +2606,7 @@ if (
     $null -eq $metadataComponent -or
     [string]$metadataComponent.'bom-ref' -ne "component:chromamatter" -or
     [string]$metadataComponent.name -ne "ChromaMatter" -or
-    [string]$metadataComponent.version -ne "0.8beta-r32.2"
+    [string]$metadataComponent.version -ne "0.9"
 ) {
     throw "CycloneDX SBOM metadata has the wrong application identity."
 }
@@ -3740,7 +3690,83 @@ try {
     Copy-SoftwareFile -Source $sbomFullPath -Destination (
         Join-Path $stagingRoot "licenses\SBOM.cdx.json"
     )
+    if ($BundleCorrespondingSource) {
+        $bundledSourceRelativePath = (
+            "corresponding-source/" + $correspondingSourceArchiveLeaf
+        )
+        $bundledSourcePath = Join-Path $stagingRoot (
+            $bundledSourceRelativePath.Replace("/", "\")
+        )
+        Copy-SoftwareFile `
+            -Source $correspondingSourceArchiveFullPath `
+            -Destination $bundledSourcePath
+        if ((
+            Get-FileHash -LiteralPath $bundledSourcePath -Algorithm SHA256
+        ).Hash.ToUpperInvariant() -cne $actualCorrespondingSourceArchiveSha256) {
+            throw "Bundled corresponding-source bytes changed after source validation."
+        }
+    }
     foreach ($language in @("EN", "JA")) {
+        if ($BundleCorrespondingSource) {
+            # A self-contained delivery does not claim that an unhosted URL is
+            # public.  The exact, verified complete source is physically present
+            # in the same ZIP and covered by the software manifest/ZIP checks.
+            $rendered = if ($language -ceq "EN") {
+@"
+Corresponding source for $destinationLeaf
+=======================================
+
+Binary archive: $archiveLeaf
+Complete corresponding source is INCLUDED in this distribution.
+From the application folder, open: $bundledSourceRelativePath
+Source archive SHA-256: $actualCorrespondingSourceArchiveSha256
+ChromaMatter source commit: $CorrespondingSourceProjectCommit
+
+This archive contains the source counterpart for this exact binary release:
+the ChromaMatter application source, build and installation scripts, pinned
+dependency information, modifications, and the source materials for the
+GPL-, AGPL-, LGPL-, and MPL-covered components shipped in the binary.
+
+See licenses/BINARY_COMPONENT_MAP.json and licenses/SBOM.cdx.json for the
+binary inventory, COMPONENT_SOURCES.json inside the source archive for source
+pins, and licenses/BUILD_ENVIRONMENT_EN.md and licenses/RELINKING_EN.md for
+rebuild and LGPL library replacement instructions. Extract the source archive
+to a separate folder if you want to inspect or rebuild it; this is not needed
+to run ChromaMatter.
+
+Keep the complete corresponding-source archive with the binary when sharing
+this distribution. This is direct accompanying source delivery, not a claim
+that source is hosted at a separate URL or a future written offer.
+"@
+            }
+            else {
+@"
+$destinationLeaf の完全対応ソース
+=======================================
+
+実行版アーカイブ: $archiveLeaf
+この配布データには完全対応ソースを同梱しています。
+アプリのフォルダから開く場所: $bundledSourceRelativePath
+ソースアーカイブ SHA-256: $actualCorrespondingSourceArchiveSha256
+ChromaMatter ソースコミット: $CorrespondingSourceProjectCommit
+
+このアーカイブは今回の実行版に対応し、ChromaMatter 本体のソース、ビルド・
+インストール手順、固定依存関係、変更内容、および同梱する GPL・AGPL・LGPL・
+MPL 対象コンポーネントの対応ソースを含みます。
+
+構成は licenses/BINARY_COMPONENT_MAP.json と licenses/SBOM.cdx.json、
+ソースの固定情報はソースアーカイブ内の COMPONENT_SOURCES.json、再ビルドと
+LGPL ライブラリの差し替えは licenses/BUILD_ENVIRONMENT_JA.md と
+licenses/RELINKING_JA.md を参照してください。ソースを確認・再ビルドするときは
+別フォルダに展開してください。通常のアプリ実行では展開する必要はありません。
+
+再配布する場合も、この完全対応ソースアーカイブを実行版と一緒に渡してください。
+これはソースそのものを同梱する配布であり、未公開の URL での提供や将来の
+書面による提供を約束するものではありません。
+"@
+            }
+        }
+        else {
         $templatePath = Join-Path $repoRoot "licenses\SOURCE_OFFER_TEMPLATE_$language.txt"
         $rendered = [System.IO.File]::ReadAllText($templatePath).
             Replace("@@RELEASE_ID@@", $destinationLeaf).
@@ -3758,6 +3784,7 @@ try {
                 "@@CORRESPONDING_SOURCE_PROJECT_COMMIT@@",
                 $CorrespondingSourceProjectCommit
             )
+        }
         if (Test-IncompleteReleaseValue -Value $rendered) {
             throw "Rendered source offer still contains a placeholder: $language"
         }

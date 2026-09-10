@@ -507,10 +507,24 @@ class PortableProjectBundleTests(unittest.TestCase):
         project_bundle._enforce_snapshot_workload_limits(
             project_bundle.PreparedGeometrySnapshotWorkload(
                 asset_vertex_count=3_000_000,
-                asset_face_count=5_000_000,
+                asset_face_count=5_250_000,
                 final_face_count=450_000,
             ),
             self.root / "prepared_geometry.npz",
+        )
+
+        with self.assertRaises(ProjectBundleError) as raised:
+            project_bundle._enforce_snapshot_workload_limits(
+                project_bundle.PreparedGeometrySnapshotWorkload(
+                    asset_vertex_count=3_000_000,
+                    asset_face_count=5_250_001,
+                    final_face_count=450_000,
+                ),
+                self.root / "prepared_geometry.npz",
+            )
+        self.assertEqual(raised.exception.code, "snapshot_workload_too_large")
+        self.assertEqual(
+            raised.exception.details["maximum_asset_faces"], 5_250_000
         )
 
     def test_decoder_uses_frozen_copy_if_original_changes_after_copy(self) -> None:

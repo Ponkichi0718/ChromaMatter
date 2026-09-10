@@ -219,7 +219,10 @@ SOURCE_TEST_STATUS="skipped"
 if ((RUN_SOURCE_TESTS)); then
     "$PYTHON_BIN" -B - "$SCRIPT_DIR" <<'PY'
 from pathlib import Path
+from datetime import datetime, timezone
+import faulthandler
 import sys
+import time
 import unittest
 
 repository = Path(sys.argv[1]).resolve()
@@ -251,8 +254,35 @@ for path in sorted(fixed_app.rglob("test_*.py")):
 if not module_names:
     raise SystemExit("No macOS source tests were selected")
 
-suite = unittest.defaultTestLoader.loadTestsFromNames(module_names)
-result = unittest.TextTestRunner(verbosity=2).run(suite)
+class DiagnosticTextTestResult(unittest.TextTestResult):
+    def _log_phase(self, phase, test):
+        timestamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        self.stream.write(
+            f"\n[macos-source-test] {phase} {timestamp} "
+            f"monotonic={time.monotonic():.3f} {test.id()}\n"
+        )
+        self.stream.flush()
+
+    def startTest(self, test):
+        self._log_phase("START", test)
+        super().startTest(test)
+
+    def stopTest(self, test):
+        super().stopTest(test)
+        self._log_phase("STOP", test)
+
+
+# A periodic all-thread dump identifies native/Tk waits without interrupting
+# a test, changing its result, or adding a platform-specific skip.
+faulthandler.enable(file=sys.stderr, all_threads=True)
+try:
+    faulthandler.dump_traceback_later(60, repeat=True, file=sys.stderr)
+    suite = unittest.defaultTestLoader.loadTestsFromNames(module_names)
+    result = unittest.TextTestRunner(
+        verbosity=2, resultclass=DiagnosticTextTestResult
+    ).run(suite)
+finally:
+    faulthandler.cancel_dump_traceback_later()
 print(
     f"macOS source suite: {result.testsRun} tests; "
     f"failures={len(result.failures)} errors={len(result.errors)} "
@@ -357,7 +387,7 @@ fi
 cat >"$VALIDATION_PATH/MACOS_ALPHA_BUILD_REPORT.txt" <<EOF
 ChromaMatter Apple Silicon macOS 15+ Developer ID unsigned, unnotarized alpha
 Bundle signature: ad-hoc (not Developer ID)
-Display version: 0.8beta
+Display version: 0.9
 Python: $PYTHON_VERSION arm64
 macOS: $(sw_vers -productVersion)
 Source tests: $SOURCE_TEST_STATUS

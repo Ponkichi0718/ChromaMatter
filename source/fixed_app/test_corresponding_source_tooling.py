@@ -266,6 +266,26 @@ def _release_provenance(asset_name: str, asset_id: int) -> dict[str, object]:
 
 
 class CorrespondingSourceManifestTests(unittest.TestCase):
+    def test_frozen_recipe_selects_its_exact_historical_vs_layout(self) -> None:
+        frozen = stage_tool._pytetwild_layout_input_contract(
+            "d00cc6cdbc61abeaa040dfc81a3dfe7086ac0027685d798ac70f46e14e4360c8"
+        )
+        self.assertEqual(frozen["visual_studio_layout_file_count"], 714)
+        self.assertEqual(frozen["visual_studio_layout_total_bytes"], 2651377645)
+        self.assertEqual(
+            frozen["visual_studio_layout_tree_sha256"],
+            "2b6a89bb69aa7de013fc055828258a3a91c7c333f0c6be831a750990922fed3a",
+        )
+        self.assertNotIn("visual_studio_installer_root_certificate_sha256", frozen)
+        developer = stage_tool._pytetwild_layout_input_contract("0" * 64)
+        self.assertEqual(developer["visual_studio_layout_file_count"], 677)
+        self.assertIn("visual_studio_installer_root_certificate_sha256", developer)
+        self.assertNotEqual(frozen, developer)
+        self.assertEqual(
+            stage_tool.PYTETWILD_BUILD_RECIPE_PATH,
+            "tooling/recipes/BUILD_PYTETWILD_WINDOWS_20260823.ps1",
+        )
+
     def test_release_manifest_pins_exact_audited_sources(self) -> None:
         manifest = json.loads(COMPONENT_MANIFEST.read_text(encoding="utf-8"))
         components = stage_tool.validate_component_manifest(manifest)
@@ -1804,15 +1824,18 @@ class CorrespondingSourceManifestTests(unittest.TestCase):
                         "4c81e902fb7fe2acea779b828e6dc548fe0bbb693df50eda0224263c16686bdd"
                     ),
                     "visual_studio_layout_sha256": (
-                        "9707247b5e1c5ffdbd2ec97889db8e16ad97361840427a846e21f697c28ed494"
+                        "f8da7bbaed18d9e26dbf5eeee0e0fad01758656727c5afa959844c623c23943a"
                     ),
                     "visual_studio_installer_opc_sha256": (
-                        "e2c0a268ec9b678169ed5ff9c0162ea135d8868c27e7ac67a754b09d16841b71"
+                        "854ca62cdd88af1f9c57ce176fde8db1ba62c97b64325038896cc2fd2cbd135e"
                     ),
-                    "visual_studio_layout_file_count": 714,
-                    "visual_studio_layout_total_bytes": 2651377645,
+                    "visual_studio_installer_root_certificate_sha256": (
+                        "df545bf919a2439c36983b54cdfc903dfa4f37d3996d8d84b4c31eec6f3c163e"
+                    ),
+                    "visual_studio_layout_file_count": 677,
+                    "visual_studio_layout_total_bytes": 2651027432,
                     "visual_studio_layout_tree_sha256": (
-                        "2b6a89bb69aa7de013fc055828258a3a91c7c333f0c6be831a750990922fed3a"
+                        "c3e3ee7cb01e2a2e73be7e9fba4b7c298ef9687bbaed302965e3270c38d37bba"
                     ),
                     "microsoft_visual_studio_layout_verifier_exit_code": 0,
                     "source_archives": {

@@ -314,9 +314,16 @@ class BlackFreeGradientTests(unittest.TestCase):
                 prepared,
                 colors,
                 10.0,
-                ToneSettings(smoothing=False),
+                ToneSettings(
+                    smoothing=False,
+                    illustration_contour_policy="outer_crease",
+                ),
                 global_palette,
                 validation,
+            )
+            self.assertEqual(
+                report["tone"]["illustration_contour_policy"],
+                "outer_crease",
             )
             self.assertTrue(report["color"]["black_free_gradient_enabled"])
             self.assertIsNone(report["color"]["black_free_black_slot"])

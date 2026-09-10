@@ -5,6 +5,8 @@ import tkinter as tk
 from tkinter import ttk
 from typing import Protocol
 
+from .ui_fonts import ui_font
+
 
 class TextTranslator(Protocol):
     """Small translation surface required by :class:`LegalNoticeWindow`."""
@@ -182,7 +184,7 @@ class LegalNoticeWindow:
         self.heading_label = ttk.Label(
             body,
             text="ChromaMatter",
-            font=("Yu Gothic UI", 17, "bold"),
+            font=ui_font(17, "bold"),
             anchor="w",
         )
         self.heading_label.grid(row=0, column=0, sticky="ew", pady=(0, 4))
@@ -194,7 +196,7 @@ class LegalNoticeWindow:
         self.warranty_label = self._add_wrapped_label(
             body,
             3,
-            font=("Yu Gothic UI", 10, "bold"),
+            font=ui_font(10, "bold"),
         )
         self.rights_label = self._add_wrapped_label(body, 4)
         self.third_party_label = self._add_wrapped_label(body, 5)
@@ -204,7 +206,7 @@ class LegalNoticeWindow:
         )
         self.source_heading_label = ttk.Label(
             body,
-            font=("Yu Gothic UI", 11, "bold"),
+            font=ui_font(11, "bold"),
             anchor="w",
         )
         self.source_heading_label.grid(row=7, column=0, sticky="ew", pady=(0, 5))

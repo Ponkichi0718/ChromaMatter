@@ -1553,8 +1553,19 @@ def _make_scoped_3mf_writer(original: Callable[..., object]):
         palette,
         part_palettes=None,
         print_uses_global_palette=False,
+        *,
+        export_validation_level="high",
     ):
-        context = _linear_export_context(prepared)
+        validation_kwargs = (
+            {} if export_validation_level == "high"
+            else {"export_validation_level": export_validation_level}
+        )
+        # Inherited strict SI proof is only an optimization of the high path.
+        # Relaxed policies report their own unchecked SI status in the core.
+        context = (
+            _linear_export_context(prepared)
+            if export_validation_level == "high" else None
+        )
         if context is None:
             return original(
                 destination,
@@ -1564,6 +1575,7 @@ def _make_scoped_3mf_writer(original: Callable[..., object]):
                 palette,
                 part_palettes,
                 print_uses_global_palette,
+                **validation_kwargs,
             )
         token = _LINEAR_EXPORT_VALIDATION_CONTEXT.set(context)
         try:
@@ -1575,6 +1587,7 @@ def _make_scoped_3mf_writer(original: Callable[..., object]):
                 palette,
                 part_palettes,
                 print_uses_global_palette,
+                **validation_kwargs,
             )
         finally:
             _LINEAR_EXPORT_VALIDATION_CONTEXT.reset(token)

@@ -12,6 +12,7 @@ from . import APP_DISPLAY_NAME, APP_NAME, __version__
 
 
 MACOS_ALPHA_SELF_TEST_FLAG = "--macos-alpha-self-test"
+LINUX_ALPHA_SELF_TEST_FLAG = "--linux-alpha-self-test"
 MACOS_ALPHA_REQUIRED_PYMESHLAB_FILTERS = (
     "compute_selection_by_self_intersections_per_face",
     "meshing_close_holes",
@@ -527,6 +528,8 @@ def _macos_alpha_moderngl_probe(moderngl_module: object) -> dict[str, object]:
 
 def _macos_alpha_pymeshlab_probe(
     pymeshlab_module: object,
+    *,
+    probe_label: str = "macOS alpha",
 ) -> dict[str, object]:
     """Require and execute every MeshLab filter needed by the print path."""
 
@@ -573,7 +576,7 @@ def _macos_alpha_pymeshlab_probe(
                     vertex_matrix=vertices.copy(),
                     face_matrix=faces.copy(),
                 ),
-                f"macOS alpha filter probe: {name}",
+                f"{probe_label} filter probe: {name}",
             )
             mesh_set.apply_filter(name)
         except Exception as exc:
@@ -809,6 +812,144 @@ def macos_alpha_self_test(
         "schema": "chromamatter.macos-alpha-self-test.v1",
         "application": f"{APP_DISPLAY_NAME} {__version__}",
         "gate": MACOS_ALPHA_SELF_TEST_FLAG,
+        "checks": checks,
+        "ok": ok,
+    }
+    stream = sys.stdout if output_stream is None else output_stream
+    print(
+        json.dumps(data, ensure_ascii=True, indent=2, sort_keys=True),
+        file=stream,
+    )
+    return 0 if ok else 1
+
+
+def linux_alpha_self_test(
+    *,
+    platform_name: str | None = None,
+    system_name: str | None = None,
+    machine_name: str | None = None,
+    tetwild_loader=None,
+    pymeshlab_module: object | None = None,
+    moderngl_module: object | None = None,
+    output_stream=None,
+) -> int:
+    """Run the strict Ubuntu-compatible x86_64 technical-build gate.
+
+    The optional dependency arguments keep the fail-closed contract testable
+    on non-Linux development hosts.  Normal command-line execution supplies
+    none of them and therefore exercises the packaged native dependencies.
+    """
+
+    resolved_platform = str(
+        sys.platform if platform_name is None else platform_name
+    ).strip()
+    resolved_system = str(
+        platform.system() if system_name is None else system_name
+    ).strip()
+    resolved_machine = str(
+        platform.machine() if machine_name is None else machine_name
+    ).strip()
+    platform_ok = bool(
+        resolved_platform.startswith("linux")
+        and resolved_system == "Linux"
+        and resolved_machine.casefold() == "x86_64"
+    )
+    skipped_status = "skipped: requires Linux x86_64"
+    checks: dict[str, dict[str, object]] = {
+        "platform": {
+            "ok": platform_ok,
+            "sys_platform": resolved_platform,
+            "system": resolved_system,
+            "machine": resolved_machine,
+            "required": "Linux x86_64",
+            "status": "ok" if platform_ok else "unsupported platform",
+        },
+        "pytetwild_wrapper": {"ok": False, "status": skipped_status},
+        "pymeshlab_filters": {
+            "ok": False,
+            "required": list(MACOS_ALPHA_REQUIRED_PYMESHLAB_FILTERS),
+            "missing": list(MACOS_ALPHA_REQUIRED_PYMESHLAB_FILTERS),
+            "available_count": 0,
+            "applications": {},
+            "failed_applications": list(
+                MACOS_ALPHA_REQUIRED_PYMESHLAB_FILTERS
+            ),
+            "status": skipped_status,
+        },
+        "moderngl_framebuffer": {
+            "ok": False,
+            "required_version_code": 330,
+            "version_code": None,
+            "expected_rgba8": [17, 91, 203, 255],
+            "read_rgba8": [],
+            "status": skipped_status,
+        },
+    }
+
+    if platform_ok:
+        try:
+            if tetwild_loader is None:
+                from .volume_partition import _load_tetwild_wrapper
+
+                tetwild_loader = _load_tetwild_wrapper
+            wrapper = tetwild_loader()
+            if wrapper is None:
+                raise RuntimeError("PyTetWild wrapper loader returned None")
+            checks["pytetwild_wrapper"] = _macos_alpha_tetwild_probe(wrapper)
+        except Exception as exc:
+            checks["pytetwild_wrapper"] = {
+                "ok": False,
+                "status": f"error: {type(exc).__name__}: {exc}",
+            }
+
+        try:
+            if pymeshlab_module is None:
+                import pymeshlab as imported_pymeshlab
+
+                pymeshlab_module = imported_pymeshlab
+            checks["pymeshlab_filters"] = _macos_alpha_pymeshlab_probe(
+                pymeshlab_module,
+                probe_label="Linux technical alpha",
+            )
+        except Exception as exc:
+            checks["pymeshlab_filters"] = {
+                "ok": False,
+                "required": list(MACOS_ALPHA_REQUIRED_PYMESHLAB_FILTERS),
+                "missing": list(MACOS_ALPHA_REQUIRED_PYMESHLAB_FILTERS),
+                "available_count": 0,
+                "applications": {},
+                "failed_applications": list(
+                    MACOS_ALPHA_REQUIRED_PYMESHLAB_FILTERS
+                ),
+                "status": f"error: {type(exc).__name__}: {exc}",
+            }
+
+        if moderngl_module is None:
+            try:
+                import moderngl as imported_moderngl
+
+                moderngl_module = imported_moderngl
+            except Exception as exc:
+                checks["moderngl_framebuffer"]["status"] = (
+                    f"error: {type(exc).__name__}: {exc}"
+                )
+        if moderngl_module is not None:
+            checks["moderngl_framebuffer"] = _macos_alpha_moderngl_probe(
+                moderngl_module
+            )
+
+    ok = bool(platform_ok) and all(
+        bool(checks[name]["ok"])
+        for name in (
+            "pytetwild_wrapper",
+            "pymeshlab_filters",
+            "moderngl_framebuffer",
+        )
+    )
+    data = {
+        "schema": "chromamatter.linux-alpha-self-test.v1",
+        "application": f"{APP_DISPLAY_NAME} {__version__}",
+        "gate": LINUX_ALPHA_SELF_TEST_FLAG,
         "checks": checks,
         "ok": ok,
     }
@@ -1058,10 +1199,17 @@ def self_test() -> int:
 def convert(args: argparse.Namespace) -> int:
     from .engine import load_vertex_color_model, prepare_geometry
     from .gltf_import import LARGE_GLTF_REDUCTION_TARGET_FACES
-    from .models import AppSettings
+    from .models import (
+        AppSettings,
+        DEFAULT_NEW_COLOR_MODE,
+        EXPORT_VALIDATION_LEVELS,
+        PaletteSettings,
+    )
     from .workflow import export_bundle
 
-    settings = AppSettings()
+    settings = AppSettings(
+        palette=PaletteSettings(color_mode=DEFAULT_NEW_COLOR_MODE)
+    )
     settings.geometry.height_mm = args.height
     settings.geometry.target_faces = args.faces
     settings.geometry.preview_faces = min(args.preview_faces, args.faces)
@@ -1071,17 +1219,41 @@ def convert(args: argparse.Namespace) -> int:
         settings = AppSettings.from_dict(
             json.loads(Path(args.settings).read_text(encoding="utf-8-sig"))
         )
+    validation_override = getattr(args, "export_validation", None)
+    if validation_override is not None:
+        if (
+            not isinstance(validation_override, str)
+            or validation_override not in EXPORT_VALIDATION_LEVELS
+        ):
+            raise SystemExit(
+                "--export-validation must be one of: high, medium, low, ignore"
+            )
+        settings.export_validation_level = validation_override
     settings.geometry.adjust_face_count = True
-    # ``--convert`` promises a slicer-ready 3MF and has no interactive Part
-    # Processing screen.  Keep GUI imports raw by default, but make the
-    # headless conversion path request the same explicit safe solidification
-    # that the GUI button performs.
-    settings.geometry.solidify_parts = True
+    # High/medium keep the existing headless safe-solidification workflow.
+    # Low/ignore explicitly allow open geometry, so do not enter strict repair
+    # before the selected export policy can inspect the prepared geometry.
+    settings.geometry.solidify_parts = settings.export_validation_level in {
+        "high", "medium"
+    }
     settings.geometry.auto_joints = False
     source = Path(args.obj)
     if source.suffix.lower() not in {".obj", ".glb"}:
         raise SystemExit(
             "--convert の入力形式は頂点カラーOBJまたはGLBを指定してください"
+        )
+    if settings.export_validation_level != "high":
+        recommendation = (
+            " Ignoring geometry defects is not recommended."
+            if settings.export_validation_level == "ignore" else ""
+        )
+        print(
+            "Warning: geometry export validation is "
+            f"'{settings.export_validation_level}'; self-intersections are not "
+            "checked. Archive, color and printer-setting checks remain enabled. "
+            "Inspect the 3MF in your slicer before printing."
+            + recommendation,
+            file=sys.stderr,
         )
     asset = load_vertex_color_model(
         source,
@@ -1118,6 +1290,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help=argparse.SUPPRESS,
     )
+    parser.add_argument(
+        LINUX_ALPHA_SELF_TEST_FLAG,
+        action="store_true",
+        help=argparse.SUPPRESS,
+    )
     parser.add_argument("--ui-smoke", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument(
         "--ui-smoke-language",
@@ -1125,6 +1302,19 @@ def build_parser() -> argparse.ArgumentParser:
         help=argparse.SUPPRESS,
     )
     parser.add_argument("--project", metavar="JSON", help="保存済みプロジェクトを開いてGUIを起動")
+    parser.add_argument(
+        "--model",
+        metavar="MODEL",
+        help="OBJ / GLBを指定してGUIを起動し、安全な通常読込みを開始",
+    )
+    parser.add_argument(
+        "--confirm-large-model",
+        action="store_true",
+        help=(
+            "--modelで指定した大規模GLBの450,000面への縮小読込みを"
+            "確認済みとして開始"
+        ),
+    )
     parser.add_argument(
         "--convert",
         dest="obj",  # command-line compatibility
@@ -1134,6 +1324,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--output", metavar="3MF")
     parser.add_argument("--reference", metavar="IMAGE")
     parser.add_argument("--settings", metavar="JSON")
+    parser.add_argument(
+        "--export-validation",
+        choices=("high", "medium", "low", "ignore"),
+        help=(
+            "Geometry validation for --convert only; defaults to the saved "
+            "settings or high. ignore is not recommended. Archive and color "
+            "checks always remain enabled."
+        ),
+    )
     parser.add_argument("--height", type=float, default=180.0)
     parser.add_argument("--faces", type=int, default=450_000)
     parser.add_argument("--preview-faces", type=int, default=80_000)
@@ -1148,12 +1347,36 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.ui_smoke_language is not None and not args.ui_smoke:
         parser.error("--ui-smoke-language requires --ui-smoke")
-    if args.self_test and args.macos_alpha_self_test:
-        parser.error(
-            f"--self-test and {MACOS_ALPHA_SELF_TEST_FLAG} are mutually exclusive"
+    if args.confirm_large_model and not args.model:
+        parser.error("--confirm-large-model requires --model")
+    if args.export_validation is not None and not args.obj:
+        parser.error("--export-validation requires --convert")
+    gui_source_count = sum(bool(value) for value in (args.project, args.model))
+    if gui_source_count > 1:
+        parser.error("--project and --model are mutually exclusive")
+    if args.obj and gui_source_count:
+        parser.error("--convert cannot be combined with --project or --model")
+    if args.ui_smoke and gui_source_count:
+        parser.error("--ui-smoke cannot be combined with --project or --model")
+    technical_alpha_count = sum(
+        bool(value)
+        for value in (
+            args.macos_alpha_self_test,
+            args.linux_alpha_self_test,
         )
+    )
+    if gui_source_count and (args.self_test or technical_alpha_count):
+        parser.error("self-tests cannot be combined with --project or --model")
+    if args.self_test and technical_alpha_count:
+        parser.error(
+            "--self-test and a platform alpha self-test are mutually exclusive"
+        )
+    if technical_alpha_count > 1:
+        parser.error("platform alpha self-tests are mutually exclusive")
     if args.macos_alpha_self_test:
         return macos_alpha_self_test()
+    if args.linux_alpha_self_test:
+        return linux_alpha_self_test()
     if args.self_test:
         return self_test()
     if args.obj:
@@ -1173,10 +1396,16 @@ def main(argv: list[str] | None = None) -> int:
 
         from .gui import launch_app
 
-        return launch_app(
+        launch_arguments: dict[str, object] = dict(
             smoke_test=args.ui_smoke,
             initial_project=Path(args.project) if args.project else None,
         )
+        if args.model:
+            launch_arguments.update(
+                initial_model=Path(args.model),
+                confirm_large_model=args.confirm_large_model,
+            )
+        return launch_app(**launch_arguments)
     finally:
         if args.ui_smoke_language is not None:
             if previous_language is None:

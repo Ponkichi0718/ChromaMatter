@@ -1,0 +1,9 @@
+ChromaMatter Linux x86_64 technical alpha ソース提供状況
+
+正確な application inventory、component map、SPDX SBOM、corresponding-
+source stage、archive audit、owner の明示的判断に対して
+DISTRIBUTION_APPROVAL.json が "approved" の場合だけ binary を配布できます。
+
+candidate manifest の生成または application build の成功だけでは配布承認
+になりません。source、license、relink、archive、owner evidence のどれかが
+不足する場合、ゲートは blocked のままです。

@@ -82,6 +82,21 @@ def _run_powershell(
     )
 
 
+def _assert_powershell_output_contains(
+    test_case: unittest.TestCase,
+    expected: str,
+    output: str,
+) -> None:
+    """Match PowerShell diagnostics despite host-inserted hard line wraps."""
+    expected_without_wrapping = re.sub(r"\s+", "", expected)
+    output_without_wrapping = re.sub(r"\s+", "", output)
+    test_case.assertIn(
+        expected_without_wrapping,
+        output_without_wrapping,
+        output,
+    )
+
+
 def _run_software_zip_audit(
     archive: Path,
     *,
@@ -924,7 +939,16 @@ foreach ($path in @('{success_log}', '{failure_log}')) {{
         if POWERSHELL is None:
             self.skipTest("Windows PowerShell is unavailable")
         payload = json.dumps(
-            {"displayName": "ビルド ツール"},
+            [
+                {
+                    "displayName": "既存ビルド ツール",
+                    "installationPath": r"C:\Program Files\BuildTools",
+                },
+                {
+                    "displayName": "固定ビルド ツール",
+                    "installationPath": r"C:\Controlled\BuildTools",
+                },
+            ],
             ensure_ascii=False,
         ).encode("utf-8") + b"\n"
         encoded_payload = base64.b64encode(payload).decode("ascii")
@@ -960,9 +984,16 @@ try {{
     if ([Console]::OutputEncoding.CodePage -ne $expectedCodePage) {{
         throw 'Console output encoding was not restored'
     }}
-    $decoded = @(($capture.Output -join [Environment]::NewLine) | ConvertFrom-Json)
-    if ($decoded.Count -ne 1 -or $decoded[0].displayName -cne 'ビルド ツール') {{
-        throw 'UTF-8 native JSON was corrupted'
+    $decodedParsed =
+        ($capture.Output -join [Environment]::NewLine) | ConvertFrom-Json
+    $decoded = @($decodedParsed)
+    if (
+        $decoded.Count -ne 2 -or
+        $decoded[0].displayName -cne '既存ビルド ツール' -or
+        $decoded[1].displayName -cne '固定ビルド ツール' -or
+        $decoded[1].installationPath -cne 'C:\\Controlled\\BuildTools'
+    ) {{
+        throw 'UTF-8 native JSON array was corrupted or remained nested'
     }}
     $nonzero = Invoke-Utf8NativeCapture '{python}' @(
         '-I', '-c', "$pythonCode;sys.exit(7)", '{encoded_payload}'
@@ -1213,9 +1244,11 @@ try {{
             "-DCMAKE_CXX_COMPILER:FILEPATH=",
             "-DCMAKE_LINKER:FILEPATH=",
             "function Get-DirectoryTreeEvidence",
-            "VsLayoutFileCount = 714",
-            "VsLayoutTreeSha256 = '2b6a89bb69aa7de013fc055828258a3a91c7c333f0c6be831a750990922fed3a'",
+            "VsInstallerRootCertificateSha256 = 'df545bf919a2439c36983b54cdfc903dfa4f37d3996d8d84b4c31eec6f3c163e'",
+            "VsLayoutFileCount = 677",
+            "VsLayoutTreeSha256 = 'c3e3ee7cb01e2a2e73be7e9fba4b7c298ef9687bbaed302965e3270c38d37bba'",
             "visual_studio_layout_tree_sha256",
+            "visual_studio_installer_root_certificate_sha256",
             "Reparse point is forbidden in fixed directory tree",
             "Microsoft Visual Studio layout verification failed",
             "Start-Process -FilePath $vsLayoutBootstrapper",
@@ -1339,6 +1372,8 @@ try {{
             "$vsWhereResult = Invoke-Utf8NativeCapture $VsWhere",
             "'-format', 'json', '-utf8'",
             "$vsInstallationsJson = @($vsWhereResult.Output)",
+            "$vsInstallationsParsed =",
+            "$vsInstallations = @($vsInstallationsParsed)",
             "ConvertFrom-Json -ErrorAction Stop",
             "vswhere.exe UTF-8 output capture failed",
             "vswhere.exe emitted invalid UTF-8 JSON",
@@ -1479,6 +1514,20 @@ class PackagedLanguageSmokeTests(unittest.TestCase):
             build,
         )
 
+    def test_packaged_ui_smoke_requires_fresh_profile_default_mode(self) -> None:
+        gui = (
+            REPO_ROOT / "source" / "fixed_app" / "spectrum_mapper" / "gui.py"
+        ).read_text(encoding="utf-8")
+        self.assertIn(
+            '"fresh_profile_color_mode": self.settings.palette.color_mode',
+            gui,
+        )
+        self.assertIn(
+            'smoke_metrics["fresh_profile_color_mode"]',
+            gui,
+        )
+        self.assertIn("!= COLOR_MODE_FLAT_FOUR", gui)
+
     def test_build_smoke_profile_is_isolated_from_existing_settings(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -1568,7 +1617,7 @@ class PackagedLanguageSmokeTests(unittest.TestCase):
 
 class SoftwarePackageStageTests(unittest.TestCase):
     CORRESPONDING_SOURCE_ASSET = (
-        "ChromaMatter-0.8beta-r32.2-complete-corresponding-source.zip"
+        "ChromaMatter-0.9-complete-corresponding-source.zip"
     )
     CORRESPONDING_SOURCE_COMMIT = "1" * 40
     DEMO_DOCUMENT_NAMES = (
@@ -1581,35 +1630,6 @@ class SoftwarePackageStageTests(unittest.TestCase):
     DEMO_PAYLOAD_NAMES = (
         "Original AI model Color.glb",
         "Reference.jpg",
-        "3MF/Original AI model Color_FullSpectrum.3mf",
-        (
-            "3MF/Original AI model Color_FullSpectrum_parts_2/"
-            "01_RightArm_FullSpectrum.3mf"
-        ),
-        (
-            "3MF/Original AI model Color_FullSpectrum_parts_2/"
-            "02_LeftLeg_FullSpectrum.3mf"
-        ),
-        (
-            "3MF/Original AI model Color_FullSpectrum_parts_2/"
-            "03_Head_FullSpectrum.3mf"
-        ),
-        (
-            "3MF/Original AI model Color_FullSpectrum_parts_2/"
-            "04_LeftArm_FullSpectrum.3mf"
-        ),
-        (
-            "3MF/Original AI model Color_FullSpectrum_parts_2/"
-            "05_Torso_FullSpectrum.3mf"
-        ),
-        (
-            "3MF/Original AI model Color_FullSpectrum_parts_2/"
-            "06_RightLeg_FullSpectrum.3mf"
-        ),
-        (
-            "3MF/Original AI model Color_FullSpectrum_parts_2/"
-            "パーツ別3MF_manifest.json"
-        ),
     )
     DEMO_THREE_MF_MEMBER_NAMES = (
         "[Content_Types].xml",
@@ -1953,7 +1973,7 @@ class SoftwarePackageStageTests(unittest.TestCase):
         if source_hash_override is not None:
             source_archive_sha256 = source_hash_override
         versions = {
-            "chromamatter": ("0.8beta-r32.2", "GPL-3.0-or-later"),
+            "chromamatter": ("0.9", "GPL-3.0-or-later"),
             "cpython": ("3.13.14", "Python-2.0"),
             "cpython-bzip2": ("1.0.8", "bzip2-1.0.6"),
             "cpython-liblzma": (
@@ -2169,7 +2189,7 @@ class SoftwarePackageStageTests(unittest.TestCase):
             "generator": {"name": "fixture", "version": "1"},
             "package": {
                 "name": "ChromaMatter",
-                "version": "0.8beta-r32.2",
+                "version": "0.9",
                 "root": ".",
                 "content_sha256": package_digest,
             },
@@ -2374,7 +2394,6 @@ class SoftwarePackageStageTests(unittest.TestCase):
     ) -> tuple[Path, Path, dict[str, bytes]]:
         payload_root = root / payload_root_name
         payload_root.mkdir()
-        three_mf_bytes = self._demo_three_mf_bytes()
         payload_bytes = {
             "Original AI model Color.glb": self._demo_glb_bytes(
                 {
@@ -2383,17 +2402,6 @@ class SoftwarePackageStageTests(unittest.TestCase):
                 }
             ),
             "Reference.jpg": b"\xff\xd8synthetic-reference-image\xff\xd9",
-            "3MF/Original AI model Color_FullSpectrum.3mf": three_mf_bytes,
-            **{
-                name: three_mf_bytes
-                for name in self.DEMO_PAYLOAD_NAMES
-                if name.lower().endswith(".3mf")
-                and name != "3MF/Original AI model Color_FullSpectrum.3mf"
-            },
-            (
-                "3MF/Original AI model Color_FullSpectrum_parts_2/"
-                "パーツ別3MF_manifest.json"
-            ): b'{"schema_version":1,"parts":[]}',
         }
         for name, content in payload_bytes.items():
             path = payload_root / Path(name)
@@ -2401,9 +2409,10 @@ class SoftwarePackageStageTests(unittest.TestCase):
             path.write_bytes(content)
 
         manifest = {
-            "schema_version": 2,
-            "document_id": "chromamatter.demo-data.r32.2",
+            "schema_version": 3,
+            "document_id": "chromamatter.demo-data.source-only.v1",
             "release_status": "approved-for-publication",
+            "payload_profile": "source-model-and-reference-only",
             "expected_documents": [
                 "README_EN.md",
                 "README_JA.md",
@@ -2425,32 +2434,14 @@ class SoftwarePackageStageTests(unittest.TestCase):
                         "multipart-glb-demo",
                     ),
                     ("Reference.jpg", "image/jpeg", "reference-image"),
-                    (
-                        "3MF/Original AI model Color_FullSpectrum.3mf",
-                        "model/3mf",
-                        "combined-full-spectrum-3mf-demo",
-                    ),
-                    *(
-                        (name, "model/3mf", "individual-part-3mf-demo")
-                        for name in self.DEMO_PAYLOAD_NAMES
-                        if name.lower().endswith(".3mf")
-                        and name
-                        != "3MF/Original AI model Color_FullSpectrum.3mf"
-                    ),
-                    (
-                        "3MF/Original AI model Color_FullSpectrum_parts_2/"
-                        "パーツ別3MF_manifest.json",
-                        "application/json",
-                        "individual-part-3mf-manifest",
-                    ),
                 )
             ],
             "publication_gate": {
                 "status": "approved-for-publication",
                 "raw_glb_redistribution_confirmed": True,
                 "reference_image_redistribution_confirmed": True,
-                "derived_3mf_redistribution_confirmed": True,
                 "hi3d_plan_terms_confirmed": True,
+                "derived_3mf_payloads_included": False,
             },
         }
         manifest_path = root / f"{payload_root_name}-manifest.json"
@@ -2650,11 +2641,28 @@ class SoftwarePackageStageTests(unittest.TestCase):
         content: bytes,
     ) -> None:
         payload_path = payload_root / Path(relative)
+        payload_path.parent.mkdir(parents=True, exist_ok=True)
         payload_path.write_bytes(content)
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         record = next(
-            item for item in manifest["payloads"] if item["path"] == relative
+            (
+                item
+                for item in manifest["payloads"]
+                if item["path"] == relative
+            ),
+            None,
         )
+        if record is None:
+            record = {
+                "path": relative,
+                "media_type": (
+                    "model/3mf"
+                    if relative.casefold().endswith(".3mf")
+                    else "application/json"
+                ),
+                "role": "legacy-validator-fixture",
+            }
+            manifest["payloads"].append(record)
         record["bytes"] = len(content)
         record["sha256"] = hashlib.sha256(content).hexdigest()
         manifest_path.write_text(
@@ -2694,8 +2702,56 @@ class SoftwarePackageStageTests(unittest.TestCase):
         *,
         destination_name: str,
     ) -> tuple[subprocess.CompletedProcess[str], Path]:
-        built = self._fake_build(root)
         destination = root / destination_name
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        extra_records = [
+            record
+            for record in manifest["payloads"]
+            if record["path"] not in self.DEMO_PAYLOAD_NAMES
+        ]
+        if extra_records:
+            # These fixtures preserve direct regression coverage for the
+            # historical inner-3MF/JSON validator. The current source-only
+            # DemoData stage rejects every such extra payload before this
+            # validator can be reached.
+            target = payload_root / Path(extra_records[-1]["path"])
+            wrapper = root / "validate-legacy-demo-payload.ps1"
+            wrapper.write_text(
+                "param([string]$ModulePath,[string]$PayloadPath,"
+                "[string]$PayloadKind)\n"
+                "$ErrorActionPreference = 'Stop'\n"
+                "Import-Module -Force -Name $ModulePath\n"
+                "$backslashUserRoot = 'C:' + [char]92 + 'Users'\n"
+                "$slashUserRoot = 'C:' + '/' + 'Users'\n"
+                "$tokens = [string[]]@($backslashUserRoot,$slashUserRoot)\n"
+                "if ($PayloadKind -ceq '3mf') {\n"
+                "  [void](Test-ChromaMatterDemoThreeMf "
+                "-ArchivePath $PayloadPath -PrivateTokens $tokens)\n"
+                "} else {\n"
+                "  Assert-ChromaMatterJsonFileNoPrivateTokens "
+                "-Path $PayloadPath -PrivateTokens $tokens "
+                "-Context 'Legacy DemoData JSON' -RejectDuplicateKeys $true\n"
+                "}\n",
+                encoding="utf-8-sig",
+            )
+            return (
+                _run_powershell(
+                    wrapper,
+                    "-ModulePath",
+                    str(SOFTWARE_ZIP_MODULE),
+                    "-PayloadPath",
+                    str(target),
+                    "-PayloadKind",
+                    (
+                        "3mf"
+                        if target.suffix.casefold() == ".3mf"
+                        else "json"
+                    ),
+                ),
+                destination,
+            )
+
+        built = self._fake_build(root)
         result = _run_powershell(
             SOFTWARE_STAGE_SCRIPT,
             "-BuiltAppRoot",
@@ -2891,7 +2947,11 @@ class SoftwarePackageStageTests(unittest.TestCase):
             )
             self.assertEqual(
                 staged_manifest["document_id"],
-                "chromamatter.demo-data.r32.2",
+                "chromamatter.demo-data.source-only.v1",
+            )
+            self.assertEqual(
+                staged_manifest["payload_profile"],
+                "source-model-and-reference-only",
             )
             _assert_relative_manifest(
                 self,
@@ -2910,6 +2970,9 @@ class SoftwarePackageStageTests(unittest.TestCase):
                 for name in self.DEMO_DOCUMENT_NAMES + self.DEMO_PAYLOAD_NAMES
             }
             self.assertTrue(expected_demo_paths.issubset(manifest_paths))
+            self.assertFalse(
+                any(path.lower().endswith(".3mf") for path in manifest_paths)
+            )
             with ZipFile(archive) as package:
                 zip_paths = {
                     member.filename
@@ -3008,7 +3071,9 @@ class SoftwarePackageStageTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             payload_root, manifest_path, _ = self._demo_data_fixture(root)
-            document_id = '"document_id": "chromamatter.demo-data.r32.2"'
+            document_id = (
+                '"document_id": "chromamatter.demo-data.source-only.v1"'
+            )
             manifest_text = manifest_path.read_text(encoding="utf-8")
             self.assertEqual(manifest_text.count(document_id), 1)
             manifest_path.write_text(
@@ -3049,7 +3114,7 @@ class SoftwarePackageStageTests(unittest.TestCase):
                 payload_root, manifest_path, _ = self._demo_data_fixture(root)
                 manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
                 if case == "schema-string":
-                    manifest["schema_version"] = "2"
+                    manifest["schema_version"] = "3"
                 elif case == "document-order":
                     manifest["expected_documents"] = list(
                         reversed(manifest["expected_documents"])
@@ -3122,10 +3187,7 @@ class SoftwarePackageStageTests(unittest.TestCase):
                     }
                 ),
             )
-            target_relative = (
-                "3MF/Original AI model Color_FullSpectrum_parts_2/"
-                "パーツ別3MF_manifest.json"
-            )
+            target_relative = "Reference.jpg"
             target = payload_root / Path(target_relative)
             destination = root / "rejected-post-copy-demo-mutation"
             mutation_complete = threading.Event()
@@ -3141,7 +3203,7 @@ class SoftwarePackageStageTests(unittest.TestCase):
                 while not stop_watcher.is_set() and time.monotonic() < deadline:
                     if next(root.glob(pattern), None) is not None:
                         try:
-                            target.write_bytes(b'{"schema_version":2,"parts":[]}')
+                            target.write_bytes(b"mutated-reference-payload")
                         except OSError as exc:
                             watcher_errors.append(str(exc))
                         else:
@@ -3195,11 +3257,11 @@ class SoftwarePackageStageTests(unittest.TestCase):
             with self.subTest(case=case), tempfile.TemporaryDirectory() as temporary:
                 root = Path(temporary)
                 payload_root, manifest_path, _ = self._demo_data_fixture(root)
-                relative = "3MF/Original AI model Color_FullSpectrum.3mf"
+                relative = "Original AI model Color.glb"
                 target = payload_root / Path(relative)
                 if case == "missing":
                     target.unlink()
-                    expected = "exactly 10 regular payload files"
+                    expected = "exactly 2 regular payload files"
                 elif case == "modified-size":
                     target.write_bytes(target.read_bytes() + b"x")
                     expected = f"payload size mismatch: {relative}"
@@ -3211,10 +3273,9 @@ class SoftwarePackageStageTests(unittest.TestCase):
                     self.assertEqual(target.stat().st_size, len(original))
                     expected = f"payload SHA-256 mismatch: {relative}"
                 elif case == "extra-3mf":
-                    (payload_root / "3MF" / "unexpected.3mf").write_bytes(
-                        self._demo_three_mf_bytes()
-                    )
-                    expected = "exactly 10 regular payload files"
+                    extra = payload_root / "unexpected.3mf"
+                    extra.write_bytes(self._demo_three_mf_bytes())
+                    expected = "exactly 2 regular payload files"
                 else:
                     (payload_root / "unexpected-directory").mkdir()
                     expected = "contains an unexpected directory"
@@ -3238,8 +3299,8 @@ class SoftwarePackageStageTests(unittest.TestCase):
             payload_root, manifest_path, _ = self._demo_data_fixture(root)
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
             manifest["publication_gate"][
-                "derived_3mf_redistribution_confirmed"
-            ] = False
+                "derived_3mf_payloads_included"
+            ] = True
             manifest_path.write_text(
                 json.dumps(manifest, ensure_ascii=False),
                 encoding="utf-8",
@@ -4169,7 +4230,7 @@ class SoftwarePackageStageTests(unittest.TestCase):
 
                 output = result.stdout + result.stderr
                 self.assertNotEqual(result.returncode, 0, output)
-                self.assertIn(expected_error, output)
+                _assert_powershell_output_contains(self, expected_error, output)
                 self.assertFalse(destination.exists())
                 self.assertFalse(Path(f"{destination}.zip").exists())
 
@@ -4275,7 +4336,7 @@ class SoftwarePackageStageTests(unittest.TestCase):
 
                 output = result.stdout + result.stderr
                 self.assertNotEqual(result.returncode, 0, output)
-                self.assertIn(expected_error, output)
+                _assert_powershell_output_contains(self, expected_error, output)
                 self.assertFalse(destination.exists())
                 self.assertFalse(Path(f"{destination}.zip").exists())
                 self._assert_no_stage_debris(root, destination)
@@ -4414,7 +4475,7 @@ class SoftwarePackageStageTests(unittest.TestCase):
     def test_software_stage_uses_public_win64_default_name(self) -> None:
         stage = SOFTWARE_STAGE_SCRIPT.read_text(encoding="utf-8")
         self.assertIn(
-            '"artifacts\\ChromaMatter-0.8beta-r32.2-win64"',
+            '"artifacts\\ChromaMatter-0.9-win64"',
             stage,
         )
         policy = (
@@ -5124,6 +5185,7 @@ class PublicSourceStageRollbackTests(unittest.TestCase):
             REPO_ROOT / "tooling" / "BUILD_PYTETWILD_WINDOWS.ps1",
             tooling / "BUILD_PYTETWILD_WINDOWS.ps1",
         )
+        shutil.copytree(REPO_ROOT / "tooling" / "recipes", tooling / "recipes")
         shutil.copy2(
             REPO_ROOT / "tooling" / "requirements-pytetwild-build.lock",
             tooling / "requirements-pytetwild-build.lock",
@@ -5322,7 +5384,7 @@ class PublicSourceStageRollbackTests(unittest.TestCase):
             output = result.stdout + result.stderr
             self.assertNotEqual(result.returncode, 0, output)
             self.assertIn(
-                "Canonical DemoData manifest has the wrong r32.2 identity",
+                "Canonical DemoData manifest has the wrong source-only identity",
                 output,
             )
             self.assertFalse(destination.exists())
@@ -5332,7 +5394,9 @@ class PublicSourceStageRollbackTests(unittest.TestCase):
         private_path = "C:" + "\\" + "Us" + "ers\\private\\model.glb"
 
         def duplicate_key(path: Path) -> None:
-            document_id = '"document_id": "chromamatter.demo-data.r32.2"'
+            document_id = (
+                '"document_id": "chromamatter.demo-data.source-only.v1"'
+            )
             text = path.read_text(encoding="utf-8")
             self.assertEqual(text.count(document_id), 1)
             path.write_text(
@@ -5376,9 +5440,9 @@ class PublicSourceStageRollbackTests(unittest.TestCase):
                 "schema-string",
                 lambda path: mutate_json(
                     path,
-                    lambda document: document.__setitem__("schema_version", "2"),
+                    lambda document: document.__setitem__("schema_version", "3"),
                 ),
-                "wrong r32.2 identity or JSON value types",
+                "wrong source-only identity or JSON value types",
             ),
             (
                 "document-order",
@@ -5444,7 +5508,7 @@ class PublicSourceStageRollbackTests(unittest.TestCase):
 
                 output = result.stdout + result.stderr
                 self.assertNotEqual(result.returncode, 0, output)
-                self.assertIn(expected, output)
+                _assert_powershell_output_contains(self, expected, output)
                 self.assertFalse(destination.exists())
                 self.assertFalse(output_root.exists())
 

@@ -63,7 +63,7 @@ PREPARED_SNAPSHOT_SCHEMA = "obj-adjuster.prepared-geometry.v1"
 # GUI labels and source-file suffixes so a renamed or externally edited bundle
 # cannot allocate arrays beyond the supported large-model route.
 _HARD_SNAPSHOT_SOURCE_VERTEX_LIMIT = 3_000_000
-_HARD_SNAPSHOT_SOURCE_FACE_LIMIT = 5_000_000
+_HARD_SNAPSHOT_SOURCE_FACE_LIMIT = 5_250_000
 _HARD_SNAPSHOT_LEVEL_VERTEX_LIMIT = 3_000_000
 _HARD_SNAPSHOT_LEVEL_FACE_LIMIT = 3_000_000
 _HARD_LARGE_SNAPSHOT_FACE_THRESHOLD = 3_000_000

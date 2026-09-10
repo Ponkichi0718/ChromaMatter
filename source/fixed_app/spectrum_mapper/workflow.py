@@ -39,6 +39,7 @@ from .generated_surface_color import (
     validate_face_provenance,
 )
 from .filament_materials import generic_filament_profile
+from .export_validation import require_level as _require_export_validation_level
 from .models import (
     AppSettings,
     COLOR_MODE_FLAT_FOUR,
@@ -904,7 +905,12 @@ def _write_individual_part_models(
     destination: Path,
     manual_overrides: np.ndarray | None,
     progress: ProgressCallback | None,
+    *,
+    validation_records: list[dict[str, object]] | None = None,
 ) -> tuple[Path, ...]:
+    export_validation_level = _require_export_validation_level(
+        getattr(settings, "export_validation_level", "high")
+    )
     palettes = tuple(
         _part_export_palette_with_global_output_policy(
             settings.palette,
@@ -985,7 +991,11 @@ def _write_individual_part_models(
                 palette,
                 {},
                 False,
+                **({"export_validation_level": export_validation_level}
+                   if export_validation_level != "high" else {}),
             )
+            if validation_records is not None:
+                validation_records.append({"part_index": part_id, **validation})
             paths.append(part_path)
             manifest_parts.append(
                 {
@@ -996,6 +1006,9 @@ def _write_individual_part_models(
                     "faces": int(len(part_prepared.final.faces)),
                     "watertight": bool(part_prepared.topology["watertight"]),
                     "sha256": validation.get("sha256"),
+                    "geometry_validation_level": export_validation_level,
+                    "geometry_warnings": validation.get("geometry_warnings", []),
+                    "valid_solids": validation.get("valid_solids", False),
                     "physical_filaments": list(palette.physical_hex),
                     "material": palette.material,
                     "palette_mode": palette.color_mode,
@@ -1079,6 +1092,9 @@ def export_bundle(
 ) -> ExportResult:
     """Create the 3MF and all human-readable sidecars for one conversion."""
 
+    export_validation_level = _require_export_validation_level(
+        getattr(settings, "export_validation_level", "high")
+    )
     destination = Path(destination).with_suffix(".3mf")
     if individual_only and destination.exists():
         raise ValueError(
@@ -1169,9 +1185,12 @@ def export_bundle(
             print_palette,
             settings.part_palettes,
             bool(grouping.requires_separate_jobs and force_common_palette),
+            **({"export_validation_level": export_validation_level}
+               if export_validation_level != "high" else {}),
         )
 
     part_model_paths: tuple[Path, ...] = ()
+    individual_validation_records: list[dict[str, object]] = []
     if (
         (individual_only or bool(settings.geometry.export_individual_parts))
         and len(prepared.final.part_keys) > 1
@@ -1182,10 +1201,47 @@ def export_bundle(
             destination,
             manual_overrides,
             progress,
+            validation_records=individual_validation_records,
         )
         validation["individual_part_models"] = [
             str(path) for path in part_model_paths
         ]
+    warnings = list(validation.get("geometry_warnings", []))
+    for part_record in individual_validation_records:
+        warnings.extend(
+            {**warning, "individual_part": part_record["part_index"] + 1}
+            for warning in part_record.get("geometry_warnings", [])
+        )
+    validation.update({
+        "geometry_validation_level": export_validation_level,
+        "geometry_warnings": warnings,
+        "geometry_warning_parts": len(warnings),
+        "geometry_issues_ignored": export_validation_level != "high",
+        "geometry_self_intersections_checked": export_validation_level == "high",
+        "orca_preview_required": bool(warnings) or export_validation_level != "high",
+        "individual_geometry_validation": individual_validation_records,
+    })
+    if individual_only:
+        validation["valid_solids"] = bool(individual_validation_records) and all(
+            value.get("valid_solids") is True for value in individual_validation_records
+        )
+        for key in ("self_intersection_warning_parts", "self_intersection_warning_faces",
+                    "self_intersection_warning_area", "validated_solid_parts", "watertight_parts"):
+            validation[key] = sum(value.get(key, 0) for value in individual_validation_records)
+        policies = sorted({
+            policy for value in individual_validation_records
+            for policy in value.get("self_intersection_warning_policies", [])
+        })
+        validation["self_intersection_warning_policies"] = policies
+        validation["self_intersection_warning_policy"] = (
+            "strict_zero" if not policies else policies[0] if len(policies) == 1 else "mixed_warning"
+        )
+        validation["self_intersection_warning_max_area_fraction"] = max(
+            (value.get("self_intersection_warning_max_area_fraction", 0.0)
+             for value in individual_validation_records), default=0.0,
+        )
+    if export_validation_level != "high":
+        validation["self_intersection_warning_policy"] = "not_checked"
 
     if fallback_obj_path is not None:
         emit(progress, "obj", 0.76, "予備の頂点カラーOBJを書き出しています")
@@ -1234,6 +1290,14 @@ def export_bundle(
         ),
     }
     report["self_intersection_warning"] = self_intersection_warning
+    report["geometry_validation"] = {
+        "level": export_validation_level,
+        "warnings": list(validation.get("geometry_warnings", [])),
+        "valid_solids": validation.get("valid_solids", False),
+        "not_recommended": export_validation_level == "ignore",
+        "orca_preview_required": bool(validation.get("orca_preview_required", False)),
+        "self_intersections_checked": export_validation_level == "high",
+    }
     report["reference_image"] = str(reference_path) if reference_path else None
     report["parts"] = {
         "count": len(prepared.final.part_keys),
@@ -1300,6 +1364,17 @@ def export_bundle(
                 "パーツ別構成そのものは Metadata/tripo_part_palettes.json "
                 "へ保持しています。\n"
             )
+    if export_validation_level != "high":
+        with guide_path.open("a", encoding="utf-8") as guide:
+            guide.write(
+                f"\n\n出力検査 / Export validation: {export_validation_level}\n"
+                + ("不具合を無視（非推奨） / Ignore defects (not recommended).\n"
+                   if export_validation_level == "ignore" else "")
+                + "形状の正常性・印刷成功を保証する出力ではありません。\n"
+                "This export does not guarantee a valid solid or a successful print.\n"
+                "Snapmaker Orcaでスライス結果を確認してから印刷してください。\n"
+                "Check Slice Preview in Snapmaker Orca before printing.\n"
+            )
     if part_model_paths:
         with guide_path.open("a", encoding="utf-8") as guide:
             guide.write(
@@ -1314,7 +1389,7 @@ def export_bundle(
     try:
         from PIL import Image, ImageDraw
 
-        from .renderer import render_three_column_comparison
+        from .renderer import _font, render_three_column_comparison
 
         if final_colors.manual_override_faces:
             # Paint edits belong to the final topology. Rendering that same
@@ -1339,6 +1414,7 @@ def export_bundle(
                 (reference.width // 2, reference.height // 2),
                 "参照画像なし",
                 fill=(220, 224, 232),
+                font=_font(32),
                 anchor="mm",
             )
         image = render_three_column_comparison(

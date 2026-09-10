@@ -1,15 +1,321 @@
 {
   "product": "ChromaMatter — AI Model Print Studio",
-  "display_version": "0.8beta",
-  "package_version": "0.8beta",
-  "edition": "AI Model Print Studio r32.2",
-  "artifact_slug": "r32.2-ai-model-print-studio",
-  "status": "v0.8beta-r32.2-published-prerelease-exact-tagged-build",
-  "updated": "2026-08-26",
+  "display_version": "0.9",
+  "package_version": "0.9",
+  "edition": "AI Model Print Studio r33",
+  "artifact_slug": "r33-ai-model-print-studio",
+  "status": "0.9-official-source-and-archive-identities-verified",
+  "updated": "2026-09-10",
+  "current_publication": {
+    "official_site_version": "0.9",
+    "official_site_platforms": ["windows-x86_64", "macos-arm64", "linux-x86_64"],
+    "github_sync_status": "source-and-archive-identities-verified",
+    "github_release_url": "https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.9",
+    "owner_authorization": {
+      "date": "2026-09-10",
+      "scope": "Update GitHub application downloads and source to match the existing official 0.9 publication, reusing the three official application archives with identical bytes.",
+      "new_build_authorized_or_performed_by_this_sync": false
+    },
+    "application_source": {
+      "windows_linux_commit": "5059163a1a6d05e823c44323558f344ad000b580",
+      "windows_linux_snapshot_files": 518,
+      "macos_commit": "c629f428868e26f11dbcd679983ee2cd74d9c1cd",
+      "macos": "Separate corresponding-source bundle confirmed: application, inventory and complete-source coverage agree. The nested application-source ZIP matches the official ChromaMatter-0.9-source-c629f42-2e185dc1.zip byte for byte, including CRC, archive comment and all 597 files."
+    },
+    "release_record": "RELEASE_0.9.md",
+    "platform_artifact_manifest": "publication/RELEASE_0.9.json",
+    "focused_source_validation": {
+      "status": "PASS",
+      "tests": 31,
+      "subtests": 161,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0,
+      "source_hashes_unchanged": 518,
+      "scope": "Tiny synthetic geometry, mocked CLI conversion and four static release-identity tests on the published source snapshot.",
+      "environment_note": "Eight PyMeshLab plugin-load warnings were recorded in the existing Python environment; the selected tests passed. This does not validate unavailable plugins or complete native application readiness."
+    },
+    "new_application_build_performed": false,
+    "gui_or_slicer_testing_performed": false,
+    "next_step": "Keep published 0.9 assets identical to the recorded official archives. Validate any later source or binary update independently of this synchronization.",
+    "historical_records": {
+      "previous_top_level_status": "0.9-r33-windows-local-distributable-verified",
+      "previous_top_level_updated": "2026-09-06",
+      "interpretation": "The following dated checkpoints retain their original evidence and technical limitations. Earlier publication holds and one-step permission limits describe those sessions, not an additional approval requirement for the current owner-authorized synchronization. Historical tests and unresolved native rebuild/relink gates remain scoped to their named artifacts and revisions."
+    }
+  },
+  "native_build_continuation_dfdb03d": {
+    "source_commit": "dfdb03d6f2f12fded80caf89ae8598d173fdd243",
+    "source_zip": {"bytes": 5481681, "sha256": "aed537d5bd9146a55f26cd321e8a8b25b7b88303f43355654e4e346ca81c11ac", "url": "https://chromamatter.app/build-inputs/ChromaMatter-0.9-source-dfdb03d-aed537d5.zip", "validation": "518 exact Git blobs/modes, single prefix, CRC/privacy and unchanged workflow extraction for both targets passed independently; public full download hash matches."},
+    "site_source_only": {"source_commit": "3b2ef43a846d5b62f3952f8e515e73f633ed2426", "saved_version": 32, "deployment": "appgdep_6a9d609b43288191bfe897a81addca4b", "succeeded_utc": "2026-09-06T12:46:34Z", "checks": "23tests, build and exact packaged source pass. Only build-input ZIP added; public app/download pages and access unchanged."},
+    "macos": {"run": 34034154274, "job": 101489045211, "workflow_commit": "7d03426bae28320841e099a512e893f2e99081e4", "approved_package": false, "result": "1765tests120.909s, one failure, zero errors,11existing skips. Initial English illustration widths now pass; later sub-page loop width1115 exceeds unchanged1080 limit. Original error did not identify the selected sub-page. Source native/render tests pass. No frozen app built.", "diagnostic_artifact": {"id": 9989642763, "bytes": 110189, "sha256": "cd65e64117dba2e18a2fe09768f0e277130b7b37d2bf2a7ba84b6b511d592780", "verification": "Downloaded, hash/CRC and all four entries inspected."}},
+    "linux": {"run": "run07 exact dfdb03d", "result": "1730tests98.918s, zero failures/errors,9existing skips;518source bytes/modes pre/post;319ELF audit and frozen self/native/render/Xvfb JAEN pass. Separate actual WSLg native/self/JAEN probes pass with empty stderr. Final native source/relink/distribution gates remain pending.", "distribution_approved": false},
+    "windows": {"result": "1980tests468.081s, one failure,5existing skips: newly installed WSL Bash cannot parse a Windows launcher pathname. Source/dependency audit passed; no frozen app built. A subsequent Git-Bash suite was interrupted to await the corrected snapshot, not counted as passed.", "corresponding_source": "Fresh dfdb bundle independently passes42921files/518Gitblobs/64components/8nativeauditlogs/zero source gaps; this proof applies only to dfdb, not later source."},
+    "next_local_correction": "Wrap the global Tone title at140 and stack the two long translated checkbox rows on all backends using the existing Linux layout. Preserve text, fonts, scales, callbacks, values and directional-control minimum sizes. Add section/backend/geometry failure context without changing width/height bounds. Syntax-only Bash test now receives complete LF UTF-8 bytes on stdin, avoiding Windows paths and CRLF text conversion; no shell-script execution or skip added.",
+    "focused_evidence": "Existing7GUI tests plus new structural assertions pass on Linux full native import context0.452s. Windows candidate7original tests pass; baseline JAEN all4pages fit. Tone1.25font stress fits918x250; separate pre-existing illustration enlarged-font overflow remains explicitly recorded, not claimed fixed. Bash module7tests pass via WSL; independent valid and malformed stdin cases pass4of4 on actual WSL and Git Bash.",
+    "new_binary_published": false
+  },
+  "native_build_local_commit_authorization": {"date": "2026-09-06", "scope": "Owner explicitly permits necessary local feature-branch commits through native build completion, including the current two-label wrap correction, focused regression and evidence records. Supersedes previous one-commit limits for subsequent work.", "prohibited": "No GitHub application/history push. No public application or download-page changes until build/runtime/source/privacy/distribution gates pass. Existing permission permits reviewed build-input source ZIPs on the official site ahead of finished applications."},
+  "native_build_continuation_e472c41": {
+    "source_commit": "e472c41f4142b0b0aa7857b081931c4f460186ab",
+    "owner_authority": "One additional approved local commit completed for test helper and two evidence documents only. No GitHub application/history push. Subsequent evidence docs are not another authorized commit.",
+    "source_zip": {"bytes": 5477802, "sha256": "4a9f252e8ac57e6ea713290574b508570e670a74bed78356ae2fb72ad7458a40", "url": "https://chromamatter.app/build-inputs/ChromaMatter-0.9-source-e472c41-4a9f252e.zip", "validation": "518 exact Git blobs/modes, single prefix, CRC and privacy pass. Actual unchanged workflow extraction for both target branches passes on Windows and WSL ext4. Deployed anonymous full re-download matches."},
+    "site_source_only": {"source_commit": "4e8322f375142f50f0176b32e09b6ae886b7e21e", "saved_version": 31, "deployment": "appgdep_6a9d590d29a081918647179ae8f72764", "succeeded_utc": "2026-09-06T12:14:19Z", "checks": "23tests and build pass. Only one build-inputZIP added; public application download content/access/previousdata unchanged. Source-only deployment authorized separately."},
+    "macos": {"run": 34032541642, "job": 101484655584, "workflow_commit": "7d03426bae28320841e099a512e893f2e99081e4", "approved_package": false, "status": "Completed failure at 12:17:37 UTC, not cancelled. Full source suite completed: 1765 tests in 103.157 seconds, one failure, zero errors, 11 existing skips. No frozen app or package was built/uploaded.", "failure": "test_manual_shading_ribbon.test_shading_page_has_illustration_group_and_keeps_public_host: English illustration frame requested width 1096 exceeds unchanged 1080 limit at line 576. Investigate platform font metrics and shared grid columns; do not weaken this assertion.", "passed": "Exact source extraction/locked dependencies and source native/render pass. ModernGL 4.1 framebuffer readback, five PyMeshLab filters and PyTetWild 635 nodes/2507 tetrahedra pass. Previously stalled JA/EN F-slot minimum-size test now passes in 0.458 seconds; helper correction demonstrated on this Mac run, not a blanket production-GUI claim.", "diagnostic_artifact": {"id": 9989123661, "bytes": 108900, "sha256": "82985cd9c16a1bb704ddcb285b1509f6109cfb70e17bf4fa5dba69cbb74a066d", "expires_utc": "2026-09-13T12:17:31Z", "verification": "Actually downloaded and independently hash/CRC checked; all four entries inspected. RESULT and SOURCE_ARCHIVE match e472c41/4a9f252e and unchanged workflow7d03426. BUILD_LOG confirms sole failure and passed prior stalled test; native-source JSON reports ok=true."}},
+    "linux": {"run": "run06 exact e472c41", "started_utc": "2026-09-06T12:09:51Z", "finished_utc": "2026-09-06T12:12:04Z", "regression": "Fresh1730tests95.835s,0failures/errors,9existing skips. All518Gitblobs/modes verified pre/post. Frozen build/319ELF/native/render/self/requiredXvfbJAEN and independent realWSLg native/self/JAEN pass; no normalGUI left running.", "executable_sha256": "42091df2215b79ddfa4029272e51eeeb23ba0fa898816c1d90145fd46ab5c29f", "build_log_sha256": "41d1253d0a8cc67ee59c59e1b8a45f4e3e2a48e4bfabb64b977d59ac6c0ad778", "wslg_proof_sha256": "18a3032af413109edfc9070a165cfab24034f9b26cf41b3860a757ed2bf32f91", "distribution_approved": false, "remaining": "Official inventory/complete native corresponding-source/relink closure/final package and desktop installation checks pending. Source HelpCenter stale-after messages retained; packaged probes stderr empty."},
+    "ribbon_followup_uncommitted": {"change": "Two illustration labels now retain the existing 140px wrapping on every backend; full strings, fonts, grid locations and controls unchanged. Existing 1080-width and 260/300-height checks retained; regression asserts both labels remain wrapped.", "independent_candidate_checks": "Original seven tests pass on Windows and Linux in native-suite import context, zero skips; 32 before/after metrics cases per platform/variant include JA/EN, four pages, font resolution and 1.25x explanatory-label font stress. All candidate cases fit 1080x300. Windows standard English 1015x242 -> 974x251; enlarged-label English 1100x242 -> 962x261. Linux metrics unchanged. Not a Mac native result.", "canonical_checks": "Adopted production change and added assertions: seven Windows tests pass in 0.544s, zero failures/errors/skips. Fresh Mac retry and exact-source build evidence still required.", "authority": "Uncommitted local implementation only. Prior one-commit approval was used by e472c41. Request approval before another local checkpoint/source upload/Actions retry; no GitHub application/history push."},
+    "new_binary_published": false
+  },
+  "macos_bounded_wait_checkpoint": {
+    "owner_authority": "Owner explicitly approved one additional local-only commit of the minimal wait-helper correction for a new exact-source macOS retry. No GitHub application/history push or binary publication.",
+    "base_source_commit": "56ae04d96553a843548d256014493af9a1bef679",
+    "change": "Only test_filament_candidate_gui._wait_for now checks predicate and unchanged3s deadline between nonblocking single-event dispatches. Removed unbounded update before/following timeout. No production GUI, assertion, test selection, skip, native dependency or export/distribution gate change.",
+    "validation": "External8Windows and8Linux/Xvfb helper cases passed including real replenishing Tk timers and unchanged JA/EN F-slot assertions. Applied canonical full filament-candidate module:25Windows tests passed20.405s with no failures/errors/skips. Independent Linux whole-module in-memory helper-only patch:25tests11.913s,0failures/errors/skips, original source hash unchanged. ResultJSON360854a90a1841d88f1732aa7f71f68611802c9275f299e91d521faa2ac4964b. Archive checks required before dispatch.",
+    "macos_status": "Pending new exact-source Actions run; this change is test-harness hardening, not a proven macOS runtime fix. Single native dispatch and later update_idletasks can still block.",
+    "distribution_approved": false
+  },
+  "native_build_continuation_56ae04d": {
+    "source_commit": "56ae04d96553a843548d256014493af9a1bef679",
+    "owner_authority": "Requested single local-only commit approved and completed for five reviewed files. No GitHub application/history push. Subsequent evidence docs remain uncommitted.",
+    "source_zip": {"bytes": 5473398, "sha256": "38b1475acee89496abeb44228dab84d63a0104a8d402e97832479f4dec6498f3", "url": "https://chromamatter.app/build-inputs/ChromaMatter-0.9-source-56ae04d-38b1475a.zip", "checks": "518 exact Git blobs/modes, single prefix, commit comment, CRC/privacy and actual Actions extractguards for both targets independently pass. Anonymous deployed re-download matches. Earlier464eb7 archive rejected for wrong layout/EOL; never published."},
+    "site_source_only": {"source_commit": "50a1b20734c4712406befdf46188b5cb8b0ba3dd", "saved_version": 30, "deployment": "appgdep_6a9d529f9abc8191bd7b6346b373f8f2", "succeeded_utc": "2026-09-06T11:46:52Z", "checks": "Build and23tests pass; only new reviewed ZIP added. Existing0.8appdownloads/pagecopy/access/oldsource/DemoData unchanged."},
+    "macos": {"run": 34031258306, "workflow_commit": "7d03426bae28320841e099a512e893f2e99081e4", "target": "macos-arm64", "approved_package": false, "status": "Cancelled after repeated identical live faulthandler stacks. Job101481070039 ended11:55:53UTC; build/test step7m28s. Exact source/wheels/source native-render passed; no frozen app, source-coverage result or app upload.", "observed_stack": "Main thread tkinter.update -> test_filament_candidate_gui._wait_for line180 -> F-slot minimum-size JA/EN test line419; one idle ThreadPoolExecutor worker. Python deadline cannot be checked inside Tcl update. Native event-handler stall versus non-quiescent queue is not yet distinguished; no production root-cause/fix claim.", "diagnostic_artifact": {"id": 9988794603, "bytes": 49301, "sha256": "abf90a2c2d6267abb6246622d1e4f0ef8bc4e3f30a50e45780332146f632d90b", "expires_utc": "2026-09-13T11:55:48Z", "verification": "Artifact metadata independently confirmed by public API and browser summary; live stacks read. New archive contents not yet inspected locally."}, "next_candidate": "External test-helper-only patch b6c462ef990d878c7bcdd3b4827115dcb5f2bae144dec10e9dfa2bf92875c5d1 passed8Windows tests4.135s and8Linux/Xvfb tests2.806s; original0.03s wait overran0.26-0.29s under continuous Tk timers, candidate0.0300s. Existing F-slot assertions unchanged. Not canonically applied/committed; Mac proof still required. A single native dispatch or later update_idletasks may still block. Request another local-only checkpoint approval before another exact-source run."},
+    "linux": {"run": "run05 exact committed", "regression": "1730tests94.177s,0failures/errors,9existing skips. All518Gitblobs/modes verified before and after build.", "native": "Fresh frozen build/319ELF audit/source+frozen native-render/self/required XvfbJAEN all pass. Four separate realWSLg packaged native/self/JAEN probes pass; no GUI left running.", "executable_sha256": "42091df2215b79ddfa4029272e51eeeb23ba0fa898816c1d90145fd46ab5c29f", "build_log_sha256": "987c3272604a1eec5907976ca8045673ecd905c8ccb22d186345f5e2b25db56d", "wslg_proof_sha256": "9449cb208f4e1c6d9836db59f89b034dc56e44cb9a054af0b59fc6352e88351b", "caveat": "Two source-suite stale-after Tcl messages retained; tests pass and packagedUIstderr empty. WSLg not ordinary desktop driver proof; formal inventory/complete source/relink/final package pending.", "distribution_approved": false},
+    "new_binary_published": false
+  },
+  "native_build_latest_checkpoint": {
+    "date": "2026-09-06",
+    "owner_request": "Install WSL plus Ubuntu on this Windows PC and actually validate Linux; also prepare and build macOS via Actions. No official distribution publication until builds and validation finish. The prior historical-WSL interpretation was incorrect.",
+    "status": "Owner-approved curl-only workflow correction is merged. Mac run34028493767 passed download, locked dependencies and source native/render checks, then was cancelled after prolonged lack of full-suite progress; no .app completed. Linux run04 full suite/native build and real WSLg packaged self/native/render/JA-EN checks plus four frozen CLI exports passed with a two-file X11-only layout patch now adopted locally. Final native distribution/source gates remain pending. Only reviewed build-input source is public; no new app binaries or download-page changes.",
+    "wsl": "Owner requested another UAC and approved direct official signed wsl.exe installation. WSL2.7.13.0, WSLg1.0.73.2, Ubuntu22.04.5LTS x86_64 and DISPLAY=:0/WAYLAND_DISPLAY=wayland-0 verified on this PC. No restart or execution-policy change. Prior cancelled/unexecuted installer attempts are superseded. Dedicated unprivileged build environment is installed; actual run04 frozen checks are recorded separately below.",
+    "github_config": {
+      "scope": "Owner-authorized initial workflow-file exception plus two explicitly approved configuration-only corrections, not application history, models, archives or binaries.",
+      "pull_request": 23,
+      "merged_commit": "7d03426bae28320841e099a512e893f2e99081e4",
+      "file": ".github/workflows/native-source-zip.yml",
+      "uploaded_workflow_sha256": "c90de931d2a8f55cf6f5e4c09a5f17f05a22b717afb12e97a569854c8d3f0a84",
+      "github_validation_failure_run": 34026558935,
+      "failure": "Historical: PR21 runner-context failure occurred before any job. PR22 resolved that, but run34027237098 stopped at source download (Python HTTP403). Owner-approved PR23 replaces only download handling with bounded standard curl while retaining integrity/TLS/public-host/archive checks; no authentication bypass or site security changes.",
+      "audit_scope": "Remote/local Git blob3c712248a325fb3fa4affa1fdbe41fb0b9cb0bd7 matches: 21735 bytes, one file +76/-21. Actionlint1.7.12, eight Bash blocks, both Python blocks, exact-source extraction, malformed archive/diagnostic tests and nine downloader fixtures passed. Standard curl exact online download passed locally and now on actual Mac runner.",
+      "native_run": 34028493767,
+      "native_run_started_utc": "2026-09-06T10:49:41Z",
+      "native_run_target": "macos-arm64",
+      "native_run_approved_package": false,
+      "native_run_result": "Cancelled by this task after no new source-suite progress for over20min, confirmed after fresh page navigation and debounced next-test/completion/PyInstaller searches, not merely a virtualized log tail. Job101473644738 ended11:14:29Z; combined build/test step24m06s. Download/extraction passed10:50:07Z, locked wheels10:50:18Z, native dependency probe10:50:20Z, source native/render self-test10:50:23Z. Last completed test10:50:55Z. Root cause not established. No .app, source-coverage result or app upload. approved_package remains false.",
+      "diagnostic_artifact": {"id": 9988169515, "bytes": 42018, "sha256": "f33dbe174dd07b2ae8997cde548c1a548715c6d8fb7c2fd32c9e84360a101252", "download": "Downloaded through authenticated browser; SHA-256/CRC and four regular leaf entries verified without extraction.", "analysis": "419 unittest cases started:413 explicitly ok,5 skipped,1 incomplete. Actual final partial log names FilamentCandidateWindowTests.test_f_slot_actions_fit_in_japanese_and_english_at_minimum_size; this line was not visible in live UI. No failure/error/traceback or suite completion. Source native proof includes five PyMeshLab filters,PyTetWild565 nodes/2192tetrahedra,ModernGL4.1 exact RGBA readback. Frozen build and packaged self/native/JA-EN gates not reached. Root cause unproven."}
+    },
+    "source_input": {
+      "source_commit": "4547ebfdeacfe55394da5e1ba73254cbf49a36ee",
+      "bytes": 5514197,
+      "sha256": "ee04c385a39ea37f58e1b4eda41d8742c71db6b32096e026de7941bd8f2daaea",
+      "validation": "Corrected LF archive matches all 518 Git blobs and executable modes; CRC, both target extractions, ten malformed ZIP fixtures and diagnostics filtering passed independent audit. Initial CRLF-converted ZIP is rejected.",
+      "publicly_downloadable": true,
+      "url": "https://chromamatter.app/build-inputs/ChromaMatter-0.9-source-4547ebf-ee04c385.zip",
+      "anonymous_redownload": "HTTP 200; all 5514197 bytes and SHA-256 match the reviewed local archive."
+    },
+    "site": {
+      "production_saved_version": 29,
+      "production_source_commit": "5c4ba8300a67015433c18229163fd968d3c8342d",
+      "internal_source_head": "5c4ba8300a67015433c18229163fd968d3c8342d",
+      "changes": "Owner approved build-input-source-only exception. Version29 deployment appgdep_6a9d3d12c1b08191b1c89f30bc071d91 succeeded at 2026-09-06T10:14:56Z; net change from prior production is only the source ZIP. Mistaken WSL wording was removed before deployment. Build and all 23 tests pass; public application downloads/page copy unchanged.",
+      "publication_hold": "No app binary publication or download-page changes until native builds and validation finish. Build-input source alone is permitted and deployed."
+    },
+    "native_gate_policy": "Mac source/runtime/replacement proof and Linux fonts/exact Tcl-Tk/source closure remain unresolved. Build diagnosis is allowed; public binary distribution remains gated.",
+    "linux_build_progress": "Run04 with isolated X11-only layout patch passes1730 tests in95.169s (zero failures/errors, unchanged9skips), PyInstaller/319ELF audit and required packaged self/native/render/JA-EN checks underXvfb. Separate actual WSLg packaged self/native/render/JA-EN smokes and four actual frozen CLI synthetic exports pass: FullSpectrum32/high,FlatFour/high,open/full/low,open/flat/ignore; reopened ZIPCRC/XML/reports truthful. CPython3.13.14,Tcl9.0.4,actualTk9.0.4. No fontpath/security changes. Computer Use captures background rather than owned mapped WSLg window; interactive pass not claimed. Native closure and final DEB packaging pending.",
+    "linux_local_patch": {
+      "base_source_commit": "4547ebfdeacfe55394da5e1ba73254cbf49a36ee",
+      "patch_sha256": "3523387073439d80d0a4472fc68164d23c2a7ff7ecd197d0f8e4315a3810b506",
+      "changed_files": ["source/fixed_app/spectrum_mapper/paint_gui.py", "source/fixed_app/smooth_paint_hotfix.py"],
+      "scope": "X11 layout only: light-control height, wrapped labels and separate protection/smoothing rows. Windows/macOS existing layout preserved. All test bytes unchanged;516/518 source files exact to base. Earlier failed run01/run02/run03 retained and superseded, not relabelled as passes.",
+      "executable_sha256": "42091df2215b79ddfa4029272e51eeeb23ba0fa898816c1d90145fd46ab5c29f",
+      "source_identity": "Base4547 plus explicit local patch, not a pristine4547 build. Two canonical UI files now adopted with exact run04 hashes. No commit. Seven unchanged Windows focused shading tests passed1.333s, no skips.",
+      "distribution_approved": false
+    },
+    "macos_diagnostic_patch": {"file": "BUILD_MACOS_ARM64.sh", "sha256": "d116b0a89d4324857c9075be763021eb995423c2f7a667e0c58774af12b9c2a1", "scope": "Locally adopted flushed UTC/monotonic per-test START/STOP and60-second repeating all-thread faulthandler with finally cancellation. No selection/outcome/gate change. Six diagnostic tests, inline Python and Bash syntax pass. Not uploaded or run on Mac; not a proven hang fix."},
+    "linux_deb_preparation": "External native-only DEB wrapper and independent review complete:19/19 Ubuntu22.04 tests pass. Direct frozen executable, no first-launch source/Python download, no DemoData, exact complete source/native gates retained. No DEB built or installed; final source/inventory/closure/runtime evidence and project-approved public Maintainer identity required.",
+    "linux_runtime_loader_proof": "Four actual WSLg frozen native/self/JA/EN probes pass with LD_DEBUG and155 own-process map snapshots. Observed GL path loads WSL/Windows-vendor libraries not owned by Debian packages, so not ordinary Ubuntu driver closure. No final LINUX_APP_INVENTORY.json; observational file manifest is explicitly not approval. Raw evidence retained outside source.",
+    "canonical_changes": ["HANDOFF.md", "CURRENT_STATE.json", "BUILD_MACOS_ARM64.sh", "source/fixed_app/spectrum_mapper/paint_gui.py", "source/fixed_app/smooth_paint_hotfix.py"],
+    "local_checkpoint_permission": "Owner explicitly approved one local-only checkpoint commit of Linux layout fixes, Mac diagnostic runner and these records in the latest follow-up. Prepare a new exact source ZIP from that commit; historical4547 build evidence is not new-build approval. No application/history push to GitHub is authorized.",
+    "application_committed_or_pushed": "This record is included in the approved local-only checkpoint; no GitHub application/history push.",
+    "native_build_dispatched": true,
+    "official_site_deployed": "build-input-source-only"
+  },
+  "native_binary_and_official_site_followup": {
+    "date": "2026-09-06",
+    "owner_request": "Replace source-backed macOS/Linux delivery with ready-to-run packages requiring no separate Python/dependency setup; exclude DemoData. After distributables are complete, update official chromamatter.app downloads. Latest clarification permits GitHub Actions if necessary, but prohibits new commits; the owner reports the earlier GitHub account flag has been removed.",
+    "status": "Awaiting current official-site project/deployment access and a native macOS/Linux build environment. No new application build, upload or public-page change in this follow-up.",
+    "current_site_observation": "Official /download currently lists 0.8 beta: Windows standalone EXE, macOS Finder app alpha5 with first-run network setup, Linux DEB with first-run network setup, and a separate shared DemoData download. The retained local Site checkout is older and must not overwrite the current deployment.",
+    "site_access": "Owner logged into /source-vault; the observed console exposes feedback and private source transfer only, not public release editing. No page-defined release management tools or Sites deployment connector are available in this session. The retained Site checkout has hosting metadata, but is not the current public source.",
+    "build_access": "Only this Windows host is available; WSL is not installed, no Docker/Podman executable was found, and no connected Mac/Linux project is listed. Existing native build scripts require their target OS. The owner now permits Actions-only use without commits. The GitHub connector still requests reauthentication; read-only public REST metadata succeeds.",
+    "actions_no_commit_feasibility": "Public REST inspection found two active workflows on main at 34e7ebdc3ec7dae6ad831b5119d574a656b105b0: macos-arm64-alpha.yml and macos-source-alpha.yml. Both checkout github.sha and accept only an upload boolean, not an external source archive URL/hash. The 19 public branch heads predate local 0.9, and no Linux workflow is registered. Re-running these unchanged does not build current 0.9. No workflow was dispatched, branch created, commit made or ref pushed. Request an explicit narrow exception before adding an archive-input build workflow, or use an owner-provided native host.",
+    "macos_retained_evidence": "A newer historical local audit was found beyond the canonical 253-gap record: the same 317-path inventory at historical source 9404926 has a later 0ddee131 coverage report with 153 unresolved native paths (Pillow 23, PyMeshLab/Qt 123, PyTetWild/GMP 2, Shapely/GEOS 5). This is not current-package approval. Review/recover that work before duplicating it; cached pinned wheels are inputs only. No current frozen .app was found.",
+    "linux_remaining_work": "Sixteen native closure records remain blocked-unverified. Existing frozen launcher also requires Ubuntu 22.04 and system fonts, so ready-to-run delivery needs actual font inclusion/baseline validation. Align the selected Tcl/Tk runtime with exact corresponding-source ownership (build permits 8.6.18/9.0.4; closure contract currently binds 9.0.4). Do not disable checks or substitute Windows evidence.",
+    "next_step": "Obtain the current official-site source/deployment surface from the owner. Preserve current downloads while preparing verified 0.9 artifacts; do not present source-backed installers as finished standalone packages. Native build and corresponding-source/runtime checks remain required before Mac/Linux publication.",
+    "published_or_uploaded": false,
+    "git_or_github_mutation": false
+  },
+  "cross_platform_0_9_packaging": {
+    "date": "2026-09-06",
+    "status": "Exact-commit Windows executable and macOS/Linux source-backed packages verified and delivered locally without DemoData. Windows packaged startup is verified; native macOS/Linux testing remains pending. No external publication.",
+    "record_scope": "Post-artifact verification record only. All three application packages and embedded source are frozen at source_commit, not at a later documentation-only commit containing this record.",
+    "source_commit": "4547ebfdeacfe55394da5e1ba73254cbf49a36ee",
+    "owner_authority": "Prepare latest Windows/macOS/Linux launch packages; local feature-branch commit approved for this task. No push, site upload or publication.",
+    "demo_data": "Not bundled. Owner provides DemoData as a separate download. Historical payloads and rights manifests are preserved.",
+    "regression": "Exact committed source in a fresh clean checkout: 1980 tests in 429.793 seconds, 1973 passed, seven optional-platform skips, zero failures or errors. The earlier preflight had a test-fixture LF/CRLF failure and is superseded, not final evidence.",
+    "windows": {
+      "archive_filename": "ChromaMatter-0.9-win64.zip",
+      "archive_bytes": 1468101407,
+      "archive_sha256": "c41f2fa588695987d1c7b9af32e5219bfa937fcb946fb5e9e2a2457cb5da09a0",
+      "executable_sha256": "c14a014ac02694d197cd9ffb26c0cda11d554756b0af38e1d07ce8dc2698bff4",
+      "build": "Fresh PyInstaller build from exact source and the hash-locked Python 3.13.14 runtime. Runtime inventory passed for 1455 files and 256 native files; version 0.9 is consistent across executable, application component and SBOM.",
+      "synthetic_export_checks": "Five exact-executable cases passed with independently reopened archives: closed high in Full Spectrum and Flat Four, open low in both modes, and open ignore in Flat Four. Lower levels retain truthful valid_solids=false and unchecked self-intersection metadata. These synthetic fixtures and outputs are not distributed. No new real-model slicing or printing claim.",
+      "interactive_qa": "Owned fresh-profile packaged application: new footer Output Settings / Solidify / Export 3MF observed, separate settings window opened, geometry check default high confirmed, Close returns to main and application exit confirmed. Existing owner application was left untouched.",
+      "replacement_audit": "Copy-local QtCore/GEOS replacement audit passed with hash-different ABI-identical DLLs containing inert PE markers; loaded paths and Qt/GEOS function probes passed. Restored test copy and original build hashes agree. Not an arbitrary ABI-compatibility or fresh-library-rebuild claim.",
+      "archive_staging": "Canonical staging and its fresh extraction passed for 1512 manifest records. An external wrapper then misread unset LASTEXITCODE after a successful PowerShell script; the wrapper-only status check was corrected without restaging or changing archive bytes. Independent final verification remains authoritative.",
+      "fresh_extracted_runtime": "PASS: independent fresh extraction verifies CRC/safe entries, exact SHA-256 for all 1512 manifest files, complete coverage, no DemoData or loose model/3MF/GCode files, and embedded corresponding-source parity. Extracted self-test and Japanese/English UI smokes all exit zero with fresh isolated profiles and system-only PATH.",
+      "publication_eligible": true,
+      "publication_eligibility_scope": "Engineering distribution gates passed for this exact Windows archive only. External publication still requires separate owner authority; no code-signing or legal-advice claim.",
+      "code_signed": false,
+      "complete_corresponding_source": {
+        "bundled_relative_path": "corresponding-source/ChromaMatter-0.9-complete-corresponding-source.zip",
+        "bytes": 1365991072,
+        "sha256": "3f8cfca4459db675b108fa64bb93d8b618bfad4efaea5a9e90bc62f733916cbf",
+        "status": "release-approved",
+        "verified_source_files": 42921,
+        "exact_committed_project_blobs": 518,
+        "component_records": 64,
+        "native_audit_logs": 8,
+        "known_gaps": []
+      }
+    },
+    "macos": {
+      "archive_filename": "ChromaMatter-0.9-macos-source-app.zip",
+      "archive_bytes": 5833731,
+      "archive_sha256": "1f21b7cdadc9603083b7b9b3a4062f77ffa82e524946a22ed656110c96d24db2",
+      "type": "Source-backed .app test build for Apple Silicon macOS 15+; no bundled third-party runtime or wheels. First launch installs pinned dependencies on the user's Mac.",
+      "archive_checks": "260 files; safe-entry, exact-source identity, UTF-8/LF launcher and Unix 0755 executable-mode checks passed. English installation/test guide included. No DemoData payload.",
+      "native_setup_render_export": "pending; not available on this Windows host",
+      "signed_or_notarized": false
+    },
+    "linux": {
+      "archive_filename": "ChromaMatter-0.9-Linux-Source-Alpha1.tar.xz",
+      "archive_bytes": 3994312,
+      "archive_sha256": "be857308b7aaaaad16d3c2f56786834d534d4b5592a5bf8b7d675e97da81de5d",
+      "type": "Source-backed Ubuntu 22.04+ desktop x86_64 test build. First setup installs pinned dependencies locally; prerequisites are documented and sudo is not automatic.",
+      "archive_checks": "519 files / 609 members; cross-host source-candidate audit and independent safe-entry, exact-source and Unix 0755 mode checks passed. No DemoData geometry, image or 3MF payload; historical source-only demo rights/hash/documentation templates retained.",
+      "native_setup_render_export": "pending; no Ubuntu or WSL runtime available on this host"
+    },
+    "delivery_copy": "All three application archives copied into a new local owner-delivery folder with English/Japanese start guides and SHA256SUMS.txt. Every copied archive and guide was independently rehashed against its verified source; all match. Older application folders, ZIPs, demos and published assets were not modified or deleted.",
+    "post_artifact_metadata_checks": "41 focused release-identity, output-window and validation-GUI tests passed in 13.404 seconds after the record update; JSON parse and git diff --check passed. An initially unsupported new summary-status identifier was reverted to the existing accurate Windows-verified status; application and test bytes were unchanged. macOS/Linux native pending state remains explicit above.",
+    "frozen_native_gates": "macOS and Linux standalone frozen dependency/source-relink gates remain unresolved and are not bypassed by the source-backed route.",
+    "published": false
+  },
   "version_policy": {
     "pinned_until_explicit_user_request": true,
     "edition_and_artifact_revision_may_advance_independently": true,
-    "windows_numeric_file_version": "0.8.0.0"
+    "windows_numeric_file_version": "0.9.0.0"
+  },
+  "output_settings_window_development": {
+    "date": "2026-09-06",
+    "status": "Historical source-only development evidence below; changes are now committed and included in cross_platform_0_9_packaging. Previous portable ZIP/publication remains untouched.",
+    "owner_request": "After confirming export success, move Output Settings into a separate window launched beside Export 3MF and provide an independent Solidify footer action.",
+    "behavior": "Footer order: Output Settings, Solidify, Export 3MF. Upper ribbon retains Filament Settings only. One eagerly constructed modeless output window retains existing shared variables and pending input across Close, Escape and titlebar X. The geometry-check selector is first in Output Options, high by default, ignore non-recommended. Responsive two-column/stacked settings scroll independently of Close. Long progress text cannot displace footer actions. New actions are disabled while busy; settings hide on worker start. Button restoration occurs after source-install/error callbacks and respects chained jobs.",
+    "unchanged": "No change to geometry acceptance, strict manual repair, pending palette/manual paint protection, source/project serialization, radial visibility, dependencies, version, packaging or compliance gates.",
+    "validation": {
+      "initial_focused": "50 GUI/layout/i18n/window tests passed with no skips.",
+      "application_regression": "1778 tests in 181.568 seconds, zero failures, six expected optional skips; excludes three unchanged slow packaging suites. Predates the final post-callback button-refresh correction; final targeted tests cover that correction.",
+      "interactive_qa": "Actual source entrypoint, isolated profile, Windows computer-use checks of main footer and modeless settings opening/closing in Japanese and English passed. Automated tests cover 1180x740 and 1540x920 footer containment with long status and narrow/stacked scrolling. Independent Tk callback reproduction confirms project load enables Solidify. No new model export, slicing, printing, macOS/Linux runtime or packaged executable is claimed.",
+      "final_targeted": "92 tests in 24.876 seconds passed after the final callback correction: new window/queued-callback regressions, GUI layout, localization, validation UI, help compatibility, release identity and actual export adapters. Zero failures or skips. JSON parse, diff check and branch/diff inventory passed."
+    },
+    "delivery": "The original local test launcher remains local-PC-only. The current feature is now committed and packaged at cross_platform_0_9_packaging.source_commit. Isolated QA profiles and logs remain outside the repository; older ZIPs and all public/site/source-vault assets remain unchanged.",
+    "new_binary_publication_eligible": false
+  },
+  "export_validation_development": {
+    "date": "2026-09-06",
+    "status": "Historical source-only development evidence below; this feature is now committed and included in cross_platform_0_9_packaging, whose exact artifact checks supersede the former source-only status.",
+    "owner_request": "Selectable geometry-check strictness; initial value high; ignore explicitly non-recommended; selector only without explanatory UI text.",
+    "default_level": "high",
+    "levels": {
+      "high": "Preserves the prior strict solid/provenance acceptance, including its existing bounded source-proven self-intersection warning policy.",
+      "medium": "Requires closed manifold consistently wound positive-volume nondegenerate geometry; multiple bodies and unchecked self-intersections do not block export.",
+      "low": "Also permits openings and lack of a positive closed volume; still rejects non-manifold edges, inconsistent winding, degenerates or absent bodies.",
+      "ignore": "Ignores measured mesh-quality defects, is labelled non-recommended and does not claim a valid solid. Serialization/index/colour/printer checks remain mandatory."
+    },
+    "behavior": "Only explicit caller-selected policy relaxes geometry acceptance. Archived metadata cannot authorize a downgrade. The GUI asks for short explicit confirmation on every non-high export, defaulting to No, even when a project saved the policy. Low/ignore bypass automatic Solidify; manual repair itself remains strict. The setting is export-only and does not invalidate geometry or manual paint. Combined and individual 3MFs retain the policy and truthful warning metadata.",
+    "mandatory_checks": "Nonempty finite Nx3 vertex data, positive finite height, integral nonnegative in-range triangle indices before casts/native calls, archive/CRC/count/schema checks, paint and physical-filament/material definitions, slicer settings and pending-palette protection remain enforced. No blanket exception bypass, native dependency change or compliance relaxation.",
+    "validation": {
+      "focused": "61 tests passed for policy matrix, numeric/index/colour corruption, atomic destination preservation, metadata admission, individual aggregate, actual-entrypoint adapters, UI/settings, CLI and material compatibility.",
+      "fresh_application_regression": "1769 tests in 145.322 seconds; zero failures, six optional skips. Fresh run after final engine/report aggregation corrections; excludes only three unchanged distribution-tooling suites because no package was built.",
+      "earlier_full_preflight": "1933 tests in 445.412 seconds; zero failures, six optional skips. This run began before the last aggregate-report correction; do not treat it as an exact final packaged-build gate. The subsequent fresh application run above includes that correction.",
+      "source_runtime": "Real entrypoint self-test and isolated Japanese/English UI smoke passed. Open synthetic geometry is rejected by high/medium and exported by low/ignore through both Full Spectrum adaptive and Flat Four paths; Flat Four retains zero mixed states. Non-high self-intersections are explicitly not_checked/-1, not strict_zero.",
+      "public_demo": "Source-only ignore-mode checks on the approved six-part public demo: without QEM reduction, both Full Spectrum 32 and Flat Four completed combined 3MFs covering 2054777 faces; independent CRC/policy/palette inspection passed. Both full CLI bundles reached the 180-second bound during individual export (Full Spectrum part 1/6, Flat Four part 5/6), so full-resolution bundle completion is not claimed. A separate, explicitly reduced 200000-face-target run retained 196925 faces and completed combined plus all six individual 3MFs, manifests and reports in both modes (102.56 seconds Full Spectrum, 65.05 seconds Flat Four, including independent checks). Ignore/non-recommended/unchecked-self-intersection metadata and truthful valid_solids=false were preserved throughout; Flat Four had no mixed states. Inputs were unchanged. No actual Orca slicing or printing was tested.",
+      "final_metadata_checks": "53 release-identity and new-feature tests passed in 3.240 seconds after handoff/state updates; JSON parse and diff check passed. Final public-demo evidence changes are documentation-only."
+    },
+    "local_launcher": "ChromaMatter-0.9-Validation-Test.cmd on the owner's desktop launches this working source with the existing pinned Python runtime and a separate test preferences/data directory. It is local to this PC, not a portable distribution.",
+    "previous_windows_artifact": "The verified d8e3df0 Windows ZIP in windows_0_9_distribution_candidate remains immutable and does not contain this new feature. Its hashes/tests apply only to that exact historical local artifact.",
+    "commit_and_publication": "The later cross-platform packaging task explicitly authorized local feature-branch commits and new local packages. Changes are committed and packaged at cross_platform_0_9_packaging.source_commit. No GitHub push, source-vault upload or site publication has occurred.",
+    "new_binary_publication_eligible": false
+  },
+  "current_0_9_development_checkpoint": {
+    "date": "2026-09-06",
+    "status": "Historical source-development checkpoint, superseded for Windows packaging by windows_0_9_distribution_candidate below; no 0.9 release has been published.",
+    "principal_upgrade": "Improved 3MF output accuracy and success for ordinary single logical GLB input while preserving fail-closed final solid validation.",
+    "cross_platform_scope": "The repair implementation is in the shared Python engine. The exact Windows 0.9 build is now separately verified below; macOS and Linux 0.9 binaries have not been built or verified by this task. No 0.9 release has been published.",
+    "single_glb_repair": "Exact duplicate seam vertices are welded first. If microscopic embedded debris prevents that proof, a bounded dominant-surface fallback runs only when one component owns at least 99.5% of all faces, every discarded component is proved to be a tiny internal inverted shell or bounded open micro-fragment, and the retained surface independently closes through the same selective seam transaction. A retained surface that was already indexed-watertight keeps that truthful identity record and receives bounded source-preserved self-intersection handling only when its complete nested filter provenance, all count-conservation checks, source-triangle preservation, and serialized 3MF vertex/face counts agree. Separate positive solids are never discarded, and this path does not remesh or voxelize. Remaining openings are eligible only when every loop satisfies the existing strict planar tiny-hole policy with a maximum 2.0 mm span. Physical scale is measured from the geometry retained after configured tiny-component cleanup, so a discarded distant island cannot make a large hole appear eligible. The repaired result is then revalidated as a watertight, consistently wound positive-volume solid.",
+    "repair_performance": "Strict tiny-hole caps use one incremental edge-topology index per touched part and one bounded final full-topology verification per touched part instead of rescanning the complete mesh for every hole. Dominant-surface containment is rejected before ray testing when its conservative upper bound exceeds 50,000,000 triangle-ray checks, and the proved selective-seam result is reused instead of repeating that transaction.",
+    "multipart_scope": "Complex multipart repair remains input-dependent and is not claimed as solved by 0.9.",
+    "radial_experiment": "Removed from the application UI and forced off when public preferences or projects are loaded; research source is retained for compatibility and future study.",
+    "failure_ui": "Failed repair no longer opens or offers the 3D boundary-inspection flow; the original geometry, colours, and manual edits remain preserved.",
+    "formerly_failing_model_validation": "A previously failing 371,939-face ordinary single-logical GLB completed the integrated Full Spectrum path in about 16.6 seconds. The bounded fallback removed 393 proved micro-debris faces, retained 371,546 source faces, and produced a 185,775-vertex single positive watertight body with zero boundary, non-manifold, winding, or degenerate errors. Both the internal writer validation and a separate reopened 3MF validation passed; the private source model was not modified or added to the repository.",
+    "validation": "Historical source-only evidence at the development checkpoint: 489 focused output, repair, project, UI, dormant-radial compatibility, hotfix, version, and platform tests passed; the source self-test reports ChromaMatter 0.9 and ok=true; compileall, diff validation, and README alias checks passed. Exact later packaged-Windows evidence is recorded separately below."
+  },
+  "windows_0_9_distribution_candidate": {
+    "date": "2026-09-06",
+    "owner_authority": "Prepare a Windows distributable and make a local feature-branch source checkpoint; no GitHub push, site upload, or publication is authorized.",
+    "status": "Windows 0.9 local distributable verified and prepared for owner delivery. The exact committed build, full regression, executable runtime, complete corresponding-source, privacy, archive, and checksum gates passed. Historical pending gates are superseded for this exact Windows artifact only.",
+    "record_scope": "Post-artifact verification record only. The delivered executable and embedded corresponding source are frozen at source_commit below, not at any later documentation-only checkpoint containing this record. No packaged bytes were changed after final verification.",
+    "source_commit": "d8e3df0e69fb95c07ddf00fe52c4cf25152cbb62",
+    "archive_filename": "ChromaMatter-0.9-win64.zip",
+    "archive_bytes": 1587920956,
+    "archive_sha256": "cdd5d2bd85946f93d1b77d4ec004d15f488f659fc90166e3c6dd67ed999b363e",
+    "executable_sha256": "73a7cfc378595c77092971bc05563b2a7638522ea85eab22857a8a0a23ca487a",
+    "gates": {
+      "full_regression": "passed",
+      "packaged_runtime": "passed",
+      "corresponding_source": "passed",
+      "privacy": "passed",
+      "archive_integrity": "passed",
+      "native_inventory": "passed",
+      "checksum_and_desktop_copy": "passed"
+    },
+    "validation": {
+      "full_regression": "1894 tests in 458.149 seconds; zero failures and six optional skips, from the exact committed source in a clean checkout.",
+      "runtime": "Fresh hash-locked Python 3.13.14 environment and PyInstaller executable; packaged self-test and Japanese/English UI smoke passed before packaging and again from an independently extracted final ZIP with fresh profiles and a system-only PATH.",
+      "native_inventory": "1455 runtime files and 256 native files validated; binary component map, application component and SBOM all identify version 0.9.",
+      "replacement_audit": "Copy-local Qt/GEOS replacement checks passed using hash-different, ABI-identical DLLs with inert PE markers; loader paths and Qt/GEOS function probes passed. This proves the tested replacement path, not arbitrary ABI compatibility or a fresh library rebuild. Original build bytes were unchanged.",
+      "formerly_failing_model": "A previously failing ordinary single-logical GLB exported through the exact executable in both Full Spectrum 32 and Flat Four, preserving 371546 retained faces without QEM reduction. Both final 3MF archives passed independent CRC, geometry, colour and recipe checks; Flat Four had no mixed states. Each contains one closed positive-volume body. A bounded source-preserved warning for 67 self-intersecting faces remains; this is not a zero-self-intersection claim. Private input and executable were unchanged.",
+      "multipart_demo": "An optional six-part public-demo export exceeded a 180-second verification budget. Its outcome is unknown, not a pass or a proven failure. Complex multipart repair remains input-dependent and outside the demonstrated single-model improvement.",
+      "archive": "Canonical staging and an independent fresh extraction passed ZIP CRC, safe-entry checks, exact SHA-256 parity for all 1519 manifest records, no unexpected files, exact approved source-GLB/reference demo payloads and embedded-source parity. The desktop delivery copy has the same ZIP SHA-256."
+    },
+    "complete_corresponding_source": {
+      "bundled_relative_path": "corresponding-source/ChromaMatter-0.9-complete-corresponding-source.zip",
+      "bytes": 1365921068,
+      "sha256": "279314a71570c8ae1876cf6530b202bed4517886c67e15e58f0fd26288b33a6f",
+      "status": "release-approved",
+      "verified_source_files": 42909,
+      "exact_committed_project_blobs": 506,
+      "component_records": 64,
+      "native_audit_logs": 8,
+      "known_gaps": []
+    },
+    "dependency_evidence": "The retained controlled repaired wheel, distinct raw wheel, eight audit logs, source cache, and build attestation are present locally. The actual attested historical recipe is preserved byte-for-byte at tooling/recipes/BUILD_PYTETWILD_WINDOWS_20260823.ps1; the separately evolved developer recipe remains intact. Canonical recipe and exact historical toolchain-layout binding are restored without changing approved wheel/PYD identities or relaxing dependency gates. Earlier entries describing missing local inputs or this recipe mismatch are historical observations, not current availability claims.",
+    "distribution_plan": "Completed locally: Windows 0.9 ZIP built from the exact source commit with complete corresponding source, bilingual notices and instructions, and only the existing rights-approved source GLB/reference DemoData profile. Private models, validation outputs and generated 3MF samples are excluded. No GitHub or website publication was performed.",
+    "source_changes": "Updated current Windows stage/SBOM/README identity to 0.9 while keeping historical releases immutable. Fixed dormant coupon writer import-order isolation without weakening its archive validator. Optional WSL shell tests now require the actual installed test distribution, not merely the Windows launcher stub.",
+    "publication_eligible": true,
+    "publication_eligibility_scope": "Engineering distribution gates passed for the exact Windows archive only; external publication still requires a separate owner request. This is not legal advice or a claim of code signing.",
+    "published": false,
+    "code_signed": false,
+    "other_platforms": "No new macOS or Linux binary is produced or claimed by this Windows task."
   },
   "project_format": {
     "schema": "obj-adjuster.project.v12",
@@ -26,6 +332,51 @@
       "legacy_contract": "Legacy JSON projects remain supported through an explicit OBJ or GLB selection when the source cannot be resolved safely.",
       "bundle_schema": "obj-adjuster.project-bundle.v2",
       "source_manifest": "source_asset is authoritative; v2 OBJ bundles also carry an identical deprecated source_obj alias, and v1 OBJ bundles remain readable."
+    }
+  },
+  "published_flat_four_test3_checkpoint": {
+    "date": "2026-08-28",
+    "branch": "codex/linux-x86_64-flat4-test3",
+    "status": "source-validated-and-site-published; new Windows binary distribution held for exact corresponding-source evidence",
+    "display_version": "0.8beta",
+    "color_mode": {
+      "new_session_default": "flat_four",
+      "command_line_default_without_settings": "flat_four",
+      "full_spectrum_available": true,
+      "saved_explicit_full_spectrum_preserved": true,
+      "legacy_schema_v12_without_color_mode": "full_spectrum"
+    },
+    "demo_data": {
+      "payload_profile": "source-model-and-reference-only",
+      "payloads": [
+        "Original AI model Color.glb",
+        "Reference.jpg"
+      ],
+      "generated_or_sample_3mf_included": false,
+      "publication_gate": "Software and public-source staging fail closed on any .3mf, 3MF directory, extra payload, missing payload, size drift, or SHA-256 drift."
+    },
+    "official_site": {
+      "url": "https://chromamatter.app/download",
+      "presentation": "Windows, macOS, and Linux are presented as the three operating-system choices without stable-versus-test product split.",
+      "deployment": "Sites production version 13 succeeded from site commit 0efb5774b0339d772ce1e003e833da34c2914062.",
+      "windows": "The existing eligible Flat Four Test 3 archive remains behind a friendly Windows filename. Site copy discloses that the next exact package will make Flat Four the new-session default.",
+      "macos": "The existing unsigned and unnotarized Apple Silicon alpha path remains separate and volunteer-tested.",
+      "linux": "The source-backed Ubuntu alpha remains available; a frozen standalone application is withheld until exact native source and relink evidence is complete."
+    },
+    "distribution_gates": {
+      "windows_new_binary_publication": false,
+      "windows_blocker": "This PC has the controlled repaired PyTetWild wheel, but not the complete corresponding-source cache, raw wheel, required audit logs, rebuild attestation, or an existing complete corresponding-source archive needed for a new exact public package.",
+      "linux_standalone_publication": false,
+      "linux_blocker": "Sixteen native ownership groups remain blocked-unverified. Approval requires exact native identity, corresponding source, build provenance, replacement/relink proof, validation evidence, and owner approval; status strings alone cannot pass the gate.",
+      "macos_exact_current_publication": false,
+      "historical_release_assets_mutated": false
+    },
+    "validation": {
+      "focused": "155 tests passed with two optional skips, covering new defaults, GLB/project compatibility, release identity, source-only DemoData staging, and Linux compliance/archive gates.",
+      "full_regression": "1566 tests in 604.156 seconds; zero failures and four optional skips.",
+      "release_identity": "12 tests passed.",
+      "site": "Production deployment succeeded; /download and /status returned HTTP 200 with Windows, macOS, Linux, the friendly Windows filename, and the Linux standalone hold disclosed.",
+      "package_build": "Not run for these changed bytes. Source regression is not packaged-binary evidence."
     }
   },
   "experimental_test_workstream": {
@@ -92,7 +443,7 @@
       ]
     },
     "validation": {
-      "status": "exact-current-head-flat4-test3-published-prerelease-validated",
+      "status": "exact-published-flat4-test3-prerelease-validated",
       "full_regression": "1431 tests in 386.390s, 0 failures, 2 optional skips for the exact Flat Four Test 3 source committed and tagged as beddc110922fdccc4a8c48def286014ad23cd0ed; the exact BUILD_AND_TEST rerun completed in 382.567s with the same 2 optional skips",
       "focused_regression": "Focused 60-test and broader 244-test Test 3 sets passed; py_compile, CURRENT_STATE JSON parse, and git diff --check passed before publication",
       "mode_history_working_tree": {
@@ -261,200 +612,50 @@
     }
   },
   "macos_alpha_workstream": {
-    "channel": "public command-based source tester alpha plus immutable public Source-backed App Alpha 1, an in-progress Source-backed App Alpha 2 candidate with stable r32.2 DemoData, and a separately gated self-contained app",
+    "channel": "separate Developer ID unsigned and unnotarized alpha",
     "target": "Apple Silicon arm64 on macOS 15 or newer",
-    "branch": "codex/macos-app-main-integration (local Alpha 2 preflight commit 83ca52c54f318abbe19eaa2a4010b58667ae64b0; push, pull request, default-branch review, and merge pending)",
+    "branch": "codex/macos-arm64-flat4-test3",
     "base_commit": "9c7be309bc2a8268d0fa9a4a0c63ad444759120d",
     "display_version": "0.8beta",
     "bundle_short_version": "0.8.0",
-    "status": "Source-backed App Alpha 1 remains published and exact-tag CI passed. Alpha 2 local preflight at commit 83ca52c54f318abbe19eaa2a4010b58667ae64b0 passed real stable r32.2 DemoData extraction, staging, independent audit, focused tests, and the full Windows suite; push/PR, exact-commit Apple Silicon CI, main merge, manual artifact validation, Alpha 2 Release publication, and anonymous re-download remain pending. Self-contained app distribution remains blocked by 153 unresolved Mach-O source/relink closures.",
+    "status": "technical-ci-passed; no approved tester download; distribution blocked by 253 unresolved Mach-O source/relink closures",
     "windows_release_impact": "none; the published Windows stable and Flat Four test assets remain unchanged",
     "runtime_scope": [
       "Uses the normal macOS Application Support directory while preserving the legacy Windows settings path.",
       "Replaces Windows-only folder opening and Snapmaker Orca discovery with platform-specific behavior and a manual Open as project fallback.",
       "Loads PyTetWild native wrappers from Windows or macOS layouts without weakening topology or 3MF fail-closed checks.",
-      "Provides a strict source and packaged self-test that executes PyTetWild, required PyMeshLab filters, and a real ModernGL framebuffer draw and readback.",
-      "The source tester launcher verifies Apple Silicon/macOS 15+, official CPython 3.13.14, a runtime-only hash lock, a deterministic CC0 GLB, and the native/render gate before opening the GUI; it does not use sudo or disable Gatekeeper.",
-      "The Finder-launchable source-backed app contains no Python runtime, wheel, third-party native library, or packaged Mach-O executable; it opens the same reviewed launcher in Terminal and binds every included source/data file to the exact Git commit with a SHA-256 manifest.",
-      "The Alpha 2 candidate keeps the Finder app, the quick four-box GLB, and the exact stable r32.2 DemoData directory beside one another at package root; DemoData is never placed inside the app bundle."
+      "Provides a strict source and packaged self-test that executes PyTetWild, required PyMeshLab filters, and a real ModernGL framebuffer draw and readback."
     ],
     "ci": {
       "workflow": ".github/workflows/macos-arm64-alpha.yml",
       "runner": "macos-15 arm64",
       "python": "CPython 3.13.14 arm64 with exact hash-locked wheels",
-      "automatic_trigger": "main pushes and pull requests targeting main when build, package, guide, sample, source, or audit inputs change",
+      "automatic_trigger": "one push run on codex/macos-arm64-flat4-test3 when build, package, guide, sample, source, or audit inputs change; no duplicate pull-request run",
       "default_output": "seven-day diagnostics only; no app archive",
-      "tester_archive": "prebuilt app ZIP remains fail-closed until the exact source commit and macOS compliance evidence are explicitly approved",
-      "source_tester_workflow": ".github/workflows/macos-source-alpha.yml",
-      "source_tester_exact_tag_run": "https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32953920272",
-      "source_tester_exact_tag_result": "passed setup, native/render self-test, deterministic public GLB, and Japanese/English UI smoke on macOS 15 arm64",
-      "source_backed_app_candidate_run": "https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32964917126",
-      "source_backed_app_exact_tag_run": "https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32965133450",
-      "source_backed_app_exact_tag_result": "passed staged and fresh-extracted manifest audits, launcher setup, native/render self-test, Japanese/English UI smoke, direct app-entry self-test, and Finder/LaunchServices opening on macOS 15 arm64"
+      "tester_archive": "fail-closed until the exact source commit and macOS compliance evidence are explicitly approved"
     },
     "volunteer_testing": {
       "github_discussions_enabled": true,
       "testing_board": "https://github.com/Ponkichi0718/ChromaMatter/discussions/9",
-      "english_guide": "publication/MACOS_SOURCE_APP_TESTING_EN.md",
+      "english_guide": "publication/MACOS_ALPHA_TESTING_EN.md",
       "reproducible_problem_form": ".github/ISSUE_TEMPLATE/macos_alpha_report.yml",
       "basic_test": "10-minute Pass/Fail/Not-tested checklist before optional large-model or physical-print testing",
       "public_test_model": "deterministic CC0 static GLB generated during approved tester staging; 32 vertices, 48 triangles, four watertight bodies, exact red/blue/white/black COLOR_0, no texture or third-party/private metadata",
-      "availability": "Source-backed App Alpha 1 is publicly downloadable from https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-macos-source-app-alpha1 and remains immutable; the earlier command-based Source Tester Alpha 1 remains available; Source-backed App Alpha 2 is a locally validated preflight candidate at commit 83ca52c54f318abbe19eaa2a4010b58667ae64b0 and has no approved download; Discussion #9 is the result and setup-question hub",
-      "source_tester_release": {
-        "tag": "v0.8beta-macos-source-alpha1",
-        "source_commit": "41d57d8960191f6fb2182461b620a044a0d3966a",
-        "release_id": 377023145,
-        "release_url": "https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-macos-source-alpha1",
-        "zip": "ChromaMatter-0.8beta-macos-source-alpha1.zip",
-        "zip_bytes": 4926388,
-        "zip_sha256": "a28d7723957e7cafda1e7db2638fd4fc5e9cb52aa5eca870c81bb48bd292942a",
-        "checksum": "SHA256SUMS-macos-source-alpha1.txt",
-        "checksum_bytes": 111,
-        "checksum_sha256": "a232cc261b740fdd01f3bb76dae3625f3e56b6eb34a53cca348ce76eff3e8695",
-        "anonymous_redownload": "passed byte-size, SHA-256, 456-file inventory, case-fold uniqueness, LF launcher bytes, and executable-mode checks",
-        "scope": "source-based tester path only; not a signed, notarized, or prebuilt app"
-      },
-      "source_backed_app_release": {
-        "tag": "v0.8beta-macos-source-app-alpha1",
-        "source_commit": "aaf6665eca20180129e7b4eade3df941d7d28433",
-        "release_id": 377095171,
-        "release_url": "https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-macos-source-app-alpha1",
-        "zip": "ChromaMatter-0.8beta-macos-source-app-alpha1.zip",
-        "zip_bytes": 5608874,
-        "zip_sha256": "271D65D330A97C3DE45FEFDC4F891990BDDFEAA77C223B5B39420FFF1729879E",
-        "checksum": "SHA256SUMS-macos-source-app-alpha1.txt",
-        "checksum_bytes": 115,
-        "checksum_sha256": "CB7AFF611044C3D2987F129E9D915B0FBAD015844F5815F70888DDFDAD76A86F",
-        "app_manifest_files": 238,
-        "bundled_native_runtime_binaries": 0,
-        "anonymous_redownload": "passed byte-size, SHA-256, fresh extraction, exact source-commit identity, complete app-manifest audit, and zero-native-runtime verification",
-        "scope": "Finder-launchable source-backed app only; unsigned and unnotarized, with runtime setup on the tester Mac; not the self-contained frozen app"
-      },
-      "source_backed_app_alpha2_candidate": {
-        "status": "local exact-source preflight candidate only; real stable r32.2 DemoData extraction, staging, independent audit, focused tests, and full Windows regression passed at commit 83ca52c54f318abbe19eaa2a4010b58667ae64b0, but the commit is not pushed, PR-reviewed, Apple Silicon CI-validated, merged to main, manually artifact-validated, released, or anonymously re-downloaded",
-        "candidate_zip": "ChromaMatter-0.8beta-macos-source-app-alpha2.zip",
-        "candidate_root": "ChromaMatter-0.8beta-macos-source-app-alpha2",
-        "exact_source_commit": null,
-        "local_preflight_source_commit": "83ca52c54f318abbe19eaa2a4010b58667ae64b0",
-        "top_level_contract": [
-          "ChromaMatter Source Alpha.app",
-          "README_INSTALL_AND_TEST_EN.md",
-          "SOURCE_BACKED_ALPHA_NOTICE.txt",
-          "SOURCE_COMMIT.txt",
-          "ChromaMatter-Public-Four-Color-Test.glb",
-          "ChromaMatter-Public-Four-Color-Test.glb.sha256",
-          "DemoData",
-          "SOURCE_APP_PACKAGE_MANIFEST.json",
-          "SOFTWARE_PACKAGE_SHA256.txt"
-        ],
-        "integrity_contract": {
-          "outer_manifest": "SOURCE_APP_PACKAGE_MANIFEST.json independently records every regular package file except itself and SOFTWARE_PACKAGE_SHA256.txt",
-          "software_checksum": "SOFTWARE_PACKAGE_SHA256.txt contains sorted UPPERCASE_SHA256, two-space, POSIX/path records for every other regular package file, including SOURCE_APP_PACKAGE_MANIFEST.json, and excludes only itself"
-        },
-        "demo_data_contract": {
-          "placement": "package root beside the Finder app, never inside the app bundle",
-          "source_release": "immutable v0.8beta-r32.2 DemoData",
-          "file_count": 15,
-          "canonical_documents": 4,
-          "canonical_manifest": "DEMO_DATA_MANIFEST.json",
-          "manifest_payloads": 10,
-          "original_inputs": "Original AI model Color.glb and Reference.jpg",
-          "full_spectrum_3mf_outputs": 7,
-          "part_output_manifest": "3MF/Original AI model Color_FullSpectrum_parts_2/パーツ別3MF_manifest.json",
-          "extra_files_allowed": false
-        },
-        "test_scope": {
-          "quick_fixture": "the four-box GLB checks the selectable Full Spectrum 32-state processing path and Flat Four switching, but does not force or visibly cover all 32 mixed states simultaneously",
-          "stable_fixture": "the multipart GLB is the realistic 32-state/Hi3D input; its included seven 3MF files are Full Spectrum examples only and are not evidence of Flat Four output",
-          "mandatory_warnings": [
-            "Select the physical black F slot and enable Weak Black 5–25% before regenerating DemoData 3MF output.",
-            "Hi3D-derived part names may not match visible regions; inspect geometry rather than trusting filenames.",
-            "Multipart solidification remains unstable beta behavior and can fail for other multipart inputs."
-          ]
-        }
-      },
+      "availability": "no approved tester download yet; Discussion #9 is the single status and future approved-build hub",
       "draft_pull_request": {
-        "number": 17,
-        "url": "https://github.com/Ponkichi0718/ChromaMatter/pull/17",
-        "status": "open Draft against the separate macOS branch; Source-backed App Alpha 1 is fixed by its tag and Release, while the self-contained app remains gated"
+        "number": 12,
+        "url": "https://github.com/Ponkichi0718/ChromaMatter/pull/12",
+        "status": "open Draft; source and review workspace only; not an approved tester download"
       }
     },
     "validation": {
       "windows_regression": "1478 tests in 686.573s, 0 failures, 2 optional skips after the macOS port and source-coverage audit; the later workflow/source-identity test-only follow-up passed its 26 focused tests",
-      "final_targeted": "48 macOS source-app/launcher/packaging/source-coverage tests passed with one Windows-only bash syntax skip after the Finder app stager and exact wheel-inspection updates",
+      "final_targeted": "35 macOS packaging/source-coverage tests passed after the hardened stager review; 26 focused tests passed after binding CI diagnostics to the exact source head",
       "tester_workflow_focused": "49 tests passed after adding the public GLB fixture, workflow summary, English tester guide, Issue form, README path, and Discussion hub; YAML parse, shell syntax, Python compile, and diff checks passed",
       "current_windows_full_regression": "1478 tests in 686.573s, 0 failures, 2 optional skips; subsequent source-audit and exact-source workflow refinements were tooling/test-only and passed their focused suites",
       "windows_ui_smoke": "source Japanese and English visible-window smoke passed",
       "mac_lock_dry_run": "all 23 exact macOS 15 arm64 CPython 3.13 wheels resolved with hash enforcement and no source distributions",
       "mac_actual_build": "The latest Apple Silicon run completed app packaging and all technical checks successfully; diagnostics only were uploaded and no tester application was distributed.",
-      "source_tester_alpha1": {
-        "branch_run": "https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32953820494",
-        "exact_tag_run": "https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32953920272",
-        "source_commit": "41d57d8960191f6fb2182461b620a044a0d3966a",
-        "result": "success",
-        "launcher_contract_test": "passed",
-        "runtime_hash_lock_install": "passed",
-        "native_render_self_test": "passed",
-        "public_glb_generation_and_hash": "passed",
-        "source_ui_smoke": {
-          "ja": "passed",
-          "en": "passed"
-        },
-        "windows_focused_regression": "52 tests passed with one bash-only syntax test skipped on Windows; macOS Actions subsequently passed bash -n"
-      },
-      "source_backed_app_alpha1": {
-        "candidate_run": "https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32964917126",
-        "exact_tag_run": "https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32965133450",
-        "source_commit": "aaf6665eca20180129e7b4eade3df941d7d28433",
-        "result": "success",
-        "finder_app_stage_and_manifest_audit": "passed",
-        "runtime_hash_lock_install": "passed",
-        "native_render_self_test": "passed",
-        "fresh_archive_audit": "passed",
-        "launchservices_open_and_self_test": "passed",
-        "source_ui_smoke": {
-          "ja": "passed",
-          "en": "passed"
-        },
-        "anonymous_release_redownload": "passed with exact 5608874-byte ZIP and SHA-256 271D65D330A97C3DE45FEFDC4F891990BDDFEAA77C223B5B39420FFF1729879E"
-      },
-      "source_backed_app_alpha2_candidate": {
-        "status": "local preflight passed; remote, Apple Silicon, merge, artifact, and Release gates remain pending",
-        "source_commit": "83ca52c54f318abbe19eaa2a4010b58667ae64b0",
-        "real_stable_r32_2_demo_data": {
-          "result": "passed local extraction, staging, and independent audit",
-          "files": 15,
-          "manifest_payloads": 10,
-          "payload_bytes": 236274418
-        },
-        "focused_windows_tests": {
-          "result": "passed",
-          "tests": 40,
-          "elapsed_seconds": 136.241,
-          "platform_skips": 3
-        },
-        "full_windows_regression": {
-          "result": "passed",
-          "tests": 1538,
-          "elapsed_seconds": 587.876,
-          "platform_skips": 7
-        },
-        "security_review_fixes": [
-          "Exact Git byte parity is enforced for staged source-backed app files.",
-          "Symlinks and special files are rejected by an early recursive scan before package inputs are read.",
-          "Unicode-confusable, normalization-colliding, and control-character paths are rejected.",
-          "The workflow independently verifies SOFTWARE_PACKAGE_SHA256.txt with shasum rather than relying only on the package auditor."
-        ],
-        "package_stage_and_fresh_audit": "passed locally against the exact preflight commit and real stable r32.2 DemoData; this is not Apple Silicon CI or Release evidence",
-        "push_and_pull_request": "pending",
-        "macos_ci": "pending on Apple Silicon/macOS 15 for the exact pushed commit",
-        "pull_request_review_and_default_branch_merge": "pending",
-        "manual_alpha2_artifact": "pending; no Alpha 2 artifact is approved or published",
-        "archive_and_detached_checksum": "pending as a Release gate",
-        "owner_publication_approval": "pending",
-        "anonymous_release_redownload": "pending",
-        "public_release": false
-      },
       "latest_successful_ci_run": {
         "url": "https://github.com/Ponkichi0718/ChromaMatter/actions/runs/32947038458",
         "source_commit": "9404926a6aadbb918ade7855f4141e263c3aafba",
@@ -476,17 +677,7 @@
         "inventory_source_commit": "9404926a6aadbb918ade7855f4141e263c3aafba",
         "mach_o_total": 317,
         "mach_o_mapped": 317,
-        "mach_o_unresolved_source_or_relink_closure": 153,
-        "required_wheel_inspections": [
-          "numpy",
-          "pymeshlab",
-          "pytetwild",
-          "rtree",
-          "scipy"
-        ],
-        "missing_required_wheel_inspections": [],
-        "failed_wheel_probes": [],
-        "known_gaps": 7,
+        "mach_o_unresolved_source_or_relink_closure": 253,
         "status": "candidate-only",
         "engineering_gate_passed": false,
         "legal_conclusion": false
@@ -502,21 +693,135 @@
     },
     "distribution_gate": {
       "status": "blocked-native-source-closure",
-      "reason": "All 317 packaged Mach-O paths are classified and the five required wheel inspections pass, but 153 still have unresolved exact source, build-provenance, or relinking evidence.",
+      "reason": "All 317 packaged Mach-O paths are classified, but 253 still have unresolved exact source, build-provenance, or relinking evidence.",
       "native_mach_o_total": 317,
       "native_mach_o_mapped": 317,
-      "native_mach_o_unresolved_source_or_relink_closure": 153,
+      "native_mach_o_unresolved_source_or_relink_closure": 253,
       "public_release": false,
       "tester_distribution": false,
-      "source_tester_distribution": true,
-      "source_tester_distribution_scope": "exact tagged source ZIP with a guided launcher; dependencies are verified and downloaded on the tester's own Mac",
-      "source_backed_app_distribution": true,
-      "source_backed_app_distribution_scope": "exact tagged Finder .app with source/data only, no bundled runtime/native binaries, a complete SHA-256 manifest, and verified runtime setup on the tester's own Mac",
-      "source_backed_app_alpha2_distribution": false,
-      "source_backed_app_alpha2_distribution_scope": "local preflight candidate only; exact-commit staging and independent audit with the canonical stable r32.2 DemoData passed locally, but this does not become Release evidence until push/PR, Apple Silicon CI, main merge, manual artifact validation, detached Release checksum, owner publication approval, and anonymous re-download gates pass",
       "owner_approval": false
     },
-    "next_exact_task": "Push local preflight commit 83ca52c54f318abbe19eaa2a4010b58667ae64b0, open the Alpha 2 pull request, and run that exact pushed commit through Apple Silicon/macOS 15 CI. After review and main merge, validate an explicitly requested manual artifact before any new Alpha 2 tag or Release; publish only with owner approval and a detached Release checksum, then anonymously re-download and verify the public assets. Keep Alpha 1 immutable and the separate 153-gap self-contained-app gate blocked."
+    "next_exact_task": "Resolve and review the exact source/build/relink evidence for the 253 unresolved Mach-O files, produce the exact-commit corresponding-source evidence, then obtain explicit owner approval and rerun the fail-closed tester-distribution gate. Until then keep Discussion #9 no-download and PR #12 Draft."
+  },
+  "linux_alpha_workstream": {
+    "channel": "separate diagnostics-only technical alpha",
+    "target": "Ubuntu 22.04 or newer on x86_64",
+    "branch": "codex/linux-x86_64-flat4-test3",
+    "base_commit": "3887224f253fa04996a1240e2c6008b896549b68",
+    "validated_source_commit": "b145e0e6dccf73f9e6b986244a1005e77f26cbfe",
+    "display_version": "0.8beta",
+    "status": "The current Linux feature-branch source passes Windows regression and Ubuntu 22.04 UI/native validation. A source-backed Ubuntu 22.04+ x86_64 alpha is prepared for public testing with hash-pinned dependencies downloaded locally; the separate frozen standalone binary remains blocked by native source/relink closure.",
+    "windows_and_macos_release_impact": "none; published Windows assets and the previously validated exact macOS commit remain unchanged",
+    "runtime_scope": [
+      "Uses XDG_CONFIG_HOME or ~/.config/ChromaMatter for Linux preferences while preserving existing Windows and macOS locations.",
+      "Uses xdg-open for folders and accepts extensionless Snapmaker Orca executables from PATH or the manual picker.",
+      "Marks the window as Linux alpha without changing the public 0.8beta version.",
+      "Selects and verifies a Linux Tk font with measurable Japanese glyphs and a Pillow Noto CJK font; missing host fonts fail closed with an actionable English install command instead of rendering blank Japanese text.",
+      "Localizes backend progress, completion, warning, and error-dialog copy at display time; unknown Japanese exception or traceback details are replaced with a safe English explanation in English UI while Japanese UI retains the original detail.",
+      "Provides source and packaged gates that execute PyTetWild tetrahedralization, every required PyMeshLab filter, and a real OpenGL 3.3 framebuffer clear and readback.",
+      "Audits packaged ELF architecture and dependencies, symlink confinement, private payloads, direct_url metadata, and build-host path leakage before the technical build can pass.",
+      "Binds the exact Tcl/Tk runtime pair to reviewed license files for the GitHub 8.6.18 toolcache or the local managed-Python 9.0.4 runtime; unknown patch pairs fail closed."
+    ],
+    "dependency_lock": {
+      "path": "source/fixed_app/requirements-build-linux-x86_64.lock",
+      "python": "CPython 3.13.14 x86_64",
+      "wheel_count": 22,
+      "baseline": "Ubuntu 22.04 glibc 2.35 or newer; PyMeshLab manylinux_2_35_x86_64 sets the highest glibc floor",
+      "lock_sha256": "DB3E5C4C8C2F6F89725131200F27ABDD64940BFB2E72D81B4EE2EABD95A6F007",
+      "resolution": "all 22 official PyPI wheels resolved with --require-hashes and --only-binary=:all:; downloaded wheel bytes matched the recorded PyPI SHA-256 values",
+      "distribution_note": "The PyTetWild Linux wheel and all other native files still require a separate corresponding-source and relinking review before any external binary distribution."
+    },
+    "ci": {
+      "workflow": ".github/workflows/linux-x86_64-alpha.yml",
+      "runner": "ubuntu-22.04 x86_64",
+      "automatic_trigger": "one push run on codex/linux-x86_64-flat4-test3 for relevant workflow, build, audit, or source changes; manual workflow_dispatch is also defined",
+      "build": "PyInstaller one-folder ChromaMatter-Linux-Alpha technical build",
+      "default_output": "seven-day validation reports and environment diagnostics only",
+      "application_artifact_uploaded": false,
+      "release_or_tester_upload_path": false
+    },
+    "validation": {
+      "focused_cross_platform": "52 Linux, platform-runtime, and macOS compatibility tests passed on the Windows development host",
+      "shell_syntax": "BUILD_LINUX_X86_64.sh and AUDIT_LINUX_APP.sh passed bash -n under Git for Windows",
+      "workflow_structure": "the workflow parsed as YAML and its branch, single job, and diagnostics-only upload structure were checked",
+      "dependency_lock": "22 of 22 Linux wheels resolved and matched their official PyPI SHA-256 values",
+      "windows_full_regression_before_linux_runtime_fixes": "1514 tests in 754.977s, 0 failures, 2 optional skips; this predates the Linux-runtime numerical-stability fix and is not exact-current Windows full-regression evidence",
+      "focused_cross_platform_after_linux_build": "68 Linux, platform-runtime, macOS-packaging, release-identity, and palette tests passed on the Windows development host after the evidence-document update",
+      "exact_current_windows_full_regression": "1532 tests in 728.420s passed with 0 failures and 2 optional skips after the Linux font/dialog localization work; the subsequently added source-alpha and standalone-release tooling passed its focused tests separately",
+      "wsl_host_preparation": "WSL2 Ubuntu 24.04.4 and Ubuntu 22.04.5 x86_64 are available. The Ubuntu 22.04 host uses glibc 2.35, CPython 3.13.14, Tcl/Tk 9.0.4, patchelf 0.14.3, Xvfb, Tk Japanese bitmap fonts, and Noto CJK for Pillow.",
+      "actual_linux_build": "passed from exact commit b145e0e6dccf73f9e6b986244a1005e77f26cbfe on WSL2 Ubuntu 24.04.4 x86_64 with glibc 2.39, CPython 3.13.14, Tcl/Tk 9.0.4, and patchelf 0.18.0",
+      "current_working_tree_ubuntu_22_04_build": "passed from the uncommitted working-tree snapshot based on a7e2832b2d651af371f13bc68f7568e2b8a53ecf on WSL2 Ubuntu 22.04.5 x86_64 with glibc 2.35, CPython 3.13.14, Tcl/Tk 9.0.4, and patchelf 0.14.3; source native/render gate, packaged self-test, packaged native/render gate, and Japanese/English UI smokes all passed",
+      "actual_linux_source_regression": "1276 tests in 69.606s, 0 failures, 0 errors, 3 optional skips; Windows release and macOS package/compliance modules were excluded by the Linux build contract",
+      "actual_linux_native_render_self_test": {
+        "source": "passed with top-level ok=true",
+        "packaged": "passed with top-level ok=true",
+        "coverage": "real PyTetWild tetrahedralization, five required PyMeshLab print-path filters, and an OpenGL 4.5 framebuffer clear/readback satisfying the required OpenGL 3.3 gate"
+      },
+      "actual_linux_packaged_self_test": "passed",
+      "actual_linux_ui_smoke": {
+        "ja": "passed",
+        "en": "passed"
+      },
+      "current_working_tree_source_ui_smoke_ubuntu_22_04": {
+        "ja": "passed",
+        "en": "passed",
+        "font_probe": "Tk gothic with Japanese glyph width 80; Pillow NotoSansCJK-Regular.ttc"
+      },
+      "ubuntu_22_04_hosted_validation": "local WSL2 Ubuntu 22.04.5 technical validation passed for the current uncommitted snapshot; the diagnostics-only GitHub-hosted workflow remains unpushed/unobserved while account access is restricted",
+      "exact_current_macos_validation": "pending; the previous successful macOS technical run remains evidence only for its recorded source commit",
+      "application_inventory": {
+        "local_only_relative_directory": "dist/ChromaMatter-Linux-Alpha inside the ignored current-working-tree Ubuntu 22.04 build output; the host path is intentionally not recorded",
+        "regular_files": 803,
+        "symlinks": 28,
+        "bytes": 502485534,
+        "launcher_bytes": 13762416,
+        "launcher_sha256": "3CE00FE776DF8A2DC8D73FFA9F226E3B1587D560D4C1C97F001D30FB75299ACF"
+      },
+      "elf_audit": {
+        "x86_64_files": 319,
+        "unresolved_dependencies": 0,
+        "build_host_path_leaks": 0,
+        "absolute_search_paths_sanitized": 4,
+        "pytetwild_wrapper_files": 1,
+        "pytetwild_package_local_libraries": 2,
+        "pymeshlab_filter_plugins": 58,
+        "private_model_or_toolpath_payloads": 0,
+        "pip_direct_url_files": 0,
+        "symlink_confinement": "passed"
+      },
+      "local_cleanup": "After preserving the exact b145e0e source and successful output, obsolete failed-build and working-tree probe directories were removed, reclaiming approximately 1.6 GiB inside the WSL filesystem."
+    },
+    "source_backed_alpha": {
+      "status": "candidate-ready-pending-public-site-promotion",
+      "distribution_model": "The archive contains the exact reviewed ChromaMatter Git source and installer/launcher scripts. It contains no frozen third-party wheels; first setup downloads the 22 hash-pinned wheels directly into a local virtual environment.",
+      "supported_platform": "Ubuntu 22.04+ x86_64 with a graphical desktop or WSLg",
+      "python": "uv-managed CPython 3.13.14",
+      "host_font_prerequisites": [
+        "fonts-noto-cjk",
+        "xfonts-base",
+        "xfonts-intl-japanese",
+        "xfonts-intl-japanese-big"
+      ],
+      "public_download": false,
+      "public_site": "https://chromamatter.app/download",
+      "feedback": "https://chromamatter.app/feedback/linux",
+      "artifact_format": "deterministic tar.xz with Git executable modes preserved and independent fresh-extract audit",
+      "limitations": "Unsigned technical alpha; Flat Four and physical U1 behavior remain experimental; setup requires Internet access and uv."
+    },
+    "distribution_gate": {
+      "scope": "frozen standalone Linux application binary only",
+      "status": "blocked-native-source-closure-and-owner-approval",
+      "public_release": false,
+      "tester_distribution": false,
+      "application_directory_exists": true,
+      "application_directory_local_only": true,
+      "application_archive_exists": false,
+      "ubuntu_22_04_compatibility_validated": true,
+      "native_owner_mapping": "319 of 319 ELF files mapped without ambiguity by the candidate inventory",
+      "remaining_closure_gap_count": 16,
+      "reason": "Component-map/SBOM/source-stage/archive tooling now fails closed, but exact corresponding-source, build, replacement and relinking proof remains incomplete for 16 native closures including PyMeshLab/Qt, PyTetWild/GMP/libgomp, TetGen, GEOS, Tcl/Tk, CPython, NumPy, SciPy and Pillow. No frozen binary may be shared until these close and an external owner approval sidecar binds the final archive and audit."
+    },
+    "next_exact_task": "Commit the reviewed Linux font/dialog, source-alpha and fail-closed standalone-binary tooling on the feature branch. Create the deterministic source-backed tar.xz from that exact clean commit, run fresh setup/native/render/UI smoke on Ubuntu 22.04, then publish it through the official site's two-stage hidden-upload and link-enable process. Keep the frozen standalone binary blocked until all 16 native closure gaps are resolved."
   },
   "current_features": {
     "public_main_window": [
@@ -562,8 +867,8 @@
   "validation": {
     "implementation_focused_source": "passed for exact tagged commit aba20685d2fd6987621b2e1e6624f46ea84912a3; the clean full regression ran 1298 tests with 1296 passed, 2 optional skips, and 0 failures",
     "release_focused_identity_regression_tooling_gui_layout": "passed for the exact tagged r32.2 source and the published package; packaged and fresh-extracted self-tests plus isolated Japanese and English UI smoke all passed",
-    "current_public_ui_focused_regression": "passed for the packaged and independently fresh-extracted r32.2 Windows release in Japanese and English",
-    "current_full_regression": "passed for exact tagged commit aba20685d2fd6987621b2e1e6624f46ea84912a3 on Python 3.13.14: Ran 1298 tests; 1296 passed, 2 optional skips, and 0 failed",
+    "latest_published_public_ui_focused_regression": "passed for the packaged and independently fresh-extracted r32.2 Windows release in Japanese and English",
+    "latest_published_full_regression": "passed for exact tagged commit aba20685d2fd6987621b2e1e6624f46ea84912a3 on Python 3.13.14: Ran 1298 tests; 1296 passed, 2 optional skips, and 0 failed",
     "changed_worktree_full_regression": "superseded by the exact tagged r32.2 release evidence: Ran 1298 tests; OK (skipped=2), with 1296 passed and zero failed",
     "changed_worktree_multipart_e2e": "passed for the owner-approved r32.2 DemoData set in the staged and independently fresh-extracted published package: 10 payloads include one combined and six part-specific 3MF projects. Canonical manifest, size/SHA-256, 3MF ZIP/CRC/XML/reference/index, archive-path, privacy, and independent geometry checks passed. Multipart solidification remains beta because other multipart files may still fail.",
     "changed_worktree_full_resolution_policy": "the inherited-source warning is not a repair or a trust in saved metadata: exact-coordinate triangle ancestry, externally anchored source prefixes, complete source-only intersection IDs, count <= max(100, ceil(source_faces / 100)), area fraction <= 0.002, and every mandatory solid check are required; individual output additionally requires exact part and boundary-vertex rebasing, complete direct parent proof, and distinct local-cap or shared-interface provenance; QEM, joints, moved coordinates, incomplete proof, stale layouts, and generated-face intersections remain fail-closed",
@@ -608,10 +913,10 @@
       "static_closure_status": "release-approved",
       "artifact_policy": "adopt only this repaired wheel together with its distinct raw wheel, exact 8 logs, 12 source archives, attestation, canonical recipe and locks; the closure approval does not approve the Windows application archive"
     },
-    "current_clean_build_and_packaged_smoke": "passed for exact tagged commit aba20685d2fd6987621b2e1e6624f46ea84912a3: clean build, packaged self-test, fresh-extracted self-test, and isolated Japanese/English UI smoke all passed",
+    "latest_published_clean_build_and_packaged_smoke": "passed for exact tagged commit aba20685d2fd6987621b2e1e6624f46ea84912a3: clean build, packaged self-test, fresh-extracted self-test, and isolated Japanese/English UI smoke all passed",
     "binary_component_licence_and_static_link_coverage": "passed for the exact r32.2 Windows package and complete corresponding source: the compliance inventory covers 1455 packaged binary files, and the complete-source bundle is release-approved with 64 components and zero known gaps",
-    "current_stage_archive_privacy_and_checksum_audit": "passed for the exact r32.2 release: the Windows fresh extraction contains 1527 files and a 1526-record manifest; DemoData contains 10 payloads and seven 3MF projects; all six public assets were downloaded without authentication after publication and matched the frozen byte sizes and SHA-256 hashes",
-    "multipart_solidification_beta_limitation": "The bundled DemoData is a confirmed successful multipart solidification and 3MF-export case, but other multipart files may still fail solidification or 3MF export. This instability is one reason the product remains 0.8beta.",
+    "latest_published_stage_archive_privacy_and_checksum_audit": "passed for the exact r32.2 release: the Windows fresh extraction contains 1527 files and a 1526-record manifest; DemoData contains 10 payloads and seven 3MF projects; all six public assets were downloaded without authentication after publication and matched the frozen byte sizes and SHA-256 hashes",
+    "multipart_solidification_beta_limitation": "The bundled DemoData is a confirmed successful multipart solidification and 3MF-export case, but other multipart files may still fail solidification or 3MF export. This instability is one reason the published r32.2 binary was labelled 0.8beta; it remains an unresolved limitation in the 0.9 development source.",
     "source_runtime": {
       "python": "3.13.14",
       "pyinstaller": "6.20.0"
@@ -638,7 +943,7 @@
     "revision": "AI Model Print Studio r32.2 is the published v0.8beta-r32.2 prerelease frozen at commit aba20685d2fd6987621b2e1e6624f46ea84912a3. It keeps display/package version 0.8beta and Windows numeric version 0.8.0.0, includes seven owner-approved derived 3MF demo outputs, and passed the exact-source regression, clean build, packaged and fresh-extracted smoke, Japanese/English UI, complete corresponding-source, archive/privacy/checksum, tag, publication, and anonymous post-publication download gates. Multipart solidification remains beta: the bundled DemoData succeeds, while other multipart files may still fail solidification or 3MF export.",
     "public_source_default": "ChromaMatter-0.8beta-r32.2-complete-corresponding-source",
     "software_package_default": "ChromaMatter-0.8beta-r32.2-win64",
-    "latest_source_branch_validation": {
+    "latest_published_release_validation": {
       "status": "published-prerelease-exact-tagged-build",
       "tag": "v0.8beta-r32.2",
       "tagged_commit": "aba20685d2fd6987621b2e1e6624f46ea84912a3",
@@ -875,7 +1180,7 @@
       "source_publication_eligible": true,
       "source_publication_status": "published at https://github.com/Ponkichi0718/ChromaMatter from the approved r31 source-only scope; exact final restage, Downloads placement, detached checksum record, archive parity, CRC, privacy, and staged identity/icon/tooling verification passed",
       "binary_publication_eligible": false,
-      "binary_publication_blocker": "historical r31 evidence only: its Windows binary was held under the then-current dependency-compliance gate and is not r32 release evidence; the current r32 blocker set is recorded in latest_source_branch_validation",
+      "binary_publication_blocker": "historical r31 evidence only: its Windows binary was held under the then-current dependency-compliance gate and is not r32 release evidence; the published r32.2 evidence is recorded in latest_published_release_validation",
       "innovation_fund_submission_ready": false,
       "innovation_fund_submission_blockers": "rights-cleared public sample, Orca/U1 evidence, cover, workflow-video Release upload/checksum, community post, and submitted form remain pending",
       "publication_eligibility_note": "publication_eligible is true only for publication_scope=source-only. Binary publication remains ineligible. Physical XP-PEN and printer tests remain disclosed limitations rather than source-publication blockers",
@@ -929,38 +1234,28 @@
       "final_failure_contract": "Do not replace, retag, or silently mutate the frozen v0.8beta-r32.2 or earlier release assets. Any later release must rerun the exact-source regression, clean build, smoke, stage, archive, privacy, identity, layout, DemoData, and checksum gates. Multipart solidification remains explicitly beta even though the bundled DemoData succeeds."
     }
   },
-  "macos_volunteer_navigation": {
-    "status": "the exact source-backed Finder App Alpha 1 is publicly downloadable and immutable; Alpha 2 with stable r32.2 DemoData is an unpublished candidate; the separate self-contained frozen app remains unapproved",
-    "target": "Apple Silicon arm64 on macOS 15 or newer",
-    "testing_board": "https://github.com/Ponkichi0718/ChromaMatter/discussions/9",
-    "download": "https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-macos-source-app-alpha1",
-    "alpha2_candidate_zip": "ChromaMatter-0.8beta-macos-source-app-alpha2.zip",
-    "alpha2_candidate_status": "local preflight commit 83ca52c54f318abbe19eaa2a4010b58667ae64b0 passed real stable r32.2 DemoData extraction/stage/audit and Windows validation; push/PR, Apple Silicon CI, main merge, manual artifact validation, Alpha 2 Release, and anonymous re-download are pending",
-    "english_guide": "publication/MACOS_SOURCE_APP_TESTING_EN.md",
-    "issue_form": ".github/ISSUE_TEMPLATE/macos_alpha_report.yml",
-    "display_version": "0.8beta",
-    "source_on_default_branch": false,
-    "default_branch_integration_status": "pending review and merge from codex/macos-app-main-integration",
-    "distribution_contract": "Continue using only the exact tagged Source-backed App Alpha 1 ZIP and checksum until a separately tagged Alpha 2 package passes every gate. Do not substitute a local Alpha 2 stage or diagnostics artifact, and keep the 153-gap self-contained frozen app blocked."
-  },
   "known_pending": [
+    "Preserve the verified Windows build/source cache and exact archive evidence in cross_platform_0_9_packaging; rerun all gates after any packaged-byte change and obtain explicit owner authority before external publication.",
+    "Native-test the exact-current source-backed macOS .app setup, rendering and export on Apple Silicon macOS 15+; do not represent it as a verified standalone native binary update.",
+    "Publish and volunteer-test the source-backed Ubuntu 22.04+ x86_64 alpha through chromamatter.app; keep it clearly separate from a frozen standalone Linux binary.",
+    "Close the 16 native source/build/relink gaps before approving any frozen standalone Linux application archive.",
     "Validate the final Manual Editing interaction on physical XP-PEN hardware.",
     "Run a physical printer matrix and confirm exported projects in Snapmaker Orca slice preview.",
-    "Complete and review exact macOS source/build/relink closure for the 153 unresolved Mach-O files.",
-    "Collect the published macOS Source-backed App Alpha 1 compatibility matrix through Discussion #9 and the macOS Issue form; keep private models out of reports.",
-    "Push Source-backed App Alpha 2 preflight commit 83ca52c54f318abbe19eaa2a4010b58667ae64b0, open/review its PR, pass exact-commit Apple Silicon CI, merge main, validate a manual artifact, and complete the checksum, owner approval, new Alpha 2 Release, and anonymous redownload gates without changing Alpha 1.",
-    "Publish no self-contained macOS app until the 153 native source/build/relink closures pass the separate exact-commit distribution gate and owner approval is explicit.",
+    "Complete and review exact macOS source/build/relink closure for the 253 unresolved Mach-O files.",
+    "After the distribution gate passes and owner approval is explicit, publish one approved tester ZIP and begin the 10-minute volunteer matrix through Discussion #9 and the macOS Issue form.",
     "Complete the Innovation Fund submission materials and community post using the published immutable v0.8beta-r32.2 prerelease.",
     "Improve multipart solidification coverage: the bundled DemoData succeeds, but other multipart files may still fail solidification or 3MF export.",
     "Keep the retained Decal beta implementation inaccessible until it is separately revalidated and explicitly reintroduced."
   ],
   "known_constraints": [
+    "New 0.9 application packages exclude DemoData entirely; the owner provides it separately. Retained historical demo rights/hash manifests are not new package payloads.",
     "The r32.2 public desktop layout passed isolated Japanese and English UI smoke in the packaged and independently fresh-extracted Windows release at the supported validation resolution.",
     "1280x720 is not a supported public UI target for r32.2.",
     "Multipart solidification and per-part 3MF export are not universally reliable in 0.8beta. The bundled DemoData is a confirmed successful case, but other multipart files may fail."
   ],
   "privacy": {
-    "policy": "Do not publish non-public validation assets or identifying asset details. The immutable r32.2 package contains its owner-approved, manifest-locked 10-payload DemoData set, including seven derived 3MF outputs that passed canonical manifest/hash, archive, and privacy gates. The macOS Alpha 2 candidate may copy only those 10 payloads plus the four canonical README/NOTICE files and DEMO_DATA_MANIFEST.json, for exactly 15 DemoData files beside the app.",
-    "public_documents": "Describe generalized feature contracts and reproducible public-source validation; DemoData documentation may name only payloads covered by the canonical rights and hash manifest. Local validation JSON sidecars and absolute user paths are never package payloads."
+    "policy": "Do not publish non-public validation assets or identifying asset details. The immutable r32.2 package contains its owner-approved, manifest-locked 10-payload DemoData set, including seven derived 3MF outputs that passed canonical manifest/hash, archive, and privacy gates.",
+    "public_documents": "Describe generalized feature contracts and reproducible public-source validation; DemoData documentation may name only payloads covered by the canonical rights and hash manifest. Local validation JSON sidecars and absolute user paths are never package payloads.",
+    "current_source_package_policy": "The next application packages include no DemoData payloads; the owner provides a separate download. Retain source documentation and historical rights/hash manifests without adding demo geometry, reference images, generated 3MF, private models, validation sidecars or host-specific paths."
   }
 }

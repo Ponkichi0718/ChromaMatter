@@ -1,7 +1,8 @@
 {
-  "schema_version": 2,
-  "document_id": "chromamatter.demo-data.r32.2",
+  "schema_version": 3,
+  "document_id": "chromamatter.demo-data.source-only.v1",
   "release_status": "approved-for-publication",
+  "payload_profile": "source-model-and-reference-only",
   "expected_documents": [
     "README_EN.md",
     "README_JA.md",
@@ -22,69 +23,13 @@
       "sha256": "71d6bf8534abcec9922d14a3768554636999837540af068d4d42c0cdbd12732b",
       "media_type": "image/jpeg",
       "role": "reference-image"
-    },
-    {
-      "path": "3MF/Original AI model Color_FullSpectrum.3mf",
-      "bytes": 45591194,
-      "sha256": "76c783191e2b5d6c39977816090f6e4d45d7094ca799098439b400f683c55e8f",
-      "media_type": "model/3mf",
-      "role": "combined-full-spectrum-3mf-demo"
-    },
-    {
-      "path": "3MF/Original AI model Color_FullSpectrum_parts_2/01_RightArm_FullSpectrum.3mf",
-      "bytes": 13408178,
-      "sha256": "8a2a0ead1e42c6f0ecc1bac0603a14e0d634725b03830581893c8b2e8fcc77ff",
-      "media_type": "model/3mf",
-      "role": "individual-part-3mf-demo"
-    },
-    {
-      "path": "3MF/Original AI model Color_FullSpectrum_parts_2/02_LeftLeg_FullSpectrum.3mf",
-      "bytes": 5458207,
-      "sha256": "4f20d63986a4cb6887ebf8de8fa06df64bbaa860e6151af9e227cd0dc49e8bdd",
-      "media_type": "model/3mf",
-      "role": "individual-part-3mf-demo"
-    },
-    {
-      "path": "3MF/Original AI model Color_FullSpectrum_parts_2/03_Head_FullSpectrum.3mf",
-      "bytes": 918803,
-      "sha256": "30aa9acaf158e17b21358a86edec3fd57be265b76eb5f9aee10acf6f2072896f",
-      "media_type": "model/3mf",
-      "role": "individual-part-3mf-demo"
-    },
-    {
-      "path": "3MF/Original AI model Color_FullSpectrum_parts_2/04_LeftArm_FullSpectrum.3mf",
-      "bytes": 13586172,
-      "sha256": "f1bd49bd8ed9512f246d8ebba7bb7532b04ff09522605abe16c3885b49ecc636",
-      "media_type": "model/3mf",
-      "role": "individual-part-3mf-demo"
-    },
-    {
-      "path": "3MF/Original AI model Color_FullSpectrum_parts_2/05_Torso_FullSpectrum.3mf",
-      "bytes": 8170540,
-      "sha256": "9c1b08b7c870a31abf24b9c664473aef32cf76cca0c6fd1ed4aed94001e95833",
-      "media_type": "model/3mf",
-      "role": "individual-part-3mf-demo"
-    },
-    {
-      "path": "3MF/Original AI model Color_FullSpectrum_parts_2/06_RightLeg_FullSpectrum.3mf",
-      "bytes": 5514149,
-      "sha256": "f8f1946d6a33f4813370064c384abd9cfdf3516fb019ef87a2f532f009541ee8",
-      "media_type": "model/3mf",
-      "role": "individual-part-3mf-demo"
-    },
-    {
-      "path": "3MF/Original AI model Color_FullSpectrum_parts_2/パーツ別3MF_manifest.json",
-      "bytes": 15639,
-      "sha256": "c6bc21c225ac69e3d5df2c2de1a45457aa225d49d87527cd3cf4282d7da59d7c",
-      "media_type": "application/json",
-      "role": "individual-part-3mf-manifest"
     }
   ],
   "publication_gate": {
     "status": "approved-for-publication",
     "raw_glb_redistribution_confirmed": true,
     "reference_image_redistribution_confirmed": true,
-    "derived_3mf_redistribution_confirmed": true,
-    "hi3d_plan_terms_confirmed": true
+    "hi3d_plan_terms_confirmed": true,
+    "derived_3mf_payloads_included": false
   }
 }

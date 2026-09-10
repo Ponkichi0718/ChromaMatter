@@ -1,0 +1,9 @@
+ChromaMatter Linux x86_64 technical alpha source status
+
+The binary may be distributed only when DISTRIBUTION_APPROVAL.json says
+"approved" for the exact application inventory, component map, SPDX SBOM,
+corresponding-source stage, archive audit, and explicit owner decision.
+
+A generated candidate manifest or a successful application build alone is not
+distribution approval. Missing source, license, relinking, archive, or owner
+evidence keeps the gate blocked.

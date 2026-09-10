@@ -21,9 +21,6 @@ outputs/
 # Private validation and user assets
 validation_output*/
 private_samples/
-# The stable r32.2 DemoData used by macOS package staging is supplied and
-# verified out of tree. Never copy that large payload into the repository root.
-/DemoData/
 __tracked_surface.stl
 **/__tracked_surface.stl
 *.3mf
@@ -75,14 +72,14 @@ publication/*
 !publication/RELEASE_NOTES_r32.2_FLAT4_TEST3_20260826.md
 !publication/MACOS_ALPHA_TESTING_EN.md
 !publication/MACOS_ALPHA_TESTING_JA.md
-!publication/MACOS_APP_TESTING_EN.md
-!publication/MACOS_SOURCE_APP_TESTING_EN.md
 !publication/MACOS_ALPHA_HUB_EN.md
-!publication/MACOS_ALPHA_HUB_JA.md
 !publication/MACOS_ALPHA_TEST_MODEL_EXPECTED.svg
+!publication/MACOS_SOURCE_APP_TESTING_EN.md
 
 # Historical local probes and recovery utilities stay in the private workspace.
 tooling/*
+!tooling/run_generic_radial_model.py
+!tooling/radial_attempt_ledger.py
 !tooling/build_mixer_model.py
 !tooling/generate_public_icon.py
 !tooling/audit_public_tree.ps1
@@ -94,7 +91,10 @@ tooling/*
 !tooling/macos_source_coverage_plan.json
 !tooling/stage_macos_corresponding_source.py
 !tooling/stage_macos_source_app.py
-!tooling/stage_macos_source_package.py
+!tooling/generate_linux_compliance_evidence.py
+!tooling/linux_compliance_components.json
+!tooling/stage_linux_corresponding_source.py
+!tooling/approve_linux_distribution.py
 !tooling/generate_pytetwild_rebuild_lock.py
 !tooling/pytetwild_static_closure_contract.py
 !tooling/pymeshlab_audited_native_identities.json
@@ -103,6 +103,10 @@ tooling/*
 !tooling/update_budget_filament_library.py
 !tooling/corresponding_source_components.json
 !tooling/BUILD_PYTETWILD_WINDOWS.ps1
+!tooling/recipes/
+tooling/recipes/*
+!tooling/recipes/BUILD_PYTETWILD_WINDOWS_20260823.ps1
+!tooling/recipes/README.md
 !tooling/requirements-pytetwild-build.lock
 !tooling/patches/
 !tooling/patches/pytetwild-0.3.0-optional-pyvista.patch

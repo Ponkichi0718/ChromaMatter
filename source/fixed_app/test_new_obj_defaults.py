@@ -21,9 +21,18 @@ from spectrum_mapper.gui import (
     _persistent_preferences_from_mapping,
     _persistent_preferences_payload,
     _project_settings_from_mapping,
+    _recommendation_policy_from_mapping,
+)
+from spectrum_mapper.filament_recommender import (
+    DEFAULT_RECOMMENDATION_POLICY,
+    RECOMMENDATION_POLICY_BASIC,
+    RECOMMENDATION_POLICY_FLEXIBLE,
 )
 from spectrum_mapper.models import (
     AppSettings,
+    COLOR_MODE_FLAT_FOUR,
+    COLOR_MODE_FULL_SPECTRUM,
+    DEFAULT_NEW_COLOR_MODE,
     ColorDepthSettings,
     GeometrySettings,
     PaletteSettings,
@@ -104,6 +113,35 @@ def bare_app(settings: AppSettings) -> MapperApp:
 
 
 class NewObjDefaultTests(unittest.TestCase):
+    def test_new_session_defaults_to_flat_four_without_rewriting_legacy_projects(self) -> None:
+        self.assertEqual(DEFAULT_NEW_COLOR_MODE, COLOR_MODE_FLAT_FOUR)
+        self.assertEqual(
+            _persistent_preferences_from_mapping({}).palette.color_mode,
+            COLOR_MODE_FLAT_FOUR,
+        )
+        self.assertEqual(
+            _persistent_preferences_from_mapping(
+                {"color_mode": COLOR_MODE_FULL_SPECTRUM}
+            ).palette.color_mode,
+            COLOR_MODE_FULL_SPECTRUM,
+        )
+        self.assertEqual(
+            _project_settings_from_mapping(
+                {"schema": "obj-adjuster.project.v12", "settings": {}}
+            ).palette.color_mode,
+            COLOR_MODE_FULL_SPECTRUM,
+        )
+
+    def test_missing_preferences_file_starts_in_flat_four(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            app = MapperApp.__new__(MapperApp)
+            with patch.dict(
+                os.environ,
+                {APPLICATION_DATA_DIRECTORY_ENV: temporary},
+            ):
+                restored = app._load_persistent_settings()
+        self.assertEqual(restored.palette.color_mode, COLOR_MODE_FLAT_FOUR)
+
     def test_public_load_sanitizes_every_hidden_experiment(self) -> None:
         stale_palette = PaletteSettings(
             black_free_gradient_enabled=True,
@@ -160,6 +198,10 @@ class NewObjDefaultTests(unittest.TestCase):
             "obj-adjuster.preferences.v5-developer-features",
         )
         self.assertFalse(payload["developer_features_enabled"])
+        self.assertEqual(
+            payload["recommendation_policy"],
+            RECOMMENDATION_POLICY_FLEXIBLE,
+        )
         self.assertEqual(payload["palette_state_count"], 32)
         self.assertIn("geometry", payload)
         self.assertEqual(
@@ -176,6 +218,35 @@ class NewObjDefaultTests(unittest.TestCase):
             "manual_view_backgrounds",
         ):
             self.assertNotIn(forbidden, payload)
+
+    def test_recommendation_policy_is_global_and_defaults_to_current_flexible_mode(
+        self,
+    ) -> None:
+        self.assertEqual(
+            _recommendation_policy_from_mapping({}),
+            DEFAULT_RECOMMENDATION_POLICY,
+        )
+        self.assertEqual(
+            _recommendation_policy_from_mapping(
+                {"recommendation_policy": RECOMMENDATION_POLICY_BASIC}
+            ),
+            RECOMMENDATION_POLICY_BASIC,
+        )
+        self.assertEqual(
+            _recommendation_policy_from_mapping(
+                {"recommendation_policy": "unsupported"}
+            ),
+            RECOMMENDATION_POLICY_FLEXIBLE,
+        )
+        payload = _persistent_preferences_payload(
+            model_settings(),
+            recommendation_policy=RECOMMENDATION_POLICY_BASIC,
+        )
+        self.assertEqual(
+            _recommendation_policy_from_mapping(payload),
+            RECOMMENDATION_POLICY_BASIC,
+        )
+        self.assertNotIn("recommendation_policy", AppSettings().to_dict())
 
     def test_developer_feature_preference_is_strict_and_fail_closed(self) -> None:
         schema = "obj-adjuster.preferences.v5-developer-features"
@@ -214,7 +285,9 @@ class NewObjDefaultTests(unittest.TestCase):
 
     def test_persistent_loader_commits_only_the_global_v5_gate(self) -> None:
         payload = _persistent_preferences_payload(
-            model_settings(), developer_features_enabled=True
+            model_settings(),
+            developer_features_enabled=True,
+            recommendation_policy=RECOMMENDATION_POLICY_BASIC,
         )
         with tempfile.TemporaryDirectory() as temporary:
             settings_path = Path(temporary) / "settings.json"
@@ -229,6 +302,10 @@ class NewObjDefaultTests(unittest.TestCase):
             ):
                 restored = app._load_persistent_settings()
         self.assertTrue(app._loaded_developer_features_enabled)
+        self.assertEqual(
+            app._loaded_recommendation_policy,
+            RECOMMENDATION_POLICY_BASIC,
+        )
         self.assertIsInstance(restored, AppSettings)
         self.assertNotIn("developer_features_enabled", restored.to_dict())
 

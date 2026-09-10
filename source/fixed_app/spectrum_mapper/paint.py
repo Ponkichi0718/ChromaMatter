@@ -1234,17 +1234,37 @@ class PaintSession:
         seed_face: int,
         *,
         connectivity_state_map: np.ndarray | None = None,
+        connectivity_face_labels: np.ndarray | None = None,
     ) -> np.ndarray:
         seed = int(seed_face)
         if seed < 0 or seed >= len(self.faces):
             raise PaintError("クリックした面がモデル範囲外です")
         if not bool(self.allowed_face_mask[seed]):
             return np.empty(0, dtype=np.int32)
-        labels = PaintSession._fill_connectivity_labels(
-            self,
-            connectivity_state_map,
-        )
+        if connectivity_face_labels is None:
+            labels = PaintSession._fill_connectivity_labels(
+                self,
+                connectivity_state_map,
+            )
+        else:
+            labels = np.asarray(connectivity_face_labels)
+            if (
+                labels.shape != (len(self.faces),)
+                or not np.issubdtype(labels.dtype, np.integer)
+            ):
+                raise PaintError(
+                    "塗りつぶし接続ラベルは各面につき1個の整数で指定してください"
+                )
+            if len(labels) and (
+                int(labels.min()) < -1
+                or int(labels.max()) >= PALETTE_STATE_COUNT
+            ):
+                raise PaintError(
+                    f"塗りつぶし接続ラベルは-1～{PALETTE_STATE_COUNT - 1}で指定してください"
+                )
         target = int(labels[seed])
+        if target < 0:
+            return np.empty(0, dtype=np.int32)
         visited = np.zeros(len(self.faces), dtype=bool)
         visited[seed] = True
         pending: deque[int] = deque((seed,))
@@ -1271,15 +1291,30 @@ class PaintSession:
         state: int,
         *,
         connectivity_state_map: np.ndarray | None = None,
+        connectivity_face_labels: np.ndarray | None = None,
     ) -> np.ndarray:
-        if connectivity_state_map is None:
+        if (
+            connectivity_state_map is None
+            and connectivity_face_labels is None
+        ):
             faces = self.connected_fill_faces(seed_face)
         else:
             faces = self.connected_fill_faces(
                 seed_face,
                 connectivity_state_map=connectivity_state_map,
+                connectivity_face_labels=connectivity_face_labels,
             )
-        return self._set_overrides(faces, self._validate_state(state), "塗りつぶし")
+        requested = self._validate_state(state)
+        if connectivity_face_labels is not None and len(faces):
+            # Existing target-colour faces are traversal bridges, not edits.
+            # Preserve their automatic provenance and any adaptive sub-face
+            # detail; commit only faces whose currently visible colour changes.
+            visible = PaintSession._fill_connectivity_labels(
+                self,
+                connectivity_state_map,
+            )
+            faces = faces[visible[faces] != requested]
+        return self._set_overrides(faces, requested, "塗りつぶし")
 
     def smooth_boundary(
         self,

@@ -1,4 +1,4 @@
-# ChromaMatter — AI Model Print Studio 0.8beta（r32.2）
+# ChromaMatter — AI Model Print Studio 0.9（r33）
 
 <p align="center">
   <img src="source/fixed_app/assets/obj_adjuster_icon.png" width="180" alt="ChromaMatter icon">
@@ -6,35 +6,47 @@
 
 [English README](README.md)
 
-## 使うバージョンを選ぶ
+## 0.9の主な更新：3MF出力精度・成功率の向上
 
-| 種別 | 向いている用途 | 開く場所 |
+0.9の中心は、通常の単一論理GLBから3MFへ出力する際の精度と成功率の向上です。
+証明できる完全一致の継ぎ目を先に統合し、残った開口のうち幅2.0 mm以下かつ厳格に
+平面と判定できる微小な穴だけを限定補修します。形状チェックの初期値［高］では、
+穴なし・非多様体なし・面向き・正体積・自己交差を従来どおり安全側で最終検証します。
+通常の継ぎ目検証を内部の微小断片が妨げる場合は、主表面が全体の
+99.5%以上を占め、除外対象が内部の微小な反転閉殻または範囲内の開いた微小断片だと
+証明でき、残す主表面だけでも選択的な継ぎ目統合で閉じる場合に限って再試行します。
+正体積の独立パーツがある場合は削除せず安全停止し、再メッシュやボクセル化も行いません。
+複雑なパーツ化モデルの修復はまだ入力依存であり、0.9で完全解決した
+とは扱いません。ラジアル実験はアプリ画面から削除しました。
+公式サイトではChromaMatter 0.9を配布しています。このリポジトリのアプリソースは、
+公開Windows版のcommit `5059163a1a6d05e823c44323558f344ad000b580` に対応します。
+現在の配布案内と独立したCI設定は別途更新しています。macOS・Linux版の正確な
+対応ソースは、それぞれの配布bundleを参照してください。
+詳細は[0.9の配布物とソースの範囲](RELEASE_0.9.md)に記載しています。
+
+## ダウンロード
+
+[公式ダウンロードページ](https://chromamatter.app/download)と同じ、既存の0.9配布物です。
+
+| OS | 配布内容 | ダウンロード |
 | --- | --- | --- |
-| **公開安定版 r32.2** | 現在ダウンロードできるWindows版と、検証済みのFull Spectrum制作フローを使う | **[安定版r32.2をダウンロード](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2)** |
-| **Flat Four Test 3（実験版）** | Flat Four、白／灰色ハイライト補正、大容量静的GLB、2D彩色フィルターを統合前に試す | **[Windowsテスト版ZIPをダウンロード](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2-flat4-test3/ChromaMatter-0.8beta-r32.2-flat4-test3-win64.zip)** · [説明と注意事項](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2-flat4-test3) · [Draft PR #7](https://github.com/Ponkichi0718/ChromaMatter/pull/7) |
-| **macOS Source-backed App Alpha** | Apple Silicon / macOS 15以降でFinder `.app`を協力テスト。初回にhash-lock済みsource環境を準備します | **[macOS app ZIPをダウンロード](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-macos-source-app-alpha1/ChromaMatter-0.8beta-macos-source-app-alpha1.zip)** · [Release／checksum](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-macos-source-app-alpha1) · [英語の導入・テスト手順](publication/MACOS_SOURCE_APP_TESTING_EN.md) · [日本語案内](publication/MACOS_ALPHA_HUB_JA.md) |
+| **Windows 64-bit** | ChromaMatter 0.9アプリZIP。新規作業はFlat Fourで始まり、同じアプリでFull Spectrumも選べます。 | [Windows ZIP](https://chromamatter.app/downloads/ChromaMatter-0.9-win64-app.zip) |
+| **macOS** | Apple Silicon／macOS 15以降向け0.9 technical alpha。 | [macOS ZIP](https://chromamatter.app/downloads/ChromaMatter-0.9-macos-arm64-app.zip) |
+| **Linux x86_64** | Ubuntu 22.04以降向け0.9 technical alpha。 | [Linux archive](https://chromamatter.app/downloads/ChromaMatter-0.9-linux-x86_64.tar.xz) |
 
-実験テスト版は恒久的な別系統ではなく、検証後に通常版へ統合する候補です。
-**Flat Four Test 3を別の公開プレリリースとしてダウンロードできます。**
-ZIP全体を展開してから起動してください。下の安定版r32.2にはFlat Fourが
-入っていないため、Test 3 ReleaseとDraft PR #7を実験版の案内先にしています。
+完全対応ソースはOSごとの公式別配布です。
+[Windows](https://chromamatter.app/downloads/ChromaMatter-0.9-complete-corresponding-source.zip)、
+[macOS](https://chromamatter.app/downloads/ChromaMatter-0.9-macOS-corresponding-source.zip)、
+[Linux](https://chromamatter.app/downloads/ChromaMatter-0.9-Linux-complete-corresponding-source.zip)から、
+使用するアプリと同じOSのbundleを取得してください。このリポジトリのWindows用
+ソースcommitが、3種類すべてのバイナリに共通するという意味ではありません。
 
-**macOS Source-backed App AlphaをApple Silicon / macOS 15以降で試せます。**
-固定ZIPをすべて展開し、`ChromaMatter Source Alpha.app`をControl-clickして
-「開く」を選びます。公式Python 3.13.14を検証し、hash-lock済み依存関係だけを
-本人のMacへ導入します。Finder `.app`ですが自己完結型の凍結buildではありません。
-その別経路は153件のMach-Oについてsource／build／再link根拠が未解決で、
-`diagnostics` artifactはapplicationではありません。結果やsetup
-質問は[Discussion #9](https://github.com/Ponkichi0718/ChromaMatter/discussions/9)へ投稿できます。
+Windows配布名：`ChromaMatter-0.9-win64-app.zip`（115,342,658 bytes）。
+SHA-256：`947116390bf3c71158b313edd213043c42a7c11e84e178764bcd5ef23d3d7329`。
 
-default branchには公開alpha tagと同じsource-backed Finder app実装を収録しています。
-Windows安定版r32.2のbinaryと、自己完結型macOS buildの別gateは変更していません。
-
-## Windows版をダウンロード
-
-**[ChromaMatter 0.8beta r32.2 Windows版（ZIP）をダウンロード](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2/ChromaMatter-0.8beta-r32.2-win64.zip)**
-
-ダウンロード後は、ZIPをすべて展開してから起動してください。直リンクで始まらない場合は、[v0.8beta-r32.2のReleaseページ](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2)を開き、**Assets**内の`ChromaMatter-0.8beta-r32.2-win64.zip`を選んでください。
+アプリのarchive全体を展開してから起動してください。DemoDataは同梱せず、公式で
+別途配布しています。過去のReleaseと配布物は変更していません。今回のリポジトリ
+同期では、アプリの再ビルドや各OS上の動作、GUI、スライス、実印刷の再検証は行っていません。
 
 ## 機能・作品を見る
 
@@ -42,13 +54,13 @@ Windows安定版r32.2のbinaryと、自己完結型macOS buildの別gateは変�
 - **[オリジナル作品の制作工程・過去画面・実機出力例を見る](FEATURES_JA.md#project-examples)**
 - **[約2分のシンプルな使い方を見る](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2/ChromaMatter-simple-workflow-demo.mp4)**
 
-`v0.8beta-r32.2`はInnovation Fund向けpreviewのGitHub prereleaseとして公開済みです。
+`v0.8beta-r32.2`は過去に公開したInnovation Fund向けpreviewのGitHub prereleaseです。
 Windows package、完全対応source、SBOM、component map、操作動画、detached checksumの
 6 assetを公開後に未認証で再downloadし、sizeとSHA-256を再確認しています。
 
-**0.8 betaの重要な制限:** パーツ化モデルの閉立体化はまだ不安定です。同梱の`DemoData`は閉立体化・3MF出力の成功を確認していますが、他の分割ファイルでは閉立体化または3MF出力に失敗することがあります。この互換性が未完成であることが、ChromaMatterを`0.8beta`としている理由の一つです。
+**過去の0.8 betaの制限:** パーツ化モデルの閉立体化は入力依存でした。確認済みのdemo結果は、ほかのモデルでも成功する証明ではありません。これらはr32.2の観測記録であり、0.9を新たに検証した結果ではありません。
 
-ChromaMatter — AI Model Print Studioは、AI生成された頂点カラー付きOBJまたはUV baseColor付きGLBを、Snapmaker OrcaのFull Spectrum／Color Mixingワークフロー向け3MFへ変換・調整するデスクトップツールです。公開安定版はWindows用で、Apple Silicon macOS版は別alphaとして協力検証中です。独立プロジェクトであり、TripoAI、Hi3D AI、Snapmaker、OpenAI、Appleその他第三者の公式・提携製品ではありません。
+ChromaMatter — AI Model Print Studioは、AI生成された頂点カラー付きOBJまたはUV baseColor付きGLBを、4本の実フィラメントで扱える3MFへ変換・調整するデスクトップツールです。Windows版に加え、macOSとLinuxの協力検証経路があります。独立プロジェクトであり、TripoAI、Hi3D AI、Snapmaker、OpenAI、Appleその他第三者の公式・提携製品ではありません。
 
 **AIで作った3Dを、画面の中だけで終わらせない。** ChromaMatterは、AI 3D生成に「カラー造形という出口」を、3Dプリンタに「AIモデルという新しい入力」をつくり、それぞれの利用価値を高めるための橋渡しを目指しています。
 
@@ -63,21 +75,31 @@ privacy確認済み・字幕付きの[`v0.8beta-r32.2`「シンプルな使い�
 
 これは実機で確認した観測結果であり、すべてのmodel、filament構成、slicer profile、printerで同じ結果になることを保証するものではありません。印刷前に生成projectとslice previewを確認してください。
 
-公開表示versionは利用者指定どおり`0.8beta`に固定し、公開済みeditionを
-`AI Model Print Studio r32.2`、artifact slugを
-`r32.2-ai-model-print-studio`とします。Windowsの数値versionも`0.8.0.0`のままです。
+公開Windows版は`0.9（r33）`で、数値versionは`0.9.0.0`です。
+公開済み`0.8beta（r32.2）`と`r32.2-ai-model-print-studio` artifactは、過去の
+release証跡として変更しません。
 
-[`v0.8beta-r32.2` Release](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2)は、Windows ZIP、完全対応ソース、SBOM、component map、動画、detached checksumを一組として公開済みです。Releaseの正確なsourceはtag `v0.8beta-r32.2`、commit [`aba20685d2fd6987621b2e1e6624f46ea84912a3`](https://github.com/Ponkichi0718/ChromaMatter/commit/aba20685d2fd6987621b2e1e6624f46ea84912a3)に固定しています。default branchの文書だけが公開後に更新される場合がありますが、Releaseのbinaryとsource assetは変わりません。
+ChromaMatterは、Windows／macOS／Linuxをそれぞれ案内する独立desktop projectです。TripoAI、Hi3D AI、Snapmaker、OpenAI、Appleその他の第三者による公式製品・提携製品ではありません。
 
-## 実験的テストワークストリーム — r32.2には未収録
+## 現在の状態
 
-この実験ブランチには、別テスト経路として次の機能が入っています。
-r32.2 Windows版や固定済みsource tagには含まれません。
+- **公式の配布version:** 0.9。このリポジトリのアプリソースは、上記のWindows用ソースcommitに対応します。
+- **色変換:** 新規作業とcommand-line変換は**Flat Four**で開始します。同じアプリで**Full Spectrum**も選べ、旧schema v12 projectはFull Spectrumとして開きます。
+- **macOS・Linux:** 公式0.9 technical alphaとOS別の対応ソースを上で案内しています。各バイナリの正確なソースとOS固有の検証記録は、それぞれのbundleを参照してください。
+- **DemoData:** アプリには同梱せず、公式で別途配布しています。
+- **実機記録:** リンク先の過去sampleはSnapmaker U1で完走しました。すべてのモデル・条件での成功や、今回の0.9実印刷検証を示すものではありません。
+- **過去のrelease evidence:** [`v0.8beta-r32.2` Release](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2)とcommit [`aba20685d2fd6987621b2e1e6624f46ea84912a3`](https://github.com/Ponkichi0718/ChromaMatter/commit/aba20685d2fd6987621b2e1e6624f46ea84912a3)は変更しません。そのソース・バイナリ・checksum・検証結果は、そのreleaseだけに適用します。
+
+現在の配布物と今回の同期範囲は[RELEASE_0.9.md](RELEASE_0.9.md)を参照してください。
+
+## Flat FourとFull Spectrum
+
+新しい作業ではFlat Fourを初期値とし、混色recipeが有効なmodelではFull Spectrumを任意で選べます。
 
 - **Flat Four**は、モデル表面の面積を加味して、重複しない4本の実フィラメントを
   決定的に自動提案します。混色recipeは作らず、Flat Fourの3MFはF1～F4だけを
   使用します。
-- 実験的な**2D彩色フィルター**は、**Cel Colour（セル彩色）**と
+- **2D彩色フィルター**は、**Cel Colour（セル彩色）**と
   **Shaded Monochrome（陰影モノクロ）**を提供します。形状を使った固定正面光と
   段階的な陰影を印刷対象色へ焼き付ける処理で、screen-space rendererでは
   ありません。元データにない描線、PBR material、texture細部は再現できません。
@@ -86,11 +108,11 @@ r32.2 Windows版や固定済みsource tagには含まれません。
   条件として、最大45万面の作業用modelへ縮約して読み込めます。非対応・曖昧な
   inputはfail-closedで停止し、縮約により細かな形状や焼付textureが失われる場合が
   あります。
-- このワークストリームはproject schema `obj-adjuster.project.v13`を書き出します。
-  v12は引き続き読込でき、旧来のFull Spectrum modeとして扱います。
+- 現在のsourceはproject schema `obj-adjuster.project.v13`を書き出します。
+  v12は引き続き読込でき、旧来のFull Spectrum modeとして開きます。
 
-現時点の検証はローカルsource回帰testだけです。公開済みr32.2のbinary、package、
-実機出力の検証実績を、この未公開機能へ流用しません。
+現在のsourceと今後のpackageは、それぞれ独立した回帰test・package・compliance gateを
+通す必要があります。過去のr32.2 binaryや実機出力の検証実績は流用しません。
 
 ## AI Model Print Studio r32.2
 
@@ -191,8 +213,14 @@ project-folder/
 1. 「OBJ / GLBを開く」で頂点カラー付きOBJまたはbaseColor付きGLBを選びます。
 2. F1～F4と混色数を確認し、必要ならパーツpaletteを調整します。
 3. 「マニュアル修正」で色を修正します。
-4. 出力設定でサイズと形状診断を確認します。
-5. 3MFを書き出し、Snapmaker Orcaでtool順、material profile、previewを確認します。
+4. 画面下部の［出力設定］から別ウィンドウを開き、サイズを確認します。
+   ［閉立体化］は［3MFを書き出す］の隣にある独立ボタンです。修復が必要な場合に実行します。
+5. 3MFを新しい保存先へ書き出し、Snapmaker Orcaでtool順、material profile、スライスプレビューを確認します。
+
+［形状チェック］の初期値は［高］です。［中］［低］［形状の不具合を無視（非推奨）］は
+出力時の検証だけを変更し、モデルを修復したり手動の［閉立体化］を緩めたりしません。
+［高］以外では問題のある形状も出力される場合があり、毎回確認が必要です。
+色とアーカイブ構造の検証はどの設定でも維持します。
 
 ## 入力・出力上の注意
 
@@ -203,7 +231,7 @@ project-folder/
 - 画面色と実機色は一致を保証しません。同じ造形条件のtest printで確認してください。
 - 実験engineのsourceは研究継続のため残していますが、公開workflowからは到達できません。
 
-## 公開済み検証結果
+## 過去の公開版の検証結果
 
 exact r32.2 release buildはcommit
 `aba20685d2fd6987621b2e1e6624f46ea84912a3`から生成しました。full regressionは
@@ -249,9 +277,10 @@ rightsと当該asset scopeのowner legal acceptanceはcreator declarationによ�
 
 正本は[CURRENT_STATE.json](CURRENT_STATE.json)と[PROVENANCE.md](PROVENANCE.md)です。
 
-## 開発・テスト
+## 開発・テスト（過去のr32.2再現）
 
-WindowsとPython 3.13で次を実行します。
+以下はtag `v0.8beta-r32.2` の再現手順です。現在の0.9の対応ソースは
+[RELEASE_0.9.md](RELEASE_0.9.md)から取得してください。WindowsとPython 3.13で実行します。
 
 ```powershell
 $pyTetWildWheel = "C:\path\to\pytetwild-0.3.0-cp312-abi3-win_amd64.whl"

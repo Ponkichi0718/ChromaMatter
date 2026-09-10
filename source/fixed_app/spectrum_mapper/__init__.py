@@ -7,9 +7,9 @@ because fixes are added; only an explicit user request may advance it.
 APP_NAME = "ChromaMatter"
 APP_TAGLINE = "AI Model Print Studio"
 APP_DISPLAY_NAME = f"{APP_NAME} — {APP_TAGLINE}"
-__version__ = "0.8beta"
+__version__ = "0.9"
 VERSION_PINNED_UNTIL_USER_REQUEST = True
-RELEASE_REVISION = "r32.2"
+RELEASE_REVISION = "r33"
 EDITION_LABEL = f"{APP_TAGLINE} {RELEASE_REVISION}"
 
 __all__ = [

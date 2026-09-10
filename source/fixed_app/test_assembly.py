@@ -10,6 +10,7 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import spectrum_mapper.assembly as assembly_module
 from spectrum_mapper.assembly import (
     AssemblyError,
     MULTIPART_INHERITED_SOURCE_WARNING,
@@ -562,6 +563,83 @@ class ExistingPartSeamTests(unittest.TestCase):
         self.assertGreater(records[0]["added_faces"], 0)
         _assert_valid_colored_mesh(self, repaired[0])
         np.testing.assert_array_equal(repaired[0][2], colors)
+
+    def test_many_tiny_planar_holes_use_one_final_topology_rescan(self) -> None:
+        meshes = [
+            _box_mesh(
+                (float(index) * 0.05, 0.0, 0.0),
+                (float(index) * 0.05 + 0.01, 0.01, 0.01),
+                open_side="zmax",
+            )
+            for index in range(6)
+        ]
+        vertices = np.vstack([mesh[0] for mesh in meshes])
+        offsets = np.cumsum(
+            [0, *(len(mesh[0]) for mesh in meshes[:-1])]
+        )
+        faces = np.vstack(
+            [
+                mesh[1] + int(offsets[index])
+                for index, mesh in enumerate(meshes)
+            ]
+        ).astype(np.int32)
+        colors = np.vstack([mesh[2] for mesh in meshes])
+        loops = find_boundary_loops(0, vertices, faces)
+
+        with patch(
+            "spectrum_mapper.assembly._edge_topology",
+            wraps=assembly_module._edge_topology,
+        ) as topology:
+            repaired, records = repair_small_unmatched_boundaries(
+                [(vertices, faces, colors)],
+                loops,
+                height_mm=HEIGHT_MM,
+            )
+
+        self.assertEqual(len(loops), 6)
+        self.assertEqual(len(records), 6)
+        self.assertEqual(topology.call_count, 1)
+        self.assertEqual(
+            [record["before"]["boundary_edges"] for record in records],
+            [24, 20, 16, 12, 8, 4],
+        )
+        self.assertEqual(
+            [record["after"]["boundary_edges"] for record in records],
+            [20, 16, 12, 8, 4, 0],
+        )
+        repaired_faces = repaired[0][1]
+        for record in records:
+            cap_face_ids = record["cap_face_ids"]
+            cap_start = int(cap_face_ids[0])
+            cap_end = int(cap_face_ids[-1]) + 1
+            self.assertEqual(
+                record["before"],
+                assembly_module._edge_topology(
+                    repaired_faces[:cap_start],
+                    len(vertices),
+                ),
+            )
+            self.assertEqual(
+                record["after"],
+                assembly_module._edge_topology(
+                    repaired_faces[:cap_end],
+                    len(vertices),
+                ),
+            )
+        _assert_valid_colored_mesh(self, repaired[0])
+        np.testing.assert_array_equal(repaired[0][2], colors)
+
+    def test_duplicate_tiny_hole_record_fails_closed_as_stale(self) -> None:
+        vertices, faces, colors = _matching_open_boxes()[0]
+        mesh = (vertices * 0.01, faces, colors)
+        loop = find_boundary_loops(0, mesh[0], mesh[1])[0]
+
+        with self.assertRaisesRegex(AssemblyError, "現在の開口境界"):
+            repair_small_unmatched_boundaries(
+                [mesh],
+                [loop, loop],
+                height_mm=HEIGHT_MM,
+            )
 
     def test_large_unmatched_boundary_is_not_locally_capped(self) -> None:
         mesh = _matching_open_boxes()[0]

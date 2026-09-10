@@ -1,4 +1,4 @@
-# ChromaMatter — AI Model Print Studio 0.8beta (r32.2)
+# ChromaMatter — AI Model Print Studio 0.9 (r33)
 
 <p align="center">
   <img src="source/fixed_app/assets/obj_adjuster_icon.png" width="160" alt="ChromaMatter icon">
@@ -6,38 +6,55 @@
 
 [日本語版はこちら](README_JA.md)
 
-## Choose a version
+## What's new in 0.9: more accurate, more reliable 3MF output
 
-| Channel | Best for | Open |
+The principal 0.9 upgrade is improved 3MF output accuracy and success for
+ordinary single logical GLB models. ChromaMatter now welds proven exact seams,
+can close only strictly planar tiny openings up to 2.0 mm with the bounded
+repair policy. With **High**, the initial geometry-check setting, exports retain
+the existing fail-closed watertight, topology, winding, positive-volume, and
+intersection checks.
+If microscopic embedded debris blocks the ordinary seam proof, a bounded
+dominant-surface fallback may run. It proceeds only when one surface owns at
+least 99.5% of all faces, every discarded component is proved to be a tiny
+internal inverted shell or bounded open fragment, and the retained surface
+independently closes through the selective seam weld. A separate positive
+solid remains a hard failure; this path does not remesh or voxelize the model.
+Complex multipart repair remains input-dependent and is not claimed as solved.
+The Radial Experiment has been removed from the application UI.
+
+The official site distributes ChromaMatter 0.9. This repository's application
+source matches the published Windows build at commit
+`5059163a1a6d05e823c44323558f344ad000b580`; current download documentation and
+the independent CI dispatcher are maintained separately. The macOS and Linux
+packages have their own corresponding-source bundles. See
+[0.9 release and source scope](RELEASE_0.9.md).
+
+## Download
+
+These are the same existing 0.9 packages offered by the
+[official download page](https://chromamatter.app/download).
+
+| Operating system | Package | Download |
 | --- | --- | --- |
-| **Published r32.2** | The current downloadable Windows build and the documented Full Spectrum workflow | **[Download stable r32.2](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2)** |
-| **Experimental Flat Four Test 3** | Testing Flat Four, topology-aware white/gray highlight correction, the large-static-GLB path, and the 2D Colour Filter before integration | **[Download the Windows test ZIP](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2-flat4-test3/ChromaMatter-0.8beta-r32.2-flat4-test3-win64.zip)** · [Release notes](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2-flat4-test3) · [Draft PR #7](https://github.com/Ponkichi0718/ChromaMatter/pull/7) |
-| **macOS Source-backed App Alpha** | Finder `.app` testing on Apple Silicon / macOS 15+; first launch prepares the hash-locked source runtime | **[Download the macOS app ZIP](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-macos-source-app-alpha1/ChromaMatter-0.8beta-macos-source-app-alpha1.zip)** · [Release/checksum](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-macos-source-app-alpha1) · [English install/test guide](publication/MACOS_SOURCE_APP_TESTING_EN.md) · [Test hub](publication/MACOS_ALPHA_HUB_EN.md) |
+| **Windows 64-bit** | ChromaMatter 0.9 application ZIP. Flat Four is the new-session default; Full Spectrum is available in the same app. | [Windows ZIP](https://chromamatter.app/downloads/ChromaMatter-0.9-win64-app.zip) |
+| **macOS** | 0.9 technical alpha for Apple Silicon, macOS 15 or later. | [macOS ZIP](https://chromamatter.app/downloads/ChromaMatter-0.9-macos-arm64-app.zip) |
+| **Linux x86_64** | 0.9 technical alpha for Ubuntu 22.04 or later. | [Linux archive](https://chromamatter.app/downloads/ChromaMatter-0.9-linux-x86_64.tar.xz) |
 
-The experimental workstream is an integration candidate, not a permanent fork.
-**Flat Four Test 3 is available as a separate public pre-release.** Extract the
-whole ZIP before starting it. Stable r32.2 below does not contain Flat Four; the
-Test 3 Release and Draft PR #7 remain the experimental status hubs.
+Complete corresponding source is a separate official download for each platform:
+[Windows](https://chromamatter.app/downloads/ChromaMatter-0.9-complete-corresponding-source.zip),
+[macOS](https://chromamatter.app/downloads/ChromaMatter-0.9-macOS-corresponding-source.zip),
+and [Linux](https://chromamatter.app/downloads/ChromaMatter-0.9-Linux-complete-corresponding-source.zip).
+Use the bundle for the downloaded application; this repository's Windows source
+checkpoint is not a claim that all three binaries use identical source.
 
-**The macOS Source-backed App Alpha is available for Apple Silicon / macOS
-15+.** Download the fixed ZIP, extract it completely, then Control-click
-`ChromaMatter Source Alpha.app` and choose **Open**. It verifies official
-Python 3.13.14 and installs only hash-locked dependencies on the tester's Mac.
-It is a Finder app but not a self-contained frozen build. That separate route
-remains blocked because 153 packaged Mach-O files have unresolved
-source/build/relink closure evidence. A `diagnostics` artifact is not the app.
-See [Discussion #9](https://github.com/Ponkichi0718/ChromaMatter/discussions/9)
-for results and setup questions.
+Windows archive: `ChromaMatter-0.9-win64-app.zip` (115,342,658 bytes).
+SHA-256: `947116390bf3c71158b313edd213043c42a7c11e84e178764bcd5ef23d3d7329`.
 
-The default branch includes the same source-backed Finder app implementation
-as the public alpha tag. The stable Windows r32.2 binaries and the separate
-self-contained macOS build gate are unchanged.
-
-## Download for Windows
-
-**[Download ChromaMatter 0.8beta r32.2 for Windows (ZIP)](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2/ChromaMatter-0.8beta-r32.2-win64.zip)**
-
-Extract the entire ZIP before starting. If the direct download does not open, use the [v0.8beta-r32.2 Release page](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2) and select `ChromaMatter-0.8beta-r32.2-win64.zip` under **Assets**.
+Extract the complete application archive before starting it. DemoData is not
+bundled; the optional demo is a separate official download. Historical releases
+and their assets remain unchanged. This repository synchronization does not
+rebuild the applications or repeat platform-native, GUI, slicing or print tests.
 
 ## Explore ChromaMatter
 
@@ -46,14 +63,14 @@ Extract the entire ZIP before starting. If the direct download does not open, us
 - **[Simple workflow demo — about two minutes](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2/ChromaMatter-simple-workflow-demo.mp4)**
 - **[日本語の機能・操作案内](FEATURES_JA.md)**
 
-`v0.8beta-r32.2` is published as an Innovation Fund preview prerelease. Its
+`v0.8beta-r32.2` is a historical Innovation Fund preview prerelease. Its
 Windows package, complete corresponding source, SBOM, component map, workflow
 video, and detached checksums were all downloaded without authentication and
 reverified after publication.
 
-**Important 0.8 beta limitation:** Solidification of multipart models is still unstable. The bundled `DemoData` is a confirmed successful case, but other multipart files may fail to solidify or export as 3MF. This incomplete compatibility is one reason ChromaMatter remains `0.8beta`.
+**Historical 0.8 beta limitation:** Multipart solidification remained input-dependent. Its confirmed demo results did not establish success for other models. Those observations describe the r32.2 release, not new validation of 0.9.
 
-**Turn AI-generated color OBJ and GLB models into Snapmaker U1 Full Spectrum 3MF projects using four physical filaments.**
+**Turn AI-generated color OBJ and GLB models into four-filament 3MF projects for Snapmaker Orca.**
 
 <table>
   <tr>
@@ -78,37 +95,31 @@ The privacy-reviewed, captioned [Simple Workflow Demo (about two minutes)](https
 
 This is a practical print observation, not a guarantee that every model, filament set, slicer profile, or printer will reproduce the same result. Inspect the generated project and slice preview before printing.
 
-ChromaMatter is an independent desktop project. The published stable build is
-for Windows; a separate Apple Silicon macOS alpha is being validated by
-volunteers. It is not an official or affiliated product of TripoAI, Hi3D AI,
-Snapmaker, OpenAI, Apple, or any other third party.
+ChromaMatter is an independent desktop project with separate Windows, macOS,
+and Linux delivery paths. It is not an official or affiliated product of
+TripoAI, Hi3D AI, Snapmaker, OpenAI, Apple, or any other third party.
 
 ## Current status
 
-- **Published release:** [`v0.8beta-r32.2`](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2)
-- **Frozen release source:** tag `v0.8beta-r32.2`, commit [`aba20685d2fd6987621b2e1e6624f46ea84912a3`](https://github.com/Ponkichi0718/ChromaMatter/commit/aba20685d2fd6987621b2e1e6624f46ea84912a3)
-- **Published asset set:** Windows ZIP, complete corresponding source, SBOM, component map, workflow video, and detached checksums
-- **Published r32.2 test data:** Rights-cleared Hi3D multipart GLB and reference image are included under `DemoData/`
-- **Published demo outputs:** Seven derived 3MF reference outputs under `DemoData/3MF/`; one combined project and six part-specific projects
-- **Physical U1 validation:** The linked public print completed; it does not prove compatibility with every model or production setup
-- **macOS tester path:** Source-backed Finder `.app` available for Apple Silicon/macOS 15+; the guided launcher verifies official Python 3.13.14 and hash-locked dependencies locally
-- **macOS technical status:** Apple Silicon/macOS 15+ CI passes source, native, packaged self-test, Japanese UI, and English UI checks; the latest successful run published diagnostics only
-- **macOS self-contained-app gate:** the source-backed `.app` is separate; all 317 frozen-app Mach-O paths are classified, but 153 still have unresolved source/relink closure evidence
-- **macOS starter test:** The source launcher generates a deterministic CC0 red/blue/white/black four-box GLB; English and Japanese 10-minute guides and the dedicated Issue form are available
-- **Version:** `0.8beta`
+- **Published version:** 0.9 on the official site. The application source here corresponds to the Windows source checkpoint identified above.
+- **Colour workflow:** New sessions and command-line conversions start in **Flat Four**. **Full Spectrum** remains available, and legacy schema-v12 projects open in Full Spectrum mode.
+- **macOS and Linux:** The official 0.9 technical-alpha packages and their separate source bundles are linked above. Their exact source and platform evidence belong to those bundles.
+- **DemoData:** Not bundled with the applications; use the separate official download.
+- **Physical U1 results:** The linked historical print completed; it does not prove compatibility with every model or production setup, or constitute a new 0.9 print test.
+- **Historical release evidence:** [`v0.8beta-r32.2`](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2), frozen at commit [`aba20685d2fd6987621b2e1e6624f46ea84912a3`](https://github.com/Ponkichi0718/ChromaMatter/commit/aba20685d2fd6987621b2e1e6624f46ea84912a3), remains unchanged. Its source, binaries, checksums and tests apply to that release only.
 
-The documentation on the default branch may receive corrections after publication. For the exact source that produced the downloadable r32.2 files, use the frozen tag and commit above.
+For current package identities and the scope of this source synchronization,
+see [RELEASE_0.9.md](RELEASE_0.9.md).
 
-## Experimental test workstream — not included in r32.2
+## Flat Four and Full Spectrum
 
-This experimental branch contains the following additions for a separate test
-channel. They are **not** present in the r32.2 Windows download or its frozen
-source tag:
+Flat Four is the default for new work. Full Spectrum remains an optional mode
+for models that benefit from mixed-colour recipes:
 
 - **Flat Four** makes a deterministic, area-weighted proposal of four distinct
   physical filament colours. It creates no mixed-colour recipes, and a Flat
   Four 3MF uses only F1-F4.
-- The experimental **2D Colour Filter** offers **Cel Colour** and **Shaded
+- The **2D Colour Filter** offers **Cel Colour** and **Shaded
   Monochrome**. It bakes a fixed-front, geometry-aware stepped light into
   printable colour targets; it is not a screen-space renderer and cannot
   recreate authored line art, PBR materials, or texture detail absent from the
@@ -119,28 +130,45 @@ source tag:
   confirmation and with face-count adjustment enabled; it must produce a
   working model of at most 450,000 faces. Unsupported or ambiguous input fails
   closed, and reduction can remove fine geometry and baked texture detail.
-- This workstream writes project schema `obj-adjuster.project.v13`; schema v12
-  remains readable and defaults to the legacy Full Spectrum mode.
+- Current work writes project schema `obj-adjuster.project.v13`; schema v12
+  remains readable and opens in the legacy Full Spectrum mode.
 
-These additions have local source-level regression coverage only. They do not
-inherit the published r32.2 binary, package, or physical-print validation.
+Current source and future packages must pass their own regression, package, and
+compliance gates. They do not inherit the validation of the historical r32.2
+binary or physical print.
 
 ## Four things ChromaMatter does
 
 1. **Bridges AI model formats to printing.** Opens vertex-coloured OBJ and static GLB with embedded base colour, then keeps processing local to the PC.
-2. **Maps model colour to four real filaments.** Proposes F1-F4 from a material-aware filament library and builds a 16, 24, or 32-state Full Spectrum palette.
-3. **Lets you inspect and refine the result.** Compares source colour with converted colour, supports 3D manual editing, and explicitly applies experimental F1-F4 changes to both preview and 3MF.
-4. **Exports a safer Orca project.** Performs topology checks, safely welds only proven seams when eligible, and records a conservative Full Spectrum layer-cycle and prime-tower baseline.
+2. **Maps model colour to four real filaments.** Flat Four assigns broad areas directly to F1-F4 by default; Full Spectrum can instead build a 16, 24, or 32-state mixed-colour palette.
+3. **Lets you inspect and refine the result.** Compares source colour with converted colour, supports 3D manual editing, and explicitly applies F1-F4 changes to both preview and 3MF.
+4. **Exports a safer Orca project.** Performs topology checks, safely welds only proven seams when eligible, and records conservative Orca project settings for the selected colour mode.
 
 [See the visual feature overview](FEATURES_EN.md) · [Read the public print result](https://note.com/ponkichi0718/n/nf6c77165127c) · [Read the Japanese development journal on note](https://note.com/ponkichi0718)
 
 ## Quick Start
+
+### Current 0.9 workflow
+
+1. Open your OBJ/GLB, choose Flat Four or Full Spectrum, and apply any F1-F4 edits.
+2. Click **Output Settings** in the bottom bar to open its separate window and
+   set the size. **Solidify** is an independent button beside **Export 3MF**;
+   use it when repair is needed.
+3. Export to a new location, then inspect the project and Slice Preview in Orca.
+
+**Geometry check** starts at **High**. **Medium**, **Low**, and **Ignore defects
+(not recommended)** change export-only checks; they do not repair the model or
+change the strict manual Solidify operation. Lower settings can export damaged
+geometry and require confirmation. Colour and archive checks remain mandatory.
+
+### Historical r32.2 source setup
 
 Use the published [`v0.8beta-r32.2` Release](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2) for the matching r32.2 source and Windows package. To run the frozen release source, check out tag `v0.8beta-r32.2` on Windows with Python 3.13:
 
 ```powershell
 git clone https://github.com/Ponkichi0718/ChromaMatter.git
 cd ChromaMatter
+git checkout v0.8beta-r32.2
 $pyTetWildWheel = "C:\path\to\pytetwild-0.3.0-cp312-abi3-win_amd64.whl"
 .\BOOTSTRAP_WINDOWS.ps1 -PyTetWildWheel $pyTetWildWheel
 .\.venv\Scripts\python.exe .\source\fixed_app\TripoSpectrumMapper_fixed.py
@@ -159,11 +187,12 @@ The bootstrap installs pinned build dependencies and runs the test suite. See [B
 
 ## Technical details
 
-The public display version remains pinned to `0.8beta`. The published edition
-is `AI Model Print Studio r32.2`, with artifact slug
-`r32.2-ai-model-print-studio`; the Windows numeric version remains `0.8.0.0`.
+The published Windows application is `0.9 (r33)` and its numeric
+version is `0.9.0.0`. The already published `0.8beta (r32.2)` edition and its
+`r32.2-ai-model-print-studio` artifact slug remain immutable historical release
+evidence.
 
-## AI Model Print Studio r32.2
+## AI Model Print Studio r32.2 (historical release)
 
 r32.2 keeps the r32.1 application and fail-closed 3MF contracts and adds seven
 derived demo outputs: one combined six-mesh project plus six part-specific
@@ -276,7 +305,7 @@ project-folder/
 - Displayed and printed colour are not guaranteed to match; use a test print under the same production conditions.
 - Research engines remain in source for continued development but cannot be reached from the public workflow.
 
-## Published validation
+## Historical release validation
 
 The exact r32.2 release build was produced from commit
 `aba20685d2fd6987621b2e1e6624f46ea84912a3`. Its full regression ran 1,298
@@ -326,7 +355,7 @@ remain recorded.
 
 See [CURRENT_STATE.json](CURRENT_STATE.json) and [PROVENANCE.md](PROVENANCE.md) for the canonical boundary.
 
-## Development and tests
+## Development and tests (historical r32.2 reproduction)
 
 On Windows with Python 3.13, run:
 

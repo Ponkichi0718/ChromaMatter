@@ -151,6 +151,198 @@ def _edge_topology(faces: np.ndarray, vertex_count: int) -> dict[str, int | bool
     }
 
 
+@dataclass
+class _IncrementalEdgeTopology:
+    """Track appended cap edges without rescanning the complete mesh.
+
+    The immutable sorted arrays describe the source mesh. Only edges touched
+    by accepted caps are stored in ``overrides``. This keeps per-loop work
+    proportional to the tiny cap while retaining the exact counters produced
+    by :func:`_edge_topology`.
+    """
+
+    vertex_count: int
+    edge_keys: np.ndarray
+    edge_counts: np.ndarray
+    direction_balances: np.ndarray
+    overrides: dict[int, tuple[int, int]]
+    unique_edges: int
+    boundary_edges: int
+    nonmanifold_edges: int
+    inconsistent_winding_edges: int
+
+    @classmethod
+    def from_faces(
+        cls,
+        faces: np.ndarray,
+        vertex_count: int,
+    ) -> _IncrementalEdgeTopology:
+        source_faces = np.asarray(faces, dtype=np.int64)
+        if not len(source_faces):
+            return cls(
+                vertex_count=int(vertex_count),
+                edge_keys=np.empty(0, dtype=np.int64),
+                edge_counts=np.empty(0, dtype=np.int64),
+                direction_balances=np.empty(0, dtype=np.int64),
+                overrides={},
+                unique_edges=0,
+                boundary_edges=0,
+                nonmanifold_edges=0,
+                inconsistent_winding_edges=0,
+            )
+        directed = np.vstack(
+            (
+                source_faces[:, [0, 1]],
+                source_faces[:, [1, 2]],
+                source_faces[:, [2, 0]],
+            )
+        )
+        lo = np.minimum(directed[:, 0], directed[:, 1])
+        hi = np.maximum(directed[:, 0], directed[:, 1])
+        keys = lo * np.int64(vertex_count) + hi
+        directions = np.where(directed[:, 0] == lo, 1, -1).astype(np.int64)
+        order = np.argsort(keys)
+        sorted_keys = keys[order]
+        sorted_directions = directions[order]
+        edge_keys, starts, counts = np.unique(
+            sorted_keys,
+            return_index=True,
+            return_counts=True,
+        )
+        balances = np.add.reduceat(sorted_directions, starts)
+        paired = counts == 2
+        return cls(
+            vertex_count=int(vertex_count),
+            edge_keys=np.asarray(edge_keys, dtype=np.int64),
+            edge_counts=np.asarray(counts, dtype=np.int64),
+            direction_balances=np.asarray(balances, dtype=np.int64),
+            overrides={},
+            unique_edges=int(len(counts)),
+            boundary_edges=int(np.count_nonzero(counts == 1)),
+            nonmanifold_edges=int(np.count_nonzero(counts > 2)),
+            inconsistent_winding_edges=int(
+                np.count_nonzero(np.abs(balances[paired]) == 2)
+            ),
+        )
+
+    def _key_and_direction(self, left: int, right: int) -> tuple[int, int]:
+        low = min(int(left), int(right))
+        high = max(int(left), int(right))
+        return (
+            int(low * self.vertex_count + high),
+            1 if int(left) == low else -1,
+        )
+
+    def edge_state(self, left: int, right: int) -> tuple[int, int]:
+        key, _direction = self._key_and_direction(left, right)
+        override = self.overrides.get(key)
+        if override is not None:
+            return override
+        position = int(np.searchsorted(self.edge_keys, key))
+        if (
+            position >= len(self.edge_keys)
+            or int(self.edge_keys[position]) != key
+        ):
+            return 0, 0
+        return (
+            int(self.edge_counts[position]),
+            int(self.direction_balances[position]),
+        )
+
+    @staticmethod
+    def _contribution(count: int, balance: int) -> tuple[int, int, int, int]:
+        return (
+            int(count > 0),
+            int(count == 1),
+            int(count > 2),
+            int(count == 2 and abs(balance) == 2),
+        )
+
+    def snapshot(self) -> dict[str, int | bool]:
+        return {
+            "unique_edges": int(self.unique_edges),
+            "boundary_edges": int(self.boundary_edges),
+            "nonmanifold_edges": int(self.nonmanifold_edges),
+            "inconsistent_winding_edges": int(
+                self.inconsistent_winding_edges
+            ),
+            "watertight": (
+                self.boundary_edges == 0 and self.nonmanifold_edges == 0
+            ),
+        }
+
+    def project_appended_faces(
+        self,
+        faces: np.ndarray,
+    ) -> tuple[dict[int, tuple[int, int]], dict[str, int | bool]]:
+        appended = np.asarray(faces, dtype=np.int64)
+        directed = np.vstack(
+            (
+                appended[:, [0, 1]],
+                appended[:, [1, 2]],
+                appended[:, [2, 0]],
+            )
+        )
+        lo = np.minimum(directed[:, 0], directed[:, 1])
+        hi = np.maximum(directed[:, 0], directed[:, 1])
+        keys = lo * np.int64(self.vertex_count) + hi
+        directions = np.where(directed[:, 0] == lo, 1, -1).astype(np.int64)
+        edge_keys, inverse = np.unique(keys, return_inverse=True)
+        added_counts = np.bincount(inverse, minlength=len(edge_keys))
+        added_balances = np.bincount(
+            inverse,
+            weights=directions,
+            minlength=len(edge_keys),
+        ).astype(np.int64)
+
+        projected = [
+            int(self.unique_edges),
+            int(self.boundary_edges),
+            int(self.nonmanifold_edges),
+            int(self.inconsistent_winding_edges),
+        ]
+        updates: dict[int, tuple[int, int]] = {}
+        for key, added_count, added_balance in zip(
+            edge_keys,
+            added_counts,
+            added_balances,
+            strict=True,
+        ):
+            key_value = int(key)
+            low = key_value // self.vertex_count
+            high = key_value % self.vertex_count
+            old_count, old_balance = self.edge_state(low, high)
+            new_count = old_count + int(added_count)
+            new_balance = old_balance + int(added_balance)
+            old_contribution = self._contribution(old_count, old_balance)
+            new_contribution = self._contribution(new_count, new_balance)
+            for index in range(4):
+                projected[index] += (
+                    new_contribution[index] - old_contribution[index]
+                )
+            updates[key_value] = (new_count, new_balance)
+        return updates, {
+            "unique_edges": projected[0],
+            "boundary_edges": projected[1],
+            "nonmanifold_edges": projected[2],
+            "inconsistent_winding_edges": projected[3],
+            "watertight": projected[1] == 0 and projected[2] == 0,
+        }
+
+    def commit(
+        self,
+        updates: dict[int, tuple[int, int]],
+        topology: dict[str, int | bool],
+    ) -> None:
+        self.overrides.update(updates)
+        self.unique_edges = int(topology["unique_edges"])
+        self.boundary_edges = int(topology["boundary_edges"])
+        self.nonmanifold_edges = int(topology["nonmanifold_edges"])
+        self.inconsistent_winding_edges = int(
+            topology["inconsistent_winding_edges"]
+        )
+
+
 def _boundary_edges_with_face_ids(
     faces: np.ndarray,
     vertex_count: int,
@@ -570,6 +762,34 @@ def _orient_cap_against_source(
     return result
 
 
+def _orient_cap_against_topology(
+    topology: _IncrementalEdgeTopology,
+    cap_faces: np.ndarray,
+) -> np.ndarray:
+    """Orient a cap against the current incrementally tracked boundary."""
+
+    result = np.asarray(cap_faces, dtype=np.int32).copy()
+    cap_boundary = _directed_boundary_edges(result, topology.vertex_count)
+    if not len(cap_boundary):
+        raise AssemblyError("共有組立面に外周エッジがありません")
+    same = 0
+    opposite = 0
+    for left, right in cap_boundary:
+        count, source_direction = topology.edge_state(left, right)
+        if count != 1:
+            continue
+        _key, cap_direction = topology._key_and_direction(left, right)
+        same += int(source_direction == cap_direction)
+        opposite += int(source_direction == -cap_direction)
+    if same == len(cap_boundary) and opposite == 0:
+        result[:, [1, 2]] = result[:, [2, 1]]
+    elif opposite != len(cap_boundary) or same != 0:
+        raise AssemblyError(
+            "共有組立面と元パーツの境界方向を一意に対応できません"
+        )
+    return result
+
+
 def _signed_mesh_volume(vertices: np.ndarray, faces: np.ndarray) -> float:
     triangles = np.asarray(vertices, dtype=np.float64)[
         np.asarray(faces, dtype=np.int64)
@@ -951,6 +1171,10 @@ def repair_small_unmatched_boundaries(
         ]
         for vertices, faces, colors in meshes
     ]
+    topology_by_part: dict[int, _IncrementalEdgeTopology] = {}
+    caps_by_part: dict[int, list[np.ndarray]] = {}
+    original_face_counts = [int(len(part[1])) for part in output]
+    added_face_counts: dict[int, int] = {}
     records: list[dict[str, object]] = []
     for loop in loops:
         part_id = int(loop.part_id)
@@ -959,6 +1183,13 @@ def repair_small_unmatched_boundaries(
                 f"未対応境界{loop.loop_id + 1}のパーツ番号が不正です"
             )
         vertices, faces, _colors = output[part_id]
+        topology = topology_by_part.get(part_id)
+        if topology is None:
+            topology = _IncrementalEdgeTopology.from_faces(
+                faces,
+                len(vertices),
+            )
+            topology_by_part[part_id] = topology
         vertex_ids = np.asarray(loop.vertex_ids, dtype=np.int64)
         if (
             len(vertex_ids) < 3
@@ -970,18 +1201,15 @@ def repair_small_unmatched_boundaries(
                 f"パーツ{part_id + 1}の未対応境界{loop.loop_id + 1}が不正です"
             )
 
-        current_boundary = {
-            tuple(sorted((int(left), int(right))))
-            for left, right in _boundary_edges(faces, len(vertices))
-        }
         loop_edges = {
             tuple(sorted((int(left), int(right))))
             for left, right in zip(
                 vertex_ids, np.roll(vertex_ids, -1), strict=True
             )
         }
-        if len(loop_edges) != len(vertex_ids) or not loop_edges.issubset(
-            current_boundary
+        if len(loop_edges) != len(vertex_ids) or any(
+            topology.edge_state(left, right)[0] != 1
+            for left, right in loop_edges
         ):
             raise AssemblyError(
                 f"パーツ{part_id + 1}の未対応境界{loop.loop_id + 1}は"
@@ -1085,10 +1313,9 @@ def repair_small_unmatched_boundaries(
                 "外周を保ったまま三角形分割できませんでした"
             )
 
-        cap_faces = _orient_cap_against_source(
-            faces,
+        cap_faces = _orient_cap_against_topology(
+            topology,
             vertex_ids[local_faces],
-            len(vertices),
         )
         doubled_areas = np.linalg.norm(
             np.cross(
@@ -1103,10 +1330,12 @@ def repair_small_unmatched_boundaries(
                 "縮退する修復面があります"
             )
 
-        before = _edge_topology(faces, len(vertices))
-        cap_start = int(len(faces))
-        repaired_faces = np.vstack((faces, cap_faces)).astype(np.int32)
-        after = _edge_topology(repaired_faces, len(vertices))
+        before = topology.snapshot()
+        cap_start = original_face_counts[part_id] + added_face_counts.get(
+            part_id,
+            0,
+        )
+        updates, after = topology.project_appended_faces(cap_faces)
         expected_boundary_edges = int(before["boundary_edges"]) - len(
             vertex_ids
         )
@@ -1121,7 +1350,11 @@ def repair_small_unmatched_boundaries(
                 f"パーツ{part_id + 1}の未対応境界{loop.loop_id + 1}を"
                 "局所修復するとトポロジーが悪化します"
             )
-        output[part_id][1] = repaired_faces
+        topology.commit(updates, after)
+        caps_by_part.setdefault(part_id, []).append(cap_faces)
+        added_face_counts[part_id] = added_face_counts.get(part_id, 0) + int(
+            len(cap_faces)
+        )
         records.append(
             {
                 "part_id": part_id,
@@ -1142,6 +1375,23 @@ def repair_small_unmatched_boundaries(
                 "closed_loop": True,
             }
         )
+
+    # Materialize each touched part once, then independently prove that the
+    # incremental counters exactly match a complete topology calculation.
+    # Whole-mesh rescans are bounded by touched parts, never by tiny holes.
+    for part_id, topology in topology_by_part.items():
+        caps = caps_by_part.get(part_id, [])
+        if not caps:
+            continue
+        original_faces = output[part_id][1]
+        repaired_faces = np.vstack((original_faces, *caps)).astype(np.int32)
+        actual = _edge_topology(repaired_faces, len(output[part_id][0]))
+        if actual != topology.snapshot():
+            raise AssemblyError(
+                f"パーツ{part_id + 1}の局所修復トポロジーを"
+                "最終確認できません"
+            )
+        output[part_id][1] = repaired_faces
 
     return (
         [
@@ -1631,6 +1881,7 @@ def solidify_coincident_shells(
     colors: np.ndarray,
     *,
     require_positive_volume: bool = True,
+    allow_unmatched_boundary_edges: bool = False,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict[str, object]]:
     """Close a logical single mesh by welding exact duplicate seam vertices.
 
@@ -1642,14 +1893,17 @@ def solidify_coincident_shells(
     averages colour only where paired seam vertices become one.  Coincident
     interior vertices are deliberately left separate.
 
-    A genuine hole has no coincident partner and therefore remains open.  Such
-    input is rejected instead of inventing a large cap.  Every disconnected
-    closed shell is allowed to remain in the same logical print object, but is
-    validated independently as a positive-volume watertight body.  The one
-    pre-clean pipeline call may defer only the signed-volume check: tiny
-    inward-wound islands are removed and the survivors coherently oriented
-    before the final strict call.  Callers can consequently treat any final
-    exception as a transaction failure and retain the original mesh unchanged.
+    A genuine hole has no coincident partner and is rejected by default.  The
+    internal ``allow_unmatched_boundary_edges`` adapter may return a partially
+    welded, still-open mesh so the existing strict planar tiny-hole repair can
+    inspect only the remaining loops.  It never accepts an open result as a
+    solid.  Every disconnected closed shell is allowed to remain in the same
+    logical print object, but is validated independently as a positive-volume
+    watertight body.  The one pre-clean pipeline call may defer only the
+    signed-volume check: tiny inward-wound islands are removed and the
+    survivors coherently oriented before the final strict call.  Callers can
+    consequently treat any final exception as a transaction failure and
+    retain the original mesh unchanged.
     """
 
     source_vertices = np.asarray(vertices, dtype=np.float64)
@@ -1754,7 +2008,11 @@ def solidify_coincident_shells(
             == edge_direction[edge_order[paired_starts + 1]]
         )
     )
-    if unmatched_edge_groups or ambiguous_edge_groups or same_direction_groups:
+    if (
+        (unmatched_edge_groups and not allow_unmatched_boundary_edges)
+        or ambiguous_edge_groups
+        or same_direction_groups
+    ):
         raise AssemblyError(
             "実際の開口、または1対1でない境界があり、"
             "逆向き同一座標継ぎ目だけでは閉じられません: "
@@ -1808,7 +2066,7 @@ def solidify_coincident_shells(
     if not np.array_equal(repaired_vertices[inverse], source_vertices):
         raise AssemblyError("境界統合で元の三角形座標が変化するため停止しました")
     merged_vertex_count = int(len(source_vertices) - len(repaired_vertices))
-    if merged_vertex_count <= 0:
+    if merged_vertex_count <= 0 and not allow_unmatched_boundary_edges:
         raise AssemblyError(
             "同一座標の継ぎ目が見つからず、実際の開口を安全に閉じられません"
         )
@@ -1834,11 +2092,17 @@ def solidify_coincident_shells(
     )
 
     after = _edge_topology(repaired_faces, len(repaired_vertices))
-    if not bool(after["watertight"]):
+    is_closed = bool(after["watertight"])
+    if not is_closed and not allow_unmatched_boundary_edges:
         raise AssemblyError(
             "同一座標の継ぎ目を統合しても実際の開口が残ります: "
             f"境界 {after['boundary_edges']}, "
             f"非多様体 {after['nonmanifold_edges']}"
+        )
+    if int(after["nonmanifold_edges"]):
+        raise AssemblyError(
+            "同一座標の継ぎ目統合後に非多様体辺が "
+            f"{after['nonmanifold_edges']} 本残ります"
         )
     if int(after["inconsistent_winding_edges"]):
         raise AssemblyError(
@@ -1849,10 +2113,14 @@ def solidify_coincident_shells(
     # A single GLB node may intentionally contain many disconnected printable
     # shells.  Keep them in one logical object, but require every shell to be a
     # closed, consistently oriented positive volume before committing.
-    body_volumes = _positive_watertight_body_volumes(
-        repaired_vertices,
-        repaired_faces,
-        require_positive_volume=require_positive_volume,
+    body_volumes = (
+        _positive_watertight_body_volumes(
+            repaired_vertices,
+            repaired_faces,
+            require_positive_volume=require_positive_volume,
+        )
+        if is_closed
+        else []
     )
 
     return (
@@ -1860,7 +2128,11 @@ def solidify_coincident_shells(
         repaired_faces,
         repaired_colors,
         {
-            "method": "coincident_vertex_seam_weld",
+            "method": (
+                "coincident_vertex_seam_weld"
+                if is_closed
+                else "partial_coincident_vertex_seam_weld"
+            ),
             "before": before,
             "after": after,
             "source_vertices": int(len(source_vertices)),
@@ -1873,7 +2145,7 @@ def solidify_coincident_shells(
             "unmatched_boundary_coordinate_edges": unmatched_edge_groups,
             "ambiguous_boundary_coordinate_edges": ambiguous_edge_groups,
             "same_direction_boundary_coordinate_edges": same_direction_groups,
-            "boundary_pairing_proven": True,
+            "boundary_pairing_proven": bool(is_closed),
             "global_coincident_vertex_excess": int(
                 len(source_vertices) - len(position_values)
             ),
@@ -1891,14 +2163,20 @@ def solidify_coincident_shells(
                 colour_adjustment.max(initial=0.0)
             ),
             "body_count": int(len(body_volumes)),
-            "minimum_body_volume_unit3": float(min(body_volumes)),
-            "maximum_body_volume_unit3": float(max(body_volumes)),
-            "positive_volume_validated": bool(require_positive_volume),
+            "minimum_body_volume_unit3": (
+                float(min(body_volumes)) if body_volumes else None
+            ),
+            "maximum_body_volume_unit3": (
+                float(max(body_volumes)) if body_volumes else None
+            ),
+            "positive_volume_validated": bool(
+                is_closed and require_positive_volume
+            ),
             "face_count_preserved": True,
             "face_order_preserved": True,
             "geometry_coordinates_preserved": True,
             "part_identity_preserved": True,
-            "closed": True,
+            "closed": bool(is_closed),
             "identity": False,
         },
     )
