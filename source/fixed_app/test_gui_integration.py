@@ -385,6 +385,11 @@ class RealTkGpuIntegrationTests(unittest.TestCase):
             editor.tool_var.set("brush")
             editor.brush_radius_var.set(3.0)
             editor._hotfix_brush_shape_var.set("marker")
+            # X11 may deliver a real pointer-motion event while the editor is
+            # being mapped.  Start this synthetic gesture from the documented
+            # default nib angle instead of inheriting that unrelated event.
+            editor._hotfix_brush_cursor_last_pointer = None
+            editor._hotfix_brush_cursor_angle = 0.0
 
             # The real Tk Canvas must show the same rectangular nib that the
             # adaptive marker uses, and ordinary Motion must reuse its item.

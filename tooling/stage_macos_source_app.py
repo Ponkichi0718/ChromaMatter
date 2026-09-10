@@ -27,6 +27,7 @@ import subprocess
 import sys
 import tempfile
 import unicodedata
+import zipfile
 
 
 SCHEMA = "chromamatter.macos-source-backed-app.v1"
@@ -37,6 +38,9 @@ SOURCE_LAUNCHER = "START_MACOS_SOURCE_ALPHA.command"
 MANIFEST_NAME = "SOURCE_BACKED_APP_MANIFEST.json"
 NOTICE_NAME = "SOURCE_BACKED_ALPHA_NOTICE.txt"
 ICON_NAME = "AppIcon.icns"
+PACKAGE_ROOT = "ChromaMatter-0.9-macos-source-app"
+PACKAGE_MANIFEST = "SOURCE_APP_PACKAGE_MANIFEST.json"
+TEST_GUIDE = "publication/MACOS_SOURCE_APP_TESTING_EN.md"
 
 EXPECTED_PLIST = {
     "CFBundleDisplayName": "ChromaMatter Source Alpha",
@@ -44,8 +48,8 @@ EXPECTED_PLIST = {
     "CFBundleIdentifier": "io.github.ponkichi0718.chromamatter.source-alpha",
     "CFBundleName": "ChromaMatter Source Alpha",
     "CFBundlePackageType": "APPL",
-    "CFBundleShortVersionString": "0.8.0",
-    "CFBundleVersion": "800",
+    "CFBundleShortVersionString": "0.9.0",
+    "CFBundleVersion": "900",
     "LSMinimumSystemVersion": "15.0",
 }
 
@@ -67,12 +71,19 @@ FORBIDDEN_SUFFIXES = {
     ".pyd",
     ".so",
     ".whl",
+    ".zip",
+    ".3mf",
+    ".glb",
+    ".gltf",
+    ".stl",
+    ".gcode",
 }
 FORBIDDEN_PARTS = {
     ".git",
     ".venv",
     "__pycache__",
     "site-packages",
+    "demodata",
 }
 MACH_O_MAGICS = {
     b"\xfe\xed\xfa\xce",
@@ -95,6 +106,7 @@ ROOT_DOCUMENTS = {
     "README_EN.md",
     "README_JA.md",
     "SECURITY.md",
+    TEST_GUIDE,
 }
 SAMPLE_FILES = {
     "samples/LICENSE.txt",
@@ -135,6 +147,8 @@ def _safe_relative(value: str) -> PurePosixPath:
         not value
         or candidate.is_absolute()
         or "\\" in value
+        or ":" in value
+        or candidate.as_posix() != value
         or any(unicodedata.category(character) == "Cc" for character in value)
         or any(part in {"", ".", ".."} for part in candidate.parts)
     ):
@@ -246,6 +260,7 @@ def _selected_source_paths(
         "source/fixed_app/requirements-runtime-macos-arm64.lock",
         "samples/generate_macos_alpha_test_glb.py",
         "LICENSE",
+        TEST_GUIDE,
     }
     missing = sorted(required.difference(selected))
     if missing:
@@ -365,7 +380,7 @@ def _notice_text(source_commit: str) -> str:
     return f"""ChromaMatter Source-backed App Alpha
 
 Source commit: {source_commit}
-Displayed product version: 0.8beta
+Displayed product version: 0.9
 Supported test host: Apple Silicon / macOS 15 or newer
 
 This Finder-launchable .app is a convenience wrapper around
@@ -373,14 +388,18 @@ START_MACOS_SOURCE_ALPHA.command. It is NOT the frozen prebuilt ChromaMatter
 application and it contains no Python runtime, virtual environment, wheel,
 third-party native library, or packaged Mach-O executable.
 
-On first launch the app opens Terminal. The source launcher may download the
-verified official Python 3.13.14 installer and exact hash-locked dependencies,
-install them into the current user's Application Support directory, run the
-native/render self-test, and then start ChromaMatter from source. Keep Terminal
-open while setup is running.
+On first launch the app opens Terminal. If needed it downloads the verified
+official Python 3.13.14 installer for you to install through Apple's Installer.
+It installs the exact hash-locked dependencies into a private environment in
+the current user's Application Support directory, runs the native/render
+self-test, and starts ChromaMatter from source. Keep Terminal open during setup.
+
+This source package has not been runtime-tested on macOS for this exact source
+commit. A Windows package audit is not a native Mac/Finder or print test.
+DemoData is not bundled; download it separately from https://chromamatter.app/download.
 
 This route does not bypass Gatekeeper and does not satisfy, weaken, or replace
-the separate 153-file prebuilt-app source/build/relink approval gate. The app
+the separate prebuilt-app source/build/relink approval gate. The app
 is not Developer ID signed or Apple-notarized. Use only the documented Finder
 Open / Privacy & Security approval flow; never disable macOS security globally.
 """
@@ -390,7 +409,7 @@ def _plist_bytes() -> bytes:
     payload: dict[str, object] = {
         **EXPECTED_PLIST,
         "CFBundleDevelopmentRegion": "en",
-        "CFBundleGetInfoString": "ChromaMatter 0.8beta source-backed alpha",
+        "CFBundleGetInfoString": "ChromaMatter 0.9 source-backed alpha",
         "CFBundleIconFile": ICON_NAME,
         "LSApplicationCategoryType": "public.app-category.graphics-design",
         "LSArchitecturePriority": ["arm64"],
@@ -443,6 +462,9 @@ def _write_manifest(app_bundle: Path, source_commit: str) -> None:
         "bundled_third_party_runtime_binaries": False,
         "prebuilt_app_distribution_gate_bypassed": False,
         "first_launch_opens_terminal": True,
+        "display_version": "0.9",
+        "demo_data_bundled": False,
+        "native_validation_status": "not-run-on-macos-for-this-source-commit",
         "records": _manifest_records(app_bundle),
     }
     destination = app_bundle / "Contents" / "Resources" / MANIFEST_NAME
@@ -473,6 +495,8 @@ def stage(repository: Path, output: Path, source_commit: str) -> None:
         raise SourceAppError(
             f"Source commit must equal repository HEAD: requested={source_commit}, HEAD={head}"
         )
+    if _git_output(repository, ["status", "--porcelain", "--untracked-files=normal"]):
+        raise SourceAppError("Source app staging requires a clean committed worktree")
     if output.exists() or output.is_symlink():
         raise SourceAppError(f"Refusing to replace an existing app bundle: {output}")
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -574,12 +598,15 @@ def audit(app_bundle: Path) -> dict[str, object]:
         "bundled_third_party_runtime_binaries": False,
         "prebuilt_app_distribution_gate_bypassed": False,
         "first_launch_opens_terminal": True,
+        "demo_data_bundled": False,
     }
     for key, expected in expected_flags.items():
         if manifest.get(key) is not expected:
             raise SourceAppError(f"Source-backed app manifest flag is invalid: {key}")
+    if manifest.get("display_version") != "0.9" or manifest.get("native_validation_status") != "not-run-on-macos-for-this-source-commit":
+        raise SourceAppError("Source-backed app version or native validation scope is invalid")
     source_commit = manifest.get("source_commit")
-    if not isinstance(source_commit, str) or len(source_commit) != 40:
+    if not isinstance(source_commit, str) or len(source_commit) != 40 or any(c not in "0123456789abcdef" for c in source_commit):
         raise SourceAppError("Source-backed app manifest has no exact source commit")
 
     raw_records = manifest.get("records")
@@ -627,7 +654,110 @@ def audit(app_bundle: Path) -> dict[str, object]:
         "file_count": len(actual_records) + 1,
         "native_runtime_binary_count": 0,
         "status": "source-backed-app-audit-passed",
+        "native_validation_status": "not-run-on-macos-for-this-source-commit",
+        "demo_data_bundled": False,
     }
+
+
+def _package_files(root: Path) -> dict[str, tuple[int, str]]:
+    records = {}
+    keys = set()
+    for path in sorted(root.rglob("*")):
+        if path.is_symlink():
+            raise SourceAppError("Package symlinks are forbidden")
+        if path.is_dir():
+            continue
+        if not path.is_file():
+            raise SourceAppError("Package special files are forbidden")
+        relative = path.relative_to(root).as_posix()
+        _reject_runtime_payload(path, relative)
+        key = _normalized_path_key(relative)
+        if key in keys:
+            raise SourceAppError("Package contains colliding paths")
+        keys.add(key)
+        if relative != PACKAGE_MANIFEST:
+            records[relative] = (path.stat().st_size, _sha256(path))
+    return records
+
+
+def audit_package(root: Path) -> dict[str, object]:
+    if root.name != PACKAGE_ROOT or root.is_symlink():
+        raise SourceAppError("Invalid source package root")
+    report = audit(root / APP_NAME)
+    manifest = json.loads((root / PACKAGE_MANIFEST).read_text(encoding="ascii"))
+    actual = _package_files(root)
+    expected = {key: tuple(value) for key, value in manifest.get("files", {}).items()}
+    if actual != expected or manifest.get("source_commit") != report["source_commit"]:
+        raise SourceAppError("Source package manifest mismatch")
+    if (root / "SOURCE_COMMIT.txt").read_text(encoding="ascii").strip() != report["source_commit"]:
+        raise SourceAppError("Source package commit mismatch")
+    if manifest.get("demo_data_bundled") is not False:
+        raise SourceAppError("Source package must not bundle DemoData")
+    report["package_file_count"] = len(actual) + 1
+    return report
+
+
+def package(repository: Path, archive: Path, source_commit: str) -> dict[str, object]:
+    """Create a source-only ZIP on any host, preserving Unix launcher modes.
+
+    The fresh-extract audit verifies archive bytes/modes, not native execution.
+    It deliberately makes no Finder, dependency-installation or export claim.
+    """
+    archive = archive.absolute()
+    if archive.name != PACKAGE_ROOT + ".zip" or archive.exists() or archive.is_symlink():
+        raise SourceAppError("Archive must use the fixed fresh source-package ZIP name")
+    archive.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix=".macos-source-package-", dir=archive.parent) as raw:
+        temporary = Path(raw)
+        root = temporary / PACKAGE_ROOT
+        app = root / APP_NAME
+        stage(repository, app, source_commit)
+        source = app / "Contents" / "Resources" / SOURCE_DIRECTORY
+        (root / "README_INSTALL_AND_TEST_EN.md").write_bytes((source / TEST_GUIDE).read_bytes())
+        (root / NOTICE_NAME).write_bytes((app / "Contents" / "Resources" / NOTICE_NAME).read_bytes())
+        (root / "SOURCE_COMMIT.txt").write_text(source_commit.lower() + "\n", encoding="ascii")
+        manifest = {"source_commit": source_commit.lower(), "display_version": "0.9",
+                    "demo_data_bundled": False, "files": _package_files(root)}
+        (root / PACKAGE_MANIFEST).write_text(json.dumps(manifest, sort_keys=True, indent=2) + "\n", encoding="ascii")
+        audit_package(root)
+        pending = temporary / archive.name
+        with zipfile.ZipFile(pending, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as output:
+            for path in sorted(root.rglob("*")):
+                if not path.is_file():
+                    continue
+                relative = path.relative_to(temporary).as_posix()
+                info = zipfile.ZipInfo(relative, date_time=(2026, 9, 6, 0, 0, 0))
+                info.create_system = 3
+                executable = path.name in {EXECUTABLE_NAME, SOURCE_LAUNCHER}
+                info.external_attr = (stat.S_IFREG | (0o755 if executable else 0o644)) << 16
+                info.compress_type = zipfile.ZIP_DEFLATED
+                output.writestr(info, path.read_bytes())
+        fresh = temporary / "fresh"
+        seen = set()
+        with zipfile.ZipFile(pending) as incoming:
+            if incoming.testzip() is not None:
+                raise SourceAppError("Source package ZIP CRC failed")
+            for info in incoming.infolist():
+                relative = _safe_relative(info.filename)
+                key = _normalized_path_key(info.filename)
+                if relative.parts[0] != PACKAGE_ROOT or key in seen:
+                    raise SourceAppError("Unsafe or duplicate source ZIP path")
+                seen.add(key)
+                mode = info.external_attr >> 16
+                if info.create_system != 3 or stat.S_IFMT(mode) != stat.S_IFREG:
+                    raise SourceAppError("Source ZIP must contain Unix regular-file modes")
+                expected_mode = 0o755 if relative.name in {EXECUTABLE_NAME, SOURCE_LAUNCHER} else 0o644
+                if stat.S_IMODE(mode) != expected_mode:
+                    raise SourceAppError("Source ZIP launcher permissions mismatch")
+                target = fresh.joinpath(*relative.parts)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(incoming.read(info))
+                target.chmod(expected_mode)
+        report = audit_package(fresh / PACKAGE_ROOT)
+        report.update({"archive_sha256": _sha256(pending), "archive_bytes": pending.stat().st_size,
+                       "archive_format": "source-only-zip-with-unix-modes", "fresh_extract_audit": "passed"})
+        pending.rename(archive)
+        return report
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -645,6 +775,10 @@ def _parser() -> argparse.ArgumentParser:
 
     audit_parser = subparsers.add_parser("audit", help="audit an existing source app")
     audit_parser.add_argument("--app-bundle", type=Path, required=True)
+    package_parser = subparsers.add_parser("package", help="create a fresh source-only ZIP, without DemoData")
+    package_parser.add_argument("--repository-root", type=Path, default=Path(__file__).resolve().parents[1])
+    package_parser.add_argument("--archive", type=Path, required=True)
+    package_parser.add_argument("--source-commit", required=True)
     return parser
 
 
@@ -654,6 +788,8 @@ def main(argv: list[str] | None = None) -> int:
         if arguments.operation == "stage":
             stage(arguments.repository_root, arguments.output, arguments.source_commit)
             result = audit(arguments.output)
+        elif arguments.operation == "package":
+            result = package(arguments.repository_root, arguments.archive, arguments.source_commit)
         else:
             result = audit(arguments.app_bundle)
     except SourceAppError as exc:

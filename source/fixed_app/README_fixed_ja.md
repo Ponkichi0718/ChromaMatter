@@ -1,4 +1,4 @@
-# ChromaMatter — AI Model Print Studio 0.8beta（r32.2公開済みsource）
+# ChromaMatter — AI Model Print Studio 0.9（r33開発source）
 
 <p align="center">
   <img src="assets/obj_adjuster_icon.png" width="160" alt="ChromaMatter icon">
@@ -6,18 +6,31 @@
 
 [English](README_fixed_en.md)
 
-このdirectoryはChromaMatter — AI Model Print Studioの固定source applicationです。
-表示versionは`0.8beta`、公開済みeditionは
-`AI Model Print Studio r32.2`、artifact revisionは
-`r32.2-ai-model-print-studio`です。Windows数値versionは`0.8.0.0`のままです。
+このdirectoryはChromaMatter — AI Model Print Studioの現在のsource applicationです。
+開発版の表示versionは`0.9`、editionは`AI Model Print Studio r33`、
+artifact revisionは`r33-ai-model-print-studio`、次回Windows数値versionは
+`0.9.0.0`です。
 
-> **Windows版をダウンロード:** [ChromaMatter 0.8beta r32.2（Windows）](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2/ChromaMatter-0.8beta-r32.2-win64.zip)
+0.9の主な更新は、通常の単一論理GLBから3MFへ出力する際の精度と成功率の向上です。
+同一座標の重複シームを結合し、幅2.0 mm以下で厳密に平面な微小開口だけを局所補修
+できます。内部の微小断片が通常の継ぎ目検証を妨げる場合は、残す主表面が独立して
+閉じることを証明したうえで、内部の微小な反転閉殻または範囲内の開いた微小断片だけを
+除外できます。正体積の独立パーツは削除せず、再メッシュやボクセル化も行いません。
+補修後も従来のfail-closedな閉立体検証をすべて通過する必要があります。
+複雑なパーツ化モデルの修復は引き続き入力依存です。このsourceから0.9の実行
+ファイルはまだpackage・公開していません。
+
+最新の公開済み過去版は`AI Model Print Studio r32.2`、artifact revisionは
+`r32.2-ai-model-print-studio`です。このidentityとassetは変更しない公開証拠として
+保持します。
+
+> **最新の公開済みWindows版（過去の0.8 build）:** [ChromaMatter 0.8beta r32.2（Windows）](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2/ChromaMatter-0.8beta-r32.2-win64.zip)
 >
 > **リリースページ:** [v0.8beta-r32.2](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2)
 >
 > 公開ビルドと完全対応ソースはcommit `aba20685d2fd6987621b2e1e6624f46ea84912a3`に固定されています。
 
-> **0.8betaの分割モデル制約:** 同梱の`DemoData/`は成功を確認済みですが、ほかの分割モデルでは閉立体化または3MF出力に失敗する場合があります。すべての入力を安定して修復できる段階ではなく、これが`0.8beta`である理由の一つです。
+> **公開済み0.8betaの分割モデル制約:** 同梱の`DemoData/`は成功を確認済みですが、ほかの分割モデルでは閉立体化または3MF出力に失敗する場合があります。すべての入力を安定して修復できる段階ではなく、これが公開済みr32.2を`0.8beta`としていた理由の一つです。
 
 [画像で見る主な機能と制作フロー](../../FEATURES_JA.md)と、[試作・失敗・実機調整を含む開発記録](https://note.com/ponkichi0718)も参照してください。
 
@@ -183,8 +196,8 @@ repository rootの`BOOTSTRAP_WINDOWS.ps1`が標準の準備・test入口です�
 - r27 previous evidenceのfinal ZIP SHA-256: `null`
 - icon publication rights: `passed-by-creator-declaration`（2026-08-20）。当該asset scopeはproject ownerが公開を承認。独立した法的clearanceではない
 - r31 previous evidenceのpublication eligibility: 検証済み`publication_scope=source-only`に限りtrue
-- 現行r32.2のsource publication eligibility: exact tagged source assetに対してtrue
-- 現行r32.2のbinary publication eligibility: exact tagged Windows assetに対してtrue
+- 公開済み・固定済みr32.2のsource publication eligibility: exact tagged source assetに対してtrue
+- 公開済み・固定済みr32.2のbinary publication eligibility: exact tagged Windows assetに対してtrue
 - public repository: [https://github.com/Ponkichi0718/ChromaMatter](https://github.com/Ponkichi0718/ChromaMatter)（owner handle `Ponkichi0718`）
 - Innovation Fund向け配布package: 公開済み。実機evidenceと提出用presentationは、固定済みr32.2 artifactを変更せず継続改善できます
 - physical XP-PEN validation、physical print: pendingの既知制約（source公開blockerではない）

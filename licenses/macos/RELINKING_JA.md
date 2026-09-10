@@ -1,6 +1,6 @@
 # macOS LGPLライブラリ差替え・再リンク手順（DRAFT）
 
-製品表示version：**0.8beta**
+製品表示version：**0.9**
 
 対象：Apple Silicon、macOS 15以降
 状態：**実機ボランティアMacで未検証・配布承認ではありません**

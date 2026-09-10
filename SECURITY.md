@@ -15,6 +15,6 @@ problems belong in the normal Issue forms. The private form is only for a
 problem that could affect confidentiality, integrity, code execution, or user
 safety before it can be discussed publicly.
 
-ChromaMatter is an independently developed `0.8beta` project. A private report
+ChromaMatter is an independently developed `0.9` project. A private report
 does not imply a fixed response time or production support, but it gives the
 maintainer a safe place to investigate before disclosure.

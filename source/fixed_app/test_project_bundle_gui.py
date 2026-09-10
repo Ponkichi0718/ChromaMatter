@@ -717,7 +717,7 @@ class ProjectBundleGuiContractTests(unittest.TestCase):
         app._submit_main = capture_submit
         workload = PreparedGeometrySnapshotWorkload(
             asset_vertex_count=2_500_000,
-            asset_face_count=5_000_000,
+            asset_face_count=5_250_000,
             final_face_count=450_000,
         )
         with patch.object(
@@ -798,7 +798,7 @@ class ProjectBundleGuiContractTests(unittest.TestCase):
             ),
             PreparedGeometrySnapshotWorkload(
                 asset_vertex_count=2_500_000,
-                asset_face_count=5_000_001,
+                asset_face_count=5_250_001,
                 final_face_count=450_000,
             ),
             PreparedGeometrySnapshotWorkload(

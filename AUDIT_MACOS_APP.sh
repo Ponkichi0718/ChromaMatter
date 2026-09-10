@@ -29,9 +29,9 @@ plutil -lint "$INFO_PLIST"
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$INFO_PLIST")" == \
     "io.github.ponkichi0718.chromamatter.alpha" ]]
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$INFO_PLIST")" == \
-    "0.8.0" ]]
+    "0.9.0" ]]
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleGetInfoString' "$INFO_PLIST")" == \
-    "ChromaMatter 0.8beta macOS alpha" ]]
+    "ChromaMatter 0.9 macOS alpha" ]]
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$INFO_PLIST")" == \
     "15.0" ]]
 
@@ -149,8 +149,8 @@ if [[ -n "$REPORT_FILE" ]]; then
 ChromaMatter macOS alpha app audit
 Bundle: $(basename "$APP_BUNDLE")
 Bundle identifier: io.github.ponkichi0718.chromamatter.alpha
-Bundle short version: 0.8.0
-In-app display version: 0.8beta
+Bundle short version: 0.9.0
+In-app display version: 0.9
 Minimum macOS: 15.0
 Mach-O files checked: $MACHO_COUNT
 Mach-O architecture: arm64 only

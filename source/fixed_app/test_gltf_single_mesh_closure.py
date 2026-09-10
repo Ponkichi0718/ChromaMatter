@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import tempfile
 from pathlib import Path
@@ -24,6 +25,11 @@ from spectrum_mapper.engine import (
     triangle_areas,
     write_3mf_atomic,
 )
+from spectrum_mapper.generated_surface_color import (
+    FACE_PROVENANCE_LOCAL_CAP,
+    FACE_PROVENANCE_SOURCE,
+    validate_face_provenance,
+)
 from spectrum_mapper.gltf_import import load_gltf_asset
 from spectrum_mapper.models import (
     AppSettings,
@@ -31,6 +37,11 @@ from spectrum_mapper.models import (
     ObjAsset,
     PaletteSettings,
     ToneSettings,
+)
+from spectrum_mapper.project_bundle import (
+    CURRENT_PROJECT_SCHEMA,
+    inspect_project_path,
+    save_project_bundle,
 )
 from spectrum_mapper.workflow import export_bundle
 from test_gltf_import import _append, _base_document, _write_glb
@@ -203,6 +214,210 @@ def _intersecting_closed_bodies_asset() -> ObjAsset:
     return _face_soup_asset(vertices, faces, colors)
 
 
+def _dominant_surface_with_micro_junk_asset(
+    *,
+    include_positive_solid: bool = False,
+    indexed_main: bool = False,
+) -> ObjAsset:
+    """Large exact-position surface plus ambiguous microscopic face debris."""
+
+    main = trimesh.creation.icosphere(subdivisions=3, radius=1.0)
+    main_vertices = np.asarray(main.vertices, dtype=np.float64)
+    main_faces = np.asarray(main.faces, dtype=np.int32)
+    main_colors = np.tile(
+        np.asarray([[0.35, 0.45, 0.55]], dtype=np.float64),
+        (len(main_vertices), 1),
+    )
+    if indexed_main:
+        vertices = main_vertices.copy()
+        faces = main_faces.copy()
+        colors = main_colors.copy()
+    else:
+        vertices, faces, colors = _face_soup(
+            main_vertices,
+            main_faces,
+            main_colors,
+        )
+
+    if include_positive_solid:
+        solid_vertices, solid_faces, solid_colors = _tetrahedron()
+        solid_vertices = solid_vertices * 0.001 + np.asarray([0.1, 0.1, 0.1])
+        solid_vertices, solid_faces, solid_colors = _face_soup(
+            solid_vertices,
+            solid_faces,
+            solid_colors,
+        )
+        solid_faces = solid_faces + len(vertices)
+        vertices = np.vstack((vertices, solid_vertices))
+        faces = np.vstack((faces, solid_faces)).astype(np.int32)
+        colors = np.vstack((colors, solid_colors))
+        junk_copy_count = 2
+    else:
+        # Three coincident copies make every geometric edge ambiguous.  They
+        # are not allowed into the exact seam weld merely because they are tiny.
+        junk_copy_count = 3
+
+    junk_triangle = np.asarray(
+        [[0.0, 0.0, 0.001], [0.001, 0.0, 0.001], [0.0, 0.001, 0.001]],
+        dtype=np.float64,
+    )
+    junk_vertices = np.tile(junk_triangle, (junk_copy_count, 1))
+    junk_faces = (
+        np.arange(junk_copy_count * 3, dtype=np.int32).reshape((-1, 3))
+        + len(vertices)
+    )
+    vertices = np.vstack((vertices, junk_vertices))
+    faces = np.vstack((faces, junk_faces)).astype(np.int32)
+    colors = np.vstack(
+        (
+            colors,
+            np.tile(
+                np.asarray([[0.2, 0.2, 0.2]], dtype=np.float64),
+                (len(junk_vertices), 1),
+            ),
+        )
+    )
+    return ObjAsset(
+        path=Path("synthetic_dominant_surface.glb"),
+        sha256="0" * 64,
+        file_size=0,
+        vertices=vertices.astype(np.float32),
+        colors=colors.astype(np.float32),
+        faces=faces,
+        original_vertex_count=len(vertices),
+        original_face_count=len(faces),
+        warnings=[],
+        part_names=("one generated primitive",),
+        part_keys=("gltf:synthetic:dominant",),
+        face_part_ids=np.zeros(len(faces), dtype=np.int16),
+        part_face_counts=(len(faces),),
+        part_vertex_counts=(len(vertices),),
+        has_explicit_parts=False,
+    )
+
+
+def _indexed_watertight_surface_asset() -> ObjAsset:
+    main = trimesh.creation.icosphere(subdivisions=3, radius=1.0)
+    vertices = np.asarray(main.vertices, dtype=np.float32)
+    faces = np.asarray(main.faces, dtype=np.int32)
+    colors = np.tile(
+        np.asarray([[0.35, 0.45, 0.55]], dtype=np.float32),
+        (len(vertices), 1),
+    )
+    return ObjAsset(
+        path=Path("synthetic_indexed_watertight.glb"),
+        sha256="2" * 64,
+        file_size=0,
+        vertices=vertices,
+        colors=colors,
+        faces=faces,
+        original_vertex_count=len(vertices),
+        original_face_count=len(faces),
+        warnings=[],
+        part_names=("one indexed primitive",),
+        part_keys=("gltf:synthetic:indexed-watertight",),
+        face_part_ids=np.zeros(len(faces), dtype=np.int16),
+        part_face_counts=(len(faces),),
+        part_vertex_counts=(len(vertices),),
+        has_explicit_parts=False,
+    )
+
+
+def _dominant_surface_with_interior_coincident_edge_asset() -> ObjAsset:
+    """Closed indexed surface whose exact-position collapse is non-manifold."""
+
+    main = trimesh.creation.icosphere(subdivisions=3, radius=1.0)
+    vertices = np.asarray(main.vertices, dtype=np.float64).copy()
+    faces = np.asarray(main.faces, dtype=np.int32)
+    edges = np.unique(
+        np.sort(
+            np.concatenate(
+                (
+                    faces[:, (0, 1)],
+                    faces[:, (1, 2)],
+                    faces[:, (2, 0)],
+                ),
+                axis=0,
+            ),
+            axis=1,
+        ),
+        axis=0,
+    )
+    first_edge = edges[0]
+    second_edge = next(
+        edge
+        for edge in edges[::-1]
+        if not set(edge).intersection(first_edge)
+    )
+    vertices[int(second_edge[0])] = vertices[int(first_edge[0])]
+    vertices[int(second_edge[1])] = vertices[int(first_edge[1])]
+
+    # The two coincident edges remain distinct, valid interior indexed edges.
+    # Collapsing every exact-position vertex would instead create one false
+    # incidence-four edge.  Three coincident micro triangles make the ordinary
+    # seam path fail first so the conservative dominant-surface fallback runs.
+    junk_triangle = np.asarray(
+        [[0.0, 0.0, 0.001], [0.001, 0.0, 0.001], [0.0, 0.001, 0.001]],
+        dtype=np.float64,
+    )
+    junk_vertices = np.tile(junk_triangle, (3, 1))
+    junk_faces = (
+        np.arange(9, dtype=np.int32).reshape((-1, 3)) + len(vertices)
+    )
+    vertices = np.vstack((vertices, junk_vertices))
+    faces = np.vstack((faces, junk_faces)).astype(np.int32)
+    colors = np.tile(
+        np.asarray([[0.35, 0.45, 0.55]], dtype=np.float64),
+        (len(vertices), 1),
+    )
+    return ObjAsset(
+        path=Path("synthetic_interior_coincident_edge.glb"),
+        sha256="1" * 64,
+        file_size=0,
+        vertices=vertices.astype(np.float32),
+        colors=colors.astype(np.float32),
+        faces=faces,
+        original_vertex_count=len(vertices),
+        original_face_count=len(faces),
+        warnings=[],
+        part_names=("one generated primitive",),
+        part_keys=("gltf:synthetic:interior-coincident",),
+        face_part_ids=np.zeros(len(faces), dtype=np.int16),
+        part_face_counts=(len(faces),),
+        part_vertex_counts=(len(vertices),),
+        has_explicit_parts=False,
+    )
+
+
+def _dominant_surface_with_inverted_shells_asset(
+    shell_count: int = 2,
+) -> ObjAsset:
+    """Large closed surface containing several distinct tiny inward shells."""
+
+    main = trimesh.creation.icosphere(subdivisions=4, radius=1.0)
+    vertices = np.asarray(main.vertices, dtype=np.float64)
+    faces = np.asarray(main.faces, dtype=np.int32)
+    colors = np.tile(
+        np.asarray([[0.35, 0.45, 0.55]], dtype=np.float64),
+        (len(vertices), 1),
+    )
+    for shell_id in range(shell_count):
+        shell_vertices, shell_faces, shell_colors = _tetrahedron()
+        shell_vertices = shell_vertices * 0.0001 + np.asarray(
+            [
+                -0.2 + 0.04 * shell_id,
+                -0.1 + 0.02 * (shell_id % 3),
+                0.05 - 0.02 * (shell_id % 2),
+            ],
+            dtype=np.float64,
+        )
+        shell_faces = shell_faces[:, [0, 2, 1]] + len(vertices)
+        vertices = np.vstack((vertices, shell_vertices))
+        faces = np.vstack((faces, shell_faces)).astype(np.int32)
+        colors = np.vstack((colors, shell_colors))
+    return _face_soup_asset(vertices, faces, colors)
+
+
 class CoincidentShellSolidificationTests(unittest.TestCase):
     def test_exact_uv_seams_close_without_adding_or_moving_triangles(self) -> None:
         vertices, faces, colors = _tetrahedron()
@@ -257,6 +472,32 @@ class CoincidentShellSolidificationTests(unittest.TestCase):
             solidify_coincident_shells(
                 soup_vertices, soup_faces, soup_colors
             )
+
+    def test_internal_partial_weld_leaves_real_hole_open_for_strict_repair(
+        self,
+    ) -> None:
+        vertices, faces, colors = _tetrahedron()
+        soup_vertices, soup_faces, soup_colors = _face_soup(
+            vertices, faces[:-1], colors
+        )
+
+        repaired_vertices, repaired_faces, _colors, record = (
+            solidify_coincident_shells(
+                soup_vertices,
+                soup_faces,
+                soup_colors,
+                allow_unmatched_boundary_edges=True,
+            )
+        )
+
+        topology = edge_topology(repaired_faces, len(repaired_vertices))
+        self.assertFalse(topology["watertight"])
+        self.assertGreater(topology["boundary_edges"], 0)
+        self.assertFalse(record["closed"])
+        self.assertEqual(
+            record["method"], "partial_coincident_vertex_seam_weld"
+        )
+        self.assertFalse(record["boundary_pairing_proven"])
 
     def test_already_watertight_input_is_an_identity_copy(self) -> None:
         vertices, faces, colors = _tetrahedron()
@@ -335,6 +576,890 @@ class CoincidentShellSolidificationTests(unittest.TestCase):
 
 
 class GltfSingleMeshClosureWorkflowTests(unittest.TestCase):
+    def test_single_glb_strictly_repairs_a_tiny_planar_hole_and_exports(
+        self,
+    ) -> None:
+        vertices, faces, colors = _tetrahedron()
+        asset = _face_soup_asset(vertices, faces[:-1], colors)
+        settings = GeometrySettings(
+            height_mm=1.0,
+            target_faces=1_000,
+            preview_faces=1_000,
+            adjust_face_count=False,
+            min_component_faces=0,
+            solidify_parts=True,
+            repair_unmatched_boundaries=True,
+        )
+
+        prepared = prepare_geometry(asset, settings)
+
+        self.assertTrue(prepared.topology["watertight"])
+        self.assertEqual(len(prepared.final.faces), 4)
+        self.assertEqual(
+            prepared.assembly["repair_method"],
+            "coincident_seam_weld_with_strict_planar_caps",
+        )
+        self.assertEqual(
+            prepared.assembly["repaired_unmatched_boundary_count"], 1
+        )
+        repair = prepared.assembly["repair_records"][0]
+        self.assertEqual(repair["local_boundary_repair_count"], 1)
+        self.assertEqual(repair["added_faces"], 1)
+        self.assertEqual(repair["output_faces"], 4)
+        self.assertEqual(repair["final_face_count"], 4)
+        self.assertGreaterEqual(prepared.removed_vertices, 0)
+        self.assertEqual(prepared.removed_faces, 0)
+        self.assertFalse(
+            any("面を除去しました" in warning for warning in prepared.warnings)
+        )
+        np.testing.assert_array_equal(
+            prepared.final.face_provenance,
+            np.asarray(
+                [
+                    FACE_PROVENANCE_SOURCE,
+                    FACE_PROVENANCE_SOURCE,
+                    FACE_PROVENANCE_SOURCE,
+                    FACE_PROVENANCE_LOCAL_CAP,
+                ],
+                dtype=np.uint8,
+            ),
+        )
+        provenance = validate_face_provenance(prepared)
+        self.assertTrue(provenance.valid)
+        self.assertEqual(provenance.record["generated_face_count"], 1)
+
+        palette = PaletteSettings()
+        result = recolor_level(
+            prepared.final,
+            settings.height_mm,
+            ToneSettings(smoothing=False),
+            palette,
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            destination = Path(temporary) / "tiny-planar-hole.3mf"
+            validation = write_3mf_atomic(
+                destination,
+                prepared,
+                result,
+                settings.height_mm,
+                palette,
+            )
+            self.assertTrue(destination.is_file())
+            self.assertEqual(validation["validated_solid_parts"], 1)
+
+    def test_tiny_hole_provenance_survives_prepared_snapshot_round_trip(
+        self,
+    ) -> None:
+        vertices, faces, colors = _tetrahedron()
+        settings = GeometrySettings(
+            height_mm=1.0,
+            target_faces=1_000,
+            preview_faces=1_000,
+            adjust_face_count=False,
+            min_component_faces=0,
+            solidify_parts=True,
+            repair_unmatched_boundaries=True,
+        )
+        geometry_key = (None, 1_000, "Y", 0, False, True, True)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "tiny-planar-hole.glb"
+            source_payload = b"synthetic tiny planar hole GLB fixture"
+            source.write_bytes(source_payload)
+            asset = _face_soup_asset(vertices, faces[:-1], colors)
+            asset.path = source
+            asset.sha256 = hashlib.sha256(source_payload).hexdigest()
+            asset.file_size = len(source_payload)
+            prepared = prepare_geometry(asset, settings)
+
+            saved = save_project_bundle(
+                root / "tiny-planar-hole_project",
+                source,
+                {
+                    "schema": CURRENT_PROJECT_SCHEMA,
+                    "settings": {
+                        "geometry": {},
+                        "palette": {},
+                        "tone": {},
+                    },
+                    "parts": [],
+                },
+                prepared_geometry=prepared,
+                prepared_geometry_key=geometry_key,
+            )
+            loaded = inspect_project_path(saved.folder)
+            restored = loaded.load_exact_prepared_geometry(
+                expected_geometry_key=geometry_key
+            ).prepared
+
+        self.assertEqual(restored.removed_faces, 0)
+        np.testing.assert_array_equal(
+            restored.final.face_provenance,
+            prepared.final.face_provenance,
+        )
+        restored_provenance = validate_face_provenance(restored)
+        self.assertTrue(restored_provenance.valid)
+        self.assertEqual(
+            restored_provenance.record["generated_face_count"], 1
+        )
+        self.assertEqual(
+            restored.assembly["repair_records"][0]["output_faces"], 4
+        )
+
+    def test_simplified_tiny_hole_repair_drops_stale_face_provenance(
+        self,
+    ) -> None:
+        sphere = trimesh.creation.icosphere(subdivisions=3, radius=1.0)
+        vertices = np.asarray(sphere.vertices, dtype=np.float64)
+        faces = np.asarray(sphere.faces, dtype=np.int32)
+        colors = np.tile(
+            np.asarray([[0.2, 0.3, 0.4]], dtype=np.float64),
+            (len(vertices), 1),
+        )
+        asset = _face_soup_asset(vertices, faces[:-1], colors)
+
+        prepared = prepare_geometry(
+            asset,
+            GeometrySettings(
+                height_mm=10.0,
+                target_faces=1_000,
+                preview_faces=1_000,
+                adjust_face_count=True,
+                min_component_faces=0,
+                solidify_parts=True,
+                repair_unmatched_boundaries=True,
+            ),
+        )
+
+        self.assertEqual(len(prepared.final.faces), 1_000)
+        self.assertEqual(prepared.final.face_provenance.shape, (0,))
+        provenance = validate_face_provenance(prepared)
+        self.assertFalse(provenance.valid)
+        self.assertEqual(
+            provenance.reason, "topology_changed_after_strict_planar_caps"
+        )
+
+    def test_single_glb_does_not_cap_a_hole_larger_than_two_mm(self) -> None:
+        vertices, faces, colors = _tetrahedron()
+        asset = _face_soup_asset(vertices, faces[:-1], colors)
+
+        with self.assertRaisesRegex(EngineError, "2.0 mm"):
+            prepare_geometry(
+                asset,
+                GeometrySettings(
+                    height_mm=20.0,
+                    target_faces=1_000,
+                    preview_faces=1_000,
+                    adjust_face_count=False,
+                    min_component_faces=0,
+                    solidify_parts=True,
+                    repair_unmatched_boundaries=True,
+                ),
+            )
+
+    def test_removed_distant_island_cannot_shrink_tiny_cap_scale(self) -> None:
+        body = trimesh.creation.box(extents=(1.0, 1.0, 1.0))
+        body_vertices = np.asarray(body.vertices, dtype=np.float64)
+        body_faces = np.asarray(body.faces, dtype=np.int32)
+        # Remove the two triangles of the +Y face.  Once the model is
+        # normalized to 100 mm tall, this one-unit square opening is far over
+        # the strict 2 mm local-cap limit.
+        body_faces = body_faces[
+            ~np.all(body_vertices[body_faces, 1] == 0.5, axis=1)
+        ]
+        island_vertices, island_faces, island_colors = _tetrahedron()
+        island_vertices = island_vertices + np.asarray([0.0, 100.0, 0.0])
+        vertices = np.vstack((body_vertices, island_vertices))
+        faces = np.vstack(
+            (body_faces, island_faces + len(body_vertices))
+        ).astype(np.int32)
+        colors = np.vstack(
+            (
+                np.tile(
+                    np.asarray([[0.35, 0.45, 0.55]], dtype=np.float64),
+                    (len(body_vertices), 1),
+                ),
+                island_colors,
+            )
+        )
+        asset = _face_soup_asset(vertices, faces, colors)
+
+        # The four-face tetra is intentionally below the cleanup threshold.
+        # Measuring before that cleanup would use its remote Y=100 position,
+        # misclassify the body's large opening as tiny, and cap it.
+        with self.assertRaisesRegex(EngineError, "2.0 mm"):
+            prepare_geometry(
+                asset,
+                GeometrySettings(
+                    height_mm=100.0,
+                    target_faces=1_000,
+                    preview_faces=1_000,
+                    adjust_face_count=False,
+                    min_component_faces=5,
+                    solidify_parts=True,
+                    repair_unmatched_boundaries=True,
+                ),
+            )
+
+    def test_removable_open_island_does_not_block_valid_main_body(
+        self,
+    ) -> None:
+        main = trimesh.creation.box(extents=(1.0, 1.0, 1.0))
+        main_vertices = np.asarray(main.vertices, dtype=np.float64)
+        main_faces = np.asarray(main.faces, dtype=np.int32)
+        main_colors = np.tile(
+            np.asarray([[0.35, 0.45, 0.55]], dtype=np.float64),
+            (len(main_vertices), 1),
+        )
+        island_vertices, island_faces, island_colors = _tetrahedron()
+        island_vertices = (
+            island_vertices * 10.0 + np.asarray([0.0, 100.0, 0.0])
+        )
+        vertices = np.vstack((main_vertices, island_vertices))
+        faces = np.vstack(
+            (main_faces, island_faces[:-1] + len(main_vertices))
+        ).astype(np.int32)
+        colors = np.vstack((main_colors, island_colors))
+        asset = _face_soup_asset(vertices, faces, colors)
+        settings = GeometrySettings(
+            height_mm=100.0,
+            target_faces=1_000,
+            preview_faces=1_000,
+            adjust_face_count=False,
+            min_component_faces=4,
+            solidify_parts=True,
+            repair_unmatched_boundaries=True,
+        )
+
+        with (
+            patch.object(
+                engine_module,
+                "_clean_part",
+                wraps=engine_module._clean_part,
+            ) as clean_part,
+            patch.object(
+                engine_module,
+                "find_boundary_loops",
+                wraps=engine_module.find_boundary_loops,
+            ) as find_loops,
+        ):
+            prepared = prepare_geometry(asset, settings)
+
+        self.assertEqual(clean_part.call_count, 1)
+        self.assertEqual(find_loops.call_count, 0)
+        self.assertEqual(prepared.removed_faces, 3)
+        self.assertEqual(len(prepared.final.faces), len(main_faces))
+        self.assertTrue(prepared.topology["watertight"])
+        self.assertEqual(
+            prepared.assembly["repair_method"],
+            "coincident_seam_weld_with_component_cleanup",
+        )
+        repair = prepared.assembly["repair_records"][0]
+        self.assertEqual(repair["local_boundary_repair_count"], 0)
+        self.assertEqual(repair["added_faces"], 0)
+        self.assertEqual(repair["final_face_count"], len(main_faces))
+        self.assertEqual(
+            prepared.assembly["cleaning_diagnostics"][0][
+                "post_local_repair_faces"
+            ],
+            len(main_faces),
+        )
+
+        palette = PaletteSettings()
+        result = recolor_level(
+            prepared.final,
+            settings.height_mm,
+            ToneSettings(smoothing=False),
+            palette,
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            destination = Path(temporary) / "cleaned-main-body.3mf"
+            validation = write_3mf_atomic(
+                destination,
+                prepared,
+                result,
+                settings.height_mm,
+                palette,
+            )
+            self.assertTrue(destination.is_file())
+            self.assertEqual(validation["validated_solid_parts"], 1)
+
+    def test_precleaned_tiny_hole_keeps_exact_cap_provenance(self) -> None:
+        main = trimesh.creation.box(extents=(1.0, 1.0, 1.0))
+        main_vertices = np.asarray(main.vertices, dtype=np.float64)
+        main_faces = np.asarray(main.faces, dtype=np.int32)
+        # Retain the ten-face main component but leave its +Y square open.
+        # At one millimetre output height the opening remains inside the
+        # strict two-millimetre cap limit.
+        main_faces = main_faces[
+            ~np.all(main_vertices[main_faces, 1] == 0.5, axis=1)
+        ]
+        main_colors = np.tile(
+            np.asarray([[0.35, 0.45, 0.55]], dtype=np.float64),
+            (len(main_vertices), 1),
+        )
+        island_vertices, island_faces, island_colors = _tetrahedron()
+        island_vertices = (
+            island_vertices * 0.01 + np.asarray([3.0, 0.0, 0.0])
+        )
+        vertices = np.vstack((main_vertices, island_vertices))
+        faces = np.vstack(
+            (main_faces, island_faces + len(main_vertices))
+        ).astype(np.int32)
+        colors = np.vstack((main_colors, island_colors))
+        asset = _face_soup_asset(vertices, faces, colors)
+        settings = GeometrySettings(
+            height_mm=1.0,
+            target_faces=1_000,
+            preview_faces=1_000,
+            adjust_face_count=False,
+            min_component_faces=5,
+            solidify_parts=True,
+            repair_unmatched_boundaries=True,
+        )
+
+        with patch.object(
+            engine_module,
+            "_clean_part",
+            wraps=engine_module._clean_part,
+        ) as clean_part:
+            prepared = prepare_geometry(asset, settings)
+
+        self.assertEqual(clean_part.call_count, 1)
+        self.assertEqual(prepared.removed_faces, len(island_faces))
+        self.assertEqual(len(prepared.final.faces), 12)
+        self.assertTrue(prepared.topology["watertight"])
+        self.assertEqual(
+            prepared.assembly["repair_method"],
+            "coincident_seam_weld_with_strict_planar_caps",
+        )
+        repair = prepared.assembly["repair_records"][0]
+        self.assertEqual(repair["local_boundary_repair_count"], 1)
+        self.assertEqual(repair["added_faces"], 2)
+        self.assertEqual(repair["final_face_count"], 12)
+        np.testing.assert_array_equal(
+            prepared.final.face_provenance,
+            np.asarray(
+                [FACE_PROVENANCE_SOURCE] * 10
+                + [FACE_PROVENANCE_LOCAL_CAP] * 2,
+                dtype=np.uint8,
+            ),
+        )
+        provenance = validate_face_provenance(prepared)
+        self.assertTrue(provenance.valid)
+        self.assertEqual(provenance.record["generated_face_count"], 2)
+
+    def test_dominant_surface_filter_removes_only_ambiguous_micro_junk(
+        self,
+    ) -> None:
+        asset = _dominant_surface_with_micro_junk_asset()
+        settings = GeometrySettings(
+            height_mm=20.0,
+            target_faces=2_000,
+            preview_faces=2_000,
+            adjust_face_count=False,
+            min_component_faces=0,
+            solidify_parts=True,
+            repair_unmatched_boundaries=True,
+        )
+
+        # The ordinary exact seam proof must fail first.  This proves the test
+        # exercises the fallback instead of merely accepting the sphere.
+        with self.assertRaises(AssemblyError):
+            solidify_coincident_shells(
+                asset.vertices,
+                asset.faces,
+                asset.colors,
+                require_positive_volume=False,
+                allow_unmatched_boundary_edges=True,
+            )
+
+        prepared = prepare_geometry(asset, settings)
+
+        self.assertTrue(prepared.topology["watertight"])
+        self.assertEqual(len(prepared.final.faces), 1_280)
+        self.assertEqual(prepared.removed_faces, 3)
+        self.assertEqual(
+            prepared.assembly["repair_method"],
+            "coincident_vertex_seam_weld",
+        )
+        repair = prepared.assembly["repair_records"][0]
+        self.assertEqual(repair["method"], "coincident_vertex_seam_weld")
+        self.assertTrue(repair["boundary_pairing_proven"])
+        self.assertTrue(repair["face_count_preserved"])
+        self.assertTrue(repair["geometry_coordinates_preserved"])
+        self.assertTrue(repair["source_triangle_geometry_preserved"])
+        filtered = repair["dominant_surface_filter"]
+        self.assertEqual(
+            filtered["schema"],
+            "chromamatter.dominant-exact-position-surface.v1",
+        )
+        self.assertEqual(
+            filtered["method"],
+            "dominant_exact_position_surface_component_filter",
+        )
+        self.assertEqual(filtered["source_faces"], 1_283)
+        self.assertEqual(filtered["output_faces"], 1_280)
+        self.assertEqual(filtered["removed_faces"], 3)
+        self.assertEqual(filtered["component_count"], 4)
+        self.assertEqual(filtered["removed_component_count"], 3)
+        self.assertTrue(filtered["dominant_selective_seam_closed"])
+        self.assertIn(
+            filtered["dominant_selective_seam_method"],
+            {"already_watertight", "coincident_vertex_seam_weld"},
+        )
+        self.assertTrue(filtered["face_order_preserved"])
+        self.assertTrue(filtered["geometry_coordinates_preserved"])
+        self.assertTrue(filtered["vertex_colors_preserved"])
+        self.assertTrue(
+            all(
+                item["classification"] == "open_micro_fragment"
+                for item in filtered["removed_components"]
+            )
+        )
+        self.assertEqual(
+            prepared.assembly["dominant_surface_filter"],
+            filtered,
+        )
+        np.testing.assert_array_equal(
+            prepared.final.face_provenance,
+            np.full(1_280, FACE_PROVENANCE_SOURCE, dtype=np.uint8),
+        )
+        provenance = validate_face_provenance(prepared)
+        self.assertTrue(provenance.valid)
+
+        palette = PaletteSettings()
+        result = recolor_level(
+            prepared.final,
+            settings.height_mm,
+            ToneSettings(smoothing=False),
+            palette,
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            destination = Path(temporary) / "dominant-surface-filtered.3mf"
+            validation = write_3mf_atomic(
+                destination,
+                prepared,
+                result,
+                settings.height_mm,
+                palette,
+            )
+            self.assertTrue(destination.is_file())
+            self.assertEqual(validation["validated_solid_parts"], 1)
+
+    @staticmethod
+    def _bounded_intersection_quality(original):
+        def bounded_intersection(*args, **kwargs):
+            quality = original(*args, **kwargs)
+            quality["self_intersecting_faces"] = 1
+            quality["self_intersecting_area"] = 1.0e-6
+            quality["self_intersecting_area_fraction"] = 5.0e-5
+            quality["maximum_self_intersecting_face_area"] = 1.0e-6
+            quality["self_intersecting_face_ids"] = [0]
+            quality["self_intersecting_face_ids_complete"] = True
+            return quality
+
+        return bounded_intersection
+
+    def test_indexed_watertight_dominant_filter_allows_bounded_warning(
+        self,
+    ) -> None:
+        asset = _dominant_surface_with_micro_junk_asset(indexed_main=True)
+        settings = GeometrySettings(
+            height_mm=20.0,
+            target_faces=2_000,
+            preview_faces=2_000,
+            adjust_face_count=False,
+            min_component_faces=0,
+            solidify_parts=True,
+            repair_unmatched_boundaries=True,
+        )
+        with self.assertRaises(AssemblyError):
+            solidify_coincident_shells(
+                asset.vertices,
+                asset.faces,
+                asset.colors,
+                require_positive_volume=False,
+                allow_unmatched_boundary_edges=True,
+            )
+
+        prepared = prepare_geometry(asset, settings)
+        repair = prepared.assembly["repair_records"][0]
+        filtered = repair["dominant_surface_filter"]
+        self.assertEqual(repair["method"], "already_watertight")
+        self.assertTrue(repair["identity"])
+        self.assertEqual(filtered["removed_faces"], 3)
+        self.assertEqual(filtered["dominant_selective_seam_method"], "already_watertight")
+        self.assertEqual(filtered["output_faces"], repair["source_faces"])
+        self.assertEqual(
+            filtered["selective_seam_output_faces"],
+            repair["output_faces"],
+        )
+
+        palette = PaletteSettings()
+        colors = recolor_level(
+            prepared.final,
+            settings.height_mm,
+            ToneSettings(smoothing=False),
+            palette,
+        )
+        original_mesh_quality = engine_module.mesh_quality
+        with tempfile.TemporaryDirectory() as temporary, patch.object(
+            engine_module,
+            "mesh_quality",
+            side_effect=self._bounded_intersection_quality(
+                original_mesh_quality
+            ),
+        ):
+            destination = Path(temporary) / "identity-filter-warning.3mf"
+            validation = write_3mf_atomic(
+                destination,
+                prepared,
+                colors,
+                settings.height_mm,
+                palette,
+            )
+            self.assertTrue(destination.is_file())
+            self.assertEqual(validation["self_intersection_warning_parts"], 1)
+            self.assertEqual(
+                validation["self_intersection_warning_policy"],
+                "source_preserved_warning",
+            )
+            topology = validation["part_topologies"][0]
+            self.assertTrue(
+                topology["self_intersection_source_geometry_preserved"]
+            )
+            self.assertEqual(
+                topology["self_intersection_policy"],
+                "source_preserved_warning",
+            )
+
+    def test_indexed_dominant_warning_anchors_counts_to_serialized_geometry(
+        self,
+    ) -> None:
+        asset = _dominant_surface_with_micro_junk_asset(indexed_main=True)
+        settings = GeometrySettings(
+            height_mm=20.0,
+            target_faces=2_000,
+            preview_faces=2_000,
+            adjust_face_count=False,
+            min_component_faces=0,
+            solidify_parts=True,
+            repair_unmatched_boundaries=True,
+        )
+        prepared = prepare_geometry(asset, settings)
+        repair = prepared.assembly["repair_records"][0]
+        repair.update(
+            {
+                "source_vertices": 1,
+                "output_vertices": 1,
+                "source_faces": 1,
+                "output_faces": 1,
+                "final_vertex_count": 1,
+                "final_face_count": 1,
+            }
+        )
+        repair["final_validation"].update(
+            {
+                "source_vertices": 1,
+                "output_vertices": 1,
+                "source_faces": 1,
+                "output_faces": 1,
+            }
+        )
+        filtered = repair["dominant_surface_filter"]
+        filtered.update(
+            {
+                "source_vertices": 2,
+                "output_vertices": 1,
+                "removed_vertices": 1,
+                "source_faces": 2,
+                "output_faces": 1,
+                "removed_faces": 1,
+                "component_count": 2,
+                "kept_component_count": 1,
+                "removed_component_count": 1,
+                "selective_seam_output_vertices": 1,
+                "selective_seam_output_faces": 1,
+                "removed_components": [
+                    dict(filtered["removed_components"][0])
+                ],
+            }
+        )
+        palette = PaletteSettings()
+        colors = recolor_level(
+            prepared.final,
+            settings.height_mm,
+            ToneSettings(smoothing=False),
+            palette,
+        )
+        original_mesh_quality = engine_module.mesh_quality
+        with tempfile.TemporaryDirectory() as temporary, patch.object(
+            engine_module,
+            "mesh_quality",
+            side_effect=self._bounded_intersection_quality(
+                original_mesh_quality
+            ),
+        ):
+            destination = Path(temporary) / "identity-filter-invalid.3mf"
+            with self.assertRaisesRegex(
+                engine_module.EngineError,
+                "policy=blocked",
+            ):
+                write_3mf_atomic(
+                    destination,
+                    prepared,
+                    colors,
+                    settings.height_mm,
+                    palette,
+                )
+            self.assertFalse(destination.exists())
+
+    def test_indexed_dominant_source_warning_requires_preserved_geometry(
+        self,
+    ) -> None:
+        settings = GeometrySettings(
+            height_mm=20.0,
+            target_faces=2_000,
+            preview_faces=2_000,
+            adjust_face_count=False,
+            min_component_faces=0,
+            solidify_parts=True,
+            repair_unmatched_boundaries=True,
+        )
+        original_mesh_quality = engine_module.mesh_quality
+        for preserved_value in (False, None):
+            with self.subTest(preserved_value=preserved_value):
+                prepared = prepare_geometry(
+                    _dominant_surface_with_micro_junk_asset(
+                        indexed_main=True
+                    ),
+                    settings,
+                )
+                repair = prepared.assembly["repair_records"][0]
+                if preserved_value is None:
+                    repair.pop("source_triangle_geometry_preserved")
+                else:
+                    repair["source_triangle_geometry_preserved"] = (
+                        preserved_value
+                    )
+                palette = PaletteSettings()
+                colors = recolor_level(
+                    prepared.final,
+                    settings.height_mm,
+                    ToneSettings(smoothing=False),
+                    palette,
+                )
+                with tempfile.TemporaryDirectory() as temporary, patch.object(
+                    engine_module,
+                    "mesh_quality",
+                    side_effect=self._bounded_intersection_quality(
+                        original_mesh_quality
+                    ),
+                ):
+                    destination = (
+                        Path(temporary) / "identity-filter-no-ancestry.3mf"
+                    )
+                    with self.assertRaisesRegex(
+                        engine_module.EngineError,
+                        "policy=blocked",
+                    ):
+                        write_3mf_atomic(
+                            destination,
+                            prepared,
+                            colors,
+                            settings.height_mm,
+                            palette,
+                        )
+                    self.assertFalse(destination.exists())
+
+    def test_plain_already_watertight_record_does_not_gain_warning_policy(
+        self,
+    ) -> None:
+        asset = _indexed_watertight_surface_asset()
+        settings = GeometrySettings(
+            height_mm=20.0,
+            target_faces=2_000,
+            preview_faces=2_000,
+            adjust_face_count=False,
+            min_component_faces=0,
+            solidify_parts=True,
+        )
+        prepared = prepare_geometry(asset, settings)
+        repair = prepared.assembly["repair_records"][0]
+        self.assertEqual(repair["method"], "already_watertight")
+        self.assertNotIn("dominant_surface_filter", repair)
+        palette = PaletteSettings()
+        colors = recolor_level(
+            prepared.final,
+            settings.height_mm,
+            ToneSettings(smoothing=False),
+            palette,
+        )
+        original_mesh_quality = engine_module.mesh_quality
+        with tempfile.TemporaryDirectory() as temporary, patch.object(
+            engine_module,
+            "mesh_quality",
+            side_effect=self._bounded_intersection_quality(
+                original_mesh_quality
+            ),
+        ):
+            destination = Path(temporary) / "plain-identity-blocked.3mf"
+            with self.assertRaisesRegex(
+                engine_module.EngineError,
+                "policy=blocked",
+            ):
+                write_3mf_atomic(
+                    destination,
+                    prepared,
+                    colors,
+                    settings.height_mm,
+                    palette,
+                )
+            self.assertFalse(destination.exists())
+
+    def test_dominant_surface_filter_preserves_interior_coincident_edge(
+        self,
+    ) -> None:
+        asset = _dominant_surface_with_interior_coincident_edge_asset()
+
+        with self.assertRaises(AssemblyError):
+            solidify_coincident_shells(
+                asset.vertices,
+                asset.faces,
+                asset.colors,
+                require_positive_volume=False,
+                allow_unmatched_boundary_edges=True,
+            )
+
+        prepared = prepare_geometry(
+            asset,
+            GeometrySettings(
+                height_mm=20.0,
+                target_faces=2_000,
+                preview_faces=2_000,
+                adjust_face_count=False,
+                min_component_faces=0,
+                solidify_parts=True,
+                repair_unmatched_boundaries=True,
+            ),
+        )
+
+        self.assertTrue(prepared.topology["watertight"])
+        self.assertEqual(len(prepared.final.faces), 1_280)
+        self.assertEqual(prepared.removed_faces, 3)
+        repair = prepared.assembly["repair_records"][0]
+        filtered = repair["dominant_surface_filter"]
+        self.assertFalse(filtered["dominant_exact_position_closed"])
+        self.assertTrue(filtered["dominant_selective_seam_closed"])
+        self.assertEqual(filtered["removed_faces"], 3)
+        self.assertEqual(
+            [
+                item["classification"]
+                for item in filtered["removed_components"]
+            ],
+            ["open_micro_fragment"] * 3,
+        )
+
+    def test_dominant_surface_filter_bounds_inverted_containment_work(
+        self,
+    ) -> None:
+        asset = _dominant_surface_with_inverted_shells_asset()
+
+        retained_vertices, retained_faces, retained_colors, record, seam = (
+            engine_module._filter_conservative_dominant_exact_position_surface(
+                asset.vertices,
+                asset.faces,
+                asset.colors,
+            )
+        )
+
+        self.assertEqual(len(retained_faces), 5_120)
+        self.assertEqual(record["removed_faces"], 8)
+        self.assertEqual(record["internal_inverted_component_count"], 2)
+        self.assertTrue(seam["closed"])
+        self.assertLessEqual(
+            record["containment_triangle_ray_test_upper_bound"],
+            record["containment_triangle_ray_test_budget"],
+        )
+        self.assertEqual(len(retained_vertices), len(np.unique(retained_faces)))
+        self.assertEqual(retained_colors.shape, retained_vertices.shape)
+
+        with (
+            patch.object(
+                engine_module,
+                "_DOMINANT_SURFACE_MAX_INVERTED_COMPONENTS",
+                1,
+            ),
+            patch.object(
+                engine_module,
+                "_dominant_surface_contains_component",
+                side_effect=AssertionError("containment ran before count guard"),
+            ) as contains,
+        ):
+            with self.assertRaisesRegex(AssemblyError, "候補数が安全上限"):
+                engine_module._filter_conservative_dominant_exact_position_surface(
+                    asset.vertices,
+                    asset.faces,
+                    asset.colors,
+                )
+        contains.assert_not_called()
+
+        with (
+            patch.object(
+                engine_module,
+                "_DOMINANT_SURFACE_MAX_CONTAINMENT_TRIANGLE_RAY_TESTS",
+                1,
+            ),
+            patch.object(
+                engine_module,
+                "_dominant_surface_contains_component",
+                side_effect=AssertionError("containment ran before work guard"),
+            ) as contains,
+        ):
+            with self.assertRaisesRegex(AssemblyError, "包含判定量が安全上限"):
+                engine_module._filter_conservative_dominant_exact_position_surface(
+                    asset.vertices,
+                    asset.faces,
+                    asset.colors,
+                )
+        contains.assert_not_called()
+
+    def test_dominant_surface_filter_keeps_intentional_positive_solid(
+        self,
+    ) -> None:
+        asset = _dominant_surface_with_micro_junk_asset(
+            include_positive_solid=True,
+        )
+
+        # Same-direction micro debris makes the ordinary seam proof fail, but
+        # the fallback must not discard a second closed positive-volume body.
+        with self.assertRaises(AssemblyError):
+            solidify_coincident_shells(
+                asset.vertices,
+                asset.faces,
+                asset.colors,
+                require_positive_volume=False,
+                allow_unmatched_boundary_edges=True,
+            )
+        with self.assertRaisesRegex(
+            EngineError,
+            "正体積の独立表面",
+        ):
+            prepare_geometry(
+                asset,
+                GeometrySettings(
+                    height_mm=20.0,
+                    target_faces=2_000,
+                    preview_faces=2_000,
+                    adjust_face_count=False,
+                    min_component_faces=0,
+                    solidify_parts=True,
+                    repair_unmatched_boundaries=True,
+                ),
+            )
+
     def test_large_glb_metadata_requires_reduction_on_every_processing_pass(
         self,
     ) -> None:

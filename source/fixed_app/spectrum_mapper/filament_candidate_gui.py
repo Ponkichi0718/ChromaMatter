@@ -8,6 +8,7 @@ from tkinter import messagebox, ttk
 from typing import Any
 
 from .mixer import normalize_hex
+from .ui_fonts import ui_font
 
 
 PHYSICAL_NAMES = ("F1", "F2", "F3", "F4")
@@ -155,7 +156,7 @@ class FilamentCandidateWindow:
         self.title_label = ttk.Label(
             header,
             style="Panel.TLabel",
-            font=("Yu Gothic UI", 15, "bold"),
+            font=ui_font(15, "bold"),
         )
         self.title_label.grid(row=0, column=0, sticky="w")
         self.beta_label = tk.Label(
@@ -163,7 +164,7 @@ class FilamentCandidateWindow:
             text="BETA",
             bg="#B65A17",
             fg="#FFFFFF",
-            font=("Yu Gothic UI", 9, "bold"),
+            font=ui_font(9, "bold"),
             padx=9,
             pady=2,
         )
@@ -285,7 +286,7 @@ class FilamentCandidateWindow:
             inventory,
             textvariable=self.inventory_count_var,
             style="Panel.TLabel",
-            font=("Yu Gothic UI", 10, "bold"),
+            font=ui_font(10, "bold"),
         )
         self.inventory_count_label.grid(row=1, column=0, sticky="w", pady=(0, 5))
         tree_host = ttk.Frame(inventory, style="Panel.TFrame")

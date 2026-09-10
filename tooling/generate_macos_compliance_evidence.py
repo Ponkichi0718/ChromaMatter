@@ -493,7 +493,7 @@ def generate_evidence(
         {
             "name": "ChromaMatter",
             "SPDXID": app_spdx,
-            "versionInfo": "0.8beta",
+            "versionInfo": "0.9",
             "downloadLocation": f"https://github.com/Ponkichi0718/ChromaMatter/tree/{source_commit}",
             "filesAnalyzed": False,
             "licenseConcluded": "NOASSERTION",
@@ -580,7 +580,7 @@ def generate_evidence(
         "spdxVersion": "SPDX-2.3",
         "dataLicense": "CC0-1.0",
         "SPDXID": "SPDXRef-DOCUMENT",
-        "name": "ChromaMatter-macOS-Alpha-0.8beta",
+        "name": "ChromaMatter-macOS-Alpha-0.9",
         "documentNamespace": (
             "https://github.com/Ponkichi0718/ChromaMatter/spdx/macos-alpha/"
             + source_commit
@@ -759,7 +759,7 @@ def validate_generated_evidence(output_dir: Path) -> None:
         raise EvidenceError("Evidence outputs do not bind the same commit/inventory")
     for name in ("RELINKING_EN.md", "RELINKING_JA.md"):
         text = (output_dir / name).read_text(encoding="utf-8")
-        if "DRAFT" not in text or "0.8beta" not in text:
+        if "DRAFT" not in text or "0.9" not in text:
             raise EvidenceError(f"Relinking template lacks its draft/version warning: {name}")
 
 

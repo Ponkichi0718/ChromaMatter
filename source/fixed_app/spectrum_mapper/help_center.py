@@ -6,6 +6,8 @@ import tkinter as tk
 from tkinter import ttk
 from typing import Protocol
 
+from .ui_fonts import ui_font
+
 
 class TextTranslator(Protocol):
     """Small translation surface required by :class:`HelpCenterWindow`."""
@@ -295,7 +297,7 @@ class HelpCenterWindow:
 
         self.navigation_label = ttk.Label(
             body,
-            font=("Yu Gothic UI", 10, "bold"),
+            font=ui_font(10, "bold"),
         )
         self.navigation_label.grid(row=0, column=0, sticky="w", padx=(0, 14))
 
@@ -322,14 +324,14 @@ class HelpCenterWindow:
 
         self.topic_title_label = ttk.Label(
             self.content_frame,
-            font=("Yu Gothic UI", 16, "bold"),
+            font=ui_font(16, "bold"),
             anchor="w",
         )
         self.topic_title_label.grid(row=0, column=0, sticky="ew", pady=(0, 14))
 
         self.steps_label = ttk.Label(
             self.content_frame,
-            font=("Yu Gothic UI", 10, "bold"),
+            font=ui_font(10, "bold"),
             anchor="w",
         )
         self.steps_label.grid(row=1, column=0, sticky="new")

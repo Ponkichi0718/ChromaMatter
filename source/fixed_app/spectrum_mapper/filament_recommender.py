@@ -36,6 +36,31 @@ ALLOWED_CATEGORIES = frozenset(
     }
 )
 
+RECOMMENDATION_POLICY_FLEXIBLE = "flexible"
+RECOMMENDATION_POLICY_BASIC = "basic"
+DEFAULT_RECOMMENDATION_POLICY = RECOMMENDATION_POLICY_FLEXIBLE
+SUPPORTED_RECOMMENDATION_POLICIES = frozenset(
+    {
+        RECOMMENDATION_POLICY_FLEXIBLE,
+        RECOMMENDATION_POLICY_BASIC,
+    }
+)
+
+# These curated anchors extend the older primary/neutral/skin gamut for
+# coloured High-Contrast Cel lighting and muted source colours.  Intermediate
+# catalog entries remain manual-only by default; flexible mode promotes only
+# the explicitly listed built-in anchors below.  The user-selectable basic
+# policy restores the exact pre-extension anchor set.
+_FLEXIBLE_ONLY_CURATED_IDS = frozenset(
+    {
+        "cool_blue_gray",
+        "cool_violet_gray",
+        "intermediate_beige",
+        "intermediate_dusty_rose",
+        "intermediate_burgundy",
+    }
+)
+
 # The first two interior ramps remain the stable 4 + 6 + 6 compatibility
 # layout.  When 24/32 states are requested, the recommender appends the exact
 # quarter/midpoint recipes defined by ``mixer.palette_mix_specs`` without
@@ -140,13 +165,27 @@ class FilamentCandidate:
 
 # These are generic starting points rather than claims about a specific brand.
 # Projects should snapshot the chosen HEX values, and users can calibrate them
-# to the actual spool.  Saturated hue families are treated as basic colours;
-# muted/middle colours remain available for manual selection only.
+# to the actual spool.  Saturated hue families are treated as basic colours.
+# Flexible mode also promotes the three explicitly curated intermediate
+# anchors below.  Other CATEGORY_INTERMEDIATE entries remain manual-only, so
+# an external catalog cannot silently widen automatic selection.
 DEFAULT_CURATED_CATALOG: tuple[FilamentCandidate, ...] = (
     FilamentCandidate("neutral_black", "ブラック", "#111111", CATEGORY_NEUTRAL),
     FilamentCandidate("neutral_white", "ホワイト", "#F5F5F5", CATEGORY_NEUTRAL),
     FilamentCandidate("neutral_gray", "グレー", "#7F8388", CATEGORY_NEUTRAL),
     FilamentCandidate("neutral_silver", "シルバー", "#C0C3C7", CATEGORY_NEUTRAL),
+    FilamentCandidate(
+        "cool_blue_gray",
+        "ブルーグレー",
+        "#5C738F",
+        CATEGORY_PRIMARY,
+    ),
+    FilamentCandidate(
+        "cool_violet_gray",
+        "バイオレットグレー",
+        "#76658B",
+        CATEGORY_PRIMARY,
+    ),
     FilamentCandidate("primary_red", "レッド", "#E32636", CATEGORY_PRIMARY),
     FilamentCandidate("primary_orange", "オレンジ", "#F36C21", CATEGORY_PRIMARY),
     FilamentCandidate("primary_yellow", "イエロー", "#F4D21F", CATEGORY_PRIMARY),
@@ -180,6 +219,45 @@ DEFAULT_CURATED_CATALOG: tuple[FilamentCandidate, ...] = (
         auto_allowed=False,
     ),
 )
+
+
+def normalize_recommendation_policy(value: object) -> str:
+    policy = str(value).strip().lower()
+    if policy not in SUPPORTED_RECOMMENDATION_POLICIES:
+        raise ValueError(f"unsupported filament recommendation policy: {value}")
+    return policy
+
+
+def curated_catalog_for_recommendation(
+    recommendation_policy: object = DEFAULT_RECOMMENDATION_POLICY,
+) -> tuple[FilamentCandidate, ...]:
+    """Return the curated catalog for one user-selected proposal policy.
+
+    Flexible mode promotes only the explicitly curated intermediate anchors
+    into the automatic primary-colour search.  Basic mode removes every
+    post-legacy flexible anchor and retains the original primary/neutral/skin
+    proposal set.  The base catalog itself stays manual-only for intermediate
+    entries, preserving the hard exclusion for arbitrary external catalogs.
+    """
+
+    policy = normalize_recommendation_policy(recommendation_policy)
+    if policy == RECOMMENDATION_POLICY_FLEXIBLE:
+        return tuple(
+            replace(
+                candidate,
+                category=CATEGORY_PRIMARY,
+                auto_allowed=True,
+            )
+            if candidate.id in _FLEXIBLE_ONLY_CURATED_IDS
+            and candidate.category == CATEGORY_INTERMEDIATE
+            else candidate
+            for candidate in DEFAULT_CURATED_CATALOG
+        )
+    return tuple(
+        candidate
+        for candidate in DEFAULT_CURATED_CATALOG
+        if candidate.id not in _FLEXIBLE_ONLY_CURATED_IDS
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -654,6 +732,7 @@ def map_catalog_to_curated_basics(
     catalog: Sequence[FilamentCandidate],
     *,
     in_stock_only: bool = True,
+    recommendation_policy: object = DEFAULT_RECOMMENDATION_POLICY,
 ) -> tuple[FilamentCandidate, ...]:
     """Map one material's product catalog onto the stable basic-colour gamut.
 
@@ -688,7 +767,9 @@ def map_catalog_to_curated_basics(
 
     anchors = tuple(
         candidate
-        for candidate in DEFAULT_CURATED_CATALOG
+        for candidate in curated_catalog_for_recommendation(
+            recommendation_policy
+        )
         if candidate.auto_allowed and candidate.category != CATEGORY_INTERMEDIATE
     )
     anchor_lab = _rgb255_to_lab(
@@ -1048,6 +1129,7 @@ __all__ = [
     "CATEGORY_NEUTRAL",
     "CATEGORY_PRIMARY",
     "CATEGORY_SKIN",
+    "DEFAULT_RECOMMENDATION_POLICY",
     "DEFAULT_CURATED_CATALOG",
     "FilamentCandidate",
     "FilamentRecommendation",
@@ -1055,7 +1137,12 @@ __all__ = [
     "PaletteStateUsage",
     "RepresentativeColor",
     "RepresentativeColorSet",
+    "RECOMMENDATION_POLICY_BASIC",
+    "RECOMMENDATION_POLICY_FLEXIBLE",
+    "SUPPORTED_RECOMMENDATION_POLICIES",
     "build_representative_colors",
+    "curated_catalog_for_recommendation",
     "map_catalog_to_curated_basics",
+    "normalize_recommendation_policy",
     "recommend_basic_filaments",
 ]

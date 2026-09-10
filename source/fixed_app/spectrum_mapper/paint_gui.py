@@ -37,10 +37,12 @@ from .decal_projection import (
     rasterize_existing_tree_states,
 )
 from .engine import (
+    _flat_four_shadow_candidate_targets,
     apply_palette_overrides_parts,
     recolor_level_parts,
     srgb_to_lab,
 )
+from .ui_fonts import ui_font
 from .freehand_split import (
     FreehandSplitError,
     LassoSplitPlan,
@@ -118,6 +120,12 @@ SUCCESS = "#62D59A"
 WARNING = "#FFBF69"
 RENDER_SIZE = (760, 760)
 TONE_CALLBACK_DEBOUNCE_MS = 260
+SELECTIVE_HIGHLIGHT_PERCENT_PRESETS = (0.0, 5.0, 8.0, 12.0)
+SELECTIVE_CONTOUR_POLICIES = (
+    "outer",
+    "outer_crease",
+    "outer_crease_fold",
+)
 TOOL_RESTORE_DELAY_MS = 280
 TOOL_RESTORE_VERIFY_DELAY_MS = 360
 TOOL_RESTORE_RETRY_MS = 120
@@ -146,6 +154,16 @@ TOOL_WINDOW_EMERGENCY_MIN_SIZE = (320, 300)
 MANUAL_ZOOM_MIN = 0.35
 MANUAL_ZOOM_MAX = 24.0
 MANUAL_ZOOM_STEP = 1.22
+
+
+def _ensure_translator(owner: object) -> Translator:
+    """Return the active translator for both full UI and recovery test hosts."""
+
+    translator = getattr(owner, "i18n", None)
+    if not callable(getattr(translator, "text", None)):
+        translator = Translator("ja")
+        setattr(owner, "i18n", translator)
+    return translator
 
 
 def compute_palette_tool_window_layout(
@@ -603,6 +621,7 @@ class PaintEditorWindow:
         on_mix_optimization_undo_requested: Callable[[str | None], None]
         | None = None,
         on_tone_reset_requested: Callable[[], None] | None = None,
+        on_cel_palette_recommend_requested: Callable[[], None] | None = None,
     ) -> None:
         self.parent = parent
         self.prepared = prepared
@@ -635,6 +654,9 @@ class PaintEditorWindow:
             on_mix_optimization_undo_requested
         )
         self.on_tone_reset_requested = on_tone_reset_requested
+        self.on_cel_palette_recommend_requested = (
+            on_cel_palette_recommend_requested
+        )
         self.on_closed = on_closed
         self.i18n = Translator(language)
         self.localizer = TkLocalizer(self.i18n)
@@ -657,6 +679,7 @@ class PaintEditorWindow:
         self.airbrush_strength_var = tk.DoubleVar(value=35.0)
         self.smudge_strength_var = tk.DoubleVar(value=65.0)
         self.edge_guard_var = tk.BooleanVar(value=True)
+        self.material_fill_var = tk.BooleanVar(value=False)
         self.edge_angle_var = tk.DoubleVar(value=45.0)
         self.crease_overlay_var = tk.BooleanVar(value=False)
         self.zoom_status_var = tk.StringVar()
@@ -692,6 +715,33 @@ class PaintEditorWindow:
         self.illustration_light_var = tk.StringVar(
             value=str(
                 getattr(tone, "illustration_light", "front_left")
+            )
+        )
+        self.illustration_light_intensity_var = tk.DoubleVar(
+            value=100.0
+            * float(getattr(tone, "illustration_light_intensity", 1.0))
+        )
+        self.illustration_light_range_var = tk.DoubleVar(
+            value=100.0
+            * float(getattr(tone, "illustration_light_range", 0.4))
+        )
+        self.illustration_selective_highlight_var = tk.DoubleVar(
+            value=100.0
+            * float(
+                getattr(
+                    tone,
+                    "illustration_selective_highlight_fraction",
+                    0.0,
+                )
+            )
+        )
+        self.illustration_contour_policy_var = tk.StringVar(
+            value=str(
+                getattr(
+                    tone,
+                    "illustration_contour_policy",
+                    "outer_crease_fold",
+                )
             )
         )
         self.mix_optimization_target_var = tk.StringVar()
@@ -753,6 +803,10 @@ class PaintEditorWindow:
         # visible ribbon page as well.  Home now contains navigation/display.
         self._ribbon_selected = "brush"
         self._ribbon_expanded = True
+        # Shading sub-page choice is deliberately session-only.  Keeping the
+        # same four frames alive while switching pages preserves every Tk
+        # variable, callback, and the public hotfix extension host.
+        self._shading_section_selected = "illustration"
         self._fullscreen = False
         self._palette_collapsed = False
         self._palette_place = (18, 18)
@@ -2001,7 +2055,52 @@ class PaintEditorWindow:
             return value
         return japanese if self.i18n.language == "ja" else english
 
+    def _shading_section_label(self, name: str) -> str:
+        labels = {
+            "global": ("全体", "Tone"),
+            "illustration": ("2D彩色", "2D Color"),
+            "mix": ("混色", "Mixes"),
+            "local": ("面内補正", "In-face"),
+        }
+        japanese, english = labels.get(name, (name, name))
+        return japanese if self.i18n.language == "ja" else english
+
+    def _select_shading_section(self, name: str) -> None:
+        if name not in getattr(self, "shading_section_frames", {}):
+            return
+        self._shading_section_selected = name
+        self._apply_shading_section_state()
+
+    def _apply_shading_section_state(self) -> None:
+        frames = getattr(self, "shading_section_frames", {})
+        selected = str(
+            getattr(self, "_shading_section_selected", "illustration")
+        )
+        if selected not in frames and frames:
+            selected = "illustration" if "illustration" in frames else next(
+                iter(frames)
+            )
+            self._shading_section_selected = selected
+        for name, frame in frames.items():
+            if name == selected:
+                frame.grid()
+            else:
+                frame.grid_remove()
+        for name, button in getattr(
+            self, "shading_section_buttons", {}
+        ).items():
+            active = name == selected
+            button.configure(
+                bg="#1B668A" if active else "#111722",
+                activebackground="#2C7FA5" if active else "#24445C",
+                relief=tk.SUNKEN if active else tk.FLAT,
+            )
+
     def _refresh_shading_ribbon_text(self) -> None:
+        for name, button in getattr(
+            self, "shading_section_buttons", {}
+        ).items():
+            button.configure(text=self._shading_section_label(name))
         labels = (
             (
                 "shading_global_title_label",
@@ -2037,19 +2136,175 @@ class PaintEditorWindow:
         illustration_widgets = (
             ("illustration_mode_off_button", "tone.illustration_off"),
             ("illustration_mode_cel_button", "tone.illustration_cel"),
+            (
+                "illustration_mode_cel_strong_button",
+                "tone.illustration_cel_strong",
+            ),
             ("illustration_mode_noir_button", "tone.illustration_noir"),
             ("illustration_strength_label", "tone.illustration_strength"),
             ("illustration_bands_label", "tone.illustration_bands"),
             ("illustration_light_label", "tone.illustration_light"),
-            ("illustration_light_left_button", "tone.light_front_left"),
-            ("illustration_light_front_button", "tone.light_front"),
-            ("illustration_light_right_button", "tone.light_front_right"),
+            (
+                "illustration_light_intensity_label",
+                "tone.illustration_light_intensity",
+            ),
+            (
+                "illustration_light_range_label",
+                "tone.illustration_light_range",
+            ),
+            (
+                "illustration_selective_highlight_label",
+                "tone.illustration_selective_highlight",
+            ),
+            (
+                "illustration_contour_policy_label",
+                "tone.illustration_contour_policy",
+            ),
         )
         for attribute, key in illustration_widgets:
             widget = getattr(self, attribute, None)
             if widget is not None:
                 widget.configure(text=self.i18n.text(key))
+        recommend_button = getattr(
+            self, "illustration_palette_recommend_button", None
+        )
+        if recommend_button is not None:
+            recommend_button.configure(
+                text=self.i18n.text("tone.illustration_recommend")
+            )
+        recommend_help = getattr(
+            self, "illustration_palette_recommend_help_label", None
+        )
+        if recommend_help is not None:
+            recommend_help.configure(
+                text=self.i18n.text("tone.illustration_recommend_help")
+            )
+        highlight_buttons = (
+            (
+                "illustration_selective_highlight_standard_button",
+                "tone.illustration_selective_highlight_standard",
+            ),
+            (
+                "illustration_selective_highlight_5_button",
+                "tone.illustration_selective_highlight_5",
+            ),
+            (
+                "illustration_selective_highlight_8_button",
+                "tone.illustration_selective_highlight_8",
+            ),
+            (
+                "illustration_selective_highlight_12_button",
+                "tone.illustration_selective_highlight_12",
+            ),
+        )
+        for attribute, key in highlight_buttons:
+            widget = getattr(self, attribute, None)
+            if widget is not None:
+                widget.configure(text=self.i18n.text(key))
+        contour_buttons = (
+            (
+                "illustration_contour_outer_button",
+                "tone.illustration_contour_outer",
+            ),
+            (
+                "illustration_contour_outer_crease_button",
+                "tone.illustration_contour_outer_crease",
+            ),
+            (
+                "illustration_contour_outer_crease_fold_button",
+                "tone.illustration_contour_outer_crease_fold",
+            ),
+        )
+        for attribute, key in contour_buttons:
+            widget = getattr(self, attribute, None)
+            if widget is not None:
+                widget.configure(text=self.i18n.text(key))
+        contour_help = getattr(
+            self, "illustration_contour_policy_help_label", None
+        )
+        if contour_help is not None:
+            contour_help.configure(
+                text=self.i18n.text("tone.illustration_contour_help")
+            )
+        self._refresh_cel_palette_recommend_action()
         self._sync_mix_optimization_target()
+        self._apply_shading_section_state()
+
+    def _refresh_cel_palette_recommend_action(self) -> None:
+        """Show the palette action only when it is useful and wired up."""
+
+        self._refresh_selective_highlight_controls()
+        button = getattr(self, "illustration_palette_recommend_button", None)
+        help_label = getattr(
+            self, "illustration_palette_recommend_help_label", None
+        )
+        if button is None:
+            return
+        mode_variable = getattr(self, "illustration_mode_var", None)
+        try:
+            strong_cel = (
+                mode_variable is not None
+                and str(mode_variable.get()) == "cel_strong"
+            )
+        except tk.TclError:
+            strong_cel = False
+        callback = getattr(
+            self, "on_cel_palette_recommend_requested", None
+        )
+        if strong_cel and callable(callback):
+            button.grid()
+            if help_label is not None:
+                help_label.grid()
+        else:
+            button.grid_remove()
+            if help_label is not None:
+                help_label.grid_remove()
+
+    def _refresh_selective_highlight_controls(self) -> None:
+        """Enable selective highlight presets only for High-Contrast Cel."""
+
+        mode_variable = getattr(self, "illustration_mode_var", None)
+        try:
+            enabled = (
+                mode_variable is not None
+                and str(mode_variable.get()) == "cel_strong"
+            )
+        except tk.TclError:
+            enabled = False
+        state = "normal" if enabled else "disabled"
+        for attribute in (
+            "illustration_selective_highlight_standard_button",
+            "illustration_selective_highlight_5_button",
+            "illustration_selective_highlight_8_button",
+            "illustration_selective_highlight_12_button",
+        ):
+            widget = getattr(self, attribute, None)
+            if widget is not None:
+                widget.configure(state=state)
+        highlight_variable = getattr(
+            self, "illustration_selective_highlight_var", None
+        )
+        try:
+            contour_enabled = enabled and any(
+                math.isclose(
+                    float(highlight_variable.get()),
+                    preset,
+                    rel_tol=0.0,
+                    abs_tol=1.0e-9,
+                )
+                for preset in SELECTIVE_HIGHLIGHT_PERCENT_PRESETS[1:]
+            )
+        except (AttributeError, tk.TclError, TypeError, ValueError):
+            contour_enabled = False
+        contour_state = "normal" if contour_enabled else "disabled"
+        for attribute in (
+            "illustration_contour_outer_button",
+            "illustration_contour_outer_crease_button",
+            "illustration_contour_outer_crease_fold_button",
+        ):
+            widget = getattr(self, attribute, None)
+            if widget is not None:
+                widget.configure(state=contour_state)
 
     def _sync_mix_optimization_target(self) -> None:
         variable = getattr(self, "mix_optimization_target_var", None)
@@ -2127,6 +2382,57 @@ class PaintEditorWindow:
                     "front_left",
                 )
             ),
+            illustration_light_intensity=float(
+                illustration_value(
+                    "illustration_light_intensity_var",
+                    "illustration_light_intensity",
+                    1.0,
+                )
+            )
+            / (
+                100.0
+                if getattr(self, "illustration_light_intensity_var", None)
+                is not None
+                else 1.0
+            ),
+            illustration_light_range=float(
+                illustration_value(
+                    "illustration_light_range_var",
+                    "illustration_light_range",
+                    0.4,
+                )
+            )
+            / (
+                100.0
+                if getattr(self, "illustration_light_range_var", None)
+                is not None
+                else 1.0
+            ),
+            illustration_detail_strength=float(
+                getattr(existing_tone, "illustration_detail_strength", 0.0)
+            ),
+            illustration_selective_highlight_fraction=float(
+                illustration_value(
+                    "illustration_selective_highlight_var",
+                    "illustration_selective_highlight_fraction",
+                    0.0,
+                )
+            )
+            / (
+                100.0
+                if getattr(
+                    self, "illustration_selective_highlight_var", None
+                )
+                is not None
+                else 1.0
+            ),
+            illustration_contour_policy=str(
+                illustration_value(
+                    "illustration_contour_policy_var",
+                    "illustration_contour_policy",
+                    "outer_crease_fold",
+                )
+            ),
         )
         if tone.white_point <= tone.black_point + 0.005:
             raise ValueError(
@@ -2177,6 +2483,39 @@ class PaintEditorWindow:
                         getattr(tone, "illustration_light", "front_left")
                     ),
                 ),
+                (
+                    "illustration_light_intensity_var",
+                    100.0
+                    * float(
+                        getattr(tone, "illustration_light_intensity", 1.0)
+                    ),
+                ),
+                (
+                    "illustration_light_range_var",
+                    100.0
+                    * float(getattr(tone, "illustration_light_range", 0.4)),
+                ),
+                (
+                    "illustration_selective_highlight_var",
+                    100.0
+                    * float(
+                        getattr(
+                            tone,
+                            "illustration_selective_highlight_fraction",
+                            0.0,
+                        )
+                    ),
+                ),
+                (
+                    "illustration_contour_policy_var",
+                    str(
+                        getattr(
+                            tone,
+                            "illustration_contour_policy",
+                            "outer_crease_fold",
+                        )
+                    ),
+                ),
             )
             for attribute, value in illustration_controls:
                 variable = getattr(self, attribute, None)
@@ -2184,8 +2523,10 @@ class PaintEditorWindow:
                     variable.set(value)
         finally:
             self._syncing_tone_controls = False
+        self._refresh_cel_palette_recommend_action()
 
     def _on_editor_tone_control_changed(self, _value: object = None) -> None:
+        self._refresh_cel_palette_recommend_action()
         if self._syncing_tone_controls or self._closing or self._close_requested:
             return
         if self._tone_change_after is not None:
@@ -2209,7 +2550,9 @@ class PaintEditorWindow:
         try:
             tone = self._tone_settings_from_controls()
         except (ValueError, tk.TclError) as exc:
-            self.status_var.set(str(exc))
+            self.status_var.set(
+                self.i18n.status_text(exc, fallback_key="state.error_reason")
+            )
             return
         callback = self.on_tone_settings_changed
         if callback is None:
@@ -2218,7 +2561,9 @@ class PaintEditorWindow:
         try:
             callback(replace(tone))
         except Exception as exc:
-            self.status_var.set(str(exc))
+            self.status_var.set(
+                self.i18n.status_text(exc, fallback_key="state.error_reason")
+            )
 
     def _flush_pending_tone_change(self) -> bool:
         """Synchronously commit the visible tone controls before closing."""
@@ -2241,9 +2586,31 @@ class PaintEditorWindow:
             else:
                 callback(replace(tone))
         except Exception as exc:
-            self.status_var.set(str(exc))
+            self.status_var.set(
+                self.i18n.status_text(exc, fallback_key="state.error_reason")
+            )
             return False
         return True
+
+    def _request_cel_palette_recommendation(self) -> None:
+        """Commit visible tone controls, then request a parent-owned proposal."""
+
+        callback = getattr(
+            self, "on_cel_palette_recommend_requested", None
+        )
+        if not callable(callback):
+            self.status_var.set(
+                self.i18n.text("tone.illustration_recommend_unavailable")
+            )
+            return
+        if not self._flush_pending_tone_change():
+            return
+        try:
+            callback()
+        except Exception as exc:
+            self.status_var.set(
+                self.i18n.status_text(exc, fallback_key="state.error_reason")
+            )
 
     def _active_mix_optimization_key(self) -> str | None:
         if not self.part_keys:
@@ -2255,18 +2622,16 @@ class PaintEditorWindow:
         callback = self.on_mix_optimization_requested
         if callback is None:
             self.status_var.set(
-                self._shading_text(
-                    "paint.shading_mix_unavailable",
-                    "混色最適化は親画面から接続されていません",
-                    "Mix optimization is not connected to the main window",
-                )
+                self.i18n.text("paint.shading_mix_unavailable")
             )
             return
         self._commit_active_stroke()
         try:
             callback(self._active_mix_optimization_key())
         except Exception as exc:
-            self.status_var.set(str(exc))
+            self.status_var.set(
+                self.i18n.status_text(exc, fallback_key="state.error_reason")
+            )
 
     def _request_mix_optimization_undo(self) -> None:
         callback = self.on_mix_optimization_undo_requested
@@ -2276,7 +2641,9 @@ class PaintEditorWindow:
         try:
             callback(self._active_mix_optimization_key())
         except Exception as exc:
-            self.status_var.set(str(exc))
+            self.status_var.set(
+                self.i18n.status_text(exc, fallback_key="state.error_reason")
+            )
 
     def _request_tone_reset(self) -> None:
         if self._tone_change_after is not None:
@@ -2290,14 +2657,18 @@ class PaintEditorWindow:
             try:
                 self.on_tone_reset_requested()
             except Exception as exc:
-                self.status_var.set(str(exc))
+                self.status_var.set(
+                    self.i18n.status_text(exc, fallback_key="state.error_reason")
+                )
             return
         tone = ToneSettings()
         if self.on_tone_settings_changed is not None:
             try:
                 self.on_tone_settings_changed(replace(tone))
             except Exception as exc:
-                self.status_var.set(str(exc))
+                self.status_var.set(
+                    self.i18n.status_text(exc, fallback_key="state.error_reason")
+                )
             return
         self.reapply_tone_settings(tone)
 
@@ -2842,14 +3213,14 @@ class PaintEditorWindow:
             text=self.i18n.text("paint.current_part"),
             bg="#0C2B38",
             fg="#9EEBFF",
-            font=("Yu Gothic UI", 9, "bold"),
+            font=ui_font(9, "bold"),
         ).grid(row=0, column=0, padx=(0, 8), sticky="w")
         tk.Label(
             active_strip,
             textvariable=self.active_part_summary_var,
             bg="#0C2B38",
             fg="#FFFFFF",
-            font=("Yu Gothic UI", 10, "bold"),
+            font=ui_font(10, "bold"),
             anchor="w",
         ).grid(row=0, column=1, padx=(0, 12), sticky="ew")
         tk.Label(
@@ -3184,7 +3555,7 @@ class PaintEditorWindow:
                 bd=0,
                 padx=14,
                 pady=5,
-                font=("Yu Gothic UI", 9, "bold"),
+                font=ui_font(9, "bold"),
                 cursor="hand2",
             )
             button.grid(row=0, column=column, padx=1)
@@ -3376,16 +3747,47 @@ class PaintEditorWindow:
 
         shading = self.ribbon_pages["shading"]
         shading.columnconfigure(0, weight=1)
+        x11_shading = shading.tk.call("tk", "windowingsystem") == "x11"
+
+        shading_tab_bar = tk.Frame(shading, bg="#111722", padx=2, pady=2)
+        shading_tab_bar.grid(row=0, column=0, sticky="ew", pady=(0, 5))
+        shading_tab_bar.columnconfigure(4, weight=1)
+        self.shading_section_buttons: dict[str, tk.Button] = {}
+        self.shading_section_frames: dict[str, ttk.Frame] = {}
+        for column, name in enumerate(
+            ("global", "illustration", "mix", "local")
+        ):
+            button = tk.Button(
+                shading_tab_bar,
+                command=lambda section=name: self._select_shading_section(
+                    section
+                ),
+                bg="#111722",
+                fg=TEXT,
+                activebackground="#24445C",
+                activeforeground="#FFFFFF",
+                relief=tk.FLAT,
+                bd=0,
+                padx=12,
+                pady=3,
+                font=ui_font(8, "bold"),
+                cursor="hand2",
+            )
+            button.grid(row=0, column=column, padx=1, sticky="w")
+            self.shading_section_buttons[name] = button
 
         global_shading = ttk.Frame(shading, style="PaintPanel.TFrame")
-        global_shading.grid(row=0, column=0, sticky="ew")
+        global_shading.grid(row=1, column=0, sticky="ew")
+        self.shading_section_frames["global"] = global_shading
         global_shading.columnconfigure(6, weight=1)
         self.shading_global_title_label = tk.Label(
             global_shading,
             bg=PANEL,
             fg=ACCENT,
-            font=("Yu Gothic UI", 9, "bold"),
+            font=ui_font(9, "bold"),
             anchor="w",
+            wraplength=140,
+            justify=tk.LEFT,
         )
         self.shading_global_title_label.grid(
             row=0,
@@ -3406,9 +3808,10 @@ class PaintEditorWindow:
             resolution: float,
             *,
             length: int = 112,
+            row: int = 0,
         ) -> tk.Scale:
             field = ttk.Frame(parent, style="PaintPanel.TFrame")
-            field.grid(row=0, column=column, sticky="w", padx=2)
+            field.grid(row=row, column=column, sticky="w", padx=2)
             ttk.Label(
                 field,
                 text=self.i18n.text(key),
@@ -3485,11 +3888,13 @@ class PaintEditorWindow:
             command=self._request_tone_reset,
         ).grid(row=0, column=6, sticky="e", padx=(10, 0), pady=(8, 0))
 
+        # Both translated checkboxes are long. Keep protection and smoothing
+        # on separate rows on every backend, preserving the full labels.
         tone_details = ttk.Frame(global_shading, style="PaintPanel.TFrame")
         tone_details.grid(
-            row=1,
-            column=1,
-            columnspan=6,
+            row=2,
+            column=0,
+            columnspan=7,
             sticky="ew",
             pady=(2, 0),
         )
@@ -3511,8 +3916,13 @@ class PaintEditorWindow:
             0.005,
             length=105,
         )
-        ttk.Separator(tone_details, orient=tk.VERTICAL).grid(
-            row=0, column=2, sticky="ns", padx=8
+        ttk.Separator(tone_details, orient=tk.HORIZONTAL).grid(
+            row=1,
+            column=0,
+            columnspan=3,
+            sticky="ew",
+            padx=8,
+            pady=3,
         )
         ttk.Checkbutton(
             tone_details,
@@ -3520,42 +3930,46 @@ class PaintEditorWindow:
             variable=self.tone_smoothing_var,
             command=self._on_editor_tone_control_changed,
             style="Paint.TCheckbutton",
-        ).grid(row=0, column=3, sticky="w")
+        ).grid(row=2, column=0, sticky="w")
         add_tone_scale(
             tone_details,
-            4,
+            1,
             "tone.smoothing_area",
             self.tone_smoothing_area_var,
             0.0,
             0.20,
             0.005,
             length=105,
+            row=2,
         )
         add_tone_scale(
             tone_details,
-            5,
+            2,
             "tone.delta_e",
             self.tone_smoothing_slack_var,
             0.0,
             10.0,
             0.25,
             length=105,
+            row=2,
         )
 
-        ttk.Separator(shading, orient=tk.HORIZONTAL).grid(
-            row=1, column=0, sticky="ew", pady=5
-        )
         illustration_shading = ttk.Frame(
             shading, style="PaintPanel.TFrame"
         )
-        illustration_shading.grid(row=2, column=0, sticky="ew")
+        illustration_shading.grid(row=1, column=0, sticky="ew")
+        self.shading_section_frames["illustration"] = illustration_shading
         illustration_shading.columnconfigure(7, weight=1)
+        # These labels share grid columns with the controls below. Wrap long
+        # translations on every backend so platform fonts cannot widen them all.
         self.shading_illustration_title_label = tk.Label(
             illustration_shading,
             bg=PANEL,
             fg=ACCENT,
-            font=("Yu Gothic UI", 9, "bold"),
+            font=ui_font(9, "bold"),
             anchor="w",
+            wraplength=140,
+            justify=tk.LEFT,
         )
         self.shading_illustration_title_label.grid(
             row=0, column=0, sticky="w", padx=(0, 12)
@@ -3576,6 +3990,16 @@ class PaintEditorWindow:
             style="Paint.Tool.TRadiobutton",
         )
         self.illustration_mode_cel_button.grid(row=0, column=2, padx=2)
+        self.illustration_mode_cel_strong_button = ttk.Radiobutton(
+            illustration_shading,
+            variable=self.illustration_mode_var,
+            value="cel_strong",
+            command=self._on_editor_tone_control_changed,
+            style="Paint.Tool.TRadiobutton",
+        )
+        self.illustration_mode_cel_strong_button.grid(
+            row=0, column=3, padx=2
+        )
         self.illustration_mode_noir_button = ttk.Radiobutton(
             illustration_shading,
             variable=self.illustration_mode_var,
@@ -3583,14 +4007,25 @@ class PaintEditorWindow:
             command=self._on_editor_tone_control_changed,
             style="Paint.Tool.TRadiobutton",
         )
-        self.illustration_mode_noir_button.grid(row=0, column=3, padx=2)
+        self.illustration_mode_noir_button.grid(row=0, column=4, padx=2)
+        self.illustration_palette_recommend_button = ttk.Button(
+            illustration_shading,
+            command=self._request_cel_palette_recommendation,
+        )
+        self.illustration_palette_recommend_button.grid(
+            row=0,
+            column=5,
+            columnspan=3,
+            padx=(12, 0),
+            sticky="w",
+        )
 
         self.illustration_strength_label = ttk.Label(
             illustration_shading,
             style="PaintPanelMuted.TLabel",
         )
         self.illustration_strength_label.grid(
-            row=0, column=4, padx=(12, 2), sticky="w"
+            row=1, column=0, padx=(0, 2), pady=(3, 0), sticky="w"
         )
         tk.Scale(
             illustration_shading,
@@ -3606,13 +4041,13 @@ class PaintEditorWindow:
             activebackground=ACCENT,
             highlightthickness=0,
             length=105,
-        ).grid(row=0, column=5, padx=2)
+        ).grid(row=1, column=1, padx=2, pady=(3, 0))
         self.illustration_bands_label = ttk.Label(
             illustration_shading,
             style="PaintPanelMuted.TLabel",
         )
         self.illustration_bands_label.grid(
-            row=1, column=1, padx=(2, 2), pady=(3, 0), sticky="w"
+            row=1, column=2, padx=(12, 2), pady=(3, 0), sticky="w"
         )
         tk.Scale(
             illustration_shading,
@@ -3628,57 +4063,249 @@ class PaintEditorWindow:
             activebackground=ACCENT,
             highlightthickness=0,
             length=80,
-        ).grid(row=1, column=2, padx=2, pady=(3, 0))
+        ).grid(row=1, column=3, padx=2, pady=(3, 0))
 
         self.illustration_light_label = ttk.Label(
             illustration_shading,
             style="PaintPanelMuted.TLabel",
+            wraplength=140,
+            justify=tk.LEFT,
         )
         self.illustration_light_label.grid(
-            row=1, column=3, padx=(12, 2), pady=(3, 0), sticky="w"
+            row=1, column=4, padx=(12, 2), pady=(3, 0), sticky="w"
         )
-        self.illustration_light_left_button = ttk.Radiobutton(
+        light_pad = tk.Frame(illustration_shading, bg=PANEL)
+        light_pad.grid(
+            row=1,
+            column=5,
+            columnspan=3,
+            padx=2,
+            pady=(3, 0),
+            sticky="w",
+        )
+        light_buttons = (
+            ("illustration_light_left_button", "↖", "front_left", 0, 0),
+            ("illustration_light_top_button", "↑", "top", 0, 1),
+            ("illustration_light_right_button", "↗", "front_right", 0, 2),
+            ("illustration_light_side_left_button", "←", "left", 1, 0),
+            ("illustration_light_front_button", "◎", "front", 1, 1),
+            ("illustration_light_side_right_button", "→", "right", 1, 2),
+            (
+                "illustration_light_bottom_left_button",
+                "↙",
+                "bottom_left",
+                2,
+                0,
+            ),
+            ("illustration_light_bottom_button", "↓", "bottom", 2, 1),
+            (
+                "illustration_light_bottom_right_button",
+                "↘",
+                "bottom_right",
+                2,
+                2,
+            ),
+        )
+        # X11 bitmap fonts have shorter line boxes than Windows/macOS fonts.
+        # Keep the directional controls at least 24 px tall on that backend.
+        light_button_pady = 4 if x11_shading else 2
+        for attribute, glyph, value, row, column in light_buttons:
+            button = tk.Radiobutton(
+                light_pad,
+                text=glyph,
+                variable=self.illustration_light_var,
+                value=value,
+                command=self._on_editor_tone_control_changed,
+                indicatoron=False,
+                width=3,
+                padx=2,
+                pady=light_button_pady,
+                bg=PANEL_2,
+                fg=TEXT,
+                activebackground="#244B66",
+                activeforeground=TEXT,
+                selectcolor="#17344A",
+                relief=tk.RAISED,
+                bd=1,
+                highlightthickness=1,
+                highlightbackground="#435269",
+                highlightcolor=ACCENT,
+                takefocus=True,
+                font=ui_font(10, "bold"),
+            )
+            button.grid(row=row, column=column, padx=1, pady=1)
+            setattr(self, attribute, button)
+
+        self.illustration_light_intensity_label = ttk.Label(
             illustration_shading,
-            variable=self.illustration_light_var,
-            value="front_left",
-            command=self._on_editor_tone_control_changed,
-            style="Paint.Tool.TRadiobutton",
+            style="PaintPanelMuted.TLabel",
         )
-        self.illustration_light_left_button.grid(
-            row=1, column=4, padx=2, pady=(3, 0)
+        self.illustration_light_intensity_label.grid(
+            row=2, column=0, padx=(0, 2), pady=(3, 0), sticky="w"
         )
-        self.illustration_light_front_button = ttk.Radiobutton(
+        tk.Scale(
             illustration_shading,
-            variable=self.illustration_light_var,
-            value="front",
+            from_=0,
+            to=150,
+            resolution=5,
+            orient=tk.HORIZONTAL,
+            variable=self.illustration_light_intensity_var,
             command=self._on_editor_tone_control_changed,
-            style="Paint.Tool.TRadiobutton",
-        )
-        self.illustration_light_front_button.grid(
-            row=1, column=5, padx=2, pady=(3, 0)
-        )
-        self.illustration_light_right_button = ttk.Radiobutton(
+            bg=PANEL,
+            fg=TEXT,
+            troughcolor="#303A49",
+            activebackground=ACCENT,
+            highlightthickness=0,
+            length=105,
+        ).grid(row=2, column=1, padx=2, pady=(3, 0))
+        self.illustration_light_range_label = ttk.Label(
             illustration_shading,
-            variable=self.illustration_light_var,
-            value="front_right",
-            command=self._on_editor_tone_control_changed,
-            style="Paint.Tool.TRadiobutton",
+            style="PaintPanelMuted.TLabel",
         )
-        self.illustration_light_right_button.grid(
-            row=1, column=6, padx=2, pady=(3, 0)
+        self.illustration_light_range_label.grid(
+            row=2, column=2, padx=(12, 2), pady=(3, 0), sticky="w"
+        )
+        tk.Scale(
+            illustration_shading,
+            from_=0,
+            to=100,
+            resolution=5,
+            orient=tk.HORIZONTAL,
+            variable=self.illustration_light_range_var,
+            command=self._on_editor_tone_control_changed,
+            bg=PANEL,
+            fg=TEXT,
+            troughcolor="#303A49",
+            activebackground=ACCENT,
+            highlightthickness=0,
+            length=105,
+        ).grid(row=2, column=3, padx=2, pady=(3, 0))
+        self.illustration_selective_highlight_label = ttk.Label(
+            illustration_shading,
+            style="PaintPanelMuted.TLabel",
+        )
+        self.illustration_selective_highlight_label.grid(
+            row=2, column=4, padx=(12, 2), pady=(3, 0), sticky="w"
+        )
+        highlight_presets = ttk.Frame(
+            illustration_shading, style="PaintPanel.TFrame"
+        )
+        highlight_presets.grid(
+            row=2,
+            column=5,
+            columnspan=3,
+            padx=2,
+            pady=(3, 0),
+            sticky="w",
+        )
+        for column, (attribute, value) in enumerate(
+            zip(
+                (
+                    "illustration_selective_highlight_standard_button",
+                    "illustration_selective_highlight_5_button",
+                    "illustration_selective_highlight_8_button",
+                    "illustration_selective_highlight_12_button",
+                ),
+                SELECTIVE_HIGHLIGHT_PERCENT_PRESETS,
+                strict=True,
+            )
+        ):
+            button = ttk.Radiobutton(
+                highlight_presets,
+                variable=self.illustration_selective_highlight_var,
+                value=value,
+                command=self._on_editor_tone_control_changed,
+                style="Paint.Tool.TRadiobutton",
+            )
+            button.grid(row=0, column=column, padx=2)
+            setattr(self, attribute, button)
+        self.illustration_contour_policy_label = ttk.Label(
+            illustration_shading,
+            style="PaintPanelMuted.TLabel",
+        )
+        self.illustration_contour_policy_label.grid(
+            row=3,
+            column=0,
+            columnspan=2,
+            padx=(0, 8),
+            pady=(4, 0),
+            sticky="w",
+        )
+        contour_presets = ttk.Frame(
+            illustration_shading, style="PaintPanel.TFrame"
+        )
+        contour_presets.grid(
+            row=3,
+            column=2,
+            columnspan=6,
+            padx=2,
+            pady=(4, 0),
+            sticky="w",
+        )
+        for column, (attribute, value) in enumerate(
+            zip(
+                (
+                    "illustration_contour_outer_button",
+                    "illustration_contour_outer_crease_button",
+                    "illustration_contour_outer_crease_fold_button",
+                ),
+                SELECTIVE_CONTOUR_POLICIES,
+                strict=True,
+            )
+        ):
+            button = ttk.Radiobutton(
+                contour_presets,
+                variable=self.illustration_contour_policy_var,
+                value=value,
+                command=self._on_editor_tone_control_changed,
+                style="Paint.Tool.TRadiobutton",
+            )
+            button.grid(row=0, column=column, padx=2, sticky="w")
+            setattr(self, attribute, button)
+        self.illustration_contour_policy_help_label = tk.Label(
+            illustration_shading,
+            bg=PANEL,
+            fg=MUTED,
+            font=ui_font(8),
+            anchor="w",
+            justify=tk.LEFT,
+            wraplength=760,
+        )
+        self.illustration_contour_policy_help_label.grid(
+            row=4,
+            column=0,
+            columnspan=8,
+            padx=(0, 4),
+            pady=(2, 0),
+            sticky="ew",
+        )
+        self.illustration_palette_recommend_help_label = tk.Label(
+            illustration_shading,
+            bg=PANEL,
+            fg=MUTED,
+            font=ui_font(8),
+            anchor="w",
+            justify=tk.LEFT,
+            wraplength=760,
+        )
+        self.illustration_palette_recommend_help_label.grid(
+            row=5,
+            column=0,
+            columnspan=8,
+            padx=(0, 4),
+            pady=(3, 0),
+            sticky="ew",
         )
 
-        ttk.Separator(shading, orient=tk.HORIZONTAL).grid(
-            row=3, column=0, sticky="ew", pady=5
-        )
         mix_shading = ttk.Frame(shading, style="PaintPanel.TFrame")
-        mix_shading.grid(row=4, column=0, sticky="ew")
+        mix_shading.grid(row=1, column=0, sticky="ew")
+        self.shading_section_frames["mix"] = mix_shading
         mix_shading.columnconfigure(5, weight=1)
         self.shading_mix_title_label = tk.Label(
             mix_shading,
             bg=PANEL,
             fg=ACCENT,
-            font=("Yu Gothic UI", 9, "bold"),
+            font=ui_font(9, "bold"),
             anchor="w",
         )
         self.shading_mix_title_label.grid(
@@ -3712,23 +4339,30 @@ class PaintEditorWindow:
             ),
         )
         self.mix_optimization_undo_button.grid(row=0, column=3, padx=3)
-        ttk.Label(
+        self.mix_optimization_help_label = ttk.Label(
             mix_shading,
             text=self.i18n.text("tone.optimize_help"),
             style="PaintPanelMuted.TLabel",
-        ).grid(row=0, column=4, sticky="w", padx=(10, 0))
-
-        ttk.Separator(shading, orient=tk.HORIZONTAL).grid(
-            row=5, column=0, sticky="ew", pady=5
+            justify=tk.LEFT,
+            wraplength=760,
         )
+        self.mix_optimization_help_label.grid(
+            row=1,
+            column=0,
+            columnspan=6,
+            sticky="ew",
+            pady=(5, 0),
+        )
+
         local_shading = ttk.Frame(shading, style="PaintPanel.TFrame")
-        local_shading.grid(row=6, column=0, sticky="ew")
-        local_shading.columnconfigure(1, weight=1)
+        local_shading.grid(row=1, column=0, sticky="ew")
+        self.shading_section_frames["local"] = local_shading
+        local_shading.columnconfigure(0, weight=1)
         self.shading_local_title_label = tk.Label(
             local_shading,
             bg=PANEL,
             fg=ACCENT,
-            font=("Yu Gothic UI", 9, "bold"),
+            font=ui_font(9, "bold"),
             anchor="w",
         )
         self.shading_local_title_label.grid(
@@ -3740,7 +4374,9 @@ class PaintEditorWindow:
             local_shading,
             style="PaintPanel.TFrame",
         )
-        self.auto_shading_host.grid(row=0, column=1, sticky="ew")
+        self.auto_shading_host.grid(
+            row=1, column=0, sticky="ew", pady=(4, 0)
+        )
         self._refresh_shading_ribbon_text()
 
         active_strip = tk.Frame(
@@ -3759,14 +4395,14 @@ class PaintEditorWindow:
             text=self.i18n.text("paint.current_part"),
             bg="#0C2B38",
             fg="#9EEBFF",
-            font=("Yu Gothic UI", 9, "bold"),
+            font=ui_font(9, "bold"),
         ).grid(row=0, column=0, padx=(0, 8), sticky="w")
         tk.Label(
             active_strip,
             textvariable=self.active_part_summary_var,
             bg="#0C2B38",
             fg="#FFFFFF",
-            font=("Yu Gothic UI", 10, "bold"),
+            font=ui_font(10, "bold"),
             anchor="w",
         ).grid(row=0, column=1, sticky="ew")
         tk.Label(
@@ -3842,7 +4478,7 @@ class PaintEditorWindow:
             text=self.i18n.text("paint.floating_palette_title"),
             bg="#21435A",
             fg="#FFFFFF",
-            font=("Yu Gothic UI", 9, "bold"),
+            font=ui_font(9, "bold"),
         )
         self.palette_title_label.pack(side=tk.LEFT)
         self.palette_drag_hint_label = tk.Label(
@@ -4010,6 +4646,19 @@ class PaintEditorWindow:
             text=self.i18n.text("paint.clear"),
             command=self._clear_all,
         ).grid(row=1, column=3, padx=2, pady=2, sticky="ew")
+        self.material_fill_check = ttk.Checkbutton(
+            tool_grid,
+            text=self.i18n.text("paint.fill_include_shadows"),
+            variable=self.material_fill_var,
+        )
+        self.material_fill_check.grid(
+            row=2,
+            column=0,
+            columnspan=4,
+            padx=2,
+            pady=(4, 0),
+            sticky="w",
+        )
 
         radius_row = ttk.Frame(
             self.palette_manual_content,
@@ -4541,7 +5190,7 @@ class PaintEditorWindow:
             shell,
             text=self.i18n.text("paint.parts_tool_title"),
             style="PaintPanel.TLabel",
-            font=("Yu Gothic UI", 11, "bold"),
+            font=ui_font(11, "bold"),
         )
         self.parts_tool_title_label.grid(
             row=0, column=0, columnspan=3, sticky="w", pady=(0, 8)
@@ -4706,7 +5355,7 @@ class PaintEditorWindow:
             shell,
             text=self.i18n.text("paint.shortcut_help_button"),
             style="PaintPanel.TLabel",
-            font=("Yu Gothic UI", 11, "bold"),
+            font=ui_font(11, "bold"),
         )
         self.help_title_label.grid(
             row=0, column=0, columnspan=2, sticky="w"
@@ -5684,7 +6333,9 @@ class PaintEditorWindow:
             joint_settings = self._joint_settings_from_controls()
         except ManualJointError as exc:
             messagebox.showerror(
-                self.i18n.text("joint.confirm_title"), str(exc), parent=self.window
+                self.i18n.text("joint.confirm_title"),
+                self.i18n.dialog_detail_text(exc),
+                parent=self.window,
             )
             return
         prepared = self.prepared
@@ -5722,7 +6373,7 @@ class PaintEditorWindow:
             self._set_topology_change_pending(False)
             messagebox.showerror(
                 self.i18n.text("joint.confirm_title"),
-                "ジョイント対象のパーツが現在の形状にありません",
+                self.i18n.text("joint.target_missing"),
                 parent=self.window,
             )
             return
@@ -5917,7 +6568,7 @@ class PaintEditorWindow:
         except PartNameError as exc:
             messagebox.showwarning(
                 self.i18n.text("paint.part_rename_title"),
-                str(exc),
+                self.i18n.dialog_detail_text(exc),
                 parent=self.window,
             )
             self.part_name_entry.focus_set()
@@ -6054,6 +6705,15 @@ class PaintEditorWindow:
             count_combo.configure(state="disabled" if flat_mode else "readonly")
         if int(self.paint_state_var.get()) >= effective_count:
             self.paint_state_var.set(0)
+        material_fill_check = getattr(self, "material_fill_check", None)
+        if not flat_mode:
+            material_fill_var = getattr(self, "material_fill_var", None)
+            if material_fill_var is not None:
+                material_fill_var.set(False)
+        if material_fill_check is not None:
+            material_fill_check.configure(
+                state="normal" if flat_mode else "disabled"
+            )
         palette_hex, palette_rgb = build_palette_rgb(
             active_palette.physical_hex,
             active_palette.mix_hex_overrides,
@@ -6417,13 +7077,12 @@ class PaintEditorWindow:
             )
         )
 
-    def _placeholder(self, size: tuple[int, int], text: str) -> Image.Image:
+    def _placeholder(self, size: tuple[int, int]) -> Image.Image:
         image = Image.new("RGB", size, (9, 12, 17))
         draw = ImageDraw.Draw(image)
         draw.rounded_rectangle(
             (10, 10, size[0] - 10, size[1] - 10), radius=12, outline=(44, 54, 68), width=2
         )
-        draw.text((size[0] // 2, size[1] // 2), text, fill=(145, 157, 175), anchor="mm")
         return image
 
     def _target_image_with_crease_overlay(self) -> Image.Image | None:
@@ -6490,7 +7149,7 @@ class PaintEditorWindow:
         panel_height = int(layout["panel_height"])
         self.canvas.delete("all")
         self.canvas.create_rectangle(0, 0, width, height, fill="#090C11", outline="")
-        panels: list[tuple[str, str, Image.Image, int, int]] = []
+        panels: list[tuple[str, str, Image.Image, int, int, str | None]] = []
         reference_layout = layout["reference"]
         if reference_visible and reference_layout is not None:
             reference_x, reference_width = reference_layout
@@ -6501,34 +7160,39 @@ class PaintEditorWindow:
                     self.reference_image,
                     int(reference_x),
                     int(reference_width),
+                    None,
                 )
             )
         target_x, target_width = layout["target"]
+        target_source = self._target_image_with_decal_preview(
+            self._target_image_with_crease_overlay()
+        )
+        target_placeholder = (
+            self.i18n.text("paint.preparing_mesh")
+            if target_source is None
+            else None
+        )
         panels.append(
                 (
                     "target",
                     self.i18n.text("paint.target_panel"),
-                    self._target_image_with_decal_preview(
-                        self._target_image_with_crease_overlay()
-                    )
-                    or self._placeholder(
-                    (int(target_width), panel_height),
-                    self.i18n.text("paint.preparing_mesh"),
-                ),
+                    target_source
+                    or self._placeholder((int(target_width), panel_height)),
                 int(target_x),
                 int(target_width),
+                target_placeholder,
             )
         )
         self.canvas_images.clear()
         self.reference_mapping = None
         self.target_mapping = None
-        for role, label, source, x, panel_width in panels:
+        for role, label, source, x, panel_width, placeholder_text in panels:
             self.canvas.create_text(
                 x + panel_width // 2,
                 margin + title_height // 2,
                 text=label,
                 fill=TEXT,
-                font=("Yu Gothic UI", 10, "bold"),
+                font=ui_font(10, "bold"),
             )
             top = margin + title_height
             contained = ImageOps.contain(
@@ -6539,6 +7203,14 @@ class PaintEditorWindow:
             photo = ImageTk.PhotoImage(contained)
             self.canvas_images.append(photo)
             self.canvas.create_image(px, py, image=photo, anchor="nw")
+            if placeholder_text is not None:
+                self.canvas.create_text(
+                    x + panel_width // 2,
+                    top + panel_height // 2,
+                    text=placeholder_text,
+                    fill=MUTED,
+                    font=ui_font(10),
+                )
             self.canvas.create_rectangle(
                 x, top, x + panel_width, top + panel_height, outline="#273242", width=1
             )
@@ -6732,7 +7404,7 @@ class PaintEditorWindow:
                     text=f"!{problem_number}",
                     fill="#FFFFFF",
                     anchor="sw",
-                    font=("Yu Gothic UI", 10, "bold"),
+                    font=ui_font(10, "bold"),
                 )
 
     def _on_canvas_configure(self, _event=None) -> None:
@@ -6863,18 +7535,28 @@ class PaintEditorWindow:
             )
             a = SHORT_NAMES[mixed.color_a_index]
             b = SHORT_NAMES[mixed.color_b_index]
-            recipe_text = (
-                f"理論上の最良混色 {a}:{b} = {mixed.ratio_a_percent}:{mixed.ratio_b_percent} "
-                f"(予測 {mixed.predicted_hex}, ΔE {mixed.delta_e76:.2f})"
+            recipe_text = self.i18n.text(
+                "paint.reference_best_mix",
+                a=a,
+                b=b,
+                ratio_a=mixed.ratio_a_percent,
+                ratio_b=mixed.ratio_b_percent,
+                predicted=mixed.predicted_hex,
+                delta=mixed.delta_e76,
             )
         except Exception:
             recipe_text = ""
         self.sample_var.set(
-            f"スポイト {rgb8_to_hex(rgb8)} → 現在の印刷色 {nearest + 1} "
-            f"{self.state_names[nearest]} "
-            f"(ΔE {float(distances.min()):.2f})。{recipe_text}"
+            self.i18n.text(
+                "paint.reference_sample_result",
+                sample=rgb8_to_hex(rgb8),
+                state=nearest + 1,
+                name=self.state_names[nearest],
+                delta=float(distances.min()),
+                recipe=recipe_text,
+            )
         )
-        self.status_var.set("元画像から塗る色を選びました")
+        self.status_var.set(self.i18n.text("paint.reference_color_selected"))
 
     def _adaptive_state_at(self, face: int, event: tk.Event | None) -> int | None:
         """Resolve the visible adaptive leaf under *event*, when one exists."""
@@ -7022,6 +7704,7 @@ class PaintEditorWindow:
         return True
 
     def _on_left_press(self, event: tk.Event) -> None:
+        _ensure_translator(self)
         if self._close_requested:
             return
         if PaintEditorWindow._reject_during_topology_change(self):
@@ -7037,7 +7720,7 @@ class PaintEditorWindow:
             return
         if tool == "lasso":
             if self._job_running:
-                self.status_var.set("前の処理が終わるまでお待ちください")
+                self.status_var.set(self.i18n.text("joint.wait"))
                 return
             if not self._point_inside(event, self.target_mapping):
                 self.status_var.set(self.i18n.text("separate.draw_prompt"))
@@ -7071,7 +7754,9 @@ class PaintEditorWindow:
                     camera=self.camera,
                 )
             except JointProjectionError as exc:
-                self.status_var.set(str(exc))
+                self.status_var.set(
+                    self.i18n.status_text(exc, fallback_key="state.error_reason")
+                )
                 return
             self._queue_manual_joint_target(face, center_unit)
             return
@@ -7115,7 +7800,7 @@ class PaintEditorWindow:
             self._stroke_faces = [face]
             self._stroke_last_xy = (event.x, event.y)
             self._stroke_erase = tool == "erase" or bool(event.state & 0x0001)
-            self.status_var.set("ブラシ線を入力中…マウスを離すと反映します")
+            self.status_var.set(self.i18n.text("paint.brush_drawing"))
             return
         if tool in ("airbrush", "smudge"):
             self._drag_mode = f"{tool}-stroke"
@@ -7451,7 +8136,9 @@ class PaintEditorWindow:
                 )
             snapshot = self._worker_snapshot(
                 None,
-                f"{plan.new_part_name} を追加しました",
+                self.i18n.text(
+                    "separate.added_status", part=plan.new_part_name
+                ),
                 len(plan.selected_faces),
             )
             snapshot["part_structure"] = {
@@ -7460,7 +8147,7 @@ class PaintEditorWindow:
             }
             return snapshot
 
-        self.status_var.set("色を保持したまま新しいパーツへ分離しています…")
+        self.status_var.set(self.i18n.text("separate.processing"))
         self.canvas.configure(cursor="watch")
         self._submit("part_split", work)
 
@@ -7714,7 +8401,7 @@ class PaintEditorWindow:
             render_target=True,
             render_face_ids=True,
         )
-        message = "色修正の準備ができました"
+        message = self.i18n.text("paint.ready_status")
         if self._diagnostic_enabled:
             matched, unmatched = self._boundary_diagnostic_counts()
             message = self.i18n.text(
@@ -7795,7 +8482,13 @@ class PaintEditorWindow:
             except Exception:
                 self._session.cancel_stroke()
                 raise
-            label = "自動色へ戻しました" if erase else f"色 {state + 1} でブラシ修正しました"
+            label = (
+                self.i18n.text("paint.brush_erased_status")
+                if erase
+                else self.i18n.text(
+                    "paint.brush_applied_status", state=state + 1
+                )
+            )
             return self._worker_refresh_after_edit(label, changed)
 
         self._submit("edit", work)
@@ -7908,17 +8601,130 @@ class PaintEditorWindow:
             if connectivity_state_map is not None
             else {}
         )
+        material_fill_requested = bool(
+            getattr(self, "material_fill_var", None) is not None
+            and self.material_fill_var.get()
+            and getattr(active_palette, "color_mode", None)
+            == COLOR_MODE_FLAT_FOUR
+        )
+        palette_rgb = np.asarray(self.palette_rgb, dtype=np.float64).copy()
+        enabled_states = _effective_paint_enabled_states(active_palette)
 
         def work():
             if self._session is None:
                 raise RuntimeError("色修正の準備中です")
+            auto_colors = getattr(self, "_auto_colors", None)
+            options = dict(fill_options)
+            material_labels = None
+            if (
+                material_fill_requested
+                and connectivity_state_map is not None
+                and auto_colors is not None
+            ):
+                source_rgb = np.asarray(
+                    auto_colors.source_face_rgb,
+                    dtype=np.float64,
+                )
+                automatic = np.asarray(
+                    auto_colors.palette_indices
+                )
+                allowed = np.asarray(self._session.allowed_face_mask, dtype=bool)
+                if (
+                    source_rgb.shape == (len(self.level.faces), 3)
+                    and automatic.shape == (len(self.level.faces),)
+                    and allowed.shape == (len(self.level.faces),)
+                ):
+                    selected_faces = np.flatnonzero(allowed)
+                    automatic_labels = connectivity_state_map[
+                        automatic[selected_faces]
+                    ]
+                    candidate_targets, _strict = (
+                        _flat_four_shadow_candidate_targets(
+                            automatic_labels,
+                            source_rgb[selected_faces],
+                            srgb_to_lab(source_rgb[selected_faces]),
+                            palette_rgb,
+                            srgb_to_lab(palette_rgb),
+                            enabled_states,
+                        )
+                    )
+                    candidate_matches = np.zeros(
+                        len(selected_faces), dtype=bool
+                    )
+                    candidate_faces = candidate_targets >= 0
+                    if np.any(candidate_faces):
+                        candidate_matches[candidate_faces] = (
+                            np.linalg.norm(
+                                palette_rgb[
+                                    candidate_targets[candidate_faces]
+                                ]
+                                - palette_rgb[state],
+                                axis=1,
+                            )
+                            <= 1e-9
+                        )
+                    # A previous manual correction is authoritative.  The
+                    # wider opt-in Fill may use untouched automatic faces as
+                    # shadow candidates, but must not tunnel through or
+                    # overwrite a deliberately painted different colour.
+                    manual_overrides = np.asarray(
+                        self._session.overrides
+                    )[selected_faces]
+                    candidate_matches &= manual_overrides < 0
+                    # Distinct F-slots may intentionally carry the same
+                    # filament RGB.  Treat those faces as unchanged bridges
+                    # for this Fill without rewriting their stored slot IDs.
+                    material_state_map = np.asarray(
+                        connectivity_state_map, dtype=np.int8
+                    ).copy()
+                    mapped_colors = palette_rgb[material_state_map]
+                    equivalent_target = (
+                        np.linalg.norm(
+                            mapped_colors - palette_rgb[state], axis=1
+                        )
+                        <= 1e-9
+                    )
+                    material_state_map[equivalent_target] = state
+                    options["connectivity_state_map"] = material_state_map
+                    visible = self._session._fill_connectivity_labels(
+                        material_state_map
+                    )
+                    active_labels = np.full(
+                        len(selected_faces), -1, dtype=np.int8
+                    )
+                    active_region = (
+                        (visible[selected_faces] == state)
+                        | candidate_matches
+                    )
+                    active_labels[active_region] = state
+                    if np.any(candidate_matches):
+                        candidate_labels = np.full(
+                            len(self.level.faces), -1, dtype=np.int8
+                        )
+                        candidate_labels[selected_faces] = active_labels
+                        if (
+                            0 <= int(seed) < len(candidate_labels)
+                            and int(candidate_labels[int(seed)]) >= 0
+                        ):
+                            material_labels = candidate_labels
+                            options["connectivity_face_labels"] = (
+                                material_labels
+                            )
             changed = self._session.fill(
                 seed,
                 state,
-                **fill_options,
+                **options,
             )
             return self._worker_refresh_after_edit(
-                f"同じ色でつながった領域を色 {state + 1} へ変更しました", len(changed)
+                self.i18n.text(
+                    (
+                        "paint.fill_material_applied_status"
+                        if material_labels is not None
+                        else "paint.fill_applied_status"
+                    ),
+                    state=state + 1,
+                ),
+                len(changed),
             )
 
         self._submit("edit", work)
@@ -7947,7 +8753,7 @@ class PaintEditorWindow:
                 **visibility,
             )
             return self._worker_refresh_after_edit(
-                "三角形単位の突出・くぼみをならしました", len(changed)
+                self.i18n.text("paint.smooth_applied_status"), len(changed)
             )
 
         self._submit("edit", work)
@@ -7958,7 +8764,9 @@ class PaintEditorWindow:
                 raise RuntimeError("色修正の準備中です")
             command = self._session.undo()
             changed = command.face_count if command else 0
-            return self._worker_refresh_after_edit("1操作戻しました", changed)
+            return self._worker_refresh_after_edit(
+                self.i18n.text("paint.undo_status"), changed
+            )
 
         self._submit("edit", work)
 
@@ -7968,14 +8776,16 @@ class PaintEditorWindow:
                 raise RuntimeError("色修正の準備中です")
             command = self._session.redo()
             changed = command.face_count if command else 0
-            return self._worker_refresh_after_edit("1操作やり直しました", changed)
+            return self._worker_refresh_after_edit(
+                self.i18n.text("paint.redo_status"), changed
+            )
 
         self._submit("edit", work)
 
     def _clear_all(self) -> None:
         if not messagebox.askyesno(
-            "手修正を解除",
-            "ブラシ・塗りつぶし・境界ならしによる修正をすべて解除しますか？\n自動変換色へ戻ります。",
+            self.i18n.text("paint.clear_all.title"),
+            self.i18n.text("paint.clear_all.message"),
             parent=self.window,
         ):
             return
@@ -7983,7 +8793,9 @@ class PaintEditorWindow:
             if self._session is None:
                 raise RuntimeError("色修正の準備中です")
             changed = self._session.clear_overrides()
-            return self._worker_refresh_after_edit("すべて自動変換色へ戻しました", len(changed))
+            return self._worker_refresh_after_edit(
+                self.i18n.text("paint.clear_status"), len(changed)
+            )
 
         self._submit("edit", work)
 
@@ -8012,7 +8824,7 @@ class PaintEditorWindow:
                 self._pending_render = True
             else:
                 self._queued_actions.append((kind, function))
-                self.status_var.set("前の処理後に続けて反映します…")
+                self.status_var.set(self.i18n.text("paint.queued_status"))
             return
         self._job_running = True
 
@@ -8046,6 +8858,11 @@ class PaintEditorWindow:
                         if isinstance(exc, FreehandSplitError)
                         else str(exc)
                     )
+                    localized_error = self.i18n.dialog_detail_text(localized_error)
+                    safe_details = self.i18n.dialog_detail_text(
+                        details[-1600:],
+                        fallback_key="dialog.technical_details_unavailable",
+                    )
                     self.status_var.set(
                         self.i18n.text(
                             "paint.error_status", message=localized_error
@@ -8067,7 +8884,7 @@ class PaintEditorWindow:
                         else:
                             messagebox.showerror(
                                 self.i18n.text("dialog.paint_apply_error"),
-                                f"{localized_error}\n\n{details[-1600:]}",
+                                f"{localized_error}\n\n{safe_details}",
                                 parent=self.window,
                             )
                     if failed_kind == "close":
@@ -8101,12 +8918,16 @@ class PaintEditorWindow:
                     if snapshot is not None:
                         self._consume_snapshot(snapshot)
                     if cleanup_warning:
-                        self._cleanup_warning = str(cleanup_warning)
+                        self._cleanup_warning = self.i18n.dialog_detail_text(
+                            cleanup_warning
+                        )
                         try:
                             messagebox.showwarning(
-                                "3D表示の終了警告",
-                                "色修正は保持しましたが、3D表示の終了処理で警告が発生しました。\n\n"
-                                + self._cleanup_warning,
+                                self.i18n.text("paint.cleanup_warning.title"),
+                                self.i18n.text(
+                                    "paint.cleanup_warning.message",
+                                    reason=self._cleanup_warning,
+                                ),
                                 parent=self.window,
                             )
                         except tk.TclError:
@@ -8122,6 +8943,7 @@ class PaintEditorWindow:
             self.window.after(30, self._poll_worker)
 
     def _consume_snapshot(self, value: object) -> None:
+        _ensure_translator(self)
         if not isinstance(value, dict):
             return
         if self._consume_decal_payload(value):
@@ -8188,12 +9010,22 @@ class PaintEditorWindow:
             if joint_undo_button is not None:
                 joint_undo_button.configure(state="disabled")
         modified = int(value.get("modified", 0))
-        self.edit_count_var.set(f"手修正 {modified:,}面")
+        self.edit_count_var.set(
+            self.i18n.text("paint.edit_count", count=modified)
+        )
         changed = int(value.get("changed", 0))
         if changed > 0 and not bool(value.get("decal_apply_result")):
             self._mark_decal_preview_stale("decal.changed")
-        message = str(value.get("message", "更新しました"))
-        self.status_var.set(f"{message}（{changed:,}面）" if changed else message)
+        message = self.i18n.status_text(
+            value.get("message", self.i18n.text("paint.updated_status"))
+        )
+        self.status_var.set(
+            self.i18n.text(
+                "paint.status_with_faces", message=message, count=changed
+            )
+            if changed
+            else message
+        )
         self._draw_canvas()
         if isinstance(overrides, np.ndarray) and not bool(
             value.get("_suppress_override_notification")
@@ -8265,7 +9097,7 @@ class PaintEditorWindow:
         self._close_requested = True
         self._pending_render = False
         self._drag_mode = None
-        self.status_var.set("最後の色修正を確定して閉じています…")
+        self.status_var.set(self.i18n.text("paint.closing_status"))
         self.canvas.configure(cursor="watch")
         if self._render_after:
             try:
@@ -8276,7 +9108,9 @@ class PaintEditorWindow:
 
         def work():
             snapshot = (
-                self._worker_snapshot(None, "最後の色修正を確定しました")
+                self._worker_snapshot(
+                    None, self.i18n.text("paint.closed_status")
+                )
                 if self._session is not None
                 else None
             )

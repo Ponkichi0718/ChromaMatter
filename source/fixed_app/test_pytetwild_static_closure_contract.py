@@ -11,6 +11,7 @@ from tooling.pytetwild_static_closure_contract import (
     ContractError,
     HISTORICAL_PYTETWILD_PYD_SHA256,
     HISTORICAL_PYTETWILD_WHEEL_SHA256,
+    RECIPE_REPOSITORY_PATH,
     load_pytetwild_static_closure_contract,
 )
 
@@ -30,10 +31,9 @@ class PyTetWildStaticClosureContractTests(unittest.TestCase):
         (root / "tooling").mkdir(parents=True)
         (root / "source" / "fixed_app").mkdir(parents=True)
         shutil.copy2(MANIFEST_PATH, root / "tooling" / MANIFEST_PATH.name)
-        shutil.copy2(
-            REPO_ROOT / "tooling" / "BUILD_PYTETWILD_WINDOWS.ps1",
-            root / "tooling" / "BUILD_PYTETWILD_WINDOWS.ps1",
-        )
+        frozen_recipe = root / RECIPE_REPOSITORY_PATH
+        frozen_recipe.parent.mkdir(parents=True)
+        shutil.copy2(REPO_ROOT / RECIPE_REPOSITORY_PATH, frozen_recipe)
         shutil.copy2(
             APPLICATION_LOCK_PATH,
             root / "source" / "fixed_app" / "requirements-build.lock",
@@ -125,10 +125,45 @@ class PyTetWildStaticClosureContractTests(unittest.TestCase):
     def test_recipe_bytes_and_hash_are_verified(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = self._fixture(temporary)
-            recipe = root / "tooling" / "BUILD_PYTETWILD_WINDOWS.ps1"
+            recipe = root / RECIPE_REPOSITORY_PATH
             with recipe.open("ab") as stream:
                 stream.write(b"\n")
             with self.assertRaisesRegex(ContractError, "recipe byte count changed"):
+                load_pytetwild_static_closure_contract(repository_root=root)
+
+    def test_approved_recipe_keeps_attested_historical_identity(self) -> None:
+        self.assertEqual(
+            self.manifest["build_binding"]["recipe_path"],
+            "tooling/recipes/BUILD_PYTETWILD_WINDOWS_20260823.ps1",
+        )
+        self.assertEqual(self.manifest["build_binding"]["recipe_bytes"], 82572)
+        self.assertEqual(
+            self.manifest["build_binding"]["recipe_sha256"],
+            "d00cc6cdbc61abeaa040dfc81a3dfe7086ac0027685d798ac70f46e14e4360c8",
+        )
+        load_pytetwild_static_closure_contract(repository_root=REPO_ROOT)
+
+    def test_developer_recipe_cannot_replace_attested_recipe(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self._fixture(temporary)
+            developer = root / "tooling" / "BUILD_PYTETWILD_WINDOWS.ps1"
+            developer.write_text("# independent developer recipe\n", encoding="utf-8")
+            load_pytetwild_static_closure_contract(repository_root=root)
+            redirected = copy.deepcopy(self.manifest)
+            redirected["build_binding"]["recipe_path"] = (
+                "tooling/BUILD_PYTETWILD_WINDOWS.ps1"
+            )
+            self._write_manifest(root, redirected)
+            with self.assertRaisesRegex(ContractError, "recipe_path must be"):
+                load_pytetwild_static_closure_contract(repository_root=root)
+
+    def test_same_size_frozen_recipe_tamper_fails_hash_check(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self._fixture(temporary)
+            recipe = root / RECIPE_REPOSITORY_PATH
+            original = recipe.read_bytes()
+            recipe.write_bytes(bytes([original[0] ^ 1]) + original[1:])
+            with self.assertRaisesRegex(ContractError, "recipe SHA-256 changed"):
                 load_pytetwild_static_closure_contract(repository_root=root)
 
     def test_unknown_component_references_fail_closed(self) -> None:

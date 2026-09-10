@@ -1,0 +1,150 @@
+{
+  "schema": "chromamatter.release-catalog-sync.v1",
+  "version": "0.9",
+  "date": "2026-09-10",
+  "status": "verified-existing-official-downloads-and-application-source",
+  "official_download_page": "https://chromamatter.app/download",
+  "official_catalog": {
+    "site_version": 52,
+    "source_commit": "4010611871132be6a2663aebda50b03cfaade140",
+    "path": "lib/release-artifacts.json"
+  },
+  "repository_application_source_commit": "5059163a1a6d05e823c44323558f344ad000b580",
+  "repository_non_runtime_changes": [
+    "Current publication documentation",
+    "Retained independent native source ZIP CI dispatcher"
+  ],
+  "scope": {
+    "reuse_identical_existing_application_archives": true,
+    "experimental_features_added": false,
+    "new_application_build": false,
+    "new_platform_native_execution": false,
+    "new_gui_test": false,
+    "new_slicing_or_print_test": false,
+    "complete_source_archives_redownloaded": false,
+    "existing_releases_preserved": true
+  },
+  "github_release": "https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.9",
+  "platforms": [
+    {
+      "platform": "windows-x86_64",
+      "requirements": "Windows 64-bit",
+      "channel": "0.9",
+      "application_source_commit": "5059163a1a6d05e823c44323558f344ad000b580",
+      "source_binding": "Exact platform application snapshot; the separate complete bundle supplies third-party corresponding source.",
+      "assets": [
+        {
+          "kind": "application",
+          "filename": "ChromaMatter-0.9-win64-app.zip",
+          "url": "https://chromamatter.app/downloads/ChromaMatter-0.9-win64-app.zip",
+          "bytes": 115342658,
+          "sha256": "947116390bf3c71158b313edd213043c42a7c11e84e178764bcd5ef23d3d7329",
+          "verification": {
+            "method": "complete downloaded file size and SHA-256 matched official catalog",
+            "full_download_reverified_this_update": true
+          }
+        },
+        {
+          "kind": "complete-corresponding-source",
+          "filename": "ChromaMatter-0.9-complete-corresponding-source.zip",
+          "url": "https://chromamatter.app/downloads/ChromaMatter-0.9-complete-corresponding-source.zip",
+          "bytes": 1366017099,
+          "sha256": "1fb967494113def72b37d7c820a66f3e865a58bb0ddbb844ceb07dc7465b46c6",
+          "verification": {
+            "method": "current official public catalog value",
+            "full_download_reverified_this_update": false
+          }
+        }
+      ],
+      "application_source_archive": "ChromaMatter-0.9-source-5059163-8935f8d4.zip"
+    },
+    {
+      "platform": "macos-arm64",
+      "requirements": "Apple Silicon; macOS 15 or later",
+      "channel": "technical-alpha",
+      "application_source_commit": "c629f428868e26f11dbcd679983ee2cd74d9c1cd",
+      "source_binding": "Exact platform application snapshot; the separate complete bundle supplies third-party corresponding source.",
+      "assets": [
+        {
+          "kind": "application",
+          "filename": "ChromaMatter-0.9-macos-arm64-app.zip",
+          "url": "https://chromamatter.app/downloads/ChromaMatter-0.9-macos-arm64-app.zip",
+          "bytes": 83823703,
+          "sha256": "b74b5032c23ad2119e95fff5159ffcc11828dfa0fe25d2a17be2662bfc79a9ac",
+          "verification": {
+            "method": "complete downloaded file size and SHA-256 matched official catalog",
+            "full_download_reverified_this_update": true
+          }
+        },
+        {
+          "kind": "complete-corresponding-source",
+          "filename": "ChromaMatter-0.9-macOS-corresponding-source.zip",
+          "url": "https://chromamatter.app/downloads/ChromaMatter-0.9-macOS-corresponding-source.zip",
+          "bytes": 2108516228,
+          "sha256": "b68bbecf1d36b8a3eaa0fb7f88788d0fe66541667d1f27648d9774270d2d7157",
+          "verification": {
+            "method": "current official public catalog value",
+            "full_download_reverified_this_update": false
+          }
+        }
+      ],
+      "application_source_archive": "ChromaMatter-0.9-source-c629f42-2e185dc1.zip"
+    },
+    {
+      "platform": "linux-x86_64",
+      "requirements": "Ubuntu 22.04 or later; x86_64",
+      "channel": "technical-alpha",
+      "application_source_commit": "5059163a1a6d05e823c44323558f344ad000b580",
+      "source_binding": "Exact platform application snapshot; the separate complete bundle supplies third-party corresponding source.",
+      "assets": [
+        {
+          "kind": "application",
+          "filename": "ChromaMatter-0.9-linux-x86_64.tar.xz",
+          "url": "https://chromamatter.app/downloads/ChromaMatter-0.9-linux-x86_64.tar.xz",
+          "bytes": 123459692,
+          "sha256": "6734deca57c0f1ad456737171cefe8f9376bbbb99aaa21214be10df49638b327",
+          "verification": {
+            "method": "complete downloaded file size and SHA-256 matched official catalog",
+            "full_download_reverified_this_update": true
+          }
+        },
+        {
+          "kind": "complete-corresponding-source",
+          "filename": "ChromaMatter-0.9-Linux-complete-corresponding-source.zip",
+          "url": "https://chromamatter.app/downloads/ChromaMatter-0.9-Linux-complete-corresponding-source.zip",
+          "bytes": 2346490450,
+          "sha256": "ed69f16f8215d70c1372eab51e57cc5967bf0e7ce97b92e914797d3f617e16cd",
+          "verification": {
+            "method": "current official public catalog value",
+            "full_download_reverified_this_update": false
+          }
+        }
+      ],
+      "application_source_archive": "ChromaMatter-0.9-source-5059163-8935f8d4.zip"
+    }
+  ],
+  "application_source_snapshots": [
+    {
+      "filename": "ChromaMatter-0.9-source-5059163-8935f8d4.zip",
+      "bytes": 5484359,
+      "sha256": "8935f8d4047d19829918939b6919256f0735310fe2d1086363c0fd150cc23293",
+      "application_files": 518,
+      "source_commit": "5059163a1a6d05e823c44323558f344ad000b580",
+      "url": "https://chromamatter.app/build-inputs/ChromaMatter-0.9-source-5059163-8935f8d4.zip",
+      "kind": "exact-application-source-snapshot",
+      "includes_complete_third_party_source": false
+    },
+    {
+      "filename": "ChromaMatter-0.9-source-c629f42-2e185dc1.zip",
+      "bytes": 5806760,
+      "sha256": "2e185dc1e50e0c25bc292490cb58ec1f5942d2ce5b91f9d31e2cf939b76d5f94",
+      "application_files": 597,
+      "source_commit": "c629f428868e26f11dbcd679983ee2cd74d9c1cd",
+      "url": "https://chromamatter.app/build-inputs/ChromaMatter-0.9-source-c629f42-2e185dc1.zip",
+      "kind": "exact-application-source-snapshot",
+      "includes_complete_third_party_source": false
+    }
+  ],
+  "application_source_snapshot_verification": "Archive SHA-256 and complete application-source contents checked; the macOS snapshot matches the exact embedded application-source ZIP in its corresponding-source bundle. This is not a new full download of all complete-source bundles.",
+  "github_distribution_plan": "Reuse the three byte-identical application archives and the two exact application-source snapshots; link to the existing official complete corresponding-source downloads without uploading duplicate multi-gigabyte bundles."
+}

@@ -15,10 +15,15 @@ from spectrum_mapper.filament_recommender import (
     CATEGORY_NEUTRAL,
     CATEGORY_PRIMARY,
     CATEGORY_SKIN,
+    DEFAULT_RECOMMENDATION_POLICY,
     DEFAULT_CURATED_CATALOG,
     FilamentCandidate,
+    RECOMMENDATION_POLICY_BASIC,
+    RECOMMENDATION_POLICY_FLEXIBLE,
     build_representative_colors,
+    curated_catalog_for_recommendation,
     map_catalog_to_curated_basics,
+    normalize_recommendation_policy,
     recommend_basic_filaments,
 )
 from spectrum_mapper import mixer
@@ -190,6 +195,184 @@ class FilamentRecommendationTests(unittest.TestCase):
                 for item in DEFAULT_CURATED_CATALOG
                 if item.category == CATEGORY_INTERMEDIATE
             )
+        )
+
+    def test_recommendation_policy_expands_curated_intermediates_and_preserves_legacy_basics(
+        self,
+    ) -> None:
+        self.assertEqual(
+            DEFAULT_RECOMMENDATION_POLICY,
+            RECOMMENDATION_POLICY_FLEXIBLE,
+        )
+        flexible = curated_catalog_for_recommendation(
+            RECOMMENDATION_POLICY_FLEXIBLE
+        )
+        basic = curated_catalog_for_recommendation(
+            RECOMMENDATION_POLICY_BASIC
+        )
+        flexible_ids = {item.id for item in flexible if item.auto_allowed}
+        basic_ids = {item.id for item in basic if item.auto_allowed}
+        self.assertEqual(
+            flexible_ids - basic_ids,
+            {
+                "cool_blue_gray",
+                "cool_violet_gray",
+                "intermediate_beige",
+                "intermediate_dusty_rose",
+                "intermediate_burgundy",
+            },
+        )
+        self.assertEqual(len(flexible_ids), 20)
+        self.assertEqual(len(basic_ids), 15)
+        self.assertTrue(
+            all(
+                item.category == CATEGORY_PRIMARY and item.auto_allowed
+                for item in flexible
+                if item.id.startswith("intermediate_")
+            )
+        )
+        self.assertTrue(
+            all(
+                not item.auto_allowed
+                for item in DEFAULT_CURATED_CATALOG
+                if item.category == CATEGORY_INTERMEDIATE
+            )
+        )
+        self.assertEqual(
+            normalize_recommendation_policy(" BASIC "),
+            RECOMMENDATION_POLICY_BASIC,
+        )
+        with self.assertRaisesRegex(ValueError, "unsupported"):
+            normalize_recommendation_policy("invented")
+
+    def test_flexible_and_basic_policies_produce_distinct_cool_shadow_proposals(
+        self,
+    ) -> None:
+        target = np.asarray(
+            (
+                (92, 115, 143),
+                (17, 17, 17),
+                (245, 245, 245),
+                (227, 38, 54),
+            ),
+            dtype=np.uint8,
+        )
+        weights = np.asarray((70.0, 10.0, 10.0, 10.0))
+        flexible = recommend_basic_filaments(
+            target,
+            weights,
+            catalog=curated_catalog_for_recommendation(
+                RECOMMENDATION_POLICY_FLEXIBLE
+            ),
+            include_mixed_states=False,
+            max_candidates=None,
+        )
+        basic = recommend_basic_filaments(
+            target,
+            weights,
+            catalog=curated_catalog_for_recommendation(
+                RECOMMENDATION_POLICY_BASIC
+            ),
+            include_mixed_states=False,
+            max_candidates=None,
+        )
+
+        self.assertEqual(
+            flexible.candidate_ids,
+            (
+                "cool_blue_gray",
+                "neutral_black",
+                "neutral_white",
+                "primary_red",
+            ),
+        )
+        self.assertNotIn("cool_blue_gray", basic.candidate_ids)
+        self.assertNotIn("cool_violet_gray", basic.candidate_ids)
+        self.assertLess(flexible.mean_delta_e76, basic.mean_delta_e76)
+
+    def test_flexible_policy_can_propose_each_curated_intermediate_color(self) -> None:
+        flexible_catalog = curated_catalog_for_recommendation(
+            RECOMMENDATION_POLICY_FLEXIBLE
+        )
+        basic_catalog = curated_catalog_for_recommendation(
+            RECOMMENDATION_POLICY_BASIC
+        )
+        anchor_ids = (
+            "intermediate_beige",
+            "intermediate_dusty_rose",
+            "intermediate_burgundy",
+        )
+        by_id = {candidate.id: candidate for candidate in flexible_catalog}
+        for anchor_id in anchor_ids:
+            with self.subTest(anchor_id=anchor_id):
+                anchor = by_id[anchor_id]
+                target = np.asarray(
+                    (
+                        anchor.rgb8,
+                        (17, 17, 17),
+                        (245, 245, 245),
+                        (36, 83, 199),
+                    ),
+                    dtype=np.uint8,
+                )
+                weights = np.asarray((70.0, 10.0, 10.0, 10.0))
+                flexible = recommend_basic_filaments(
+                    target,
+                    weights,
+                    catalog=flexible_catalog,
+                    include_mixed_states=False,
+                    max_candidates=None,
+                )
+                basic = recommend_basic_filaments(
+                    target,
+                    weights,
+                    catalog=basic_catalog,
+                    include_mixed_states=False,
+                    max_candidates=None,
+                )
+                self.assertIn(anchor_id, flexible.candidate_ids)
+                self.assertNotIn(anchor_id, basic.candidate_ids)
+
+    def test_database_anchor_mapping_filters_before_product_identity_is_selected(
+        self,
+    ) -> None:
+        product_catalog = tuple(
+            FilamentCandidate(
+                id=item.id,
+                label=item.label,
+                hex_color=item.hex_color,
+                category=CATEGORY_PRIMARY,
+                material="PLA",
+            )
+            for item in DEFAULT_CURATED_CATALOG
+        )
+        flexible = map_catalog_to_curated_basics(
+            product_catalog,
+            recommendation_policy=RECOMMENDATION_POLICY_FLEXIBLE,
+        )
+        basic = map_catalog_to_curated_basics(
+            product_catalog,
+            recommendation_policy=RECOMMENDATION_POLICY_BASIC,
+        )
+
+        self.assertIn("cool_blue_gray", {item.id for item in flexible})
+        self.assertIn("cool_violet_gray", {item.id for item in flexible})
+        self.assertTrue(
+            {
+                "intermediate_beige",
+                "intermediate_dusty_rose",
+                "intermediate_burgundy",
+            }.issubset({item.id for item in flexible})
+        )
+        self.assertNotIn("cool_blue_gray", {item.id for item in basic})
+        self.assertNotIn("cool_violet_gray", {item.id for item in basic})
+        self.assertFalse(
+            {
+                "intermediate_beige",
+                "intermediate_dusty_rose",
+                "intermediate_burgundy",
+            }
+            & {item.id for item in basic}
         )
 
     def test_known_primary_set_is_recovered_exactly(self) -> None:

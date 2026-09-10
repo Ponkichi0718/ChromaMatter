@@ -1,4 +1,4 @@
-# ChromaMatter — AI Model Print Studio 0.8beta (r32.2 published source)
+# ChromaMatter — AI Model Print Studio 0.9 (r33 development source)
 
 <p align="center">
   <img src="assets/obj_adjuster_icon.png" width="160" alt="ChromaMatter icon">
@@ -6,18 +6,33 @@
 
 [Japanese](README_fixed_ja.md)
 
-This directory contains the fixed ChromaMatter — AI Model Print Studio source
-application. The display version is `0.8beta`, the published edition is
-`AI Model Print Studio r32.2`, and the artifact revision is
-`r32.2-ai-model-print-studio`; the Windows numeric version remains `0.8.0.0`.
+This directory contains the current ChromaMatter — AI Model Print Studio source
+application. Its development identity is display version `0.9`, edition
+`AI Model Print Studio r33`, artifact revision `r33-ai-model-print-studio`, and
+next Windows numeric version `0.9.0.0`.
 
-> **Windows download:** [Download ChromaMatter 0.8beta r32.2 for Windows](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2/ChromaMatter-0.8beta-r32.2-win64.zip)
+The principal 0.9 upgrade is improved 3MF output accuracy and success for
+ordinary single-logical GLB input. Exact duplicate seams can be welded, and
+only strictly planar tiny openings no wider than 2.0 mm may be locally capped.
+If microscopic embedded debris blocks the ordinary seam proof, a bounded
+dominant-surface fallback may remove only proved tiny internal inverted shells
+or bounded open fragments after independently proving that the retained surface
+closes. It rejects separate positive solids and performs no remeshing or
+voxelization. The result still has to pass the existing fail-closed solid validation. Complex
+multipart repair remains input-dependent. No 0.9 binary has been packaged or
+published from these source bytes yet.
+
+The latest published historical edition is `AI Model Print Studio r32.2`, with
+artifact revision `r32.2-ai-model-print-studio`; its identity and assets remain
+immutable release evidence.
+
+> **Latest published Windows download (historical 0.8 build):** [Download ChromaMatter 0.8beta r32.2 for Windows](https://github.com/Ponkichi0718/ChromaMatter/releases/download/v0.8beta-r32.2/ChromaMatter-0.8beta-r32.2-win64.zip)
 >
 > **Release page:** [v0.8beta-r32.2](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.8beta-r32.2)
 >
 > The published build and corresponding source are frozen at commit `aba20685d2fd6987621b2e1e6624f46ea84912a3`.
 
-> **0.8beta multipart limitation:** the bundled `DemoData/` model is a confirmed successful case, but other multipart models can still fail solidification or 3MF export. Multipart repair is not yet reliable for every input; this is one reason the product is labelled `0.8beta`.
+> **Published 0.8beta multipart limitation:** the bundled `DemoData/` model is a confirmed successful case, but other multipart models can still fail solidification or 3MF export. Multipart repair is not reliable for every input; this is one reason the published r32.2 binary was labelled `0.8beta`.
 
 See the [visual feature overview and production flow](../../FEATURES_EN.md) and the [development journal, including experiments, failures, and hardware calibration](https://note.com/ponkichi0718).
 
@@ -193,8 +208,8 @@ Repository-root `BOOTSTRAP_WINDOWS.ps1` is the standard setup and test entry poi
 - r27 previous-evidence final ZIP SHA-256: `null`
 - icon publication rights: `passed-by-creator-declaration` (2026-08-20); the project owner accepted publication for that asset scope, without claiming independent legal clearance
 - r31 previous-evidence publication eligibility: true only for its validated `publication_scope=source-only`
-- current r32.2 source publication eligibility: true for the exact tagged source asset
-- current r32.2 binary publication eligibility: true for the exact tagged Windows asset
+- published/frozen r32.2 source publication eligibility: true for the exact tagged source asset
+- published/frozen r32.2 binary publication eligibility: true for the exact tagged Windows asset
 - public repository: [https://github.com/Ponkichi0718/ChromaMatter](https://github.com/Ponkichi0718/ChromaMatter) (owner handle `Ponkichi0718`)
 - Innovation Fund distribution package: published; physical evidence and submission presentation can continue to evolve without changing the frozen r32.2 artifacts
 - physical XP-PEN validation and physical print: pending disclosed limitations, not source-publication blockers

@@ -4,6 +4,13 @@ The corresponding-source archive is authoritative for a binary release. Use
 its pinned requirements, scripts, component map, and sources together; do not
 substitute a newer checkout as the source for an older binary.
 
+For a self-contained **0.9 Windows** distribution, the complete source ZIP is
+inside `corresponding-source/` beside the application. Its exact filename,
+SHA-256, and application commit are recorded in `licenses/SOURCE_OFFER_EN.txt`.
+You do not need to extract the source archive to run the application. The
+commands below are reproduction instructions, not evidence of a completed or
+published 0.9 build. Use new, empty output directories for each attempt.
+
 ## Pinned baseline
 
 - Windows x64
@@ -25,9 +32,17 @@ powershell.exe -ExecutionPolicy Bypass -File .\BUILD_AND_TEST.ps1 `
 
 ## Controlled PyTetWild rebuild
 
-Build a release wheel with `tooling/BUILD_PYTETWILD_WINDOWS.ps1`,
+The adopted release wheel is bound to the immutable recipe
+`tooling/recipes/BUILD_PYTETWILD_WINDOWS_20260823.ps1`,
 `tooling/requirements-pytetwild-build.lock`, and
 `tooling/patches/pytetwild-0.3.0-optional-pyvista.patch` as one bound input set.
+The frozen recipe is 82,572 bytes with SHA-256
+`d00cc6cdbc61abeaa040dfc81a3dfe7086ac0027685d798ac70f46e14e4360c8`.
+The separate `tooling/BUILD_PYTETWILD_WINDOWS.ps1` is a development recipe;
+changes to it are not evidence for the already adopted wheel. Do not substitute
+it when verifying that wheel. Reusing the exact wheel and its complete verified
+build evidence does not require another native rebuild or administrator prompt.
+If the inputs or toolchain change, produce and audit new build evidence instead.
 The recipe checks CPython 3.12.10, VS Build Tools 17.14.39, the installed
 VCTools directory version 14.44.35207, `cl.exe` file version 19.44.35228.0 and
 product version 14.44.35228.0, `link.exe` file and product version
@@ -64,12 +79,16 @@ confirmation; it does not claim that the script configured the OS firewall.
 $newControlledRoot = Join-Path 'C:\ChromaMatterToolchain' `
   ('pytetwild-controlled-build-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
 powershell.exe -NoProfile -ExecutionPolicy Bypass `
-  -File .\tooling\BUILD_PYTETWILD_WINDOWS.ps1 `
+  -File .\tooling\recipes\BUILD_PYTETWILD_WINDOWS_20260823.ps1 `
+  -RequirementsLock .\tooling\requirements-pytetwild-build.lock `
+  -PyTetWildSourcePatch .\tooling\patches\pytetwild-0.3.0-optional-pyvista.patch `
   -OsNetworkIsolationConfirmed `
   -OutputRoot $newControlledRoot
 ```
 
-The adopted controlled run `20260823-174626-089357844d4b` succeeded at project
+These explicit lock and patch paths are required when running the preserved
+recipe from its `recipes/` directory. The historical adopted controlled run
+`20260823-174626-089357844d4b` succeeded at project
 commit `5feb198eef3432cdec19a0367d53e1b52bd4a363`. Its repaired wheel SHA-256 is
 `e3b11ac058266d277b0f83448c6023d5da98e731d0d016e461dbce4ebdfd613d` and its
 attestation SHA-256 is
@@ -102,13 +121,20 @@ powershell.exe -ExecutionPolicy Bypass -File .\BOOTSTRAP_WINDOWS.ps1 `
 ```
 
 When a verified PyTetWild rebuild lock is supplied to the corresponding-source
-stage, `-PyTetWildRawWheel` and `-PyTetWildAuditLogs` are also mandatory. The
-following is a future staging example, not a record of a completed build:
+stage, `-PyTetWildRawWheel` and `-PyTetWildAuditLogs` are also mandatory. Generate
+a new lock for the exact application commit with
+`tooling/generate_pytetwild_rebuild_lock.py`; this verifies the native wheel's
+preserved evidence against the current canonical inputs rather than reusing an
+older application's approval. The example below assumes the fixed inputs have
+been exported byte-for-byte from that commit to `C:\release-inputs` and the
+complete verified source cache is already present. `-Offline` refuses missing
+cache entries instead of fetching them. It does not make initial Python or
+toolchain installation offline:
 
 ```powershell
 $projectCommit = (git rev-parse HEAD).Trim()
 powershell.exe -ExecutionPolicy Bypass -File .\tooling\stage_corresponding_source.ps1 `
-  -Destination C:\ChromaMatterSource `
+  -Destination C:\release\ChromaMatter-0.9-complete-corresponding-source `
   -Cache C:\ChromaMatterSourceCache `
   -ProjectRepository (Get-Location).Path `
   -ProjectCommit $projectCommit `
@@ -117,12 +143,13 @@ powershell.exe -ExecutionPolicy Bypass -File .\tooling\stage_corresponding_sourc
   -PyTetWildWheel C:\release-inputs\wheel\pytetwild-0.3.0-cp312-abi3-win_amd64.whl `
   -PyTetWildRawWheel C:\release-inputs\raw-wheel\pytetwild-0.3.0-cp312-abi3-win_amd64.whl `
   -PyTetWildAuditLogs C:\release-inputs\pytetwild-audit-logs `
-  -PyTetWildBuildRecipe C:\release-inputs\BUILD_PYTETWILD_WINDOWS.ps1 `
+  -PyTetWildBuildRecipe C:\release-inputs\BUILD_PYTETWILD_WINDOWS_20260823.ps1 `
   -PyTetWildBuildRequirements C:\release-inputs\requirements-pytetwild-build.lock `
   -PyTetWildSourcePatch C:\release-inputs\pytetwild-0.3.0-optional-pyvista.patch `
   -PyTetWildBuildAttestation C:\release-inputs\pytetwild-build-attestation.json `
   -ApplicationRequirementsLock C:\release-inputs\requirements-build.lock `
-  -Archive C:\ChromaMatterSource.zip
+  -Offline `
+  -Archive C:\release\ChromaMatter-0.9-complete-corresponding-source.zip
 ```
 
 The supplied build recipe, PyTetWild build-requirements lock, source patch, and
@@ -133,7 +160,9 @@ repaired wheel identities and hashes, plus the filename and SHA-256 of every
 audit log, against the attestation. It then stages them separately under
 `build-evidence/pytetwild/raw-wheel/`,
 `build-evidence/pytetwild/repaired-wheel/`, and
-`build-evidence/pytetwild/logs/`. No such final evidence stage has been run yet.
+`build-evidence/pytetwild/logs/`. Regenerate and verify the complete archive for
+each new application commit; historical successful source bundles do not prove
+the contents of a new package.
 
 `BUILD_AND_TEST.ps1` verifies Python 3.13.14, runs tests, invokes the pinned spec,
 checks runtime resources, and executes the packaged self-test.
@@ -144,27 +173,45 @@ checks runtime resources, and executes the packaged self-test.
 `compliance/SBOM.cdx.json` from the exact one-folder output.
 `tooling/stage_software_package.ps1` requires both generated inventories, the
 final complete corresponding-source archive and its external manifest, the
-archive SHA-256, the exact ChromaMatter source commit, and an HTTPS Release URL
-whose asset name matches the verified archive. The stage rejects a bundle unless
+archive SHA-256, and the exact ChromaMatter source commit. Choose one source
+delivery method: `-BundleCorrespondingSource` embeds the verified archive, or
+`-CorrespondingSourceUrl` identifies a real final HTTPS asset with the same
+filename. Do not specify both. The stage rejects a bundle unless
 `COMPONENT_SOURCES.json` is `release-approved`, has no `known_gaps`, matches the
 requested project commit byte-for-byte inside the archive, and passes all binary
 inventory checks.
 
 ```powershell
-$sourceArchive = 'C:\release\ChromaMatter-0.8beta-r32-complete-corresponding-source.zip'
-$sourceManifest = 'C:\release\ChromaMatter-0.8beta-r32-complete-corresponding-source\COMPONENT_SOURCES.json'
+$sourceArchive = 'C:\release\ChromaMatter-0.9-complete-corresponding-source.zip'
+$sourceManifest = 'C:\release\ChromaMatter-0.9-complete-corresponding-source\COMPONENT_SOURCES.json'
 $sourceCommit = (git rev-parse HEAD).Trim()
 $sourceSha256 = (Get-FileHash -LiteralPath $sourceArchive -Algorithm SHA256).Hash
 powershell.exe -ExecutionPolicy Bypass -File .\tooling\stage_software_package.ps1 `
   -BuiltAppRoot C:\ChromaMatterBuild\dist\ChromaMatter `
-  -BinaryComponentMapPath C:\release\BINARY_COMPONENT_MAP.json `
-  -SbomPath C:\release\SBOM.cdx.json `
+  -Destination C:\release\ChromaMatter-0.9-win64 `
+  -BinaryComponentMapPath C:\ChromaMatterBuild\compliance\BINARY_COMPONENT_MAP.json `
+  -SbomPath C:\ChromaMatterBuild\compliance\SBOM.cdx.json `
   -CorrespondingSourceArchivePath $sourceArchive `
   -CorrespondingSourceManifestPath $sourceManifest `
   -CorrespondingSourceArchiveSha256 $sourceSha256 `
   -CorrespondingSourceProjectCommit $sourceCommit `
-  -CorrespondingSourceUrl https://github.com/OWNER/REPO/releases/download/TAG/ChromaMatter-0.8beta-r32-complete-corresponding-source.zip
+  -BundleCorrespondingSource
 ```
 
-Publish the binary and exact source archive together. A successful local stage
-does not prove that the source URL has been uploaded or is publicly reachable.
+For the approved demo, additionally supply `-DemoDataRoot` pointing to a folder
+containing exactly the GLB and JPG listed in
+`source/fixed_app/public_binary/DemoData/DEMO_DATA_MANIFEST.json`. No other model
+or sample 3MF belongs in that folder. The stage verifies both payload hashes
+and includes the canonical bilingual README/NOTICE files.
+
+The self-contained ZIP includes the verified source archive under
+`corresponding-source/`. Keep it with the executable when redistributing. The
+source copy is rehashed and covered by the same software manifest and fresh
+ZIP-extraction checks as every other payload. The archive is larger because it
+contains third-party sources as well as the application. A local successful
+stage is not evidence of site publication, code signing, or physical printing.
+
+For separate network delivery, omit `-BundleCorrespondingSource`, supply the
+real `-CorrespondingSourceUrl`, and publish the exact source and binary together
+under equivalent access conditions. A local stage does not prove that URL is
+uploaded or publicly reachable. Do not invent a future URL to complete staging.

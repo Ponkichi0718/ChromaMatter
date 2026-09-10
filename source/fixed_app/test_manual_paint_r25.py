@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from types import SimpleNamespace
+import os
 import sys
 import tkinter as tk
 import time
@@ -311,6 +312,17 @@ class ManualPaintRealTkR25Tests(unittest.TestCase):
                     window.winfo_height(),
                 )
 
+            def requested_rect(key: str) -> tuple[int, int, int, int]:
+                geometry = editor._initial_tool_window_layouts[key][0]
+                size, x_text, y_text = geometry.split("+", 2)
+                width_text, height_text = size.split("x", 1)
+                return (
+                    int(x_text),
+                    int(y_text),
+                    int(width_text),
+                    int(height_text),
+                )
+
             if exact_windows_layout:
                 self.assertEqual(
                     actual_rect(editor.palette_tool_window),
@@ -325,16 +337,54 @@ class ManualPaintRealTkR25Tests(unittest.TestCase):
                     (1540, 440, 360, 590),
                 )
             else:
-                for tool_window in (
-                    editor.palette_tool_window,
-                    editor.parts_tool_window,
-                    editor.help_tool_window,
+                # Xvfb commonly runs without a window manager.  A withdrawn
+                # Toplevel can then report Tk's off-screen sentinel coordinate
+                # even though its requested geometry is valid.  Keep proving
+                # a visible window's actual placement, and use requested
+                # geometry only while a desired tool is temporarily withdrawn.
+                screen_width = editor.palette_tool_window.winfo_screenwidth()
+                screen_height = editor.palette_tool_window.winfo_screenheight()
+                headless_xvfb = (
+                    os.environ.get("CHROMAMATTER_LINUX_XVFB_ACTIVE") == "1"
+                )
+                self.assertTrue(editor.palette_tool_window.winfo_viewable())
+                x, y, width, height = actual_rect(editor.palette_tool_window)
+                self.assertGreaterEqual(x, 0)
+                self.assertGreaterEqual(y, 0)
+                self.assertGreater(width, 100)
+                self.assertGreater(height, 100)
+                self.assertLessEqual(x + width, screen_width)
+                self.assertLessEqual(y + height, screen_height)
+                for key, tool_window, desired_var in (
+                    (
+                        "parts",
+                        editor.parts_tool_window,
+                        editor.parts_tool_visible_var,
+                    ),
+                    (
+                        "help",
+                        editor.help_tool_window,
+                        editor.help_tool_visible_var,
+                    ),
                 ):
-                    x, y, width, height = actual_rect(tool_window)
+                    self.assertTrue(desired_var.get())
+                    self.assertIn(str(tool_window.state()), {"normal", "withdrawn"})
+                    if headless_xvfb:
+                        x, y, width, height = requested_rect(key)
+                    else:
+                        self.assertTrue(tool_window.winfo_viewable())
+                        x, y, width, height = actual_rect(tool_window)
                     self.assertGreaterEqual(x, 0)
                     self.assertGreaterEqual(y, 0)
                     self.assertGreater(width, 100)
                     self.assertGreater(height, 100)
+                    self.assertLessEqual(x + width, screen_width)
+                    self.assertLessEqual(
+                        y
+                        + height
+                        + paint_gui_module.TOOL_WINDOW_CHROME_ALLOWANCE,
+                        screen_height,
+                    )
 
             self.assertFalse(editor.crease_overlay_var.get())
             self.assertEqual(

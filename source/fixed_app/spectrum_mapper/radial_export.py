@@ -3,8 +3,9 @@
 This module deliberately does not reuse :func:`engine.write_3mf_atomic`.
 That writer represents colour with triangle paint states and currently assigns
 extruder 1 to every normal part.  A radial shell is different: geometry owns
-the material, every part must select one of the four physical U1 tools, and a
-pure-black core must be solid.  Keeping this boundary separate also makes the
+the material, every part must select one of the four physical U1 tools, and
+every physical region must remain a closed positive-volume mesh.  Keeping this
+boundary separate also makes the
 initial output impossible to mistake for a print-approved production file.
 
 The geometry builder lives in ``radial_shell.py``.  This module only accepts
@@ -36,6 +37,274 @@ RADIAL_SCHEMA = "tripo-spectrum-mapper.radial-shell.experimental.v1"
 COLOR_DEPTH_EXPORT_SCHEMA = (
     "tripo-spectrum-mapper.color-depth.export.experimental.v1"
 )
+RADIAL_PROCESS_PROFILE_MVP_020 = "radial-mvp-0p20"
+RADIAL_PROCESS_PROFILE_BLACK_COUPON_010 = "black-radial-coupon-0p10"
+RADIAL_PROCESS_PROFILE_BLACK_COUPON_ARACHNE_010 = (
+    "black-radial-coupon-arachne-0p10"
+)
+RADIAL_PROCESS_PROFILE_COMPACT_BLACK_COUPON_010 = (
+    "compact-black-radial-coupon-0p10"
+)
+RADIAL_PROCESS_PROFILE_COMPACT_BLACK_COUPON_ARACHNE_010 = (
+    "compact-black-radial-coupon-arachne-0p10"
+)
+RADIAL_PROCESS_PROFILE_LARGE_FRUSTUM_BLACK_COUPON_010 = (
+    "large-frustum-black-radial-coupon-0p10"
+)
+RADIAL_PROCESS_PROFILE_LARGE_FRUSTUM_BLACK_COUPON_ARACHNE_010 = (
+    "large-frustum-black-radial-coupon-arachne-0p10"
+)
+RADIAL_PROCESS_PROFILE_GENERAL_CLASSIC_010 = "radial-general-classic-0p10"
+RADIAL_PROCESS_PROFILE_GENERAL_ARACHNE_010 = "radial-general-arachne-0p10"
+_BLACK_RADIAL_COUPON_SCHEMA = "chromamatter.black-radial-coupon.v1"
+_COMPACT_BLACK_RADIAL_COUPON_SCHEMA = (
+    "chromamatter.compact-black-radial-pyramid.v1"
+)
+_LARGE_FRUSTUM_BLACK_RADIAL_COUPON_SCHEMA = (
+    "chromamatter.large-black-radial-frustum.v1"
+)
+_PROCESS_PROFILES = {
+    RADIAL_PROCESS_PROFILE_MVP_020: {
+        "layer_height_mm": 0.20,
+        "initial_layer_height_mm": 0.20,
+        "print_settings_id": "0.20 Standard @Snapmaker U1 (0.4 nozzle)",
+        "top_shell_layers": "3",
+        "top_shell_thickness": "0.6",
+        "bottom_shell_layers": "3",
+        "bottom_shell_thickness": "0.6",
+        "wall_loops": "1",
+        "wall_generator": "classic",
+        "detect_thin_wall": "1",
+        "only_one_wall_top": "0",
+        "line_width": "0.42",
+        "outer_wall_line_width": "0.42",
+        "inner_wall_line_width": "0.42",
+    },
+    # This profile is deliberately coupon-only.  It does not relax the
+    # production Radial MVP contract: callers must explicitly opt in, the
+    # archive remains SLICE ONLY, and the validator re-opens the exact process
+    # marker together with the 0.10 mm setting.
+    RADIAL_PROCESS_PROFILE_BLACK_COUPON_010: {
+        "layer_height_mm": 0.10,
+        "initial_layer_height_mm": 0.20,
+        "print_settings_id": "0.10 Black-Radial Validation @Snapmaker U1 (0.4 nozzle)",
+        "top_shell_layers": "5",
+        "top_shell_thickness": "0.5",
+        "bottom_shell_layers": "5",
+        "bottom_shell_thickness": "0.5",
+        "wall_loops": "2",
+        "wall_generator": "classic",
+        "detect_thin_wall": "0",
+        "only_one_wall_top": "0",
+        "line_width": "0.42",
+        "outer_wall_line_width": "0.42",
+        "inner_wall_line_width": "0.45",
+        "coupon_method": "radial-physical-thickness",
+    },
+    # Same physical geometry as the Classic coupon.  Only the wall planner is
+    # changed so a single print can show whether Arachne keeps the 0.21/0.42 mm
+    # partner skin continuous.  The 85% bead floor is Snapmaker/Orca's safe
+    # 0.4 mm-nozzle baseline; it deliberately does not promise a true 0.21 mm
+    # extrusion line.
+    RADIAL_PROCESS_PROFILE_BLACK_COUPON_ARACHNE_010: {
+        "layer_height_mm": 0.10,
+        "initial_layer_height_mm": 0.20,
+        "print_settings_id": (
+            "0.10 Black-Radial Arachne Validation @Snapmaker U1 (0.4 nozzle)"
+        ),
+        "top_shell_layers": "5",
+        "top_shell_thickness": "0.5",
+        "bottom_shell_layers": "5",
+        "bottom_shell_thickness": "0.5",
+        "wall_loops": "2",
+        "wall_generator": "arachne",
+        "detect_thin_wall": "0",
+        "only_one_wall_top": "0",
+        "line_width": "0.42",
+        "outer_wall_line_width": "0.42",
+        "inner_wall_line_width": "0.45",
+        "wall_distribution_count": "1",
+        "min_bead_width": "85%",
+        "initial_layer_min_bead_width": "85%",
+        "min_feature_size": "25%",
+        "wall_transition_length": "100%",
+        "wall_transition_filter_deviation": "25%",
+        "wall_transition_angle": "10",
+        "coupon_method": "radial-physical-thickness-arachne",
+    },
+    # Small, fast white/black-only pyramid used to compare real radial shells.
+    # These settings are intentionally coupon-only and do not change the MVP
+    # or the broad three-colour coupon.  The aggressive Arachne bead values are
+    # outside Snapmaker's stock U1 profile and therefore remain SLICE ONLY.
+    RADIAL_PROCESS_PROFILE_COMPACT_BLACK_COUPON_010: {
+        "layer_height_mm": 0.10,
+        "initial_layer_height_mm": 0.20,
+        "print_settings_id": (
+            "0.10 Compact Black-Radial Classic Probe @Snapmaker U1 (0.4 nozzle)"
+        ),
+        "top_shell_layers": "2",
+        "top_shell_thickness": "0.2",
+        "bottom_shell_layers": "2",
+        "bottom_shell_thickness": "0.2",
+        "wall_loops": "1",
+        "wall_generator": "classic",
+        "detect_thin_wall": "1",
+        "only_one_wall_top": "0",
+        "line_width": "0.42",
+        "outer_wall_line_width": "0.42",
+        "inner_wall_line_width": "0.45",
+        "coupon_method": "compact-radial-physical-thickness",
+        "coupon_metadata_key": "compact_black_radial_coupon",
+        "coupon_schema": _COMPACT_BLACK_RADIAL_COUPON_SCHEMA,
+        "coupon_geometry_version": "off-centre-pyramid-bands-v1",
+    },
+    RADIAL_PROCESS_PROFILE_COMPACT_BLACK_COUPON_ARACHNE_010: {
+        "layer_height_mm": 0.10,
+        "initial_layer_height_mm": 0.20,
+        "print_settings_id": (
+            "0.10 Compact Black-Radial Arachne Probe @Snapmaker U1 (0.4 nozzle)"
+        ),
+        "top_shell_layers": "2",
+        "top_shell_thickness": "0.2",
+        "bottom_shell_layers": "2",
+        "bottom_shell_thickness": "0.2",
+        "wall_loops": "1",
+        "wall_generator": "arachne",
+        "detect_thin_wall": "0",
+        "only_one_wall_top": "0",
+        "line_width": "0.42",
+        "outer_wall_line_width": "0.42",
+        "inner_wall_line_width": "0.45",
+        "wall_distribution_count": "1",
+        "min_bead_width": "25%",
+        "initial_layer_min_bead_width": "85%",
+        "min_feature_size": "20%",
+        "wall_transition_length": "100%",
+        "wall_transition_filter_deviation": "25%",
+        "wall_transition_angle": "10",
+        "coupon_method": "compact-radial-physical-thickness-arachne",
+        "coupon_metadata_key": "compact_black_radial_coupon",
+        "coupon_schema": _COMPACT_BLACK_RADIAL_COUPON_SCHEMA,
+        "coupon_geometry_version": "off-centre-pyramid-bands-v1",
+    },
+    # Three-times-linear corner frustum with an exact first-layer Z/C/A tag
+    # and a horizontal 0.10 mm top-cap probe.  These profiles intentionally
+    # inherit the compact coupon's aggressive wall settings while keeping a
+    # separate schema and process marker, so old compact-v2 evidence remains
+    # independently identifiable and cannot validate the larger v3 geometry.
+    RADIAL_PROCESS_PROFILE_LARGE_FRUSTUM_BLACK_COUPON_010: {
+        "layer_height_mm": 0.10,
+        "initial_layer_height_mm": 0.20,
+        "print_settings_id": (
+            "0.10 Large Frustum Black-Radial Classic Probe "
+            "@Snapmaker U1 (0.4 nozzle)"
+        ),
+        "top_shell_layers": "2",
+        "top_shell_thickness": "0.2",
+        "bottom_shell_layers": "2",
+        "bottom_shell_thickness": "0.2",
+        "wall_loops": "1",
+        "wall_generator": "classic",
+        "detect_thin_wall": "1",
+        "only_one_wall_top": "0",
+        "line_width": "0.42",
+        "outer_wall_line_width": "0.42",
+        "inner_wall_line_width": "0.45",
+        # The physical regions must stay closed, but closure does not require
+        # a solid sparse core.  Match the general radial policy so the black
+        # core is not silently forced to 100% infill.
+        "sparse_infill_density": "15%",
+        "coupon_method": "large-frustum-radial-physical-thickness",
+        "coupon_metadata_key": "compact_black_radial_coupon",
+        "coupon_schema": _LARGE_FRUSTUM_BLACK_RADIAL_COUPON_SCHEMA,
+        "coupon_geometry_version": "corner-frustum-bottom-id-top-cap-v1",
+    },
+    RADIAL_PROCESS_PROFILE_LARGE_FRUSTUM_BLACK_COUPON_ARACHNE_010: {
+        "layer_height_mm": 0.10,
+        "initial_layer_height_mm": 0.20,
+        "print_settings_id": (
+            "0.10 Large Frustum Black-Radial Arachne Probe "
+            "@Snapmaker U1 (0.4 nozzle)"
+        ),
+        "top_shell_layers": "2",
+        "top_shell_thickness": "0.2",
+        "bottom_shell_layers": "2",
+        "bottom_shell_thickness": "0.2",
+        "wall_loops": "1",
+        "wall_generator": "arachne",
+        "detect_thin_wall": "0",
+        "only_one_wall_top": "0",
+        "line_width": "0.42",
+        "outer_wall_line_width": "0.42",
+        "inner_wall_line_width": "0.45",
+        "wall_distribution_count": "1",
+        "min_bead_width": "25%",
+        "initial_layer_min_bead_width": "85%",
+        "min_feature_size": "20%",
+        "wall_transition_length": "100%",
+        "wall_transition_filter_deviation": "25%",
+        "wall_transition_angle": "10",
+        # Arachne changes perimeter planning only; use the same ordinary
+        # sparse-core policy as the Classic and general radial profiles.
+        "sparse_infill_density": "15%",
+        "coupon_method": "large-frustum-radial-physical-thickness-arachne",
+        "coupon_metadata_key": "compact_black_radial_coupon",
+        "coupon_schema": _LARGE_FRUSTUM_BLACK_RADIAL_COUPON_SCHEMA,
+        "coupon_geometry_version": "corner-frustum-bottom-id-top-cap-v1",
+    },
+    # General-model profiles intentionally share the validated one-wall
+    # settings used by the large frustum probe, without its coupon metadata
+    # gate.  They remain SLICE ONLY through the common radial archive contract.
+    RADIAL_PROCESS_PROFILE_GENERAL_CLASSIC_010: {
+        "layer_height_mm": 0.10,
+        "initial_layer_height_mm": 0.20,
+        "print_settings_id": (
+            "0.10 General Radial Classic @Snapmaker U1 (0.4 nozzle)"
+        ),
+        "top_shell_layers": "2",
+        "top_shell_thickness": "0.2",
+        "bottom_shell_layers": "2",
+        "bottom_shell_thickness": "0.2",
+        "wall_loops": "1",
+        "wall_generator": "classic",
+        "detect_thin_wall": "1",
+        "only_one_wall_top": "0",
+        "line_width": "0.42",
+        "outer_wall_line_width": "0.42",
+        "inner_wall_line_width": "0.45",
+        # General models use an ordinary conservative sparse core.  Closed
+        # physical regions, perimeters and top/bottom shells remain mandatory.
+        "sparse_infill_density": "15%",
+    },
+    RADIAL_PROCESS_PROFILE_GENERAL_ARACHNE_010: {
+        "layer_height_mm": 0.10,
+        "initial_layer_height_mm": 0.20,
+        "print_settings_id": (
+            "0.10 General Radial Arachne @Snapmaker U1 (0.4 nozzle)"
+        ),
+        "top_shell_layers": "2",
+        "top_shell_thickness": "0.2",
+        "bottom_shell_layers": "2",
+        "bottom_shell_thickness": "0.2",
+        "wall_loops": "1",
+        "wall_generator": "arachne",
+        "detect_thin_wall": "0",
+        "only_one_wall_top": "0",
+        "line_width": "0.42",
+        "outer_wall_line_width": "0.42",
+        "inner_wall_line_width": "0.45",
+        "wall_distribution_count": "1",
+        "min_bead_width": "25%",
+        "initial_layer_min_bead_width": "85%",
+        "min_feature_size": "20%",
+        "wall_transition_length": "100%",
+        "wall_transition_filter_deviation": "25%",
+        "wall_transition_angle": "10",
+        # Match the Classic general-model profile: Arachne changes perimeter
+        # planning, not the normal sparse-infill policy.
+        "sparse_infill_density": "15%",
+    },
+}
 _CORE_NS = "http://schemas.microsoft.com/3dmanufacturing/core/2015/02"
 _PRODUCTION_NS = (
     "http://schemas.microsoft.com/3dmanufacturing/production/2015/06"
@@ -67,6 +336,20 @@ _REQUIRED_ARCHIVE_MEMBERS = frozenset(
         "Metadata/radial_shell_experimental.json",
     }
 )
+_COMMON_TRANSITION_SETTINGS = {
+    "enable_prime_tower": "1",
+    "prime_tower_width": "30",
+    "prime_volume": "18",
+    "prime_tower_brim_width": "5",
+    "wipe_tower_filament": "0",
+    "wipe_tower_no_sparse_layers": "0",
+    "wipe_tower_wall_type": "rib",
+    "wipe_tower_extra_rib_length": "8",
+    "wipe_tower_extra_spacing": "120%",
+    "wipe_tower_cone_angle": "15",
+    "ooze_prevention": "1",
+    "standby_temperature_delta": "-150",
+}
 
 
 class RadialExportError(RuntimeError):
@@ -82,6 +365,9 @@ class RadialExportPart:
     vertices_mm: np.ndarray
     faces: np.ndarray
     extruder: int
+    # Legacy API name.  This flag is a closed physical-volume assertion, not
+    # a request for 100% slicer infill; sparse density belongs to the process
+    # profile and is validated independently.
     solid_infill: bool = True
     source_state: int | None = None
     metadata: Mapping[str, object] = field(default_factory=dict)
@@ -104,6 +390,7 @@ class RadialExportPackage:
     layer_height_mm: float = 0.20
     initial_layer_height_mm: float = 0.20
     renderer: str = "radial"
+    process_profile: str = RADIAL_PROCESS_PROFILE_MVP_020
 
 
 @dataclass(frozen=True, slots=True)
@@ -161,6 +448,31 @@ def _normalise_hex(value: object) -> str:
     return text
 
 
+def radial_process_profile_sparse_infill_percent(profile_name: str) -> int:
+    """Return the fail-closed sparse-infill policy for a radial profile."""
+
+    name = str(profile_name).strip()
+    profile = _PROCESS_PROFILES.get(name)
+    if profile is None:
+        raise RadialExportError(f"Unsupported radial process profile: {name!r}")
+    value = str(profile.get("sparse_infill_density", "100%")).strip()
+    if not value.endswith("%"):
+        raise RadialExportError(
+            f"Radial process profile {name!r} has invalid sparse infill"
+        )
+    try:
+        percent = int(value[:-1])
+    except ValueError as exc:
+        raise RadialExportError(
+            f"Radial process profile {name!r} has invalid sparse infill"
+        ) from exc
+    if not 0 <= percent <= 100 or value != f"{percent}%":
+        raise RadialExportError(
+            f"Radial process profile {name!r} has invalid sparse infill"
+        )
+    return percent
+
+
 def _json_safe(value: object) -> object:
     if value is None or isinstance(value, (str, bool, int)):
         return value
@@ -181,6 +493,45 @@ def _json_safe(value: object) -> object:
     raise RadialExportError(
         f"Experimental metadata is not JSON serialisable: {type(value).__name__}"
     )
+
+
+def _validate_process_profile_metadata(
+    metadata: object,
+    profile_name: str,
+) -> None:
+    """Keep special validation profiles from escaping their narrow fixture."""
+
+    profile = _PROCESS_PROFILES[profile_name]
+    coupon_method = profile.get("coupon_method")
+    if coupon_method is None:
+        return
+    if not isinstance(metadata, Mapping):
+        raise RadialExportError(
+            f"Radial process profile {profile_name!r} needs coupon metadata"
+        )
+    metadata_key = str(profile.get("coupon_metadata_key", "black_radial_coupon"))
+    wrapper = metadata.get(metadata_key)
+    if not isinstance(wrapper, Mapping):
+        raise RadialExportError(
+            f"Radial process profile {profile_name!r} is coupon-only"
+        )
+    required = {
+        "schema": str(profile.get("coupon_schema", _BLACK_RADIAL_COUPON_SCHEMA)),
+        "method": str(coupon_method),
+        "geometry_version": str(
+            profile.get("coupon_geometry_version", "multi-surface-prism-v1")
+        ),
+        "experimental": True,
+        "slice_only": True,
+        "print_allowed": False,
+        "physical_materials_only": True,
+    }
+    for key, expected in required.items():
+        if wrapper.get(key) != expected:
+            raise RadialExportError(
+                f"Coupon-only radial profile metadata {key} drifted: "
+                f"{wrapper.get(key)!r} != {expected!r}"
+            )
 
 
 def _canonical_role(value: object) -> str:
@@ -226,8 +577,8 @@ def _check_part(part: RadialExportPart, index: int) -> _CheckedPart:
         )
     if not bool(part.solid_infill):
         raise RadialExportError(
-            f"Radial part {name!r} is not solid; the experimental writer "
-            "requires every physical region to use 100% infill"
+            f"Radial part {name!r} is not a closed physical volume; the "
+            "experimental writer requires every material region to be closed"
         )
 
     vertices = np.asarray(part.vertices_mm, dtype=np.float64)
@@ -307,15 +658,27 @@ def _check_package(package: RadialExportPackage) -> tuple[_CheckedPart, ...]:
     ):
         if not math.isfinite(float(height)) or float(height) <= 0:
             raise RadialExportError(f"Invalid {label}: {height!r}")
-    if abs(float(package.layer_height_mm) - 0.20) > 1e-9:
+    profile_name = str(package.process_profile).strip()
+    profile = _PROCESS_PROFILES.get(profile_name)
+    if profile is None:
         raise RadialExportError(
-            "The first radial export format is calibrated only for 0.20 mm layers"
+            f"Unsupported radial process profile: {package.process_profile!r}"
         )
-    if abs(float(package.initial_layer_height_mm) - 0.20) > 1e-9:
-        raise RadialExportError(
-            "The first radial export format requires a 0.20 mm initial layer"
-        )
-    _json_safe(package.metadata)
+    for actual, key, label in (
+        (package.layer_height_mm, "layer_height_mm", "layer height"),
+        (
+            package.initial_layer_height_mm,
+            "initial_layer_height_mm",
+            "initial layer height",
+        ),
+    ):
+        if abs(float(actual) - float(profile[key])) > 1e-9:
+            raise RadialExportError(
+                f"Radial process profile {profile_name!r} requires "
+                f"{label} {float(profile[key]):.2f} mm"
+            )
+    safe_metadata = _json_safe(package.metadata)
+    _validate_process_profile_metadata(safe_metadata, profile_name)
     renderer = str(package.renderer).strip().lower()
     if renderer not in {"radial", "color_depth"}:
         raise RadialExportError(f"Unsupported physical renderer: {package.renderer!r}")
@@ -466,6 +829,9 @@ def package_from_radial_shell(
     physical_hex: Sequence[str],
     *,
     geometry_scale_mm: float = 1.0,
+    process_profile: str = RADIAL_PROCESS_PROFILE_MVP_020,
+    layer_height_mm: float = 0.20,
+    initial_layer_height_mm: float = 0.20,
 ) -> RadialExportPackage:
     """Adapt the geometry builder result without importing its implementation."""
 
@@ -580,6 +946,9 @@ def package_from_radial_shell(
         physical_hex=physical,  # type: ignore[arg-type]
         black_extruder=int(black),
         metadata=metadata,
+        layer_height_mm=float(layer_height_mm),
+        initial_layer_height_mm=float(initial_layer_height_mm),
+        process_profile=str(process_profile),
     )
 
 
@@ -675,8 +1044,12 @@ def _write_parts_model(
                 ).encode("utf-8")
             )
             for x, y, z in item.vertices:
+                # Preserve each binary64 coordinate exactly across XML
+                # serialization.  A 12-significant-digit representation can
+                # collapse legitimate thin Stage-B tetrahedra at model-scale
+                # offsets and make the re-opened material partition invalid.
                 out.write(
-                    f'     <vertex x="{x:.12g}" y="{y:.12g}" z="{z:.12g}"/>\n'.encode(
+                    f'     <vertex x="{x:.17g}" y="{y:.17g}" z="{z:.17g}"/>\n'.encode(
                         "ascii"
                     )
                 )
@@ -694,11 +1067,39 @@ def _write_parts_model(
         out.flush()
 
 
+def _profile_object_settings(profile_name: str) -> dict[str, str]:
+    profile = _PROCESS_PROFILES[str(profile_name).strip()]
+    settings = {
+        "wall_loops": str(profile["wall_loops"]),
+        "wall_generator": str(profile["wall_generator"]),
+        "detect_thin_wall": str(profile["detect_thin_wall"]),
+        "only_one_wall_top": str(profile["only_one_wall_top"]),
+        "interface_shells": "0",
+        "sparse_infill_density": (
+            f"{radial_process_profile_sparse_infill_percent(profile_name)}%"
+        ),
+    }
+    for key in (
+        "wall_distribution_count",
+        "min_bead_width",
+        "initial_layer_min_bead_width",
+        "min_feature_size",
+        "wall_transition_length",
+        "wall_transition_filter_deviation",
+        "wall_transition_angle",
+    ):
+        if key in profile:
+            settings[key] = str(profile[key])
+    return settings
+
+
 def _model_settings(
     title: str,
     parts: tuple[_CheckedPart, ...],
+    package: RadialExportPackage,
 ) -> bytes:
     parent_id = len(parts) + 1
+    object_settings = _profile_object_settings(str(package.process_profile))
     outer = next(
         (
             item.part.extruder
@@ -724,16 +1125,16 @@ def _model_settings(
       <mesh_stat face_count="{len(item.faces)}" edges_fixed="0" degenerate_facets="0" facets_removed="0" facets_reversed="0" backwards_edges="0"/>
     </part>'''
         )
+    object_setting_xml = "\n".join(
+        f'    <metadata key="{html.escape(key)}" value="{html.escape(value)}"/>'
+        for key, value in object_settings.items()
+    )
     return f'''<?xml version="1.0" encoding="UTF-8"?>
 <config>
   <object id="{parent_id}">
     <metadata key="name" value="{html.escape(title)}"/>
     <metadata key="extruder" value="{outer}"/>
-    <metadata key="wall_loops" value="1"/>
-    <metadata key="wall_generator" value="classic"/>
-    <metadata key="detect_thin_wall" value="1"/>
-    <metadata key="interface_shells" value="0"/>
-    <metadata key="sparse_infill_density" value="100%"/>
+{object_setting_xml}
     <metadata face_count="{sum(len(item.faces) for item in parts)}"/>
 {chr(10).join(blocks)}
   </object>
@@ -752,8 +1153,12 @@ def _model_settings(
 '''.encode("utf-8")
 
 
-def _project_settings(package: RadialExportPackage) -> bytes:
-    physical = [_normalise_hex(value) for value in package.physical_hex]
+def _project_settings_values(
+    profile_name: str,
+    physical_hex: Sequence[str],
+) -> dict[str, object]:
+    profile = _PROCESS_PROFILES[str(profile_name).strip()]
+    physical = [_normalise_hex(value) for value in physical_hex]
     bright = max(
         range(4),
         key=lambda index: sum(
@@ -761,14 +1166,16 @@ def _project_settings(package: RadialExportPackage) -> bytes:
             for offset in (1, 3, 5)
         ),
     ) + 1
-    config: dict[str, object] = {
-        "print_settings_id": "0.20 Standard @Snapmaker U1 (0.4 nozzle)",
+    return {
+        "print_settings_id": str(profile["print_settings_id"]),
         "printer_settings_id": "Snapmaker U1 (0.4 nozzle)",
         "printer_model": "Snapmaker U1",
         "printer_variant": "0.4",
         "nozzle_diameter": ["0.4"] * 4,
-        "layer_height": "0.2",
-        "initial_layer_print_height": "0.2",
+        "layer_height": f"{float(profile['layer_height_mm']):g}",
+        "initial_layer_print_height": (
+            f"{float(profile['initial_layer_height_mm']):g}"
+        ),
         "adaptive_layer_height": "0",
         "filament_colour": physical,
         "filament_multi_colors": physical,
@@ -779,17 +1186,14 @@ def _project_settings(package: RadialExportPackage) -> bytes:
         "mmu_segmented_region_interlocking_depth": "0",
         "interlocking_beam": "0",
         "interface_shells": "0",
-        "wall_loops": "1",
-        "wall_generator": "classic",
-        "detect_thin_wall": "1",
-        "line_width": "0.42",
-        "outer_wall_line_width": "0.42",
-        "inner_wall_line_width": "0.42",
-        "sparse_infill_density": "100%",
-        "top_shell_layers": "3",
-        "top_shell_thickness": "0.6",
-        "bottom_shell_layers": "3",
-        "bottom_shell_thickness": "0.6",
+        **_profile_object_settings(str(profile_name)),
+        "line_width": str(profile["line_width"]),
+        "outer_wall_line_width": str(profile["outer_wall_line_width"]),
+        "inner_wall_line_width": str(profile["inner_wall_line_width"]),
+        "top_shell_layers": str(profile["top_shell_layers"]),
+        "top_shell_thickness": str(profile["top_shell_thickness"]),
+        "bottom_shell_layers": str(profile["bottom_shell_layers"]),
+        "bottom_shell_thickness": str(profile["bottom_shell_thickness"]),
         "enable_support": "0",
         "support_filament": str(bright),
         "support_interface_filament": str(bright),
@@ -804,13 +1208,20 @@ def _project_settings(package: RadialExportPackage) -> bytes:
         # Orca's preview exercises the same per-layer tool-change path that a
         # later explicitly promoted print would use.  Purging into the model,
         # support, or other objects remains forbidden below.
-        "enable_prime_tower": "1",
+        **_COMMON_TRANSITION_SETTINGS,
         "brim_type": "no_brim",
         "raft_layers": "0",
         "print_sequence": "by layer",
         "xy_contour_compensation": "0",
         "xy_hole_compensation": "0",
     }
+
+
+def _project_settings(package: RadialExportPackage) -> bytes:
+    config = _project_settings_values(
+        str(package.process_profile),
+        package.physical_hex,
+    )
     return json.dumps(config, ensure_ascii=False, indent=2).encode("utf-8")
 
 
@@ -819,6 +1230,9 @@ def _experimental_metadata(
     parts: tuple[_CheckedPart, ...],
 ) -> bytes:
     color_depth = str(package.renderer).strip().lower() == "color_depth"
+    sparse_infill_percent = radial_process_profile_sparse_infill_percent(
+        str(package.process_profile)
+    )
     payload = {
         "schema": (
             COLOR_DEPTH_EXPORT_SCHEMA if color_depth else RADIAL_SCHEMA
@@ -830,6 +1244,7 @@ def _experimental_metadata(
         "physical_materials_only": True,
         "single_print_object": True,
         "normal_part_count": len(parts),
+        "process_profile": str(package.process_profile),
         "layer_height_mm": float(package.layer_height_mm),
         "initial_layer_height_mm": float(package.initial_layer_height_mm),
         "black_extruder": (
@@ -841,7 +1256,8 @@ def _experimental_metadata(
             "flush_to_model_enabled": False,
             "prime_tower_enabled": True,
             "prime_tower_reason": "physical core/skin tool changes on each layer",
-            "solid_infill_percent": 100,
+            "sparse_infill_density_percent": sparse_infill_percent,
+            "closed_physical_volumes": True,
             "requires_orca_preview": True,
             "requires_explicit_print_ready_promotion": True,
         },
@@ -851,7 +1267,7 @@ def _experimental_metadata(
                 "name": item.part.name,
                 "role": item.part.role,
                 "extruder": item.part.extruder,
-                "solid_infill": item.part.solid_infill,
+                "closed_physical_volume": bool(item.part.solid_infill),
                 "source_state": item.part.source_state,
                 "vertices": len(item.vertices),
                 "faces": len(item.faces),
@@ -918,7 +1334,7 @@ def write_radial_3mf_atomic(
             _write_parts_model(archive, checked)
             archive.writestr(
                 "Metadata/model_settings.config",
-                _model_settings(archive_title, checked),
+                _model_settings(archive_title, checked, package),
             )
             archive.writestr(
                 "Metadata/project_settings.config", _project_settings(package)
@@ -932,6 +1348,7 @@ def write_radial_3mf_atomic(
             expected_parts=len(checked),
             expected_physical=package.physical_hex,
             expected_extruders=tuple(item.part.extruder for item in checked),
+            expected_process_profile=str(package.process_profile),
         )
         os.replace(temporary, destination)
         return replace(
@@ -953,6 +1370,34 @@ def _metadata_values(element: ET.Element) -> dict[str, str]:
     }
 
 
+def _strict_metadata_values(
+    element: ET.Element,
+    expected_keys: set[str],
+    *,
+    context: str,
+    allow_unkeyed: bool = False,
+) -> dict[str, str]:
+    all_items = element.findall("metadata")
+    unkeyed = [item for item in all_items if "key" not in item.attrib]
+    if unkeyed and not allow_unkeyed:
+        raise RadialExportError(f"{context} contains unkeyed metadata")
+    items = [item for item in all_items if "key" in item.attrib]
+    keys = [str(item.attrib.get("key", "")) for item in items]
+    if len(keys) != len(set(keys)):
+        raise RadialExportError(f"{context} repeats a metadata override")
+    if set(keys) != set(expected_keys):
+        unexpected = sorted(set(keys) - set(expected_keys))
+        missing = sorted(set(expected_keys) - set(keys))
+        raise RadialExportError(
+            f"{context} metadata allowlist drifted "
+            f"(unexpected={unexpected}, missing={missing})"
+        )
+    return {
+        str(item.attrib["key"]): str(item.attrib.get("value", ""))
+        for item in items
+    }
+
+
 def _all_zero(value: object) -> bool:
     if isinstance(value, list):
         return all(str(item) in {"0", "0.0"} for item in value)
@@ -965,6 +1410,7 @@ def validate_radial_3mf(
     expected_parts: int | None = None,
     expected_physical: Sequence[str] | None = None,
     expected_extruders: Sequence[int] | None = None,
+    expected_process_profile: str | None = None,
 ) -> RadialExportValidation:
     """Fail closed if an archive is not a physical, slice-only radial 3MF."""
 
@@ -974,7 +1420,10 @@ def validate_radial_3mf(
     with zipfile.ZipFile(path, "r") as archive:
         if archive.testzip() is not None:
             raise RadialExportError("The radial 3MF has a ZIP CRC failure")
-        names = set(archive.namelist())
+        member_names = archive.namelist()
+        if len(member_names) != len(set(member_names)):
+            raise RadialExportError("The radial 3MF contains duplicate ZIP members")
+        names = set(member_names)
         missing = sorted(_REQUIRED_ARCHIVE_MEMBERS - names)
         if missing:
             raise RadialExportError(
@@ -985,6 +1434,14 @@ def validate_radial_3mf(
             raise RadialExportError(
                 f"The radial 3MF contains unvalidated archive members: {unexpected}"
             )
+        exact_static_members = {
+            "[Content_Types].xml": _content_types(),
+            "_rels/.rels": _root_relationships(),
+            "3D/_rels/3dmodel.model.rels": _model_relationships(),
+        }
+        for name, expected in exact_static_members.items():
+            if archive.read(name) != expected:
+                raise RadialExportError(f"Radial archive relationship drifted: {name}")
         root = ET.fromstring(archive.read("3D/3dmodel.model"))
         parts_root = ET.fromstring(
             archive.read("3D/Objects/radial_parts.model")
@@ -1001,25 +1458,151 @@ def validate_radial_3mf(
             )
         )
 
+        if root.attrib.get("unit") != "millimeter":
+            raise RadialExportError("The radial root model unit drifted")
+        if parts_root.attrib.get("unit") != "millimeter":
+            raise RadialExportError("The radial child model unit drifted")
+        expected_model_attributes = {
+            "unit": "millimeter",
+            "{http://www.w3.org/XML/1998/namespace}lang": "en-US",
+            "requiredextensions": "p",
+        }
+        if root.tag != f"{{{_CORE_NS}}}model":
+            raise RadialExportError("The radial root element is not a 3MF model")
+        if parts_root.tag != f"{{{_CORE_NS}}}model":
+            raise RadialExportError("The radial child element is not a 3MF model")
+        if root.attrib != expected_model_attributes:
+            raise RadialExportError("The radial root model contract drifted")
+        if parts_root.attrib != expected_model_attributes:
+            raise RadialExportError("The radial child model contract drifted")
+        production_uuid_key = f"{{{_PRODUCTION_NS}}}UUID"
+        production_uuids: list[str] = []
+        for model_root in (root, parts_root):
+            for element in model_root.iter():
+                if production_uuid_key not in element.attrib:
+                    continue
+                value = element.attrib[production_uuid_key]
+                try:
+                    parsed = uuid.UUID(value)
+                except (AttributeError, TypeError, ValueError) as exc:
+                    raise RadialExportError(
+                        "A radial Production UUID is malformed"
+                    ) from exc
+                if str(parsed) != value:
+                    raise RadialExportError(
+                        "A radial Production UUID is not canonical lowercase text"
+                    )
+                production_uuids.append(value)
+        if not production_uuids or len(production_uuids) != len(set(production_uuids)):
+            raise RadialExportError(
+                "Radial Production UUIDs are missing or duplicated"
+            )
+
+        root_metadata = root.findall(f"{{{_CORE_NS}}}metadata")
+        child_metadata = parts_root.findall(f"{{{_CORE_NS}}}metadata")
+        if (
+            len(root_metadata) != 6
+            or any(set(item.attrib) != {"name"} for item in root_metadata)
+            or len(child_metadata) != 1
+            or child_metadata[0].attrib != {"name": "BambuStudio:3mfVersion"}
+            or (child_metadata[0].text or "") != "1"
+        ):
+            raise RadialExportError("Radial model metadata structure drifted")
+
         items = root.findall(f"{{{_CORE_NS}}}build/{{{_CORE_NS}}}item")
         if len(items) != 1 or items[0].attrib.get("printable") != "1":
             raise RadialExportError(
                 "The radial archive must have one sliceable build item"
             )
+        expected_item_keys = {
+            "objectid",
+            f"{{{_PRODUCTION_NS}}}UUID",
+            "transform",
+            "printable",
+        }
+        if set(items[0].attrib) != expected_item_keys:
+            raise RadialExportError("The radial build-item attributes drifted")
+        if items[0].attrib.get("transform") != (
+            "1 0 0 0 1 0 0 0 1 128 128 0"
+        ):
+            raise RadialExportError("The radial build transform drifted")
         parent_objects = root.findall(
             f"{{{_CORE_NS}}}resources/{{{_CORE_NS}}}object"
         )
         if len(parent_objects) != 1:
             raise RadialExportError("The radial archive must have one root object")
-        components = parent_objects[0].findall(
-            f"{{{_CORE_NS}}}components/{{{_CORE_NS}}}component"
+        if set(parent_objects[0].attrib) != {
+            "id",
+            f"{{{_PRODUCTION_NS}}}UUID",
+            "type",
+        }:
+            raise RadialExportError("The radial root-object attributes drifted")
+        if parent_objects[0].attrib.get("type") != "model":
+            raise RadialExportError("The radial root object is not a model")
+        component_containers = parent_objects[0].findall(
+            f"{{{_CORE_NS}}}components"
         )
+        if (
+            len(component_containers) != 1
+            or list(parent_objects[0]) != component_containers
+            or component_containers[0].attrib
+        ):
+            raise RadialExportError("Radial root component structure drifted")
+        components = component_containers[0].findall(
+            f"{{{_CORE_NS}}}component"
+        )
+        if list(component_containers[0]) != components:
+            raise RadialExportError(
+                "Radial component container has an unknown element"
+            )
         objects = parts_root.findall(
             f"{{{_CORE_NS}}}resources/{{{_CORE_NS}}}object"
         )
+        parent_resources = root.findall(f"{{{_CORE_NS}}}resources")
+        child_resources = parts_root.findall(f"{{{_CORE_NS}}}resources")
+        builds = root.findall(f"{{{_CORE_NS}}}build")
+        if (
+            len(parent_resources) != 1
+            or parent_resources[0].attrib
+            or list(parent_resources[0]) != parent_objects
+            or len(child_resources) != 1
+            or child_resources[0].attrib
+            or list(child_resources[0]) != objects
+            or len(builds) != 1
+            or set(builds[0].attrib) != {production_uuid_key}
+            or list(builds[0]) != items
+            or list(root) != root_metadata + [parent_resources[0], builds[0]]
+            or list(parts_root) != child_metadata + [child_resources[0]]
+        ):
+            raise RadialExportError("Radial resource structure drifted")
         part_count = len(objects)
         if not part_count or len(components) != part_count:
             raise RadialExportError("Root component and physical part counts differ")
+        parent_id = part_count + 1
+        if int(parent_objects[0].attrib.get("id", "0")) != parent_id:
+            raise RadialExportError("The radial root object ID drifted")
+        if int(items[0].attrib.get("objectid", "0")) != parent_id:
+            raise RadialExportError("The radial build item targets the wrong object")
+        for expected_id, component in enumerate(components, start=1):
+            if set(component.attrib) != {
+                f"{{{_PRODUCTION_NS}}}path",
+                "objectid",
+                f"{{{_PRODUCTION_NS}}}UUID",
+                "transform",
+            }:
+                raise RadialExportError("A radial component attribute drifted")
+            if int(component.attrib.get("objectid", "0")) != expected_id:
+                raise RadialExportError(
+                    "Radial component order no longer matches clipping priority"
+                )
+            if component.attrib.get(f"{{{_PRODUCTION_NS}}}path") != (
+                "/3D/Objects/radial_parts.model"
+            ):
+                raise RadialExportError("A radial component targets another model")
+            if component.attrib.get("transform") != (
+                "1 0 0 0 1 0 0 0 1 0 0 0"
+            ):
+                raise RadialExportError("A radial component transform drifted")
         if expected_parts is not None and part_count != int(expected_parts):
             raise RadialExportError(
                 f"Expected {expected_parts} radial parts, found {part_count}"
@@ -1028,91 +1611,273 @@ def validate_radial_3mf(
             range(1, part_count + 1)
         ):
             raise RadialExportError("Physical object IDs are not contiguous")
+        for obj in objects:
+            if set(obj.attrib) != {
+                "id",
+                f"{{{_PRODUCTION_NS}}}UUID",
+                "name",
+                "type",
+            }:
+                raise RadialExportError("A radial physical object attribute drifted")
+            if obj.attrib.get("type") != "model":
+                raise RadialExportError("A radial physical object is not a model")
 
         total_vertices = 0
         total_faces = 0
+        parsed_meshes: list[tuple[np.ndarray, np.ndarray]] = []
         for obj in objects:
-            mesh = obj.find(f"{{{_CORE_NS}}}mesh")
-            if mesh is None:
-                raise RadialExportError("A radial physical object has no mesh")
-            vertices = mesh.findall(
-                f"{{{_CORE_NS}}}vertices/{{{_CORE_NS}}}vertex"
-            )
-            triangles = mesh.findall(
-                f"{{{_CORE_NS}}}triangles/{{{_CORE_NS}}}triangle"
-            )
+            meshes = obj.findall(f"{{{_CORE_NS}}}mesh")
+            if len(meshes) != 1 or list(obj) != meshes or meshes[0].attrib:
+                raise RadialExportError(
+                    "A radial physical object must contain exactly one mesh"
+                )
+            mesh = meshes[0]
+            vertex_containers = mesh.findall(f"{{{_CORE_NS}}}vertices")
+            triangle_containers = mesh.findall(f"{{{_CORE_NS}}}triangles")
+            if (
+                len(vertex_containers) != 1
+                or len(triangle_containers) != 1
+                or list(mesh) != [vertex_containers[0], triangle_containers[0]]
+                or vertex_containers[0].attrib
+                or triangle_containers[0].attrib
+            ):
+                raise RadialExportError("A radial mesh structure drifted")
+            vertices = vertex_containers[0].findall(f"{{{_CORE_NS}}}vertex")
+            triangles = triangle_containers[0].findall(f"{{{_CORE_NS}}}triangle")
+            if (
+                list(vertex_containers[0]) != vertices
+                or list(triangle_containers[0]) != triangles
+            ):
+                raise RadialExportError(
+                    "A radial mesh container has an unknown element"
+                )
             if not vertices or not triangles:
                 raise RadialExportError("A radial physical object is empty")
+            if any(set(vertex.attrib) != {"x", "y", "z"} for vertex in vertices):
+                raise RadialExportError("A radial vertex attribute drifted")
+            try:
+                vertex_array = np.asarray(
+                    [
+                        [float(vertex.attrib[axis]) for axis in ("x", "y", "z")]
+                        for vertex in vertices
+                    ],
+                    dtype=np.float64,
+                )
+            except (KeyError, TypeError, ValueError) as exc:
+                raise RadialExportError(
+                    "A radial physical object has invalid coordinates"
+                ) from exc
+            if not np.isfinite(vertex_array).all():
+                raise RadialExportError(
+                    "A radial physical object contains NaN/Inf coordinates"
+                )
+            face_rows: list[list[int]] = []
             for triangle in triangles:
-                if "paint_color" in triangle.attrib:
+                if set(triangle.attrib) != {"v1", "v2", "v3"}:
                     raise RadialExportError(
-                        "Triangle paint is forbidden in physical radial output"
+                        "Triangle paint or an unknown face property is forbidden "
+                        "in physical radial output"
                     )
-                indices = [
-                    int(triangle.attrib[key]) for key in ("v1", "v2", "v3")
-                ]
+                try:
+                    indices = [
+                        int(triangle.attrib[key]) for key in ("v1", "v2", "v3")
+                    ]
+                except (KeyError, TypeError, ValueError) as exc:
+                    raise RadialExportError(
+                        "A radial triangle index is malformed"
+                    ) from exc
                 if min(indices) < 0 or max(indices) >= len(vertices):
                     raise RadialExportError("A radial triangle index is invalid")
+                face_rows.append(indices)
+            face_array = np.asarray(face_rows, dtype=np.int32)
+            parsed_meshes.append((vertex_array, face_array))
             total_vertices += len(vertices)
             total_faces += len(triangles)
 
         config_objects = settings_root.findall("object")
         if len(config_objects) != 1:
             raise RadialExportError("Model settings must describe one PrintObject")
+        if int(config_objects[0].attrib.get("id", "0")) != parent_id:
+            raise RadialExportError("Model settings target the wrong PrintObject")
         config_parts = config_objects[0].findall("part")
         if len(config_parts) != part_count:
             raise RadialExportError("Model settings normal-part count is wrong")
+        if [int(part.attrib.get("id", "0")) for part in config_parts] != list(
+            range(1, part_count + 1)
+        ):
+            raise RadialExportError(
+                "Model-settings part order no longer matches clipping priority"
+            )
         extruders: list[int] = []
-        for part in config_parts:
+        part_config_values: list[dict[str, str]] = []
+        part_metadata_keys = {
+            "name",
+            "matrix",
+            "source_file",
+            "source_object_id",
+            "source_volume_id",
+            "source_offset_x",
+            "source_offset_y",
+            "source_offset_z",
+            "extruder",
+        }
+        for part_index, part in enumerate(config_parts):
             if part.attrib.get("subtype") != "normal_part":
                 raise RadialExportError("Every radial volume must be normal_part")
-            values = _metadata_values(part)
+            if set(part.attrib) != {"id", "subtype"}:
+                raise RadialExportError("A radial normal-part attribute drifted")
+            values = _strict_metadata_values(
+                part,
+                part_metadata_keys,
+                context=f"Radial normal part {part_index + 1}",
+            )
+            expected_static = {
+                "matrix": "1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1",
+                "source_file": "radial_shell.obj",
+                "source_object_id": "0",
+                "source_volume_id": str(part_index),
+                "source_offset_x": "0",
+                "source_offset_y": "0",
+                "source_offset_z": "0",
+            }
+            for key, expected in expected_static.items():
+                if values.get(key) != expected:
+                    raise RadialExportError(
+                        f"Unsafe radial normal-part setting {key}: "
+                        f"{values.get(key)!r}"
+                    )
             extruder = int(values.get("extruder", "0"))
             if not 1 <= extruder <= 4:
                 raise RadialExportError("A radial part references a nonphysical tool")
             extruders.append(extruder)
+            part_config_values.append(values)
+            mesh_stats = part.findall("mesh_stat")
+            if len(mesh_stats) != 1 or set(mesh_stats[0].attrib) != {
+                "face_count",
+                "edges_fixed",
+                "degenerate_facets",
+                "facets_removed",
+                "facets_reversed",
+                "backwards_edges",
+            }:
+                raise RadialExportError("A radial mesh_stat record drifted")
+            expected_mesh_stat = {
+                "face_count": str(len(parsed_meshes[part_index][1])),
+                "edges_fixed": "0",
+                "degenerate_facets": "0",
+                "facets_removed": "0",
+                "facets_reversed": "0",
+                "backwards_edges": "0",
+            }
+            if mesh_stats[0].attrib != expected_mesh_stat:
+                raise RadialExportError("A radial mesh_stat value drifted")
         if expected_extruders is not None and tuple(extruders) != tuple(
             int(value) for value in expected_extruders
         ):
             raise RadialExportError("Normal-part extruder assignments drifted")
-
-        required_project = {
-            "layer_height": "0.2",
-            "initial_layer_print_height": "0.2",
-            "adaptive_layer_height": "0",
-            "mixed_filament_definitions": "",
-            "interface_shells": "0",
-            "wall_loops": "1",
-            "wall_generator": "classic",
-            "detect_thin_wall": "1",
-            "sparse_infill_density": "100%",
-            "enable_support": "0",
-            "enable_prime_tower": "1",
-            "flush_into_infill": "0",
-            "flush_into_support": "0",
-            "flush_into_objects": "0",
-            "flush_multiplier": "0",
-            "brim_type": "no_brim",
-            "raft_layers": "0",
-        }
-        for key, value in required_project.items():
-            if project.get(key) != value:
-                raise RadialExportError(
-                    f"Unsafe radial project setting {key}: {project.get(key)!r}"
-                )
-        for key in ("flush_volumes_matrix", "flush_volumes_vector"):
-            if not _all_zero(project.get(key)):
-                raise RadialExportError(f"Unsafe radial project setting {key}")
-        physical = tuple(
-            _normalise_hex(value) for value in project.get("filament_colour", [])
+        plates = settings_root.findall("plate")
+        if len(plates) != 1:
+            raise RadialExportError("Model settings must describe one plate")
+        plate_values = _strict_metadata_values(
+            plates[0],
+            {"plater_id", "plater_name", "locked", "filament_map_mode"},
+            context="Radial plate",
         )
+        expected_plate_values = {
+            "plater_id": "1",
+            "plater_name": "SLICE ONLY - experimental physical radial shell",
+            "locked": "false",
+            "filament_map_mode": "Auto For Flush",
+        }
+        if plate_values != expected_plate_values:
+            raise RadialExportError("Radial plate settings drifted")
+        instances = plates[0].findall("model_instance")
+        if len(instances) != 1:
+            raise RadialExportError("Radial plate instance count drifted")
+        instance_values = _strict_metadata_values(
+            instances[0],
+            {"object_id", "instance_id", "identify_id"},
+            context="Radial model instance",
+        )
+        if instance_values != {
+            "object_id": str(parent_id),
+            "instance_id": "0",
+            "identify_id": "1",
+        }:
+            raise RadialExportError("Radial plate instance metadata drifted")
+        direct_tags = [child.tag for child in settings_root]
+        if direct_tags != ["object", "plate"]:
+            raise RadialExportError("Model-settings root structure drifted")
+
+        process_profile = str(
+            metadata.get("process_profile", RADIAL_PROCESS_PROFILE_MVP_020)
+        )
+        if (
+            expected_process_profile is not None
+            and process_profile != str(expected_process_profile)
+        ):
+            raise RadialExportError(
+                "The radial archive process profile differs from the requested one"
+            )
+        profile = _PROCESS_PROFILES.get(process_profile)
+        if profile is None:
+            raise RadialExportError("The radial process profile is unsupported")
+        _validate_process_profile_metadata(
+            metadata.get("generator_metadata"),
+            process_profile,
+        )
+        if not isinstance(project, Mapping):
+            raise RadialExportError("The radial project settings are malformed")
+        try:
+            physical = tuple(
+                _normalise_hex(value)
+                for value in project.get("filament_colour", [])
+            )
+        except (TypeError, RadialExportError) as exc:
+            raise RadialExportError(
+                "The archive physical filament colours are malformed"
+            ) from exc
         if len(physical) != 4:
             raise RadialExportError("The archive does not contain four physical tools")
         if expected_physical is not None and physical != tuple(
             _normalise_hex(value) for value in expected_physical
         ):
             raise RadialExportError("Physical filament colours drifted")
-
+        expected_project = _project_settings_values(process_profile, physical)
+        if set(project) != set(expected_project):
+            raise RadialExportError(
+                "Radial project-setting allowlist drifted "
+                f"(unexpected={sorted(set(project) - set(expected_project))}, "
+                f"missing={sorted(set(expected_project) - set(project))})"
+            )
+        for key, expected in expected_project.items():
+            if project.get(key) != expected:
+                raise RadialExportError(
+                    f"Unsafe radial project setting {key}: "
+                    f"{project.get(key)!r} != {expected!r}"
+                )
+        expected_object_settings = _profile_object_settings(process_profile)
+        object_values = _strict_metadata_values(
+            config_objects[0],
+            {"name", "extruder", *expected_object_settings},
+            context="Radial PrintObject",
+            allow_unkeyed=True,
+        )
+        object_stats = [
+            item
+            for item in config_objects[0].findall("metadata")
+            if "key" not in item.attrib
+        ]
+        if len(object_stats) != 1 or object_stats[0].attrib != {
+            "face_count": str(total_faces)
+        }:
+            raise RadialExportError("Radial PrintObject face metadata drifted")
+        for key, expected in expected_object_settings.items():
+            if object_values.get(key) != expected:
+                raise RadialExportError(
+                    f"Unsafe radial object override {key}: "
+                    f"{object_values.get(key)!r}"
+                )
         schema = metadata.get("schema")
         if schema not in {RADIAL_SCHEMA, COLOR_DEPTH_EXPORT_SCHEMA}:
             raise RadialExportError("The radial experimental schema is missing")
@@ -1128,6 +1893,23 @@ def validate_radial_3mf(
             raise RadialExportError("The radial archive is incorrectly print-enabled")
         if metadata.get("physical_materials_only") is not True:
             raise RadialExportError("The radial archive is not physical-only")
+        metadata_layer_height = float(
+            metadata.get("layer_height_mm", float("nan"))
+        )
+        if not math.isfinite(metadata_layer_height) or abs(
+            metadata_layer_height - float(profile["layer_height_mm"])
+        ) > 1e-9:
+            raise RadialExportError("Radial layer metadata and process profile differ")
+        metadata_initial_height = float(
+            metadata.get("initial_layer_height_mm", float("nan"))
+        )
+        if not math.isfinite(metadata_initial_height) or abs(
+            metadata_initial_height
+            - float(profile["initial_layer_height_mm"])
+        ) > 1e-9:
+            raise RadialExportError(
+                "Radial initial-layer metadata and process profile differ"
+            )
         safety = metadata.get("safety")
         if not isinstance(safety, Mapping):
             raise RadialExportError("The radial safety metadata is missing")
@@ -1137,13 +1919,87 @@ def validate_radial_3mf(
             raise RadialExportError("The radial support safety gate drifted")
         if safety.get("flush_to_model_enabled") is not False:
             raise RadialExportError("The radial flush safety gate drifted")
+        expected_sparse_infill = radial_process_profile_sparse_infill_percent(
+            process_profile
+        )
+        if int(safety.get("sparse_infill_density_percent", -1)) != (
+            expected_sparse_infill
+        ):
+            raise RadialExportError(
+                "The radial sparse-infill safety metadata drifted"
+            )
+        if safety.get("closed_physical_volumes") is not True:
+            raise RadialExportError(
+                "The radial closed-volume safety gate is missing"
+            )
         if int(metadata.get("normal_part_count", -1)) != part_count:
             raise RadialExportError("Experimental part metadata drifted")
         meta_parts = metadata.get("parts")
         if not isinstance(meta_parts, list) or len(meta_parts) != part_count:
             raise RadialExportError("Experimental per-part metadata drifted")
+        if not all(isinstance(item, Mapping) for item in meta_parts):
+            raise RadialExportError("Experimental per-part metadata is malformed")
+        if [int(item.get("index", -1)) for item in meta_parts] != list(
+            range(part_count)
+        ):
+            raise RadialExportError(
+                "Experimental metadata order no longer matches clipping priority"
+            )
         if [int(item.get("extruder", 0)) for item in meta_parts] != extruders:
             raise RadialExportError("Material metadata and normal parts disagree")
+        if [str(item.get("name", "")) for item in meta_parts] != [
+            values["name"] for values in part_config_values
+        ]:
+            raise RadialExportError("Part names and model settings disagree")
+        for index, ((vertices, faces), item, extruder) in enumerate(
+            zip(parsed_meshes, meta_parts, extruders, strict=True)
+        ):
+            checked = _check_part(
+                RadialExportPart(
+                    name=str(item.get("name", f"archive part {index + 1}")),
+                    role=str(item.get("role", "")),
+                    vertices_mm=vertices,
+                    faces=faces,
+                    extruder=extruder,
+                    solid_infill=(
+                        item.get("closed_physical_volume") is True
+                    ),
+                    source_state=item.get("source_state"),
+                    metadata=(
+                        item.get("metadata", {})
+                        if isinstance(item.get("metadata", {}), Mapping)
+                        else {}
+                    ),
+                ),
+                index,
+            )
+            if int(item.get("vertices", -1)) != len(vertices):
+                raise RadialExportError("Archive vertex count and metadata differ")
+            if int(item.get("faces", -1)) != len(faces):
+                raise RadialExportError("Archive face count and metadata differ")
+            recorded_volume = float(item.get("signed_volume_mm3", float("nan")))
+            if not math.isfinite(recorded_volume) or not math.isclose(
+                recorded_volume,
+                checked.signed_volume_mm3,
+                rel_tol=1.0e-9,
+                abs_tol=1.0e-8,
+            ):
+                raise RadialExportError("Archive volume and metadata differ")
+            if profile.get("coupon_method") is not None:
+                # Coupon meshes are intentionally tiny.  Re-run the expensive
+                # self-intersection check on the serialized bytes instead of
+                # trusting the pre-write NumPy arrays.
+                from . import engine as _engine
+
+                quality = _engine.mesh_quality(
+                    vertices,
+                    faces,
+                    check_self_intersections=True,
+                )
+                if int(quality.get("self_intersecting_faces", -1)) != 0:
+                    raise RadialExportError(
+                        "A serialized coupon volume self-intersects"
+                    )
         if color_depth:
             if any(
                 item.get("role") != "color_depth_physical_union"
@@ -1201,8 +2057,12 @@ def validate_radial_3mf(
                 raise RadialExportError("A partner shell incorrectly uses physical black")
             if max(black_indices) >= min(outer_indices):
                 raise RadialExportError("Radial clipping priority no longer favours the shell")
-        if not all(item.get("solid_infill") is True for item in meta_parts):
-            raise RadialExportError("A radial region is not declared solid")
+        if not all(
+            item.get("closed_physical_volume") is True for item in meta_parts
+        ):
+            raise RadialExportError(
+                "A radial region is not declared as a closed physical volume"
+            )
 
     return RadialExportValidation(
         path=path,
@@ -1223,11 +2083,21 @@ def validate_radial_3mf(
 __all__ = [
     "COLOR_DEPTH_EXPORT_SCHEMA",
     "RADIAL_SCHEMA",
+    "RADIAL_PROCESS_PROFILE_BLACK_COUPON_ARACHNE_010",
+    "RADIAL_PROCESS_PROFILE_BLACK_COUPON_010",
+    "RADIAL_PROCESS_PROFILE_COMPACT_BLACK_COUPON_ARACHNE_010",
+    "RADIAL_PROCESS_PROFILE_COMPACT_BLACK_COUPON_010",
+    "RADIAL_PROCESS_PROFILE_GENERAL_ARACHNE_010",
+    "RADIAL_PROCESS_PROFILE_GENERAL_CLASSIC_010",
+    "RADIAL_PROCESS_PROFILE_LARGE_FRUSTUM_BLACK_COUPON_ARACHNE_010",
+    "RADIAL_PROCESS_PROFILE_LARGE_FRUSTUM_BLACK_COUPON_010",
+    "RADIAL_PROCESS_PROFILE_MVP_020",
     "RadialExportError",
     "RadialExportPackage",
     "RadialExportPart",
     "RadialExportValidation",
     "package_from_radial_shell",
+    "radial_process_profile_sparse_infill_percent",
     "package_from_color_depth",
     "validate_radial_3mf",
     "write_radial_3mf_atomic",

@@ -6,7 +6,7 @@ Developer ID未署名・未公証（ad-hoc署名）alpha
 安定版およびFlat Four Test 3とは別物です。通常の公開macOS Release、公開・
 法令順守を完了した証拠、macOS正式対応の宣言ではありません。
 
-製品表示version：0.8beta（変更なし）
+製品表示version：0.9
 
 ChromaMatter本体はGPL-3.0-or-laterです。同梱する第三者コンポーネントには、
 それぞれ固有の条件が残ります。alpha依存セットには、GPL-3.0-onlyの

@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import heapq
 import html
 import io
 import json
+import math
 import os
 import re
 import tempfile
@@ -23,6 +25,13 @@ import trimesh
 from scipy.spatial import cKDTree
 
 from . import APP_DISPLAY_NAME, __version__
+from .export_validation import (
+    accepts_topology as _export_accepts_topology,
+    policy_metadata as _export_policy_metadata,
+    require_level as _require_export_validation_level,
+    topology_issue_codes as _export_topology_issue_codes,
+    validate_mesh_arrays as _validate_export_mesh_arrays,
+)
 from .assembly import (
     AssemblyError,
     AssemblySelfIntersectionError,
@@ -45,6 +54,7 @@ from .assembly import (
 )
 from .generated_surface_color import (
     EXPORT_DIAGNOSTICS_ATTRIBUTE,
+    FACE_PROVENANCE_LOCAL_CAP,
     FACE_PROVENANCE_SOURCE,
     KNOWN_FACE_PROVENANCE,
     PROVENANCE_SCHEMA,
@@ -69,6 +79,7 @@ from .mixer import (
 from .models import (
     AppSettings,
     COLOR_MODE_FLAT_FOUR,
+    COLOR_MODE_FULL_SPECTRUM,
     ColorResult,
     GeometrySettings,
     MeshLevel,
@@ -105,6 +116,35 @@ from .volume_partition import (
 # project snapshot is user-editable and therefore cannot widen this core limit.
 _HARD_LARGE_GLTF_FINAL_FACE_LIMIT = 450_000
 _HARD_GLTF_NORMAL_SOURCE_FACE_LIMIT = 3_000_000
+
+# A narrowly bounded fallback may discard microscopic surface components from
+# one logical GLB before the ordinary exact-coordinate seam weld.  Connectivity
+# is evaluated through exact POSITION edge incidence, so UV/material vertex
+# splits do not make the intended outer surface look fragmented.  These limits
+# intentionally match the independently exercised dominant-surface candidate
+# policy; none is derived from a filename, source hash, or the GUI's general
+# ``min_component_faces`` preference.
+_DOMINANT_SURFACE_MAX_VERTICES = 1_500_000
+_DOMINANT_SURFACE_MAX_FACES = 1_250_000
+_DOMINANT_SURFACE_MAX_COMPONENTS = 4_096
+_DOMINANT_SURFACE_MIN_FACE_FRACTION = 0.995
+_DOMINANT_SURFACE_MIN_TO_SECOND_RATIO = 32.0
+_DOMINANT_SURFACE_MAX_REMOVED_FACE_FRACTION = 0.005
+_DOMINANT_SURFACE_MAX_REMOVED_AREA_FRACTION = 0.001
+_DOMINANT_SURFACE_MAX_OPEN_COMPONENT_FACES = 8
+_DOMINANT_SURFACE_MAX_OPEN_COMPONENT_AREA_FRACTION = 0.00005
+_DOMINANT_SURFACE_MAX_OPEN_AREA_FRACTION = 0.0002
+_DOMINANT_SURFACE_MAX_INVERTED_COMPONENT_FACES = 2_048
+_DOMINANT_SURFACE_MAX_INVERTED_COMPONENT_AREA_FRACTION = 0.0005
+_DOMINANT_SURFACE_MAX_INVERTED_VOLUME_FRACTION = 0.001
+_DOMINANT_SURFACE_MAX_INVERTED_COMPONENTS = 8
+_DOMINANT_SURFACE_MAX_CONTAINMENT_TRIANGLE_RAY_TESTS = 50_000_000
+_DOMINANT_SURFACE_MAX_CONTAINMENT_SAMPLES_PER_COMPONENT = 13
+_DOMINANT_SURFACE_CONTAINMENT_DIRECTIONS = (
+    (1.0, 0.17320508075688773, 0.31943828249996997),
+    (0.2718281828459045, 1.0, 0.41421356237309503),
+    (0.6180339887498948, 0.22360679774997896, 1.0),
+)
 
 
 MULTIPART_SELF_INTERSECTION_SCHEMA = (
@@ -158,6 +198,57 @@ _FLAT_SHADOW_NEUTRAL_PALETTE_CHROMA_MAX = 8.0
 _FLAT_SHADOW_CHROMATIC_PALETTE_CHROMA_MIN = 18.0
 _FLAT_SHADOW_CHROMATICITY_MARGIN = 0.05
 
+# A second, topology-backed pass handles very dark colour patches whose raw
+# CIELAB chroma falls below the high-confidence per-face gate above.  The
+# relaxed colour thresholds are never sufficient on their own: a candidate
+# must form a multi-face component on one smooth surface and most of its
+# boundary must already carry the same physical chromatic state.  This keeps a
+# faint warm bias in real black trim from being promoted merely because it sits
+# beside a coloured panel.
+_FLAT_REGION_SHADOW_SOURCE_RGB_SPAN_MIN = 0.02
+_FLAT_REGION_SHADOW_SOURCE_RGB_SUM_MIN = 0.06
+_FLAT_REGION_SHADOW_SOURCE_LAB_CHROMA_MIN = 2.0
+_FLAT_REGION_SHADOW_CHROMATICITY_MAX = 0.20
+_FLAT_REGION_SHADOW_CHROMATICITY_MARGIN = 0.05
+_FLAT_REGION_SHADOW_BOUNDARY_STATE_SHARE_MIN = 0.60
+_FLAT_REGION_SHADOW_BOUNDARY_EDGE_MIN = 2
+_FLAT_REGION_SHADOW_COMPONENT_FACE_MIN = 2
+_FLAT_REGION_SHADOW_SMOOTH_ANGLE_DEGREES = 45.0
+_FLAT_REGION_SHADOW_CANDIDATE_FACE_LIMIT = 500_000
+# A coherent dark panel can have no already-red/blue boundary at all.  In that
+# case the component may prove its own colour family, but only when several
+# faces agree, a meaningful fraction carry the stricter colour signal, the
+# normalized RGB direction is stable, and no open/part edge is involved.
+_FLAT_REGION_SELF_EVIDENCE_COMPONENT_FACE_MIN = 4
+_FLAT_REGION_SELF_EVIDENCE_STRICT_FACE_MIN = 2
+_FLAT_REGION_SELF_EVIDENCE_STRICT_SHARE_MIN = 0.33
+_FLAT_REGION_SELF_EVIDENCE_CHROMATICITY_RMS_MAX = 0.06
+# Once a component has passed the stronger proof above, grow by at most two
+# rings into its darkest core.  Each new face still has to prefer the same
+# physical hue over its neutral assignment and receive two smooth, same-part
+# edge votes, so deliberate black trim cannot be pulled in by proximity alone.
+_FLAT_REGION_GROW_SOURCE_RGB_SPAN_MIN = 0.008
+_FLAT_REGION_GROW_SOURCE_RGB_SUM_MIN = 0.025
+_FLAT_REGION_GROW_SOURCE_LAB_CHROMA_MIN = 0.75
+_FLAT_REGION_GROW_CHROMATICITY_MAX = 0.24
+_FLAT_REGION_GROW_CHROMATICITY_MARGIN = 0.02
+_FLAT_REGION_GROW_SUPPORT_EDGE_MIN = 2
+_FLAT_REGION_GROW_RING_LIMIT = 2
+# Candidate-only adjacency is built by scanning the source in bounded chunks.
+# A normal manifold contributes at most two incidences per candidate edge;
+# this cap fails closed on pathological repeated/non-manifold edge data.
+_FLAT_REGION_SPARSE_EDGE_MATCH_LIMIT = 4_000_000
+# A one-triangle notch is accepted only with stronger colour evidence and a
+# completely closed, smooth three-edge neighbourhood.  This narrowly removes
+# the saw-tooth black intrusions produced by per-triangle quantisation without
+# rounding every deliberate black line on the model.
+_FLAT_REGION_NOTCH_SOURCE_RGB_SPAN_MIN = 0.035
+_FLAT_REGION_NOTCH_SOURCE_LAB_CHROMA_MIN = 5.0
+_FLAT_REGION_NOTCH_CHROMATICITY_MAX = 0.14
+_FLAT_REGION_NOTCH_CHROMATICITY_MARGIN = 0.08
+_FLAT_REGION_NOTCH_SUPPORT_EDGE_MIN = 2
+_FLAT_REGION_NOTCH_SMOOTH_ANGLE_DEGREES = 35.0
+
 # A generated model can bake a white or grey lighting patch into otherwise
 # chromatic skin (or cloth).  Flat Four must not turn every such patch into a
 # separate filament colour, but a global white-removal rule would also erase
@@ -185,6 +276,133 @@ _FLAT_REQUIRED_WHITE_RGB_SPAN_MAX = 0.10
 _FLAT_REQUIRED_WHITE_AREA_FRACTION_MIN = 0.0001
 _FLAT_RAW_CHROMA_RECOVERY_SATURATION_MIN = 0.999999
 _FLAT_RAW_CHROMA_RECOVERY_SATURATION_MAX = 1.000001
+
+# High-contrast cel needs a physical dark endpoint and a light neutral endpoint
+# when a meaningful fraction of the model is neutral black cloth.  These gates
+# are deliberately area-weighted: a pupil, seam, or tiny black ornament must
+# not consume two of the four automatic filament slots.
+_STRONG_CEL_DARK_SOURCE_LUMA_MAX = 0.24
+_STRONG_CEL_DARK_SOURCE_RGB_SPAN_MAX = 0.055
+_STRONG_CEL_GARMENT_SOURCE_LUMA_MAX = 0.32
+_STRONG_CEL_GARMENT_SOURCE_LAB_CHROMA_MAX = 17.0
+_STRONG_CEL_NEUTRAL_PHYSICAL_LAB_CHROMA_MAX = 12.0
+_STRONG_CEL_NEUTRAL_STATE_LAB_CHROMA_MAX = 16.0
+_STRONG_CEL_RAMP_MIN_DELTA_L = 10.0
+_STRONG_CEL_BAND_ISLAND_MAX_AREA_MM2 = 1.0
+_STRONG_CEL_GARMENT_HOLE_LUMA_MAX = 0.38
+_STRONG_CEL_GARMENT_HOLE_LAB_CHROMA_MAX = 24.0
+_STRONG_CEL_GARMENT_HOLE_MAX_AREA_MM2 = 1.0
+_STRONG_CEL_GARMENT_HOLE_NEIGHBOR_DELTA_E_MAX = 18.0
+# A broad baked grey highlight is not a one-face "hole": on generated black
+# cloth it commonly spans many triangles and sits just above the strict dark
+# seed threshold.  Grow only a smooth, connected, low-chroma component that
+# has meaningful contact with two existing garment seed faces.  The lower
+# lightness bound prevents this second pass from reconsidering the dark seeds;
+# the upper bound excludes eye whites and bright silver.  Small metal/rivet
+# details fail the component area gate, while part-local adjacency and the
+# signed normal gate stop growth at separate objects and hard creases.
+_STRONG_CEL_GARMENT_GROW_LUMA_MIN = 0.30
+_STRONG_CEL_GARMENT_GROW_LUMA_MAX = 0.52
+_STRONG_CEL_GARMENT_GROW_LAB_CHROMA_MAX = 14.0
+_STRONG_CEL_GARMENT_GROW_SMOOTH_ANGLE_DEGREES = 30.0
+_STRONG_CEL_GARMENT_GROW_COMPONENT_FACE_MIN = 2
+_STRONG_CEL_GARMENT_GROW_COMPONENT_AREA_MIN_MM2 = 1.5
+_STRONG_CEL_GARMENT_GROW_SEED_EDGE_MIN = 2
+_STRONG_CEL_GARMENT_GROW_DISTINCT_SEED_MIN = 2
+_STRONG_CEL_GARMENT_GROW_CANDIDATE_FACE_LIMIT = 500_000
+_STRONG_CEL_GARMENT_GROW_WARM_LUMA_MIN = 0.10
+_STRONG_CEL_GARMENT_GROW_WARM_RED_GREEN_MIN = 0.025
+_STRONG_CEL_GARMENT_GROW_WARM_RED_BLUE_MIN = 0.040
+_STRONG_CEL_GARMENT_GROW_WARM_GREEN_BLUE_MIN = -0.005
+_STRONG_CEL_LIFTED_LUMA_MIN = 0.35
+_STRONG_CEL_LIFT_DELTA_MIN = 0.18
+_STRONG_CEL_DARK_AREA_FRACTION_MIN = 0.08
+_STRONG_CEL_LIFTED_AREA_FRACTION_MIN = 0.03
+_STRONG_CEL_PEAK_LUMA_MIN = 0.65
+_STRONG_CEL_PEAK_AREA_FRACTION_MIN = 0.005
+# A cool cloth endpoint is intentionally harder to reserve than the neutral
+# black/light endpoints.  Hair, pupils, shoes, or a narrow dark trim can pass
+# the ordinary strong-cel dark gate, but they must not turn every four-colour
+# proposal blue.  Only a broad low-chroma dark material with a meaningful lit
+# fraction receives the dedicated blue-grey spool.
+_STRONG_CEL_COOL_DARK_AREA_FRACTION_MIN = 0.20
+_STRONG_CEL_COOL_LIFTED_AREA_FRACTION_MIN = 0.05
+_STRONG_CEL_COOL_LIFTED_GARMENT_FRACTION_MIN = 0.18
+_STRONG_CEL_COOL_STRENGTH_MIN = 0.50
+_STRONG_CEL_DARK_ANCHOR_RGB = np.asarray((0.055, 0.055, 0.055))
+_STRONG_CEL_MID_ANCHOR_RGB = np.asarray((0.50, 0.50, 0.50))
+_STRONG_CEL_LIGHT_ANCHOR_RGB = np.asarray((0.94, 0.94, 0.94))
+_STRONG_CEL_COOL_ANCHOR_RGB = np.asarray((0.36, 0.45, 0.56))
+_STRONG_CEL_COOL_PHYSICAL_LAB_CHROMA_MIN = 12.0
+_STRONG_CEL_COOL_PHYSICAL_LAB_CHROMA_MAX = 32.0
+_STRONG_CEL_COOL_STATE_LAB_CHROMA_MAX = 34.0
+_STRONG_CEL_COOL_LAB_A_ABS_MAX = 16.0
+_STRONG_CEL_COOL_LAB_B_MAX = -7.0
+_STRONG_CEL_COOL_LAB_L_MIN = 25.0
+_STRONG_CEL_COOL_LAB_L_MAX = 75.0
+_STRONG_CEL_SOURCE_HUE_CHROMA_MIN = 5.0
+_STRONG_CEL_SOURCE_HUE_TARGET_L = 52.0
+_STRONG_CEL_SOURCE_HUE_CHROMA_SCALE = 1.35
+_STRONG_CEL_SOURCE_HUE_CHROMA_MAX = 28.0
+_STRONG_CEL_CHROMATIC_SOURCE_RGB_SPAN_MIN = 0.06
+_STRONG_CEL_CHROMATIC_SOURCE_LAB_CHROMA_MIN = 7.0
+_STRONG_CEL_DARK_WARM_AREA_FRACTION_MIN = 0.005
+_STRONG_CEL_DARK_WARM_TARGET_MAX_CHANNEL = 0.70
+_STRONG_CEL_WARM_PALETTE_CHROMA_MIN = 18.0
+_STRONG_CEL_WARM_PALETTE_HUE_MIN_DEGREES = 20.0
+_STRONG_CEL_WARM_PALETTE_HUE_MAX_DEGREES = 70.0
+_STRONG_CEL_WARM_PALETTE_HUE_DELTA_MAX_DEGREES = 30.0
+# The opt-in detail path can recover a warm Full Spectrum recipe at equivalent
+# lightness after nearest-Lab assignment collapsed a shadow to neutral/cool.
+# These are recipe gates, not source classifiers; the source uses the shared
+# wider RGB skin/brown guard from ``illustration_filter`` below.
+_STRONG_CEL_DETAIL_WARM_RECIPE_CHROMA_MIN = 14.0
+_STRONG_CEL_DETAIL_WARM_RECIPE_HUE_MIN_DEGREES = 15.0
+_STRONG_CEL_DETAIL_WARM_RECIPE_HUE_MAX_DEGREES = 85.0
+_STRONG_CEL_DETAIL_WARM_RECIPE_HUE_DELTA_MAX_DEGREES = 30.0
+_STRONG_CEL_DETAIL_WARM_RECIPE_LIGHTNESS_DELTA_MAX = 12.0
+
+# Ordinary label smoothing is useful for source-colour speckles, but it can
+# erase a deliberate cel highlight whenever all three neighbours belong to the
+# shadow state.  Protect coherent generated highlight patches, while allowing
+# isolated one/two-triangle noise to be cleaned as before.
+_STRONG_CEL_SMOOTH_SOURCE_LUMA_MAX = 0.42
+_STRONG_CEL_SMOOTH_LIFT_DELTA_MIN = 0.12
+_STRONG_CEL_SMOOTH_CORE_NEIGHBORS = 2
+_STRONG_CEL_SMOOTH_SINGLE_FACE_AREA_MM2 = 1.0
+
+# Preserve only coherent source-texture relief inside an otherwise compressed
+# dark garment.  The refinement never creates another colour level: an
+# accepted dark/light patch may move by exactly one of the already requested
+# 2-6 cel bands.  Face-count, printable-area, contrast, and connected-component
+# gates reject single-triangle texture noise and fail closed without topology.
+_STRONG_CEL_DETAIL_OWNER_FACE_MIN = 6
+_STRONG_CEL_DETAIL_OWNER_AREA_MIN_MM2 = 3.0
+_STRONG_CEL_DETAIL_SOURCE_LUMA_SPAN_MIN = 0.08
+_STRONG_CEL_DETAIL_SOURCE_LUMA_OFFSET_MIN = 0.035
+_STRONG_CEL_DETAIL_SOURCE_LUMA_OFFSET_FRACTION = 0.25
+_STRONG_CEL_DETAIL_COMPONENT_FACE_MIN = 2
+_STRONG_CEL_DETAIL_COMPONENT_AREA_MIN_MM2 = 0.5
+_STRONG_CEL_DETAIL_COMPONENT_AREA_FRACTION_MIN = 0.01
+_STRONG_CEL_DETAIL_CANDIDATE_FACE_LIMIT = 500_000
+
+# Separate Selective Highlight trial.  Unlike the source-detail layer, this
+# remaps the whole Strong-Cel light distribution into a dark source-colour base
+# plus a small topology-proven lifted region.  Equal-score plateaus are always
+# accepted or rejected as a whole, so a cap can never depend on triangle order.
+_STRONG_CEL_SELECTIVE_SCORE_SCALE = 1_000_000.0
+_STRONG_CEL_SELECTIVE_COMPONENT_FACE_MIN = 2
+_STRONG_CEL_SELECTIVE_COMPONENT_AREA_MIN_MM2 = 0.5
+# Peak-only cap.  The opt-in setting below separately caps the combined lifted
+# mid-highlight plus peak area (for example 8% at a setting of 0.08).
+_STRONG_CEL_SELECTIVE_HIGHLIGHT_FRACTION_MAX = 0.03
+_STRONG_CEL_SELECTIVE_BASE_MID_FRACTION_TARGET = 0.40
+_STRONG_CEL_SELECTIVE_BASE_MID_FRACTION_MAX = 0.45
+_STRONG_CEL_SELECTIVE_STRONG_CREASE_DEGREES = 20.0
+_STRONG_CEL_SELECTIVE_WEAK_CREASE_DEGREES = 10.0
+_STRONG_CEL_SELECTIVE_WEAK_CREASE_LUMA_DELTA_MIN = 0.06
+_STRONG_CEL_SELECTIVE_SILHOUETTE_FACING_MAX = 0.35
+_STRONG_CEL_SELECTIVE_CANDIDATE_FACE_LIMIT = 500_000
 
 
 class EngineError(RuntimeError):
@@ -1071,6 +1289,137 @@ def flat_four_topology_neighbors(
     return face_neighbors_partial(triangles, int(vertex_count))
 
 
+def _flat_four_selected_face_neighbors(
+    faces: np.ndarray,
+    vertex_count: int,
+    selected_faces: np.ndarray,
+) -> np.ndarray | None:
+    """Resolve only selected-face edge neighbours with bounded memory.
+
+    Building the ordinary ``F x 3`` edge table sorts every edge at once and is
+    intentionally disabled for very large models.  Flat-Four shadow recovery
+    normally selects only a small fraction of those faces, so retain their
+    edge keys, scan all source faces in chunks, and collect only matching edge
+    incidences.  Open, degenerate, or non-manifold edges remain ``-1`` and
+    therefore fail the later closed-region checks.
+    """
+
+    triangles = np.asarray(faces)
+    selected = np.asarray(selected_faces)
+    if triangles.ndim != 2 or triangles.shape[1:] != (3,):
+        return None
+    if not np.issubdtype(triangles.dtype, np.integer):
+        return None
+    if selected.ndim != 1 or not np.issubdtype(selected.dtype, np.integer):
+        return None
+    if int(vertex_count) <= 0:
+        return None
+    if len(selected) and (
+        int(selected.min()) < 0 or int(selected.max()) >= len(triangles)
+    ):
+        return None
+    result = np.full((len(selected), 3), -1, dtype=np.int32)
+    if not len(selected):
+        return result
+    # The multiplication key is collision-free for valid vertex indices.  A
+    # practical NumPy mesh cannot approach this guard without exhausting
+    # memory first, but keep the arithmetic explicitly fail-closed.
+    if int(vertex_count) > int(np.iinfo(np.int64).max // int(vertex_count)):
+        return None
+
+    selected_triangles = triangles[selected].astype(np.int64, copy=False)
+    selected_edges = np.vstack(
+        (
+            selected_triangles[:, [0, 1]],
+            selected_triangles[:, [1, 2]],
+            selected_triangles[:, [2, 0]],
+        )
+    )
+    selected_lo = np.minimum(selected_edges[:, 0], selected_edges[:, 1])
+    selected_hi = np.maximum(selected_edges[:, 0], selected_edges[:, 1])
+    selected_keys = selected_lo * np.int64(vertex_count) + selected_hi
+    unique_keys, selected_key_ids = np.unique(
+        selected_keys,
+        return_inverse=True,
+    )
+    matched_key_chunks: list[np.ndarray] = []
+    matched_face_chunks: list[np.ndarray] = []
+    matched_count = 0
+    for start in range(0, len(triangles), 100_000):
+        stop = min(start + 100_000, len(triangles))
+        chunk = triangles[start:stop].astype(np.int64, copy=False)
+        chunk_edges = np.vstack(
+            (
+                chunk[:, [0, 1]],
+                chunk[:, [1, 2]],
+                chunk[:, [2, 0]],
+            )
+        )
+        lo = np.minimum(chunk_edges[:, 0], chunk_edges[:, 1])
+        hi = np.maximum(chunk_edges[:, 0], chunk_edges[:, 1])
+        keys = lo * np.int64(vertex_count) + hi
+        positions = np.searchsorted(unique_keys, keys)
+        in_range = positions < len(unique_keys)
+        safe_positions = np.where(in_range, positions, 0)
+        matched = in_range & (unique_keys[safe_positions] == keys)
+        if not np.any(matched):
+            continue
+        matched_key_chunks.append(
+            positions[matched].astype(np.int32, copy=False)
+        )
+        chunk_face_ids = np.tile(
+            np.arange(start, stop, dtype=np.int32),
+            3,
+        )
+        matched_face_chunks.append(chunk_face_ids[matched])
+        matched_count += int(np.count_nonzero(matched))
+        if matched_count > _FLAT_REGION_SPARSE_EDGE_MATCH_LIMIT:
+            return None
+
+    if not matched_key_chunks:
+        return result
+    matched_key_ids = np.concatenate(matched_key_chunks)
+    matched_face_ids = np.concatenate(matched_face_chunks)
+    # Collapse repeated (edge, face) incidences first.  A degenerate triangle
+    # can otherwise make an ordinary boundary look like a valid paired edge.
+    order = np.lexsort((matched_face_ids, matched_key_ids))
+    matched_key_ids = matched_key_ids[order]
+    matched_face_ids = matched_face_ids[order]
+    distinct = np.ones(len(matched_key_ids), dtype=bool)
+    if len(distinct) > 1:
+        distinct[1:] = (
+            (matched_key_ids[1:] != matched_key_ids[:-1])
+            | (matched_face_ids[1:] != matched_face_ids[:-1])
+        )
+    matched_key_ids = matched_key_ids[distinct]
+    matched_face_ids = matched_face_ids[distinct]
+    _, starts, counts = np.unique(
+        matched_key_ids,
+        return_index=True,
+        return_counts=True,
+    )
+    paired_starts = starts[counts == 2]
+    first_by_key = np.full(len(unique_keys), -1, dtype=np.int32)
+    second_by_key = np.full(len(unique_keys), -1, dtype=np.int32)
+    if len(paired_starts):
+        paired_keys = matched_key_ids[paired_starts]
+        first_by_key[paired_keys] = matched_face_ids[paired_starts]
+        second_by_key[paired_keys] = matched_face_ids[paired_starts + 1]
+
+    owner_faces = np.tile(selected.astype(np.int32, copy=False), 3)
+    first = first_by_key[selected_key_ids]
+    second = second_by_key[selected_key_ids]
+    resolved = np.where(
+        first == owner_faces,
+        second,
+        np.where(second == owner_faces, first, -1),
+    ).astype(np.int32, copy=False)
+    local_faces = np.tile(np.arange(len(selected), dtype=np.int32), 3)
+    edge_slots = np.repeat(np.arange(3, dtype=np.int8), len(selected))
+    result[local_faces, edge_slots] = resolved
+    return result
+
+
 def _orient_unit(vertices: np.ndarray, faces: np.ndarray, up_axis: str, mirror_x: bool) -> tuple[np.ndarray, np.ndarray]:
     axis = up_axis.upper()
     if axis == "Y":
@@ -1098,6 +1447,67 @@ def _orient_unit(vertices: np.ndarray, faces: np.ndarray, up_axis: str, mirror_x
     return result, faces
 
 
+def _face_rows_preserve_exact_triangle_geometry(
+    source_vertices: np.ndarray,
+    source_faces: np.ndarray,
+    output_vertices: np.ndarray,
+    output_faces: np.ndarray,
+) -> bool:
+    """Prove that every output face row is the same exact source triangle.
+
+    Local planar caps are appended to the source face table.  Their face IDs
+    remain authoritative only while later cleanup preserves that row order.
+    Vertex IDs and winding may change, so compare the three exact coordinates
+    as an unordered one-to-one set.  Any face insertion/removal/reordering,
+    degenerate coordinate ambiguity, or floating-point movement fails closed.
+    The bounded chunks avoid materialising a large ``F x 3 x 3`` comparison
+    for an entire high-resolution GLB at once.
+    """
+
+    source_vertices = np.asarray(source_vertices, dtype=np.float64)
+    output_vertices = np.asarray(output_vertices, dtype=np.float64)
+    source_faces = np.asarray(source_faces)
+    output_faces = np.asarray(output_faces)
+    if (
+        source_vertices.ndim != 2
+        or source_vertices.shape[1:] != (3,)
+        or output_vertices.ndim != 2
+        or output_vertices.shape[1:] != (3,)
+        or source_faces.ndim != 2
+        or source_faces.shape[1:] != (3,)
+        or output_faces.shape != source_faces.shape
+        or not np.issubdtype(source_faces.dtype, np.integer)
+        or not np.issubdtype(output_faces.dtype, np.integer)
+        or not np.all(np.isfinite(source_vertices))
+        or not np.all(np.isfinite(output_vertices))
+    ):
+        return False
+    if len(source_faces) and (
+        int(source_faces.min()) < 0
+        or int(source_faces.max()) >= len(source_vertices)
+        or int(output_faces.min()) < 0
+        or int(output_faces.max()) >= len(output_vertices)
+    ):
+        return False
+
+    chunk_size = 32_768
+    for start in range(0, len(source_faces), chunk_size):
+        stop = min(start + chunk_size, len(source_faces))
+        source_triangles = source_vertices[source_faces[start:stop]]
+        output_triangles = output_vertices[output_faces[start:stop]]
+        coordinate_matches = np.all(
+            source_triangles[:, :, None, :]
+            == output_triangles[:, None, :, :],
+            axis=3,
+        )
+        if not (
+            np.all(np.sum(coordinate_matches, axis=1) == 1)
+            and np.all(np.sum(coordinate_matches, axis=2) == 1)
+        ):
+            return False
+    return True
+
+
 def _mesh_from_set(mesh_set: ml.MeshSet) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     mesh = mesh_set.current_mesh()
     vertices = np.asarray(mesh.vertex_matrix(), dtype=np.float64)
@@ -1115,7 +1525,7 @@ def _simplify_mesh(
     target_faces: int,
     *,
     preserve_boundary: bool = False,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, bool]:
     if target_faces >= len(faces):
         return vertices.copy(), faces.copy()
     rgba = np.column_stack((colors, np.ones(len(colors), dtype=np.float64)))
@@ -1234,6 +1644,600 @@ def _compact_part_mesh(
     used = np.unique(np.asarray(faces, dtype=np.int32).reshape(-1))
     local_faces = np.searchsorted(used, faces).astype(np.int32)
     return vertices[used], local_faces, colors[used]
+
+
+@dataclass(frozen=True)
+class _DominantSurfaceComponent:
+    label: int
+    face_ids: np.ndarray
+    surface_area: float
+    signed_volume: float
+    bbox_min: np.ndarray
+    bbox_max: np.ndarray
+
+    @property
+    def face_count(self) -> int:
+        return int(len(self.face_ids))
+
+
+def _exact_position_edge_rows(
+    geometric_faces: np.ndarray,
+    position_count: int,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Return undirected exact-position keys, directions, and face IDs."""
+
+    face_count = int(len(geometric_faces))
+    directed = np.concatenate(
+        (
+            geometric_faces[:, (0, 1)],
+            geometric_faces[:, (1, 2)],
+            geometric_faces[:, (2, 0)],
+        ),
+        axis=0,
+    ).astype(np.int64, copy=False)
+    lo = np.minimum(directed[:, 0], directed[:, 1])
+    hi = np.maximum(directed[:, 0], directed[:, 1])
+    keys = lo * np.int64(position_count) + hi
+    directions = (directed[:, 0] == lo).astype(np.int8, copy=False)
+    face_ids = np.tile(np.arange(face_count, dtype=np.int64), 3)
+    return keys, directions, face_ids
+
+
+def _exact_position_component_labels(
+    geometric_faces: np.ndarray,
+    position_count: int,
+) -> np.ndarray:
+    """Connect faces only across an unambiguous two-face geometric edge."""
+
+    from scipy.sparse import coo_matrix
+    from scipy.sparse.csgraph import connected_components
+
+    face_count = int(len(geometric_faces))
+    keys, _directions, face_ids = _exact_position_edge_rows(
+        geometric_faces,
+        position_count,
+    )
+    order = np.argsort(keys, kind="stable")
+    sorted_keys = keys[order]
+    _unique, starts, counts = np.unique(
+        sorted_keys,
+        return_index=True,
+        return_counts=True,
+    )
+    paired_starts = starts[counts == 2]
+    if not len(paired_starts):
+        return np.arange(face_count, dtype=np.int32)
+    first = face_ids[order[paired_starts]]
+    second = face_ids[order[paired_starts + 1]]
+    rows = np.concatenate((first, second))
+    columns = np.concatenate((second, first))
+    graph = coo_matrix(
+        (
+            np.ones(len(rows), dtype=np.uint8),
+            (rows, columns),
+        ),
+        shape=(face_count, face_count),
+        dtype=np.uint8,
+    ).tocsr()
+    _count, labels = connected_components(
+        graph,
+        directed=False,
+        return_labels=True,
+    )
+    return np.asarray(labels, dtype=np.int32)
+
+
+def _exact_position_component_is_closed(
+    geometric_faces: np.ndarray,
+    position_count: int,
+) -> bool:
+    if not len(geometric_faces):
+        return False
+    keys, directions, _face_ids = _exact_position_edge_rows(
+        geometric_faces,
+        position_count,
+    )
+    order = np.argsort(keys, kind="stable")
+    sorted_keys = keys[order]
+    _unique, starts, counts = np.unique(
+        sorted_keys,
+        return_index=True,
+        return_counts=True,
+    )
+    if np.any(counts != 2):
+        return False
+    return bool(
+        np.all(
+            directions[order[starts]]
+            != directions[order[starts + 1]]
+        )
+    )
+
+
+def _dominant_surface_components(
+    vertices: np.ndarray,
+    faces: np.ndarray,
+    labels: np.ndarray,
+) -> list[_DominantSurfaceComponent]:
+    triangles = np.asarray(vertices[faces], dtype=np.float64)
+    doubled_areas = np.linalg.norm(
+        np.cross(
+            triangles[:, 1] - triangles[:, 0],
+            triangles[:, 2] - triangles[:, 0],
+        ),
+        axis=1,
+    )
+    if np.any(~np.isfinite(doubled_areas)) or np.any(doubled_areas <= 0.0):
+        raise AssemblyError(
+            "主表面候補に縮退面または非有限の面積があります"
+        )
+    label_order = np.argsort(labels, kind="stable")
+    sorted_labels = labels[label_order]
+    unique_labels, starts, counts = np.unique(
+        sorted_labels,
+        return_index=True,
+        return_counts=True,
+    )
+    if len(unique_labels) > _DOMINANT_SURFACE_MAX_COMPONENTS:
+        raise AssemblyError(
+            "主表面候補の成分数が安全上限を超えています: "
+            f"{len(unique_labels):,} / {_DOMINANT_SURFACE_MAX_COMPONENTS:,}"
+        )
+    components: list[_DominantSurfaceComponent] = []
+    for label, start, count in zip(unique_labels, starts, counts):
+        face_ids = np.sort(
+            label_order[int(start) : int(start + count)]
+        ).astype(np.int32, copy=False)
+        component_triangles = triangles[face_ids]
+        points = component_triangles.reshape((-1, 3))
+        bbox_min = points.min(axis=0)
+        bbox_max = points.max(axis=0)
+        origin = 0.5 * (bbox_min + bbox_max)
+        relative = component_triangles - origin
+        signed_volume = float(
+            np.einsum(
+                "ij,ij->i",
+                relative[:, 0],
+                np.cross(relative[:, 1], relative[:, 2]),
+            ).sum()
+            / 6.0
+        )
+        surface_area = float(0.5 * doubled_areas[face_ids].sum())
+        if not np.isfinite(signed_volume) or not np.isfinite(surface_area):
+            raise AssemblyError("主表面候補の面積または体積が非有限です")
+        components.append(
+            _DominantSurfaceComponent(
+                label=int(label),
+                face_ids=face_ids,
+                surface_area=surface_area,
+                signed_volume=signed_volume,
+                bbox_min=bbox_min,
+                bbox_max=bbox_max,
+            )
+        )
+    return sorted(
+        components,
+        key=lambda component: (-component.face_count, component.label),
+    )
+
+
+def _dominant_surface_containment_samples(
+    component: _DominantSurfaceComponent,
+    vertices: np.ndarray,
+    faces: np.ndarray,
+) -> np.ndarray:
+    component_faces = faces[component.face_ids]
+    vertex_ids = np.unique(component_faces.reshape(-1))
+    points = vertices[vertex_ids]
+    triangles = vertices[component_faces]
+    centroids = triangles.mean(axis=1)
+    # Match the independent candidate proof: its center is weighted by source
+    # face corners, not by unique vertices.  This keeps the in-memory fallback
+    # deterministic when one region has a denser tessellation than another.
+    samples: list[np.ndarray] = [triangles.reshape((-1, 3)).mean(axis=0)]
+    for axis in range(3):
+        samples.append(points[int(np.argmin(points[:, axis]))])
+        samples.append(points[int(np.argmax(points[:, axis]))])
+        samples.append(centroids[int(np.argmin(centroids[:, axis]))])
+        samples.append(centroids[int(np.argmax(centroids[:, axis]))])
+    return np.unique(np.asarray(samples, dtype=np.float64), axis=0)
+
+
+def _dominant_surface_contains_component(
+    dominant: _DominantSurfaceComponent,
+    component: _DominantSurfaceComponent,
+    vertices: np.ndarray,
+    faces: np.ndarray,
+) -> tuple[bool, int, int]:
+    """Prove containment with deterministic multi-sample ray parity."""
+
+    outer_triangles = np.asarray(
+        vertices[faces[dominant.face_ids]],
+        dtype=np.float64,
+    )
+    triangle_a = outer_triangles[:, 0]
+    edge_1 = outer_triangles[:, 1] - triangle_a
+    edge_2 = outer_triangles[:, 2] - triangle_a
+    samples = _dominant_surface_containment_samples(
+        component,
+        vertices,
+        faces,
+    )
+    span = float(np.max(dominant.bbox_max - dominant.bbox_min))
+    epsilon = max(span * 1.0e-10, 1.0e-13)
+    if len(samples) > _DOMINANT_SURFACE_MAX_CONTAINMENT_SAMPLES_PER_COMPONENT:
+        raise AssemblyError(
+            "内部反転閉表面の包含判定点が安全上限を超えています"
+        )
+    directions = np.asarray(
+        _DOMINANT_SURFACE_CONTAINMENT_DIRECTIONS,
+        dtype=np.float64,
+    )
+    ambiguous = 0
+    for direction in directions:
+        h = np.cross(np.broadcast_to(direction, edge_2.shape), edge_2)
+        determinant = np.einsum("ij,ij->i", edge_1, h)
+        determinant_mask = np.abs(determinant) > epsilon
+        for point in samples:
+            offset = point - triangle_a
+            inverse = np.zeros_like(determinant)
+            inverse[determinant_mask] = 1.0 / determinant[determinant_mask]
+            u = np.einsum("ij,ij->i", offset, h) * inverse
+            q = np.cross(offset, edge_1)
+            v = (q @ direction) * inverse
+            distance = np.einsum("ij,ij->i", edge_2, q) * inverse
+            hit = (
+                determinant_mask
+                & (u >= -epsilon)
+                & (u <= 1.0 + epsilon)
+                & (v >= -epsilon)
+                & (u + v <= 1.0 + epsilon)
+                & (distance > epsilon)
+            )
+            if np.any(
+                hit
+                & (
+                    np.minimum(
+                        np.minimum(u, v),
+                        1.0 - u - v,
+                    )
+                    <= epsilon
+                )
+            ):
+                ambiguous += 1
+                return False, int(len(samples)), ambiguous
+            if int(np.count_nonzero(hit)) % 2 != 1:
+                return False, int(len(samples)), ambiguous
+    return True, int(len(samples)), ambiguous
+
+
+def _filter_conservative_dominant_exact_position_surface(
+    vertices: np.ndarray,
+    faces: np.ndarray,
+    colors: np.ndarray,
+) -> tuple[
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    dict[str, object],
+    dict[str, object],
+]:
+    """Keep one overwhelmingly dominant exact-position surface, or fail.
+
+    This is a recovery path for a logical single GLB whose disposable internal
+    shell or microscopic overlaid faces make the ordinary seam proof ambiguous.
+    It never uses a per-file identity and never treats the user-facing general
+    component-size preference as proof that a component is disposable.
+    """
+
+    source_vertices = np.asarray(vertices, dtype=np.float64)
+    source_faces = np.asarray(faces, dtype=np.int32)
+    source_colors = np.asarray(colors, dtype=np.float64)
+    if (
+        len(source_vertices) > _DOMINANT_SURFACE_MAX_VERTICES
+        or len(source_faces) > _DOMINANT_SURFACE_MAX_FACES
+    ):
+        raise AssemblyError(
+            "主表面候補の入力規模が安全上限を超えています"
+        )
+    if len(source_faces) < 2 or not len(source_vertices):
+        raise AssemblyError("主表面候補を判定できる面がありません")
+    if source_colors.shape != (len(source_vertices), 3):
+        raise AssemblyError("主表面候補の頂点色配列が不正です")
+    if not np.isfinite(source_vertices).all() or not np.isfinite(
+        source_colors
+    ).all():
+        raise AssemblyError("主表面候補に非有限の頂点または色があります")
+
+    _positions, position_inverse = np.unique(
+        source_vertices,
+        axis=0,
+        return_inverse=True,
+    )
+    geometric_faces = position_inverse[source_faces].astype(
+        np.int64,
+        copy=False,
+    )
+    if np.any(
+        (geometric_faces[:, 0] == geometric_faces[:, 1])
+        | (geometric_faces[:, 1] == geometric_faces[:, 2])
+        | (geometric_faces[:, 2] == geometric_faces[:, 0])
+    ):
+        raise AssemblyError("主表面候補に同一位置へ退化した面があります")
+    labels = _exact_position_component_labels(
+        geometric_faces,
+        int(len(_positions)),
+    )
+    components = _dominant_surface_components(
+        source_vertices,
+        source_faces,
+        labels,
+    )
+    if len(components) < 2:
+        raise AssemblyError("安全に除去できる独立した微小表面がありません")
+    dominant = components[0]
+    second = components[1]
+    source_face_count = int(len(source_faces))
+    removed_faces = source_face_count - dominant.face_count
+    dominant_face_fraction = dominant.face_count / source_face_count
+    dominant_to_second_ratio = dominant.face_count / second.face_count
+    removed_face_fraction = removed_faces / source_face_count
+    total_area = float(sum(item.surface_area for item in components))
+    if total_area <= 0.0 or not np.isfinite(total_area):
+        raise AssemblyError("主表面候補の総面積が不正です")
+    removed_area = total_area - dominant.surface_area
+    removed_area_fraction = removed_area / total_area
+    if (
+        dominant_face_fraction < _DOMINANT_SURFACE_MIN_FACE_FRACTION
+        or dominant_to_second_ratio
+        < _DOMINANT_SURFACE_MIN_TO_SECOND_RATIO
+        or removed_face_fraction
+        > _DOMINANT_SURFACE_MAX_REMOVED_FACE_FRACTION
+        or removed_area_fraction
+        > _DOMINANT_SURFACE_MAX_REMOVED_AREA_FRACTION
+    ):
+        raise AssemblyError(
+            "一つの主表面が保守的な優勢条件を満たしません: "
+            f"主面率 {dominant_face_fraction:.6f}, "
+            f"第2成分比 {dominant_to_second_ratio:.3f}, "
+            f"除去面率 {removed_face_fraction:.6f}, "
+            f"除去面積率 {removed_area_fraction:.6f}"
+        )
+    dominant_span = float(np.max(dominant.bbox_max - dominant.bbox_min))
+    volume_tolerance = max(dominant_span**3 * 1.0e-12, 1.0e-18)
+    if dominant.signed_volume <= volume_tolerance:
+        raise AssemblyError("主表面候補の正体積を証明できません")
+
+    # Containment is vectorized over every dominant triangle for every sample
+    # ray.  The face/area thresholds alone still permit thousands of tiny
+    # inverted tetrahedra, so determine a strict worst-case workload before
+    # running even the first ray.  Open fragments and positive-volume solids
+    # never enter containment and therefore do not consume this budget.
+    component_closed: dict[int, bool] = {}
+    inverted_component_count = 0
+    for component in components[1:]:
+        closed = _exact_position_component_is_closed(
+            geometric_faces[component.face_ids],
+            int(len(_positions)),
+        )
+        component_closed[component.label] = closed
+        if closed and component.signed_volume < 0.0:
+            inverted_component_count += 1
+    if inverted_component_count > _DOMINANT_SURFACE_MAX_INVERTED_COMPONENTS:
+        raise AssemblyError(
+            "内部反転閉表面の候補数が安全上限を超えています: "
+            f"{inverted_component_count:,} / "
+            f"{_DOMINANT_SURFACE_MAX_INVERTED_COMPONENTS:,}"
+        )
+    containment_triangle_ray_test_upper_bound = (
+        dominant.face_count
+        * inverted_component_count
+        * _DOMINANT_SURFACE_MAX_CONTAINMENT_SAMPLES_PER_COMPONENT
+        * len(_DOMINANT_SURFACE_CONTAINMENT_DIRECTIONS)
+    )
+    if (
+        containment_triangle_ray_test_upper_bound
+        > _DOMINANT_SURFACE_MAX_CONTAINMENT_TRIANGLE_RAY_TESTS
+    ):
+        raise AssemblyError(
+            "内部反転閉表面の包含判定量が安全上限を超えています: "
+            f"{containment_triangle_ray_test_upper_bound:,} / "
+            f"{_DOMINANT_SURFACE_MAX_CONTAINMENT_TRIANGLE_RAY_TESTS:,} "
+            "triangle-ray"
+        )
+
+    dominant_closed = _exact_position_component_is_closed(
+        geometric_faces[dominant.face_ids],
+        int(len(_positions)),
+    )
+    # Do not require every exact-position edge of the dominant component to
+    # have incidence two.  A valid texture-seamed surface can contain an
+    # unrelated interior coincident edge (incidence four) that must remain
+    # unmerged.  Prove the candidate with the same selective reverse-boundary
+    # seam transaction used by the production repair path instead: it merges
+    # boundary partners only and independently verifies the resulting indexed
+    # mesh as closed, manifold, and consistently wound.  The exact proved
+    # arrays and record are returned to the caller, avoiding a second identical
+    # seam transaction; the independent final-mesh validation still runs.
+    dominant_mask = labels == dominant.label
+    (
+        dominant_proof_vertices,
+        dominant_proof_faces,
+        dominant_proof_colors,
+    ) = _compact_part_mesh(
+        source_vertices,
+        source_faces[dominant_mask],
+        source_colors,
+    )
+    try:
+        (
+            proved_vertices,
+            proved_faces,
+            proved_colors,
+            dominant_seam_proof,
+        ) = solidify_coincident_shells(
+            dominant_proof_vertices,
+            dominant_proof_faces,
+            dominant_proof_colors,
+            require_positive_volume=False,
+            allow_unmatched_boundary_edges=False,
+        )
+    except AssemblyError as error:
+        raise AssemblyError(
+            "主表面候補を選択的な同一座標継ぎ目統合で閉立体と証明できません: "
+            f"{error}"
+        ) from error
+    if not bool(dominant_seam_proof.get("closed")):
+        raise AssemblyError("主表面候補の選択的な継ぎ目閉鎖証明が不完全です")
+    bounds_epsilon = max(dominant_span * 1.0e-7, 1.0e-12)
+    total_open_area = 0.0
+    removed_records: list[dict[str, object]] = []
+    for component in components[1:]:
+        area_fraction = component.surface_area / dominant.surface_area
+        closed = component_closed[component.label]
+        bounds_contained = bool(
+            np.all(component.bbox_min >= dominant.bbox_min - bounds_epsilon)
+            and np.all(
+                component.bbox_max <= dominant.bbox_max + bounds_epsilon
+            )
+        )
+        surface_contained: bool | None = None
+        containment_sample_count = 0
+        containment_ambiguous_ray_count = 0
+        if closed:
+            if (
+                component.face_count
+                > _DOMINANT_SURFACE_MAX_INVERTED_COMPONENT_FACES
+            ):
+                raise AssemblyError("除去候補の閉表面が大きすぎます")
+            if component.signed_volume >= 0.0:
+                raise AssemblyError(
+                    "正体積の独立表面は意図したモデル部品の可能性があるため除去しません"
+                )
+            if abs(component.signed_volume) <= max(
+                dominant_span**3 * 1.0e-15,
+                1.0e-20,
+            ):
+                raise AssemblyError("除去候補の閉表面体積を安定判定できません")
+            if (
+                area_fraction
+                > _DOMINANT_SURFACE_MAX_INVERTED_COMPONENT_AREA_FRACTION
+                or abs(component.signed_volume) / dominant.signed_volume
+                > _DOMINANT_SURFACE_MAX_INVERTED_VOLUME_FRACTION
+                or not bounds_contained
+            ):
+                raise AssemblyError(
+                    "負巻きの独立表面が主表面内部の微小殻だと証明できません"
+                )
+            (
+                surface_contained,
+                containment_sample_count,
+                containment_ambiguous_ray_count,
+            ) = _dominant_surface_contains_component(
+                dominant,
+                component,
+                source_vertices,
+                source_faces,
+            )
+            if not surface_contained:
+                raise AssemblyError(
+                    "負巻きの独立表面が主表面内にあることを多点検証できません"
+                )
+            classification = "internal_inverted_closed_shell"
+        else:
+            total_open_area += component.surface_area
+            if (
+                component.face_count
+                > _DOMINANT_SURFACE_MAX_OPEN_COMPONENT_FACES
+                or area_fraction
+                > _DOMINANT_SURFACE_MAX_OPEN_COMPONENT_AREA_FRACTION
+                or not bounds_contained
+            ):
+                raise AssemblyError(
+                    "開いた独立表面が安全に除去できる微小断片ではありません"
+                )
+            classification = "open_micro_fragment"
+        removed_records.append(
+            {
+                "classification": classification,
+                "closed": bool(closed),
+                "face_count": component.face_count,
+                "surface_area": float(component.surface_area),
+                "area_fraction_of_dominant": float(area_fraction),
+                "signed_volume": float(component.signed_volume),
+                "contained_by_dominant_bounds": bounds_contained,
+                "contained_by_dominant_surface": surface_contained,
+                "containment_sample_count": containment_sample_count,
+                "containment_ambiguous_ray_count": (
+                    containment_ambiguous_ray_count
+                ),
+            }
+        )
+    if (
+        total_open_area / dominant.surface_area
+        > _DOMINANT_SURFACE_MAX_OPEN_AREA_FRACTION
+    ):
+        raise AssemblyError("開いた微小断片の合計面積が安全上限を超えています")
+
+    if int(np.count_nonzero(dominant_mask)) != dominant.face_count:
+        raise AssemblyError("主表面候補の面IDを再現できません")
+    record: dict[str, object] = {
+        "schema": "chromamatter.dominant-exact-position-surface.v1",
+        "method": "dominant_exact_position_surface_component_filter",
+        "source_vertices": int(len(source_vertices)),
+        "source_faces": source_face_count,
+        "output_vertices": int(len(dominant_proof_vertices)),
+        "output_faces": int(len(dominant_proof_faces)),
+        "removed_vertices": int(
+            len(source_vertices) - len(dominant_proof_vertices)
+        ),
+        "removed_faces": int(removed_faces),
+        "component_count": int(len(components)),
+        "kept_component_count": 1,
+        "removed_component_count": int(len(removed_records)),
+        "dominant_face_fraction": float(dominant_face_fraction),
+        "dominant_to_second_face_ratio": float(dominant_to_second_ratio),
+        "removed_face_fraction": float(removed_face_fraction),
+        "removed_area_fraction": float(removed_area_fraction),
+        "dominant_exact_position_closed": bool(dominant_closed),
+        "dominant_selective_seam_closed": bool(
+            dominant_seam_proof.get("closed")
+        ),
+        "dominant_selective_seam_method": str(
+            dominant_seam_proof.get("method", "")
+        ),
+        "dominant_unmerged_interior_coincident_vertex_excess": int(
+            dominant_seam_proof.get(
+                "unmerged_interior_coincident_vertex_excess",
+                0,
+            )
+            or 0
+        ),
+        "selective_seam_output_vertices": int(len(proved_vertices)),
+        "selective_seam_output_faces": int(len(proved_faces)),
+        "internal_inverted_component_count": int(inverted_component_count),
+        "containment_triangle_ray_test_upper_bound": int(
+            containment_triangle_ray_test_upper_bound
+        ),
+        "containment_triangle_ray_test_budget": int(
+            _DOMINANT_SURFACE_MAX_CONTAINMENT_TRIANGLE_RAY_TESTS
+        ),
+        "dominant_signed_volume": float(dominant.signed_volume),
+        "removed_components": removed_records,
+        "face_order_preserved": True,
+        "geometry_coordinates_preserved": True,
+        "vertex_colors_preserved": True,
+        "whole_model_remesh": False,
+        "voxelization": False,
+        "hole_cap_generation": False,
+    }
+    return (
+        proved_vertices,
+        proved_faces,
+        proved_colors,
+        record,
+        dominant_seam_proof,
+    )
 
 
 def _triangle_coordinate_multiset_is_subset(
@@ -3045,6 +4049,11 @@ def prepare_geometry(
         return prepared_parts
     warnings = list(asset.warnings)
     generic_repair_record: dict[str, object] | None = None
+    working_face_provenance: np.ndarray | None = None
+    pre_cap_cleaning_diagnostic: dict[str, object] | None = None
+    pre_cap_cleanup_removed_faces = 0
+    dominant_surface_filter_record: dict[str, object] | None = None
+    dominant_surface_filter_removed_faces = 0
     working_vertices = asset.vertices.astype(np.float64)
     working_faces = np.asarray(asset.faces, dtype=np.int32)
     working_colors = asset.colors.astype(np.float64)
@@ -3061,25 +4070,283 @@ def prepare_geometry(
             "GLBの同一座標テクスチャ継ぎ目を安全検証しています",
         )
         try:
-            (
-                working_vertices,
-                working_faces,
-                working_colors,
-                generic_repair_record,
-            ) = solidify_coincident_shells(
-                working_vertices,
-                working_faces,
-                working_colors,
-                # Raw Hi3D assets can contain tiny inward-wound closed islands.
-                # Component cleanup removes those and coherent orientation fixes
-                # the survivors.  The strict post-clean/QEM call below still
-                # requires every remaining body to have positive volume.
-                require_positive_volume=False,
-            )
+            try:
+                (
+                    working_vertices,
+                    working_faces,
+                    working_colors,
+                    generic_repair_record,
+                ) = solidify_coincident_shells(
+                    working_vertices,
+                    working_faces,
+                    working_colors,
+                    # Raw generated assets can contain tiny inward-wound closed
+                    # islands.  The strict post-clean/QEM call below still
+                    # requires every retained body to have positive volume.
+                    require_positive_volume=False,
+                    # Opt-in repair first welds only proven exact GLB seams.
+                    # Real openings remain open for the strict planar tiny-hole
+                    # capper below.
+                    allow_unmatched_boundary_edges=bool(
+                        settings.repair_unmatched_boundaries
+                    ),
+                )
+            except AssemblyError as initial_seam_error:
+                if not bool(settings.repair_unmatched_boundaries):
+                    raise
+                # Some one-primitive generators embed a few internal negative
+                # shells or microscopic overlaid faces in the same index stream.
+                # They can create ambiguous/non-manifold exact-position edge
+                # groups before ordinary component cleanup sees the logical
+                # texture-seamed surface.  Retry only after a conservative,
+                # shape-backed dominant-surface proof; a rejection preserves the
+                # original fail-closed result.
+                emit(
+                    progress,
+                    "solidify",
+                    0.012,
+                    "GLBの主表面と内部の微小断片を安全判定しています",
+                )
+                try:
+                    (
+                        working_vertices,
+                        working_faces,
+                        working_colors,
+                        dominant_surface_filter_record,
+                        dominant_surface_seam_record,
+                    ) = _filter_conservative_dominant_exact_position_surface(
+                        working_vertices,
+                        working_faces,
+                        working_colors,
+                    )
+                    dominant_surface_filter_removed_faces = int(
+                        dominant_surface_filter_record.get(
+                            "removed_faces",
+                            0,
+                        )
+                        or 0
+                    )
+                    # Reuse the exact selective-seam transaction returned by
+                    # the filter.  Its source/output counts and preservation
+                    # fields remain the authoritative relative seam proof.
+                    generic_repair_record = dict(dominant_surface_seam_record)
+                except AssemblyError as dominant_surface_error:
+                    raise AssemblyError(
+                        f"最初の継ぎ目検証: {initial_seam_error}; "
+                        "保守的な主表面判定: "
+                        f"{dominant_surface_error}"
+                    ) from dominant_surface_error
+                # Keep the established seam method and preservation fields at
+                # the top level.  The 3MF validator uses that relative proof to
+                # admit only bounded source-preserved self-intersection warnings;
+                # the preceding source-face removal remains separately explicit.
+                generic_repair_record["dominant_surface_filter"] = dict(
+                    dominant_surface_filter_record
+                )
+            if not bool(generic_repair_record.get("closed")):
+                seam_record = dict(generic_repair_record)
+                up_axis_index = {"X": 0, "Y": 1, "Z": 2}.get(
+                    str(settings.up_axis).upper()
+                )
+                if up_axis_index is None:
+                    raise AssemblyError(
+                        f"未対応の上方向です: {settings.up_axis}"
+                    )
+                # Cleanup must precede local-cap discovery.  Otherwise an open
+                # decorative island which is already configured for removal
+                # can block an otherwise printable main body.  Reuse this exact
+                # cleanup result below so large GLBs never pay for MeshLab's
+                # component/orientation/color-transfer transaction twice.
+                if int(settings.min_component_faces) > 0:
+                    try:
+                        (
+                            working_vertices,
+                            working_faces,
+                            working_colors,
+                            pre_cap_cleaning_diagnostic,
+                        ) = _clean_part(
+                            working_vertices,
+                            working_faces,
+                            working_colors,
+                            settings.min_component_faces,
+                        )
+                    except EngineError as exc:
+                        raise AssemblyError(
+                            "小穴修復前の微小成分整理に失敗しました"
+                        ) from exc
+                    if bool(
+                        pre_cap_cleaning_diagnostic.get(
+                            "component_filter_failed"
+                        )
+                    ) or bool(
+                        pre_cap_cleaning_diagnostic.get(
+                            "component_filter_reverted"
+                        )
+                    ):
+                        raise AssemblyError(
+                            "小穴修復前の残存形状を確定できません"
+                        )
+                    pre_cap_cleanup_removed_faces = max(
+                        0,
+                        int(
+                            pre_cap_cleaning_diagnostic.get(
+                                "removed_faces", 0
+                            )
+                            or 0
+                        ),
+                    )
+                retained_topology = edge_topology(
+                    working_faces,
+                    len(working_vertices),
+                )
+                local_cap_records: list[dict[str, object]] = []
+                if not bool(retained_topology["watertight"]):
+                    source_height = float(
+                        np.ptp(working_vertices[:, up_axis_index])
+                    )
+                    if source_height <= 1.0e-12:
+                        raise AssemblyError(
+                            "小穴の実寸を判定するためのモデル高さが0です"
+                        )
+                    unit_to_mm = float(settings.height_mm) / source_height
+                    remaining_loops = find_boundary_loops(
+                        0,
+                        working_vertices,
+                        working_faces,
+                    )
+                    if not remaining_loops:
+                        raise AssemblyError(
+                            "継ぎ目統合後の開口境界ループを取得できません"
+                        )
+                    repaired_meshes, local_cap_records = (
+                        repair_small_unmatched_boundaries(
+                            [
+                                (
+                                    working_vertices,
+                                    working_faces,
+                                    working_colors,
+                                )
+                            ],
+                            remaining_loops,
+                            # The GLB is still in source coordinates here.
+                            # Convert one source unit to the same millimetre
+                            # scale used by the later normalized output mesh.
+                            height_mm=unit_to_mm,
+                            maximum_span_mm=2.0,
+                            maximum_planarity_mm=0.02,
+                        )
+                    )
+                    (
+                        working_vertices,
+                        working_faces,
+                        working_colors,
+                    ) = repaired_meshes[0]
+                (
+                    working_vertices,
+                    working_faces,
+                    working_colors,
+                    cap_validation,
+                ) = solidify_coincident_shells(
+                    working_vertices,
+                    working_faces,
+                    working_colors,
+                    require_positive_volume=False,
+                )
+                repaired_face_count = int(len(working_faces))
+                local_added_face_count = int(
+                    sum(
+                        int(record.get("added_faces", 0) or 0)
+                        for record in local_cap_records
+                    )
+                )
+                repair_provenance_diagnostic: dict[str, object] = {
+                    "status": "not_applicable",
+                    "generated_faces": 0,
+                }
+                if local_added_face_count:
+                    (
+                        repair_provenance_parts,
+                        repair_provenance_diagnostic,
+                    ) = derive_part_face_provenance(
+                        [repaired_face_count],
+                        [
+                            {
+                                "method": (
+                                    "strict_planar_unmatched_boundary_caps"
+                                ),
+                                "loops": local_cap_records,
+                            }
+                        ],
+                    )
+                    if (
+                        repair_provenance_parts is not None
+                        and len(repair_provenance_parts) == 1
+                        and repair_provenance_parts[0].shape
+                        == (repaired_face_count,)
+                        and int(
+                            repair_provenance_diagnostic.get(
+                                "generated_faces", -1
+                            )
+                        )
+                        == local_added_face_count
+                        and int(
+                            np.count_nonzero(
+                                repair_provenance_parts[0]
+                                == FACE_PROVENANCE_LOCAL_CAP
+                            )
+                        )
+                        == local_added_face_count
+                    ):
+                        working_face_provenance = (
+                            repair_provenance_parts[0].astype(
+                                np.uint8, copy=True
+                            )
+                        )
+                generic_repair_record = {
+                    **seam_record,
+                    "method": (
+                        "coincident_seam_weld_with_strict_planar_caps"
+                        if local_added_face_count
+                        else "coincident_seam_weld_with_component_cleanup"
+                    ),
+                    "output_faces": repaired_face_count,
+                    "closed": True,
+                    "identity": False,
+                    "after": dict(cap_validation.get("after", {})),
+                    "body_count": int(
+                        cap_validation.get("body_count", 0) or 0
+                    ),
+                    "minimum_body_volume_unit3": cap_validation.get(
+                        "minimum_body_volume_unit3"
+                    ),
+                    "maximum_body_volume_unit3": cap_validation.get(
+                        "maximum_body_volume_unit3"
+                    ),
+                    "positive_volume_validated": bool(
+                        cap_validation.get("positive_volume_validated")
+                    ),
+                    "face_count_preserved": False,
+                    "boundary_pairing_proven": False,
+                    "local_boundary_repair_count": int(
+                        len(local_cap_records)
+                    ),
+                    "added_faces": local_added_face_count,
+                    "local_boundary_repairs": local_cap_records,
+                    "local_cap_provenance": (
+                        repair_provenance_diagnostic
+                    ),
+                    "seam_weld": seam_record,
+                }
         except AssemblyError as exc:
+            repair_note = (
+                "UV継ぎ目の統合後、幅2.0 mm以下で平面性を確認できる"
+                "小穴だけを局所修復しましたが、"
+                if bool(settings.repair_unmatched_boundaries)
+                else "実際の欠損面は自動で大きく塞がず、"
+            )
             raise EngineError(
                 "単一GLBを安全な閉立体へ正規化できませんでした。"
-                "実際の欠損面は自動で大きく塞がず、元メッシュを保持します。\n"
+                f"{repair_note}元メッシュを保持します。\n"
                 f"詳細: {exc}"
             ) from exc
         merged = int(generic_repair_record.get("merged_vertices", 0) or 0)
@@ -3088,18 +4355,42 @@ def prepare_geometry(
                 "GLBのUV/テクスチャ継ぎ目で分離していた同一座標頂点を "
                 f"{merged:,} 個統合しました（元の面数・面順・形状を保持）"
             )
+        repaired_openings = int(
+            generic_repair_record.get("local_boundary_repair_count", 0)
+            or 0
+        )
+        if repaired_openings:
+            warnings.append(
+                "単一GLBの幅2.0 mm以下で厳密に平面な小穴を "
+                f"{repaired_openings} 箇所だけ局所修復しました"
+            )
     emit(progress, "clean", 0.02, "微小部品と面向きを整理しています")
-    (
-        clean_vertices,
-        clean_faces,
-        clean_colors,
-        cleaning_diagnostic,
-    ) = _clean_part(
-        working_vertices,
-        working_faces,
-        working_colors,
-        settings.min_component_faces,
-    )
+    if pre_cap_cleaning_diagnostic is None:
+        (
+            clean_vertices,
+            clean_faces,
+            clean_colors,
+            cleaning_diagnostic,
+        ) = _clean_part(
+            working_vertices,
+            working_faces,
+            working_colors,
+            settings.min_component_faces,
+        )
+        component_cleanup_removed_faces = max(
+            0, int(len(working_faces)) - int(len(clean_faces))
+        )
+    else:
+        clean_vertices = working_vertices
+        clean_faces = working_faces
+        clean_colors = working_colors
+        cleaning_diagnostic = pre_cap_cleaning_diagnostic
+        component_cleanup_removed_faces = pre_cap_cleanup_removed_faces
+        cleaning_diagnostic["reused_after_local_repair"] = True
+        cleaning_diagnostic["post_local_repair_vertices"] = int(
+            len(clean_vertices)
+        )
+        cleaning_diagnostic["post_local_repair_faces"] = int(len(clean_faces))
     cleaning_diagnostic["part_id"] = 0
     cleaning_diagnostic["part_key"] = (
         str(asset.part_keys[0]) if asset.part_keys else "0:OBJ全体"
@@ -3127,9 +4418,17 @@ def prepare_geometry(
             f"整理後の{len(clean_faces):,}面・面順序・頂点色を保持しました"
             f"（非多様体辺 {nonmanifold_edges:,}）"
         )
-    removed_vertices = asset.original_vertex_count - len(clean_vertices)
-    removed_faces = asset.original_face_count - len(clean_faces)
-    if removed_faces:
+    # Generated cap faces are additions, not negative removals.  Count parser
+    # and cleanup losses independently so the public repair statistics remain
+    # nonnegative while still reporting every source/cleanup face that really
+    # disappeared.  Exact seam vertex welding remains a meaningful removal.
+    removed_vertices = max(
+        0, int(asset.original_vertex_count) - int(len(clean_vertices))
+    )
+    removed_faces = max(
+        0, int(asset.original_face_count) - int(len(asset.faces))
+    ) + dominant_surface_filter_removed_faces + component_cleanup_removed_faces
+    if removed_faces > 0:
         warnings.append(f"微小な孤立形状など {removed_faces:,}面を除去しました")
     unit_vertices, clean_faces = _orient_unit(
         clean_vertices, clean_faces, settings.up_axis, settings.mirror_x
@@ -3144,6 +4443,30 @@ def prepare_geometry(
         if bool(settings.adjust_face_count)
         else len(clean_faces)
     )
+    local_caps_added = int(
+        generic_repair_record.get("added_faces", 0) or 0
+    ) if generic_repair_record is not None else 0
+    cap_face_provenance_for_final: np.ndarray | None = None
+    cap_provenance_reason = "no_generated_caps"
+    if local_caps_added:
+        if int(target) < int(len(clean_faces)):
+            cap_provenance_reason = "topology_changed_after_strict_planar_caps"
+        elif working_face_provenance is None:
+            cap_provenance_reason = "strict_planar_cap_face_ids_unavailable"
+        elif _face_rows_preserve_exact_triangle_geometry(
+            working_vertices,
+            working_faces,
+            clean_vertices,
+            clean_faces,
+        ):
+            cap_face_provenance_for_final = (
+                working_face_provenance.astype(np.uint8, copy=True)
+            )
+            cap_provenance_reason = "exact_face_rows_preserved"
+        else:
+            cap_provenance_reason = (
+                "strict_planar_cap_face_order_not_preserved"
+            )
     message = (
         f"形状の面数を {len(clean_faces):,} → {target:,} 面へ調整しています"
         if settings.adjust_face_count
@@ -3164,10 +4487,12 @@ def prepare_geometry(
     if signed_volume(final_vertices, final_faces) < 0.0:
         final_faces[:, [1, 2]] = final_faces[:, [2, 1]]
     if generic_repair_record is not None:
-        # Cleanup and optional face-count adjustment run after the seam weld.
-        # Re-validate the exact final mesh so a later QEM/library regression can
-        # never turn an accepted repair into an open 3MF.  Watertight input is
-        # an identity path here; no second colour merge is performed.
+        # Component cleanup may already have run between the seam weld and a
+        # local cap; optional face-count adjustment still runs below.  Validate
+        # the exact final mesh so neither that retained cleanup result nor a
+        # later QEM/library regression can turn an accepted repair into an open
+        # 3MF.  Watertight input is an identity path here; no second colour
+        # merge is performed.
         try:
             final_faces, final_orientation_record = (
                 _orient_watertight_bodies_positive(
@@ -3196,6 +4521,7 @@ def prepare_geometry(
         generic_repair_record["simplification_applied"] = simplification_applied
         generic_repair_record["source_triangle_geometry_preserved"] = bool(
             not simplification_applied
+            and int(generic_repair_record.get("added_faces", 0) or 0) == 0
         )
         generic_repair_record["final_face_count"] = int(len(final_faces))
         generic_repair_record["final_vertex_count"] = int(len(final_vertices))
@@ -3222,6 +4548,19 @@ def prepare_geometry(
             f"頂点色転送距離p99が {transfer_stats['p99'] * settings.height_mm:.3f} mmです。面数を増やすと改善できます"
         )
     final_areas = triangle_areas(final_vertices, final_faces)
+    if generic_repair_record is None:
+        final_face_provenance = np.empty(0, dtype=np.uint8)
+    elif local_caps_added:
+        final_face_provenance = (
+            cap_face_provenance_for_final
+            if cap_face_provenance_for_final is not None
+            and cap_face_provenance_for_final.shape == (len(final_faces),)
+            else np.empty(0, dtype=np.uint8)
+        )
+    else:
+        final_face_provenance = np.full(
+            len(final_faces), FACE_PROVENANCE_SOURCE, dtype=np.uint8
+        )
     final_level = MeshLevel(
         vertices_unit=final_vertices,
         faces=final_faces,
@@ -3239,11 +4578,7 @@ def prepare_geometry(
             if len(asset.part_keys) == 1
             else ("0:OBJ全体",)
         ),
-        face_provenance=(
-            np.zeros(len(final_faces), dtype=np.uint8)
-            if generic_repair_record is not None
-            else np.empty(0, dtype=np.uint8)
-        ),
+        face_provenance=final_face_provenance,
     )
 
     preview_target = min(int(settings.preview_faces), len(final_faces))
@@ -3284,14 +4619,22 @@ def prepare_geometry(
         if bool(cleaning_diagnostic.get("orientation_fallback_used"))
         or bool(cleaning_diagnostic.get("component_filter_failed"))
         or bool(cleaning_diagnostic.get("component_filter_reverted"))
+        or bool(cleaning_diagnostic.get("reused_after_local_repair"))
         else {}
     )
     if generic_repair_record is not None:
+        provenance_is_fresh = bool(
+            final_level.face_provenance.shape == (len(final_level.faces),)
+        )
         provenance_record = make_face_provenance_record(
             final_level,
-            status="fresh",
-            reason="coincident_seam_weld_preserved_face_order",
-            includes_topology_edits=False,
+            status="fresh" if provenance_is_fresh else "stale",
+            reason=(
+                "ok"
+                if provenance_is_fresh
+                else cap_provenance_reason
+            ),
+            includes_topology_edits=bool(local_caps_added),
         )
         cleaning_assembly.update(
             {
@@ -3302,9 +4645,23 @@ def prepare_geometry(
                     generic_repair_record.get("method", "already_watertight")
                 ),
                 "repair_records": [generic_repair_record],
+                "dominant_surface_filter": (
+                    dict(dominant_surface_filter_record)
+                    if dominant_surface_filter_record is not None
+                    else None
+                ),
                 "source_clean_parts": 1,
                 "body_count": int(
                     generic_repair_record.get("body_count", 1) or 1
+                ),
+                "repaired_unmatched_boundary_count": int(
+                    generic_repair_record.get(
+                        "local_boundary_repair_count", 0
+                    )
+                    or 0
+                ),
+                "repair_unmatched_boundaries": bool(
+                    settings.repair_unmatched_boundaries
                 ),
                 "generated_surface_provenance": provenance_record,
                 "all_parts_watertight": bool(topology["watertight"]),
@@ -3443,13 +4800,22 @@ def _apply_base_tone(
     return rgb
 
 
-def _tone_faces(
+def _tone_faces_with_bands(
     base_vertex_rgb: np.ndarray,
     settings: ToneSettings,
     *,
     vertices_unit: np.ndarray | None,
     faces: np.ndarray,
-) -> np.ndarray:
+    _capture_strong_cel_geometry: bool = False,
+) -> (
+    tuple[np.ndarray, np.ndarray | None]
+    | tuple[
+        np.ndarray,
+        np.ndarray | None,
+        np.ndarray | None,
+        np.ndarray | None,
+    ]
+):
     triangles = np.asarray(faces)
     if triangles.ndim != 2 or triangles.shape[1] != 3:
         raise EngineError("2D彩色フィルターの面情報が不正です")
@@ -3473,18 +4839,24 @@ def _tone_faces(
         getattr(settings, "illustration_mode", "off")
     ).strip().lower()
     if illustration_mode == "off":
-        return np.ascontiguousarray(face_rgb, dtype=np.float64)
+        basic_result = (
+            np.ascontiguousarray(face_rgb, dtype=np.float64),
+            None,
+        )
+        if _capture_strong_cel_geometry:
+            return (*basic_result, None, None)
+        return basic_result
     if vertices_unit is None:
         raise EngineError(
             "2D彩色フィルターにはモデルの頂点・面情報が必要です"
         )
     from .illustration_filter import (
         IllustrationFilterError,
-        apply_illustration_filter_faces,
+        apply_illustration_filter_faces_with_bands,
     )
 
     try:
-        return apply_illustration_filter_faces(
+        return apply_illustration_filter_faces_with_bands(
             vertices_unit,
             triangles,
             face_rgb,
@@ -3496,9 +4868,35 @@ def _tone_faces(
             light=str(
                 getattr(settings, "illustration_light", "front_left")
             ),
+            light_intensity=float(
+                getattr(settings, "illustration_light_intensity", 1.0)
+            ),
+            light_range=float(
+                getattr(settings, "illustration_light_range", 0.4)
+            ),
+            detail_strength=float(
+                getattr(settings, "illustration_detail_strength", 0.0)
+            ),
+            _capture_strong_cel_geometry=_capture_strong_cel_geometry,
         )
     except IllustrationFilterError as exc:
         raise EngineError(f"2D彩色フィルターを適用できません: {exc}") from exc
+
+
+def _tone_faces(
+    base_vertex_rgb: np.ndarray,
+    settings: ToneSettings,
+    *,
+    vertices_unit: np.ndarray | None,
+    faces: np.ndarray,
+) -> np.ndarray:
+    face_rgb, _band_ids = _tone_faces_with_bands(
+        base_vertex_rgb,
+        settings,
+        vertices_unit=vertices_unit,
+        faces=faces,
+    )
+    return face_rgb
 
 
 def _face_rgb_to_vertex_approximation(
@@ -3533,9 +4931,9 @@ def _apply_tone_with_faces(
     *,
     vertices_unit: np.ndarray | None,
     faces: np.ndarray,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray | None]:
     base_vertex_rgb = _apply_base_tone(colors, settings)
-    face_rgb = _tone_faces(
+    face_rgb, illustration_band_ids = _tone_faces_with_bands(
         base_vertex_rgb,
         settings,
         vertices_unit=vertices_unit,
@@ -3545,7 +4943,7 @@ def _apply_tone_with_faces(
         getattr(settings, "illustration_mode", "off")
     ).strip().lower()
     if illustration_mode == "off":
-        return base_vertex_rgb, face_rgb
+        return base_vertex_rgb, face_rgb, None
     triangles = np.asarray(faces)
     return (
         _face_rgb_to_vertex_approximation(
@@ -3554,6 +4952,7 @@ def _apply_tone_with_faces(
             face_rgb,
         ),
         face_rgb,
+        illustration_band_ids,
     )
 
 
@@ -3573,7 +4972,7 @@ def apply_tone(
         raise EngineError(
             "2D彩色フィルターにはモデルの頂点・面情報が必要です"
         )
-    tone_vertex_rgb, _face_rgb = _apply_tone_with_faces(
+    tone_vertex_rgb, _face_rgb, _band_ids = _apply_tone_with_faces(
         colors,
         settings,
         vertices_unit=vertices_unit,
@@ -3600,6 +4999,164 @@ def apply_tone_faces(
     )
 
 
+def _apply_tone_with_selective_faces(
+    colors: np.ndarray,
+    settings: ToneSettings,
+    *,
+    vertices_unit: np.ndarray,
+    faces: np.ndarray,
+    areas_unit: np.ndarray,
+    neighbors: np.ndarray | None,
+    face_part_ids: np.ndarray | None,
+    height_mm: float,
+) -> tuple[
+    np.ndarray,
+    np.ndarray,
+    np.ndarray | None,
+    np.ndarray,
+    np.ndarray,
+    bool,
+]:
+    """Share authoritative Selective Highlight tone across UI and output."""
+
+    selective_fraction = float(
+        getattr(settings, "illustration_selective_highlight_fraction", 0.0)
+    )
+    selective_requested = (
+        selective_fraction > 0.0
+        and str(
+            getattr(settings, "illustration_mode", "off")
+        ).strip().lower()
+        == "cel_strong"
+    )
+    cached_light_scores = None
+    cached_face_normals = None
+    if selective_requested:
+        base_vertex_rgb = _apply_base_tone(colors, settings)
+        (
+            tone_face_rgb,
+            band_ids,
+            cached_light_scores,
+            cached_face_normals,
+        ) = _tone_faces_with_bands(
+            base_vertex_rgb,
+            settings,
+            vertices_unit=vertices_unit,
+            faces=faces,
+            _capture_strong_cel_geometry=True,
+        )
+        tone_vertex = None
+    else:
+        tone_vertex, tone_face_rgb, band_ids = _apply_tone_with_faces(
+            colors,
+            settings,
+            vertices_unit=vertices_unit,
+            faces=faces,
+        )
+        base_vertex_rgb = None
+    source_face_rgb = face_rgb_from_vertex_colors(colors, faces)
+    areas_mm2 = np.asarray(areas_unit, dtype=np.float64) * float(height_mm) ** 2
+    selective_applied = False
+    if (
+        selective_requested
+        and band_ids is not None
+    ):
+        selective_neighbors = neighbors
+        parts = None if face_part_ids is None else np.asarray(face_part_ids)
+        if parts is not None and parts.shape == (len(faces),) and len(faces):
+            selective_neighbors = _local_part_neighbors(
+                neighbors,
+                np.arange(len(faces), dtype=np.int32),
+                len(faces),
+                parts,
+            )
+        tone_face_rgb, band_ids, selective_applied = (
+            _apply_strong_cel_selective_highlight_profile(
+                source_face_rgb,
+                tone_face_rgb,
+                band_ids,
+                areas_mm2,
+                selective_neighbors,
+                vertices_unit,
+                faces,
+                settings,
+                _precomputed_light_scores=cached_light_scores,
+                _precomputed_face_normals=cached_face_normals,
+            )
+        )
+    if selective_requested:
+        assert base_vertex_rgb is not None
+        # Build the preview/backup approximation once, after the optional
+        # face-authoritative result has either succeeded or failed closed.
+        # Previously, a successful trial discarded a complete first pass.
+        tone_vertex = _face_rgb_to_vertex_approximation(
+            base_vertex_rgb,
+            np.asarray(faces),
+            tone_face_rgb,
+        )
+    assert tone_vertex is not None
+    return (
+        tone_vertex,
+        tone_face_rgb,
+        band_ids,
+        source_face_rgb,
+        areas_mm2,
+        selective_applied,
+    )
+
+
+def apply_tone_faces_for_mesh(
+    colors: np.ndarray,
+    settings: ToneSettings,
+    *,
+    vertices_unit: np.ndarray | None,
+    faces: np.ndarray,
+    areas_unit: np.ndarray | None,
+    neighbors: np.ndarray | None,
+    face_part_ids: np.ndarray | None,
+    height_mm: float,
+) -> np.ndarray:
+    """Return the face tone used by proposal, preview, and final mapping."""
+
+    selective_enabled = (
+        float(
+            getattr(
+                settings,
+                "illustration_selective_highlight_fraction",
+                0.0,
+            )
+        )
+        > 0.0
+        and str(
+            getattr(settings, "illustration_mode", "off")
+        ).strip().lower()
+        == "cel_strong"
+    )
+    if not selective_enabled or vertices_unit is None or areas_unit is None:
+        # Preserve the legacy fast path while the trial is off.  Lightweight
+        # callers/tests may also carry only colour geometry; with no area or
+        # topology evidence the trial must fail closed instead of guessing.
+        return apply_tone_faces(
+            colors,
+            settings,
+            vertices_unit=vertices_unit,
+            faces=faces,
+        )
+    _tone_vertex, face_rgb, _bands, _source, _areas, _applied = (
+        _apply_tone_with_selective_faces(
+            colors,
+            settings,
+            vertices_unit=vertices_unit,
+            faces=faces,
+            areas_unit=areas_unit,
+            neighbors=neighbors,
+            face_part_ids=face_part_ids,
+            height_mm=height_mm,
+        )
+    )
+    return face_rgb
+
+
 def _smooth_labels(
     indices: np.ndarray,
     face_lab: np.ndarray,
@@ -3607,9 +5164,17 @@ def _smooth_labels(
     areas_mm2: np.ndarray,
     neighbors: np.ndarray | None,
     settings: ToneSettings,
+    *,
+    protected_face_mask: np.ndarray | None = None,
 ) -> tuple[np.ndarray, int]:
     if not settings.smoothing or neighbors is None:
         return indices, 0
+    protected: np.ndarray | None = None
+    if protected_face_mask is not None:
+        raw_protected = np.asarray(protected_face_mask)
+        if raw_protected.shape != (len(indices),) or raw_protected.dtype != bool:
+            raise EngineError("Flat 4 Colorsの平滑化保護面数が一致しません")
+        protected = raw_protected
     result = indices.copy()
     total_changed = 0
     protected_family = np.zeros(len(palette_lab), dtype=bool)
@@ -3652,6 +5217,8 @@ def _smooth_labels(
                 )
             )
         )
+        if protected is not None:
+            change &= ~protected
         changed = int(np.count_nonzero(change))
         if not changed:
             break
@@ -3742,6 +5309,1753 @@ def _flat_four_raw_chroma_recovery_enabled(tone: ToneSettings) -> bool:
     )
 
 
+def _strong_cel_chroma_recovery_enabled(tone: ToneSettings) -> bool:
+    saturation = float(tone.saturation)
+    return (
+        _FLAT_RAW_CHROMA_RECOVERY_SATURATION_MIN
+        <= saturation
+        <= _FLAT_RAW_CHROMA_RECOVERY_SATURATION_MAX
+        and str(getattr(tone, "illustration_mode", "off"))
+        .strip()
+        .lower()
+        == "cel_strong"
+    )
+
+
+def _strong_cel_dark_warm_source_mask(source_rgb: np.ndarray) -> np.ndarray:
+    """Use the styliser's material gate at palette/export boundaries."""
+
+    from .illustration_filter import (
+        IllustrationFilterError,
+        strong_cel_dark_warm_mask,
+    )
+
+    try:
+        return strong_cel_dark_warm_mask(source_rgb)
+    except IllustrationFilterError as exc:
+        raise EngineError(f"強調セル彩色の暗い暖色判定に失敗しました: {exc}") from exc
+
+
+def _strong_cel_detail_warm_source_mask(source_rgb: np.ndarray) -> np.ndarray:
+    """Use the opt-in wider skin/brown guard at detail-only boundaries."""
+
+    from .illustration_filter import (
+        IllustrationFilterError,
+        strong_cel_detail_warm_mask,
+    )
+
+    try:
+        return strong_cel_detail_warm_mask(source_rgb)
+    except IllustrationFilterError as exc:
+        raise EngineError(
+            f"強調セル彩色の暖色ディテール判定に失敗しました: {exc}"
+        ) from exc
+
+
+def _strong_cel_dark_garment_source_mask(
+    source_rgb: np.ndarray,
+    source_lab: np.ndarray | None = None,
+) -> np.ndarray:
+    """Return neutral through blue-black material suitable for one cel ramp.
+
+    AI textures rarely store black cloth as perfectly equal RGB.  A modest
+    navy/purple bias must still receive the black/grey print ladder, while
+    genuinely saturated coloured panels and the protected warm skin/brown
+    family remain outside it.
+    """
+
+    source = np.asarray(source_rgb, dtype=np.float64)
+    if source.ndim != 2 or source.shape[1:] != (3,):
+        raise EngineError("強調セル彩色の暗色素材RGBが不正です")
+    lab = srgb_to_lab(source) if source_lab is None else np.asarray(source_lab)
+    if lab.shape != source.shape or not bool(np.all(np.isfinite(lab))):
+        raise EngineError("強調セル彩色の暗色素材Labが不正です")
+    luminance = source @ np.asarray((0.2126, 0.7152, 0.0722))
+    chroma = np.sqrt(np.sum(np.asarray(lab[:, 1:3], dtype=np.float64) ** 2, axis=1))
+    return (
+        (luminance <= _STRONG_CEL_GARMENT_SOURCE_LUMA_MAX)
+        & (chroma <= _STRONG_CEL_GARMENT_SOURCE_LAB_CHROMA_MAX)
+        & ~_strong_cel_dark_warm_source_mask(source)
+    )
+
+
+def _strong_cel_garment_grow_warm_mask(source_rgb: np.ndarray) -> np.ndarray:
+    """Protect muted warm material above the dark-skin classifier's range."""
+
+    source = np.asarray(source_rgb, dtype=np.float64)
+    if source.ndim != 2 or source.shape[1:] != (3,):
+        raise EngineError("強調セル彩色の明部暖色判定RGBが不正です")
+    luminance = source @ np.asarray((0.2126, 0.7152, 0.0722))
+    return (
+        (luminance >= _STRONG_CEL_GARMENT_GROW_WARM_LUMA_MIN)
+        & (
+            source[:, 0] - source[:, 1]
+            >= _STRONG_CEL_GARMENT_GROW_WARM_RED_GREEN_MIN
+        )
+        & (
+            source[:, 0] - source[:, 2]
+            >= _STRONG_CEL_GARMENT_GROW_WARM_RED_BLUE_MIN
+        )
+        & (
+            source[:, 1] - source[:, 2]
+            >= _STRONG_CEL_GARMENT_GROW_WARM_GREEN_BLUE_MIN
+        )
+    )
+
+
+def _strong_cel_neutral_band_candidates(
+    palette: PaletteSettings,
+    print_palette_lab: np.ndarray,
+    enabled: np.ndarray,
+    tone: ToneSettings,
+) -> np.ndarray:
+    """Return enabled black/light/cool-cloth states from dark to light.
+
+    Flat Four and a Full Spectrum custom palette without a cool endpoint keep
+    the established neutral black-to-light ramp.  When the Full Spectrum
+    automatic proposal supplies a bounded blue-grey endpoint, its physical
+    state and only mixes whose two endpoints belong to the neutral/cool cloth
+    family may join the ramp.  Skin and saturated accent states remain
+    ineligible.
+    """
+
+    if (
+        str(getattr(tone, "illustration_mode", "off")).strip().lower()
+        != "cel_strong"
+    ):
+        return np.empty(0, dtype=np.int8)
+    palette_lab = np.asarray(print_palette_lab, dtype=np.float64)
+    if palette_lab.shape != (PALETTE_STATE_COUNT, 3):
+        raise EngineError("強調セル彩色の混色パレットLabが不正です")
+    active = np.asarray(enabled, dtype=bool)
+    if active.shape != (PALETTE_STATE_COUNT,):
+        raise EngineError("強調セル彩色の有効色数が不正です")
+    physical_chroma = np.sqrt(np.sum(palette_lab[:4, 1:3] ** 2, axis=1))
+    neutral_slots = set(
+        int(value)
+        for value in np.flatnonzero(
+            physical_chroma <= _STRONG_CEL_NEUTRAL_PHYSICAL_LAB_CHROMA_MAX
+        )
+    )
+    if len(neutral_slots) < 2:
+        return np.empty(0, dtype=np.int8)
+    cool_slots = (
+        set(
+            int(value)
+            for value in np.flatnonzero(
+                (physical_chroma >= _STRONG_CEL_COOL_PHYSICAL_LAB_CHROMA_MIN)
+                & (physical_chroma <= _STRONG_CEL_COOL_PHYSICAL_LAB_CHROMA_MAX)
+                & (
+                    np.abs(palette_lab[:4, 1])
+                    <= _STRONG_CEL_COOL_LAB_A_ABS_MAX
+                )
+                & (palette_lab[:4, 2] <= _STRONG_CEL_COOL_LAB_B_MAX)
+                & (palette_lab[:4, 0] >= _STRONG_CEL_COOL_LAB_L_MIN)
+                & (palette_lab[:4, 0] <= _STRONG_CEL_COOL_LAB_L_MAX)
+            )
+        )
+        if palette.color_mode == COLOR_MODE_FULL_SPECTRUM
+        else set()
+    )
+    garment_slots = neutral_slots | cool_slots
+    garment_states: list[int] = []
+    state_chroma = np.sqrt(np.sum(palette_lab[:, 1:3] ** 2, axis=1))
+    state_is_cool = (
+        (state_chroma <= _STRONG_CEL_COOL_STATE_LAB_CHROMA_MAX)
+        & (np.abs(palette_lab[:, 1]) <= _STRONG_CEL_COOL_LAB_A_ABS_MAX)
+        & (palette_lab[:, 2] <= _STRONG_CEL_COOL_LAB_B_MAX)
+    )
+    mix_specs = palette_mix_specs(
+        palette.mix_ratios_b,
+        palette.secondary_mix_ratios_b,
+    )
+    for state in np.flatnonzero(active):
+        value = int(state)
+        if value < 4:
+            endpoints_are_garment = value in garment_slots
+            uses_cool_endpoint = value in cool_slots
+        else:
+            left, right, _ratio = mix_specs[value - 4]
+            endpoints_are_garment = (
+                int(left) in garment_slots and int(right) in garment_slots
+            )
+            uses_cool_endpoint = (
+                int(left) in cool_slots or int(right) in cool_slots
+            )
+        if (
+            endpoints_are_garment
+            # Once a deliberate cool cloth endpoint exists, do not let the
+            # much denser black/white recipe ladder wash it back to ordinary
+            # grey.  Keep physical black/light as endpoints, but require every
+            # intermediate mixed state to involve the cool spool.  Custom
+            # palettes without a cool endpoint retain their established
+            # neutral-only ramp.
+            and (
+                not cool_slots
+                or value < 4
+                or uses_cool_endpoint
+            )
+            and (
+                state_chroma[value]
+                <= _STRONG_CEL_NEUTRAL_STATE_LAB_CHROMA_MAX
+                or bool(state_is_cool[value])
+            )
+        ):
+            garment_states.append(value)
+    if len(garment_states) < 2:
+        return np.empty(0, dtype=np.int8)
+    available = np.asarray(garment_states, dtype=np.int8)
+    order = np.lexsort(
+        (
+            available.astype(np.int16),
+            palette_lab[available, 0],
+        )
+    )
+    ordered = available[order]
+    distinct: list[int] = []
+    last_lightness = -math.inf
+    for state in ordered:
+        current_lightness = float(palette_lab[int(state), 0])
+        if current_lightness - last_lightness >= _STRONG_CEL_RAMP_MIN_DELTA_L:
+            distinct.append(int(state))
+            last_lightness = current_lightness
+    lightest = int(ordered[-1])
+    if distinct and distinct[-1] != lightest:
+        lightest_l = float(palette_lab[lightest, 0])
+        if (
+            len(distinct) == 1
+            or lightest_l - float(palette_lab[distinct[-2], 0])
+            >= _STRONG_CEL_RAMP_MIN_DELTA_L
+        ):
+            distinct[-1] = lightest
+    return np.asarray(distinct, dtype=np.int8)
+
+
+def _smooth_strong_cel_band_ids(
+    band_ids: np.ndarray,
+    garment_mask: np.ndarray,
+    areas_mm2: np.ndarray,
+    neighbors: np.ndarray | None,
+) -> np.ndarray:
+    """Remove only isolated one-triangle light-band islands.
+
+    A majority may cross neither a non-garment material nor a part boundary;
+    multipart callers pass an already-local graph.  Broad folds remain intact
+    because a face is changed only when none of its garment neighbours shares
+    its current band and at least two neighbours agree on one replacement.
+    """
+
+    result = np.asarray(band_ids, dtype=np.uint8).copy()
+    garment = np.asarray(garment_mask, dtype=bool)
+    areas = np.asarray(areas_mm2, dtype=np.float64)
+    if neighbors is None:
+        return result
+    adjacency = np.asarray(neighbors)
+    if (
+        adjacency.shape != (len(result), 3)
+        or garment.shape != (len(result),)
+        or areas.shape != (len(result),)
+    ):
+        return result
+    for _pass in range(2):
+        valid = (adjacency >= 0) & (adjacency < len(result))
+        safe = np.where(valid, adjacency, 0)
+        valid &= garment[safe]
+        nearby = np.full(adjacency.shape, -1, dtype=np.int16)
+        nearby[valid] = result[safe[valid]]
+        a, b, c = nearby[:, 0], nearby[:, 1], nearby[:, 2]
+        majority = np.where(
+            (a >= 0) & (a == b),
+            a,
+            np.where(
+                (a >= 0) & (a == c),
+                a,
+                np.where((b >= 0) & (b == c), b, -1),
+            ),
+        )
+        current_support = np.count_nonzero(
+            valid & (nearby == result[:, None]),
+            axis=1,
+        )
+        change = (
+            garment
+            & (majority >= 0)
+            & (majority != result)
+            & (current_support == 0)
+            & (areas <= _STRONG_CEL_BAND_ISLAND_MAX_AREA_MM2)
+        )
+        if not np.any(change):
+            break
+        result[change] = majority[change].astype(np.uint8)
+    return result
+
+
+def _grow_strong_cel_selective_plateaus(
+    seed_components: np.ndarray,
+    plateau_areas: np.ndarray,
+    plateau_scores: np.ndarray,
+    plateau_edge_rows: np.ndarray,
+    plateau_edge_cols: np.ndarray,
+    target_area: float,
+) -> tuple[np.ndarray, float]:
+    """Grow whole frontier plateaus without repeatedly scanning every edge.
+
+    This is the heap/CSR equivalent of the original full-edge loop: at each
+    step every currently touching plateau at the greatest score is accepted or
+    rejected as one indivisible group.  Newly exposed plateaus enter the same
+    max-score frontier, so descending order is not assumed and the result stays
+    independent of triangle/component numbering.
+    """
+
+    selected = np.asarray(seed_components, dtype=bool).copy()
+    areas = np.asarray(plateau_areas, dtype=np.float64)
+    scores = np.asarray(plateau_scores, dtype=np.int64)
+    edge_rows = np.asarray(plateau_edge_rows, dtype=np.int32)
+    edge_cols = np.asarray(plateau_edge_cols, dtype=np.int32)
+    component_count = len(selected)
+    if (
+        areas.shape != (component_count,)
+        or scores.shape != (component_count,)
+        or edge_rows.shape != edge_cols.shape
+        or edge_rows.ndim != 1
+        or (
+            len(edge_rows)
+            and (
+                int(edge_rows.min()) < 0
+                or int(edge_rows.max()) >= component_count
+                or int(edge_cols.min()) < 0
+                or int(edge_cols.max()) >= component_count
+            )
+        )
+    ):
+        raise EngineError("強調セル彩色のplateau隣接情報が不正です")
+    selected_area = float(areas[selected].sum())
+    if not np.any(selected) or not len(edge_rows):
+        return selected, selected_area
+
+    from scipy.sparse import coo_matrix
+
+    boundary = edge_rows != edge_cols
+    if not np.any(boundary):
+        return selected, selected_area
+    graph = coo_matrix(
+        (
+            np.ones(int(np.count_nonzero(boundary)), dtype=bool),
+            (edge_rows[boundary], edge_cols[boundary]),
+        ),
+        shape=(component_count, component_count),
+    ).tocsr()
+    graph.sort_indices()
+
+    blocked = np.zeros(component_count, dtype=bool)
+    frontier = np.zeros(component_count, dtype=bool)
+    heap: list[tuple[int, int]] = []
+
+    def expose(component_ids: np.ndarray) -> None:
+        for component_id in np.asarray(component_ids, dtype=np.int32):
+            start = int(graph.indptr[int(component_id)])
+            stop = int(graph.indptr[int(component_id) + 1])
+            for neighbor in graph.indices[start:stop]:
+                neighbor_id = int(neighbor)
+                if (
+                    selected[neighbor_id]
+                    or blocked[neighbor_id]
+                    or frontier[neighbor_id]
+                ):
+                    continue
+                frontier[neighbor_id] = True
+                heapq.heappush(
+                    heap,
+                    (-int(scores[neighbor_id]), neighbor_id),
+                )
+
+    expose(np.flatnonzero(selected))
+    while heap:
+        while heap and not frontier[heap[0][1]]:
+            heapq.heappop(heap)
+        if not heap:
+            break
+        score = -int(heap[0][0])
+        group: list[int] = []
+        while heap and -int(heap[0][0]) == score:
+            _negative_score, component_id = heapq.heappop(heap)
+            if not frontier[component_id]:
+                continue
+            frontier[component_id] = False
+            if selected[component_id] or blocked[component_id]:
+                continue
+            group.append(component_id)
+        if not group:
+            continue
+        group_ids = np.asarray(group, dtype=np.int32)
+        group_area = float(areas[group_ids].sum())
+        if selected_area + group_area <= float(target_area) + 1.0e-12:
+            selected[group_ids] = True
+            selected_area += group_area
+            expose(group_ids)
+        else:
+            blocked[group_ids] = True
+    return selected, selected_area
+
+
+def _select_strong_cel_base_mid_faces(
+    remaining_faces: np.ndarray,
+    score_keys: np.ndarray,
+    areas_mm2: np.ndarray,
+    area_budget: float,
+) -> tuple[np.ndarray, float]:
+    """Select whole descending-score groups within the base-mid budget.
+
+    The original implementation scanned every face once per distinct score.
+    A colour-rich mesh can have almost one score per face, making that path
+    effectively quadratic.  Sorting the remaining face ids once preserves the
+    same descending group order and, by using a stable sort, the same
+    within-group area summation order.
+    """
+
+    remaining = np.asarray(remaining_faces, dtype=bool)
+    scores = np.asarray(score_keys, dtype=np.int64)
+    areas = np.asarray(areas_mm2, dtype=np.float64)
+    face_count = len(remaining)
+    if (
+        scores.shape != (face_count,)
+        or areas.shape != (face_count,)
+    ):
+        raise EngineError("強調セル彩色のbase-mid面情報が不正です")
+
+    selected = np.zeros(face_count, dtype=bool)
+    face_ids = np.flatnonzero(remaining)
+    if not len(face_ids):
+        return selected, 0.0
+
+    order = np.argsort(-scores[face_ids], kind="stable")
+    ordered_faces = face_ids[order]
+    ordered_scores = scores[ordered_faces]
+    group_starts = np.flatnonzero(
+        np.r_[True, ordered_scores[1:] != ordered_scores[:-1]]
+    )
+    group_stops = np.r_[group_starts[1:], len(ordered_faces)]
+
+    selected_area = 0.0
+    accepted_stop = 0
+    budget = float(area_budget)
+    for start, stop in zip(group_starts, group_stops):
+        group_area = float(areas[ordered_faces[start:stop]].sum())
+        if selected_area + group_area > budget + 1.0e-12:
+            break
+        selected_area += group_area
+        accepted_stop = int(stop)
+    selected[ordered_faces[:accepted_stop]] = True
+    return selected, selected_area
+
+
+def _apply_strong_cel_selective_highlight_profile(
+    source_face_rgb: np.ndarray,
+    tone_face_rgb: np.ndarray,
+    band_ids: np.ndarray,
+    areas_mm2: np.ndarray,
+    neighbors: np.ndarray | None,
+    vertices_unit: np.ndarray,
+    faces: np.ndarray,
+    tone: ToneSettings,
+    *,
+    _precomputed_light_scores: np.ndarray | None = None,
+    _precomputed_face_normals: np.ndarray | None = None,
+) -> tuple[np.ndarray, np.ndarray, bool]:
+    """Return a dark-base Strong-Cel trial with topology-capped lifted bands.
+
+    The opt-in fraction is a hard whole-surface budget for every lifted band,
+    not merely the white peak.  Local maximum equal-score plateaus seed the
+    peak, then lower whole plateaus may grow from those seeds.  A tied plateau
+    is never split by face order; if it does not fit, the result undershoots.
+    Missing/non-reciprocal topology, isolated one-face peaks, and oversized
+    coarse faces return the ordinary Strong-Cel result unchanged.  A one-face
+    local maximum may seed growth, but only a final coherent multi-face region
+    can be applied.
+    """
+
+    fraction = float(
+        getattr(tone, "illustration_selective_highlight_fraction", 0.0)
+    )
+    contour_policy = str(
+        getattr(tone, "illustration_contour_policy", "outer_crease_fold")
+    ).strip().lower()
+    source = np.asarray(source_face_rgb, dtype=np.float64)
+    ordinary = np.asarray(tone_face_rgb, dtype=np.float64)
+    raw_bands = np.asarray(band_ids)
+    areas = np.asarray(areas_mm2, dtype=np.float64)
+    adjacency = None if neighbors is None else np.asarray(neighbors)
+    geometry = np.asarray(vertices_unit, dtype=np.float64)
+    triangles = np.asarray(faces)
+    if fraction <= 0.0:
+        return ordinary, raw_bands, False
+    if contour_policy not in {
+        "outer",
+        "outer_crease",
+        "outer_crease_fold",
+    }:
+        # The selective layer is optional.  A hand-mutated settings object
+        # must not silently choose a broader contour policy.
+        return ordinary, raw_bands, False
+    face_count = len(raw_bands)
+    band_count = int(getattr(tone, "illustration_bands", 4))
+    if (
+        not 0.05 <= fraction <= 0.12
+        or not 2 <= band_count <= 6
+        or source.shape != (face_count, 3)
+        or ordinary.shape != source.shape
+        or raw_bands.shape != (face_count,)
+        or not np.issubdtype(raw_bands.dtype, np.integer)
+        or areas.shape != (face_count,)
+        or geometry.ndim != 2
+        or geometry.shape[1:] != (3,)
+        or triangles.shape != (face_count, 3)
+        or not np.issubdtype(triangles.dtype, np.integer)
+        or adjacency is None
+        or adjacency.shape != (face_count, 3)
+        or not np.issubdtype(adjacency.dtype, np.integer)
+        or face_count > _STRONG_CEL_SELECTIVE_CANDIDATE_FACE_LIMIT
+        or not bool(np.all(np.isfinite(source)))
+        or not bool(np.all(np.isfinite(ordinary)))
+        or not bool(np.all(np.isfinite(areas)))
+        or bool(np.any(areas < 0.0))
+        or (
+            face_count
+            and (
+                int(raw_bands.min()) < 0
+                or int(raw_bands.max()) >= band_count
+            )
+        )
+        or bool(np.any((adjacency < -1) | (adjacency >= face_count)))
+    ):
+        return ordinary, raw_bands, False
+    total_area = float(areas.sum())
+    if face_count < 2 or total_area <= 0.0:
+        return ordinary, raw_bands, False
+
+    # A malformed or one-way edge table must not become geometric evidence.
+    for start in range(0, face_count, 100_000):
+        stop = min(start + 100_000, face_count)
+        current = adjacency[start:stop]
+        valid = current >= 0
+        safe = np.where(valid, current, 0)
+        owners = np.arange(start, stop, dtype=np.int32)[:, None, None]
+        reciprocal = np.any(adjacency[safe] == owners, axis=2)
+        if np.any(valid & ~reciprocal):
+            return ordinary, raw_bands, False
+
+    from .illustration_filter import (
+        _linear_to_srgb,
+        _srgb_to_linear,
+        _strong_cel_rgb,
+        strong_cel_face_light_geometry,
+    )
+
+    if (
+        _precomputed_light_scores is None
+        and _precomputed_face_normals is None
+    ):
+        try:
+            light_scores, face_normals = strong_cel_face_light_geometry(
+                geometry,
+                triangles,
+                light=str(
+                    getattr(tone, "illustration_light", "front_left")
+                ),
+                light_range=float(
+                    getattr(tone, "illustration_light_range", 0.4)
+                ),
+                detail_strength=float(
+                    getattr(tone, "illustration_detail_strength", 0.0)
+                ),
+            )
+        except Exception:
+            # This layer is optional. Ordinary Strong Cel has already
+            # succeeded, so metadata/topology disagreement must fail closed.
+            return ordinary, raw_bands, False
+    elif (
+        _precomputed_light_scores is None
+        or _precomputed_face_normals is None
+    ):
+        return ordinary, raw_bands, False
+    else:
+        light_scores = np.asarray(
+            _precomputed_light_scores,
+            dtype=np.float64,
+        )
+        face_normals = np.asarray(
+            _precomputed_face_normals,
+            dtype=np.float64,
+        )
+    if (
+        light_scores.shape != (face_count,)
+        or face_normals.shape != (face_count, 3)
+        or not bool(np.all(np.isfinite(light_scores)))
+        or not bool(np.all(np.isfinite(face_normals)))
+    ):
+        return ordinary, raw_bands, False
+
+    warm = _strong_cel_detail_warm_source_mask(source)
+    eligible = ~warm
+    if np.count_nonzero(eligible) < 2:
+        return ordinary, raw_bands, False
+    score_keys = np.rint(
+        light_scores * _STRONG_CEL_SELECTIVE_SCORE_SCALE
+    ).astype(np.int64)
+
+    def component_labels(
+        mask: np.ndarray,
+        *,
+        equal_score_only: bool,
+    ) -> tuple[np.ndarray, np.ndarray, int]:
+        selected = np.flatnonzero(mask)
+        if not len(selected):
+            return selected, np.empty(0, dtype=np.int32), 0
+        lookup = np.full(face_count, -1, dtype=np.int32)
+        lookup[selected] = np.arange(len(selected), dtype=np.int32)
+        chosen = adjacency[selected]
+        valid = chosen >= 0
+        safe = np.where(valid, chosen, 0)
+        local = np.full(chosen.shape, -1, dtype=np.int32)
+        local[valid] = lookup[safe[valid]]
+        internal = local >= 0
+        if equal_score_only:
+            internal &= (
+                score_keys[selected, None] == score_keys[safe]
+            )
+        rows = np.broadcast_to(
+            np.arange(len(selected), dtype=np.int32)[:, None],
+            chosen.shape,
+        )[internal]
+        columns = local[internal]
+        from scipy.sparse import coo_matrix
+        from scipy.sparse.csgraph import connected_components
+
+        graph = coo_matrix(
+            (
+                np.ones(len(rows), dtype=np.uint8),
+                (rows, columns),
+            ),
+            shape=(len(selected), len(selected)),
+        ).tocsr()
+        count, labels = connected_components(
+            graph, directed=False, return_labels=True
+        )
+        return selected, np.asarray(labels, dtype=np.int32), int(count)
+
+    plateau_faces, plateau_labels, plateau_count = component_labels(
+        eligible, equal_score_only=True
+    )
+    if not plateau_count:
+        return ordinary, raw_bands, False
+    plateau_counts = np.bincount(
+        plateau_labels, minlength=plateau_count
+    )
+    plateau_areas = np.bincount(
+        plateau_labels,
+        weights=areas[plateau_faces],
+        minlength=plateau_count,
+    )
+    plateau_by_face = np.full(face_count, -1, dtype=np.int32)
+    plateau_by_face[plateau_faces] = plateau_labels
+    order = np.argsort(plateau_labels, kind="stable")
+    _labels, first = np.unique(
+        plateau_labels[order], return_index=True
+    )
+    first_faces = plateau_faces[order[first]]
+    plateau_scores = score_keys[first_faces]
+    plateau_min_band = np.full(plateau_count, band_count, dtype=np.int16)
+    np.minimum.at(
+        plateau_min_band,
+        plateau_labels,
+        raw_bands[plateau_faces].astype(np.int16, copy=False),
+    )
+
+    edge_rows = np.repeat(np.arange(face_count, dtype=np.int32), 3)
+    edge_cols = adjacency.reshape(-1)
+    valid_edges = edge_cols >= 0
+    edge_rows = edge_rows[valid_edges]
+    edge_cols = edge_cols[valid_edges].astype(np.int32, copy=False)
+    eligible_edges = eligible[edge_rows] & eligible[edge_cols]
+    edge_rows = edge_rows[eligible_edges]
+    edge_cols = edge_cols[eligible_edges]
+    row_plateaus = plateau_by_face[edge_rows]
+    boundary = row_plateaus != plateau_by_face[edge_cols]
+    has_higher = np.zeros(plateau_count, dtype=bool)
+    has_lower = np.zeros(plateau_count, dtype=bool)
+    np.logical_or.at(
+        has_higher,
+        row_plateaus[boundary],
+        score_keys[edge_cols[boundary]] > score_keys[edge_rows[boundary]],
+    )
+    np.logical_or.at(
+        has_lower,
+        row_plateaus[boundary],
+        score_keys[edge_cols[boundary]] < score_keys[edge_rows[boundary]],
+    )
+
+    target_area = fraction * total_area
+    peak_budget = min(
+        _STRONG_CEL_SELECTIVE_HIGHLIGHT_FRACTION_MAX * total_area,
+        0.25 * target_area,
+    )
+    seed_components = np.flatnonzero(
+        ~has_higher
+        & has_lower
+        & (plateau_areas <= peak_budget)
+        & (plateau_min_band == band_count - 1)
+    )
+    selected_components = np.zeros(plateau_count, dtype=bool)
+    selected_area = 0.0
+    for score in np.unique(plateau_scores[seed_components])[::-1]:
+        group = seed_components[plateau_scores[seed_components] == score]
+        group_area = float(plateau_areas[group].sum())
+        if selected_area + group_area <= peak_budget + 1.0e-12:
+            selected_components[group] = True
+            selected_area += group_area
+    if not np.any(selected_components):
+        return ordinary, raw_bands, False
+    seed_components_mask = selected_components.copy()
+
+    # Grow whole score plateaus directly from accepted local maxima.  The
+    # plateau graph is built once; a max-score frontier then visits only edges
+    # reached by selected components instead of rescanning the entire mesh for
+    # every ring.  A seed/ring may contain one fine triangle provisionally, but
+    # the final connected lifted region must still prove printable coherence.
+    try:
+        selected_components, selected_area = (
+            _grow_strong_cel_selective_plateaus(
+                selected_components,
+                plateau_areas,
+                plateau_scores,
+                row_plateaus[boundary],
+                plateau_by_face[edge_cols[boundary]],
+                target_area,
+            )
+        )
+    except (EngineError, MemoryError, ValueError):
+        return ordinary, raw_bands, False
+
+    peak = np.zeros(face_count, dtype=bool)
+    tentative_lifted = np.zeros(face_count, dtype=bool)
+    peak[plateau_faces] = seed_components_mask[plateau_labels]
+    tentative_lifted[plateau_faces] = selected_components[plateau_labels]
+    lifted_faces, lifted_labels, lifted_count = component_labels(
+        tentative_lifted, equal_score_only=False
+    )
+    lifted = np.zeros(face_count, dtype=bool)
+    if lifted_count:
+        lifted_counts = np.bincount(
+            lifted_labels, minlength=lifted_count
+        )
+        lifted_areas = np.bincount(
+            lifted_labels,
+            weights=areas[lifted_faces],
+            minlength=lifted_count,
+        )
+        accepted_lifted = (
+            (lifted_counts >= _STRONG_CEL_SELECTIVE_COMPONENT_FACE_MIN)
+            & (
+                lifted_areas
+                >= _STRONG_CEL_SELECTIVE_COMPONENT_AREA_MIN_MM2
+            )
+        )
+        lifted[lifted_faces] = accepted_lifted[lifted_labels]
+    peak &= lifted
+    if not np.any(peak):
+        return ordinary, raw_bands, False
+    if float(areas[lifted].sum()) > target_area + 1.0e-9:
+        return ordinary, raw_bands, False
+
+    # Allocate the non-lifted base to two dark source-colour levels.  Equal
+    # score groups remain indivisible; stopping before an oversized group is a
+    # deterministic undershoot rather than a face-order cut.
+    remaining = ~lifted & ~warm
+    base_mid_budget = min(
+        _STRONG_CEL_SELECTIVE_BASE_MID_FRACTION_TARGET * total_area,
+        _STRONG_CEL_SELECTIVE_BASE_MID_FRACTION_MAX * total_area,
+    )
+    base_mid, _base_mid_area = _select_strong_cel_base_mid_faces(
+        remaining,
+        score_keys,
+        areas,
+        base_mid_budget,
+    )
+
+    base_mid_band = max(0, band_count - 3)
+    lifted_band = max(base_mid_band, band_count - 2)
+    high_band = band_count - 1
+    result_bands = np.zeros(face_count, dtype=np.uint8)
+    result_bands[base_mid] = np.uint8(base_mid_band)
+    result_bands[lifted] = np.uint8(lifted_band)
+    result_bands[peak] = np.uint8(high_band)
+
+    # Geometry is primary.  A weaker fold can use source-luma difference only
+    # as supporting evidence; colour contrast alone never creates an outline.
+    row_normals = face_normals[edge_rows]
+    col_normals = face_normals[edge_cols]
+    normal_dot = np.einsum(
+        "ij,ij->i", row_normals, col_normals, optimize=True
+    )
+    source_luma = source @ np.asarray((0.2126, 0.7152, 0.0722))
+    luma_delta = np.abs(source_luma[edge_rows] - source_luma[edge_cols])
+    strong_crease = normal_dot <= math.cos(
+        math.radians(_STRONG_CEL_SELECTIVE_STRONG_CREASE_DEGREES)
+    )
+    weak_crease = (
+        normal_dot
+        <= math.cos(
+            math.radians(_STRONG_CEL_SELECTIVE_WEAK_CREASE_DEGREES)
+        )
+    ) & (
+        luma_delta
+        >= _STRONG_CEL_SELECTIVE_WEAK_CREASE_LUMA_DELTA_MIN
+    )
+    view_direction = np.asarray((0.0, -1.0, 0.0))
+    row_facing = row_normals @ view_direction
+    col_facing = col_normals @ view_direction
+    silhouette = (
+        row_facing * col_facing < -1.0e-6
+    ) & (
+        np.minimum(np.abs(row_facing), np.abs(col_facing))
+        <= _STRONG_CEL_SELECTIVE_SILHOUETTE_FACING_MAX
+    )
+    if contour_policy == "outer":
+        evidence = silhouette
+    elif contour_policy == "outer_crease":
+        evidence = silhouette | strong_crease
+    else:
+        # Historical selective-highlight behavior.  Keep this union exact so
+        # the default remains byte-for-byte compatible with prior output.
+        evidence = strong_crease | weak_crease | silhouette
+    darker_owner = (
+        score_keys[edge_rows] < score_keys[edge_cols]
+    ) | (
+        (score_keys[edge_rows] == score_keys[edge_cols])
+        & (source_luma[edge_rows] + 1.0e-9 < source_luma[edge_cols])
+    )
+    crease_candidate = np.zeros(face_count, dtype=bool)
+    crease_candidate[edge_rows[evidence & darker_owner]] = True
+    crease_faces, crease_labels, crease_count = component_labels(
+        crease_candidate, equal_score_only=False
+    )
+    crease = np.zeros(face_count, dtype=bool)
+    if crease_count:
+        crease_counts = np.bincount(
+            crease_labels, minlength=crease_count
+        )
+        crease_areas = np.bincount(
+            crease_labels,
+            weights=areas[crease_faces],
+            minlength=crease_count,
+        )
+        accepted = (
+            (crease_counts >= _STRONG_CEL_SELECTIVE_COMPONENT_FACE_MIN)
+            & (
+                crease_areas
+                >= _STRONG_CEL_SELECTIVE_COMPONENT_AREA_MIN_MM2
+            )
+        )
+        crease[crease_faces] = accepted[crease_labels]
+        result_bands[crease] = np.maximum(
+            result_bands[crease].astype(np.int16) - 1,
+            0,
+        ).astype(np.uint8)
+
+    # Warm skin/brown is neither a highlight candidate nor a dark-base target.
+    # Preserve the ordinary Strong-Cel face and band exactly; the established
+    # warm-recipe recovery remains authoritative downstream.
+    result_bands[warm] = raw_bands[warm].astype(np.uint8, copy=False)
+
+    graphic_light = result_bands.astype(np.float64) / float(band_count - 1)
+    source_linear = _srgb_to_linear(source)
+    strong = _strong_cel_rgb(
+        source,
+        source_linear,
+        graphic_light,
+        light_intensity=float(
+            getattr(tone, "illustration_light_intensity", 1.0)
+        ),
+        detail_strength=float(
+            getattr(tone, "illustration_detail_strength", 0.0)
+        ),
+    )
+    strength = float(getattr(tone, "illustration_strength", 0.78))
+    strong_output = source * (1.0 - strength) + strong * strength
+    base_progress = np.zeros(face_count, dtype=np.float64)
+    if base_mid_band > 0:
+        base_progress = np.minimum(
+            result_bands.astype(np.float64) / float(base_mid_band),
+            1.0,
+        )
+    base_factor = 0.32 + 0.26 * base_progress
+    dark_source = _linear_to_srgb(source_linear * base_factor[:, None])
+    base_output = source * (1.0 - strength) + dark_source * strength
+    if lifted_band > base_mid_band:
+        printed_lifted = result_bands >= lifted_band
+    else:
+        printed_lifted = result_bands == high_band
+    output = np.where(
+        printed_lifted[:, None], strong_output, base_output
+    )
+    output[warm] = ordinary[warm]
+    return (
+        np.ascontiguousarray(np.clip(output, 0.0, 1.0)),
+        np.ascontiguousarray(result_bands),
+        True,
+    )
+
+
+def _refine_strong_cel_source_detail_bands(
+    band_ids: np.ndarray,
+    garment_mask: np.ndarray,
+    source_face_rgb: np.ndarray,
+    areas_mm2: np.ndarray,
+    neighbors: np.ndarray | None,
+    *,
+    band_count: int,
+    detail_strength: float,
+) -> np.ndarray:
+    """Move only coherent source-texture relief to an adjacent cel band.
+
+    Strong Cel normally compresses every dark-garment face in one geometric
+    light band to one print state.  That removes random texture speckle, but it
+    also removes a real multi-face painted fold.  This optional refinement
+    retains the safety property: it never invents a new band or palette state.
+    A connected dark/light patch may move by one existing requested band only
+    after its owner garment and the patch itself pass face-count, printable-
+    area, and robust source-luminance gates.
+
+    Missing/malformed topology and a zero strength return the input exactly.
+    Separate parts are already removed from ``neighbors`` by both recolour
+    entry points, so a patch cannot acquire support across a part boundary.
+    """
+
+    result = np.asarray(band_ids, dtype=np.uint8).copy()
+    amount = float(detail_strength)
+    if amount <= 0.0 or neighbors is None:
+        return result
+    garment = np.asarray(garment_mask)
+    source = np.asarray(source_face_rgb, dtype=np.float64)
+    areas = np.asarray(areas_mm2, dtype=np.float64)
+    adjacency = np.asarray(neighbors)
+    if (
+        isinstance(band_count, bool)
+        or not 2 <= int(band_count) <= 6
+        or not math.isfinite(amount)
+        or amount > 1.0
+        or garment.shape != (len(result),)
+        or garment.dtype != bool
+        or source.shape != (len(result), 3)
+        or areas.shape != (len(result),)
+        or adjacency.shape != (len(result), 3)
+        or not np.issubdtype(adjacency.dtype, np.integer)
+        or not bool(np.all(np.isfinite(source)))
+        or not bool(np.all(np.isfinite(areas)))
+        or bool(np.any((source < 0.0) | (source > 1.0)))
+        or bool(np.any(areas < 0.0))
+        or (
+            len(result)
+            and (
+                int(result.min()) < 0
+                or int(result.max()) >= int(band_count)
+            )
+        )
+    ):
+        return result
+    # Defense in depth: callers normally pass the already classified dark
+    # garment, but a warm skin/brown face may never become texture-relief
+    # evidence even if an upstream mask is accidentally widened.
+    garment = garment & ~_strong_cel_detail_warm_source_mask(source)
+    garment_faces = np.flatnonzero(garment)
+    if (
+        len(garment_faces) < _STRONG_CEL_DETAIL_OWNER_FACE_MIN
+        or len(garment_faces) > _STRONG_CEL_DETAIL_CANDIDATE_FACE_LIMIT
+    ):
+        return result
+
+    def component_labels(
+        mask: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray, int]:
+        selected = np.flatnonzero(mask)
+        if not len(selected):
+            return selected, np.empty(0, dtype=np.int32), 0
+        lookup = np.full(len(mask), -1, dtype=np.int32)
+        lookup[selected] = np.arange(len(selected), dtype=np.int32)
+        chosen = adjacency[selected]
+        valid = (chosen >= 0) & (chosen < len(mask))
+        safe = np.where(valid, chosen, 0)
+        local = np.full(chosen.shape, -1, dtype=np.int32)
+        local[valid] = lookup[safe[valid]]
+        internal = local >= 0
+        rows = np.broadcast_to(
+            np.arange(len(selected), dtype=np.int32)[:, None],
+            chosen.shape,
+        )[internal]
+        columns = local[internal]
+        from scipy.sparse import coo_matrix
+        from scipy.sparse.csgraph import connected_components
+
+        graph = coo_matrix(
+            (
+                np.ones(len(rows), dtype=np.uint8),
+                (rows, columns),
+            ),
+            shape=(len(selected), len(selected)),
+        ).tocsr()
+        count, labels = connected_components(
+            graph,
+            directed=False,
+            return_labels=True,
+        )
+        return selected, np.asarray(labels, dtype=np.int32), int(count)
+
+    owner_faces, owner_labels, owner_count = component_labels(garment)
+    owner_face_counts = np.bincount(owner_labels, minlength=owner_count)
+    owner_areas = np.bincount(
+        owner_labels,
+        weights=areas[owner_faces],
+        minlength=owner_count,
+    )
+    owner_by_face = np.full(len(result), -1, dtype=np.int32)
+    owner_by_face[owner_faces] = owner_labels
+    luminance = source @ np.asarray((0.2126, 0.7152, 0.0722))
+    dark_candidates = np.zeros(len(result), dtype=bool)
+    light_candidates = np.zeros(len(result), dtype=bool)
+    required_span = _STRONG_CEL_DETAIL_SOURCE_LUMA_SPAN_MIN * (
+        2.0 - amount
+    )
+    minimum_offset = _STRONG_CEL_DETAIL_SOURCE_LUMA_OFFSET_MIN * (
+        2.0 - amount
+    )
+    for owner in range(owner_count):
+        if (
+            int(owner_face_counts[owner])
+            < _STRONG_CEL_DETAIL_OWNER_FACE_MIN
+            or float(owner_areas[owner])
+            < _STRONG_CEL_DETAIL_OWNER_AREA_MIN_MM2
+        ):
+            continue
+        current = owner_faces[owner_labels == owner]
+        current_luminance = luminance[current]
+        current_areas = areas[current]
+        low = weighted_quantile(current_luminance, current_areas, 0.05)
+        high = weighted_quantile(current_luminance, current_areas, 0.95)
+        span = float(high - low)
+        if span < required_span:
+            continue
+        center = 0.5 * (low + high)
+        offset = max(
+            minimum_offset,
+            _STRONG_CEL_DETAIL_SOURCE_LUMA_OFFSET_FRACTION * span,
+        )
+        dark_candidates[current] = current_luminance <= center - offset
+        light_candidates[current] = current_luminance >= center + offset
+
+    def coherent_candidates(candidate_mask: np.ndarray) -> np.ndarray:
+        selected, labels, count = component_labels(candidate_mask)
+        accepted = np.zeros(len(result), dtype=bool)
+        if not count:
+            return accepted
+        counts = np.bincount(labels, minlength=count)
+        component_areas = np.bincount(
+            labels,
+            weights=areas[selected],
+            minlength=count,
+        )
+        order = np.argsort(labels, kind="stable")
+        _values, first = np.unique(labels[order], return_index=True)
+        component_owner = owner_by_face[selected[order[first]]]
+        required_area = np.maximum(
+            _STRONG_CEL_DETAIL_COMPONENT_AREA_MIN_MM2,
+            _STRONG_CEL_DETAIL_COMPONENT_AREA_FRACTION_MIN
+            * owner_areas[component_owner],
+        )
+        accepted_components = (
+            (component_owner >= 0)
+            & (counts >= _STRONG_CEL_DETAIL_COMPONENT_FACE_MIN)
+            & (component_areas >= required_area)
+        )
+        accepted[selected[accepted_components[labels]]] = True
+        return accepted
+
+    dark_detail = coherent_candidates(dark_candidates)
+    light_detail = coherent_candidates(light_candidates)
+    result[dark_detail] = np.maximum(
+        result[dark_detail].astype(np.int16) - 1,
+        0,
+    ).astype(np.uint8)
+    result[light_detail] = np.minimum(
+        result[light_detail].astype(np.int16) + 1,
+        int(band_count) - 1,
+    ).astype(np.uint8)
+    return result
+
+
+def _fill_strong_cel_garment_mask_holes(
+    garment_mask: np.ndarray,
+    source_face_rgb: np.ndarray,
+    source_face_lab: np.ndarray,
+    areas_mm2: np.ndarray,
+    neighbors: np.ndarray | None,
+    *,
+    vertices_unit: np.ndarray | None = None,
+    faces: np.ndarray | None = None,
+) -> np.ndarray:
+    """Absorb only tiny, colour-close holes on one smooth dark surface.
+
+    The support mask is intentionally the strict garment seed mask, not the
+    later broad-highlight growth result.  A small silver inset therefore
+    cannot become cloth merely because it is surrounded by a grown grey band,
+    and an apparent hole across a hard crease remains a separate surface.
+    """
+
+    result = np.asarray(garment_mask, dtype=bool).copy()
+    source = np.asarray(source_face_rgb, dtype=np.float64)
+    source_lab = np.asarray(source_face_lab, dtype=np.float64)
+    areas = np.asarray(areas_mm2, dtype=np.float64)
+    if neighbors is None or vertices_unit is None or faces is None:
+        return result
+    adjacency = np.asarray(neighbors)
+    geometry = np.asarray(vertices_unit, dtype=np.float64)
+    triangles = np.asarray(faces)
+    if (
+        source.shape != (len(result), 3)
+        or source_lab.shape != source.shape
+        or areas.shape != (len(result),)
+        or adjacency.shape != (len(result), 3)
+        or geometry.ndim != 2
+        or geometry.shape[1:] != (3,)
+        or triangles.shape != (len(result), 3)
+        or not np.issubdtype(adjacency.dtype, np.integer)
+        or not np.issubdtype(triangles.dtype, np.integer)
+        or not bool(np.all(np.isfinite(source)))
+        or not bool(np.all(np.isfinite(source_lab)))
+        or not bool(np.all(np.isfinite(areas)))
+        or bool(np.any(areas < 0.0))
+    ):
+        return result
+    if len(triangles) and (
+        int(triangles.min()) < 0
+        or int(triangles.max()) >= len(geometry)
+    ):
+        return result
+    luminance = source @ np.asarray((0.2126, 0.7152, 0.0722))
+    chroma = np.sqrt(np.sum(source_lab[:, 1:3] ** 2, axis=1))
+    eligible = (
+        ~result
+        & (luminance <= _STRONG_CEL_GARMENT_HOLE_LUMA_MAX)
+        & (chroma <= _STRONG_CEL_GARMENT_HOLE_LAB_CHROMA_MAX)
+        & (areas <= _STRONG_CEL_GARMENT_HOLE_MAX_AREA_MM2)
+        & ~_strong_cel_dark_warm_source_mask(source)
+        & ~_strong_cel_garment_grow_warm_mask(source)
+    )
+    if not np.any(eligible):
+        return result
+    valid = (adjacency >= 0) & (adjacency < len(result))
+    safe = np.where(valid, adjacency, 0)
+    support = valid & result[safe] & eligible[:, None]
+    support_positions = np.flatnonzero(support.ravel())
+    if not len(support_positions):
+        return result
+    owner_rows = np.broadcast_to(
+        np.arange(len(result), dtype=np.int32)[:, None],
+        adjacency.shape,
+    )
+    owner_faces = owner_rows.ravel()[support_positions]
+    nearby_faces = safe.ravel()[support_positions]
+    delta_e = np.linalg.norm(
+        source_lab[owner_faces] - source_lab[nearby_faces],
+        axis=1,
+    )
+    normal_dots = _strong_cel_face_pair_normal_dots(
+        geometry,
+        triangles,
+        owner_faces,
+        nearby_faces,
+    )
+    if normal_dots.shape != delta_e.shape:
+        return result
+    supported = (
+        (delta_e <= _STRONG_CEL_GARMENT_HOLE_NEIGHBOR_DELTA_E_MAX)
+        & (
+            normal_dots
+            >= float(
+                np.cos(
+                    np.deg2rad(
+                        _STRONG_CEL_GARMENT_GROW_SMOOTH_ANGLE_DEGREES
+                    )
+                )
+            )
+        )
+    )
+    support.ravel()[support_positions[~supported]] = False
+    support_faces = np.where(support, safe, -1)
+    first, second, third = (
+        support_faces[:, 0],
+        support_faces[:, 1],
+        support_faces[:, 2],
+    )
+    distinct_support = (
+        (first >= 0).astype(np.int8)
+        + ((second >= 0) & (second != first)).astype(np.int8)
+        + (
+            (third >= 0)
+            & (third != first)
+            & (third != second)
+        ).astype(np.int8)
+    )
+    fill = eligible & (
+        distinct_support >= _STRONG_CEL_GARMENT_GROW_DISTINCT_SEED_MIN
+    )
+    result[fill] = True
+    return result
+
+
+def _strong_cel_face_pair_normal_dots(
+    vertices_unit: np.ndarray,
+    faces: np.ndarray,
+    owner_face_ids: np.ndarray,
+    neighbor_face_ids: np.ndarray,
+) -> np.ndarray:
+    """Return coherently signed adjacent-face normal agreement in batches.
+
+    Imported meshes can contain an isolated reversed triangle.  On a shared
+    manifold edge, coherent neighbouring windings traverse that edge in
+    opposite directions; equal directions identify the local reversal.  Use
+    that exact topological signal to correct the dot sign without treating a
+    genuine hard fold as smooth or mutating the source triangle order.
+    """
+
+    geometry = np.asarray(vertices_unit, dtype=np.float64)
+    triangles = np.asarray(faces)
+    owners = np.asarray(owner_face_ids)
+    nearby = np.asarray(neighbor_face_ids)
+    if (
+        geometry.ndim != 2
+        or geometry.shape[1:] != (3,)
+        or triangles.ndim != 2
+        or triangles.shape[1:] != (3,)
+        or not np.issubdtype(triangles.dtype, np.integer)
+        or owners.ndim != 1
+        or nearby.shape != owners.shape
+        or not np.issubdtype(owners.dtype, np.integer)
+        or not np.issubdtype(nearby.dtype, np.integer)
+    ):
+        return np.empty(0, dtype=np.float64)
+    if len(triangles) and (
+        int(triangles.min()) < 0
+        or int(triangles.max()) >= len(geometry)
+    ):
+        return np.empty(0, dtype=np.float64)
+    if len(owners) and (
+        int(owners.min()) < 0
+        or int(owners.max()) >= len(triangles)
+        or int(nearby.min()) < 0
+        or int(nearby.max()) >= len(triangles)
+    ):
+        return np.empty(0, dtype=np.float64)
+
+    result = np.zeros(len(owners), dtype=np.float64)
+    for start in range(0, len(owners), 25_000):
+        stop = min(start + 25_000, len(owners))
+        owner_triangles = geometry[triangles[owners[start:stop]]]
+        neighbor_triangles = geometry[triangles[nearby[start:stop]]]
+        owner_normals = np.cross(
+            owner_triangles[:, 1] - owner_triangles[:, 0],
+            owner_triangles[:, 2] - owner_triangles[:, 0],
+        )
+        neighbor_normals = np.cross(
+            neighbor_triangles[:, 1] - neighbor_triangles[:, 0],
+            neighbor_triangles[:, 2] - neighbor_triangles[:, 0],
+        )
+        owner_lengths = np.linalg.norm(owner_normals, axis=1)
+        neighbor_lengths = np.linalg.norm(neighbor_normals, axis=1)
+        valid = (owner_lengths > 1.0e-15) & (neighbor_lengths > 1.0e-15)
+        chunk = result[start:stop]
+        raw_dots = np.einsum(
+            "ij,ij->i",
+            owner_normals[valid] / owner_lengths[valid, None],
+            neighbor_normals[valid] / neighbor_lengths[valid, None],
+            optimize=True,
+        )
+        owner_indices = triangles[owners[start:stop]][valid]
+        neighbor_indices = triangles[nearby[start:stop]][valid]
+        owner_edges = owner_indices[:, ((0, 1), (1, 2), (2, 0))]
+        neighbor_edges = neighbor_indices[:, ((0, 1), (1, 2), (2, 0))]
+        same_direction = np.zeros(len(owner_edges), dtype=bool)
+        reverse_direction = np.zeros(len(owner_edges), dtype=bool)
+        for owner_slot in range(3):
+            for neighbor_slot in range(3):
+                owner_edge = owner_edges[:, owner_slot]
+                neighbor_edge = neighbor_edges[:, neighbor_slot]
+                same_direction |= np.all(
+                    owner_edge == neighbor_edge,
+                    axis=1,
+                )
+                reverse_direction |= (
+                    (owner_edge[:, 0] == neighbor_edge[:, 1])
+                    & (owner_edge[:, 1] == neighbor_edge[:, 0])
+                )
+        # Synthetic or conservative partial adjacency can omit the actual
+        # shared edge.  Keep the raw signed result in that case.  A valid
+        # manifold edge has exactly one of the two direction flags.
+        local_reversal = same_direction & ~reverse_direction
+        raw_dots[local_reversal] *= -1.0
+        chunk[valid] = raw_dots
+    return result
+
+
+def _grow_strong_cel_garment_highlight_regions(
+    garment_mask: np.ndarray,
+    source_face_rgb: np.ndarray,
+    source_face_lab: np.ndarray,
+    areas_mm2: np.ndarray,
+    neighbors: np.ndarray | None,
+    vertices_unit: np.ndarray,
+    faces: np.ndarray,
+) -> np.ndarray:
+    """Grow dark cloth seeds into broad, smooth baked-grey highlights.
+
+    Candidate faces are connected to one another first; an entire component is
+    accepted only when it has printable area and touches at least two distinct
+    dark garment seed faces across smooth edges.  ``neighbors`` is already
+    restricted to one part by both recolour entry points, so this pass cannot
+    bridge separate GLB/OBJ parts.  A coplanar grey material painted into the
+    same part is not semantically distinguishable from a baked highlight; the
+    conservative lightness, area, and seed-contact gates intentionally fail
+    small silver details closed.
+    """
+
+    result = np.asarray(garment_mask, dtype=bool).copy()
+    source = np.asarray(source_face_rgb, dtype=np.float64)
+    source_lab = np.asarray(source_face_lab, dtype=np.float64)
+    areas = np.asarray(areas_mm2, dtype=np.float64)
+    geometry = np.asarray(vertices_unit, dtype=np.float64)
+    triangles = np.asarray(faces)
+    if neighbors is None:
+        return result
+    adjacency = np.asarray(neighbors)
+    face_count = len(result)
+    if (
+        source.shape != (face_count, 3)
+        or source_lab.shape != source.shape
+        or areas.shape != (face_count,)
+        or adjacency.shape != (face_count, 3)
+        or geometry.ndim != 2
+        or geometry.shape[1:] != (3,)
+        or triangles.shape != (face_count, 3)
+        or not np.issubdtype(adjacency.dtype, np.integer)
+        or not np.issubdtype(triangles.dtype, np.integer)
+        or not bool(np.all(np.isfinite(source)))
+        or not bool(np.all(np.isfinite(source_lab)))
+        or not bool(np.all(np.isfinite(areas)))
+        or bool(np.any(areas < 0.0))
+    ):
+        return result
+    if face_count and (
+        int(triangles.min()) < 0
+        or int(triangles.max()) >= len(geometry)
+    ):
+        return result
+
+    luminance = source @ np.asarray((0.2126, 0.7152, 0.0722))
+    chroma = np.sqrt(np.sum(source_lab[:, 1:3] ** 2, axis=1))
+    eligible = (
+        ~result
+        & (luminance >= _STRONG_CEL_GARMENT_GROW_LUMA_MIN)
+        & (luminance <= _STRONG_CEL_GARMENT_GROW_LUMA_MAX)
+        & (chroma <= _STRONG_CEL_GARMENT_GROW_LAB_CHROMA_MAX)
+        & ~_strong_cel_dark_warm_source_mask(source)
+        & ~_strong_cel_garment_grow_warm_mask(source)
+    )
+    selected = np.flatnonzero(eligible)
+    if (
+        not len(selected)
+        or len(selected) > _STRONG_CEL_GARMENT_GROW_CANDIDATE_FACE_LIMIT
+    ):
+        return result
+
+    chosen = adjacency[selected]
+    valid = (chosen >= 0) & (chosen < face_count)
+    safe = np.where(valid, chosen, 0)
+    local_lookup = np.full(face_count, -1, dtype=np.int32)
+    local_lookup[selected] = np.arange(len(selected), dtype=np.int32)
+    nearby_local = np.full(chosen.shape, -1, dtype=np.int32)
+    nearby_local[valid] = local_lookup[safe[valid]]
+    internal = valid & (nearby_local >= 0)
+    seed_boundary = valid & result[safe]
+    relevant = internal | seed_boundary
+    if not np.any(seed_boundary):
+        return result
+
+    local_rows = np.broadcast_to(
+        np.arange(len(selected), dtype=np.int32)[:, None],
+        chosen.shape,
+    )
+    relevant_positions = np.flatnonzero(relevant.ravel())
+    relevant_owner_local = local_rows[relevant]
+    relevant_owner_faces = selected[relevant_owner_local]
+    relevant_neighbor_faces = safe[relevant]
+    normal_dots = _strong_cel_face_pair_normal_dots(
+        geometry,
+        triangles,
+        relevant_owner_faces,
+        relevant_neighbor_faces,
+    )
+    if normal_dots.shape != (len(relevant_positions),):
+        return result
+    smooth = normal_dots >= float(
+        np.cos(
+            np.deg2rad(
+                _STRONG_CEL_GARMENT_GROW_SMOOTH_ANGLE_DEGREES
+            )
+        )
+    )
+    smooth_edges = np.zeros(chosen.shape, dtype=bool)
+    smooth_edges.ravel()[relevant_positions[smooth]] = True
+    internal &= smooth_edges
+    seed_boundary &= smooth_edges
+    if not np.any(seed_boundary):
+        return result
+
+    from scipy.sparse import coo_matrix
+    from scipy.sparse.csgraph import connected_components
+
+    graph_rows = local_rows[internal]
+    graph_columns = nearby_local[internal]
+    graph = coo_matrix(
+        (
+            np.ones(len(graph_rows), dtype=np.uint8),
+            (graph_rows, graph_columns),
+        ),
+        shape=(len(selected), len(selected)),
+    ).tocsr()
+    component_count, components = connected_components(
+        graph,
+        directed=False,
+        return_labels=True,
+    )
+    components = np.asarray(components, dtype=np.int32)
+    component_faces = np.bincount(
+        components,
+        minlength=component_count,
+    )
+    component_area = np.bincount(
+        components,
+        weights=areas[selected],
+        minlength=component_count,
+    )
+    boundary_components = np.broadcast_to(
+        components[:, None],
+        seed_boundary.shape,
+    )[seed_boundary]
+    boundary_seed_faces = safe[seed_boundary]
+    seed_edge_count = np.bincount(
+        boundary_components,
+        minlength=component_count,
+    )
+    order = np.lexsort((boundary_seed_faces, boundary_components))
+    ordered_components = boundary_components[order]
+    ordered_seeds = boundary_seed_faces[order]
+    distinct = np.ones(len(order), dtype=bool)
+    if len(distinct) > 1:
+        distinct[1:] = (
+            (ordered_components[1:] != ordered_components[:-1])
+            | (ordered_seeds[1:] != ordered_seeds[:-1])
+        )
+    distinct_seed_count = np.bincount(
+        ordered_components[distinct],
+        minlength=component_count,
+    )
+    accepted_components = (
+        (component_faces >= _STRONG_CEL_GARMENT_GROW_COMPONENT_FACE_MIN)
+        & (
+            component_area
+            >= _STRONG_CEL_GARMENT_GROW_COMPONENT_AREA_MIN_MM2
+        )
+        & (seed_edge_count >= _STRONG_CEL_GARMENT_GROW_SEED_EDGE_MIN)
+        & (
+            distinct_seed_count
+            >= _STRONG_CEL_GARMENT_GROW_DISTINCT_SEED_MIN
+        )
+    )
+    if np.any(accepted_components):
+        result[selected[accepted_components[components]]] = True
+    return result
+
+
+def _select_strong_cel_monotonic_states(
+    candidates: np.ndarray,
+    candidate_lightness: np.ndarray,
+    target_lightness: np.ndarray,
+) -> np.ndarray:
+    """Fit non-decreasing palette states to active geometric bands.
+
+    Each final requested band remains exactly one stable print state, but
+    adjacent bands may intentionally share that state.  The optional coherent
+    source-detail pass can move a proven patch into an adjacent requested band;
+    it cannot add another band.  Requiring a distinct state for every band
+    made a lowered Light Strength ineffective whenever Full Spectrum exposed
+    enough recipes: four nearly identical dark targets were still forced
+    across four progressively brighter inks.
+    """
+
+    available = np.asarray(candidates, dtype=np.int8)
+    lightness = np.asarray(candidate_lightness, dtype=np.float64)
+    targets = np.maximum.accumulate(
+        np.asarray(target_lightness, dtype=np.float64)
+    )
+    if (
+        available.ndim != 1
+        or lightness.shape != available.shape
+        or targets.ndim != 1
+        or not len(available)
+        or not len(targets)
+    ):
+        return np.empty(0, dtype=np.int8)
+    band_count = len(targets)
+    state_count = len(available)
+    cost = np.full((band_count, state_count), np.inf, dtype=np.float64)
+    parent = np.full((band_count, state_count), -1, dtype=np.int16)
+    cost[0] = np.abs(lightness - targets[0])
+    for band in range(1, band_count):
+        for state in range(state_count):
+            previous = cost[band - 1, : state + 1]
+            previous_state = int(np.argmin(previous))
+            previous_cost = float(previous[previous_state])
+            if math.isfinite(previous_cost):
+                cost[band, state] = previous_cost + abs(
+                    float(lightness[state] - targets[band])
+                )
+                parent[band, state] = previous_state
+    final_state = int(np.argmin(cost[-1]))
+    if not math.isfinite(float(cost[-1, final_state])):
+        return np.empty(0, dtype=np.int8)
+    positions = np.empty(band_count, dtype=np.int16)
+    positions[-1] = final_state
+    for band in range(band_count - 1, 0, -1):
+        positions[band - 1] = parent[band, positions[band]]
+    return available[positions]
+
+
+def _strong_cel_broad_connected_material_mask(
+    garment_mask: np.ndarray,
+    areas_mm2: np.ndarray,
+    neighbors: np.ndarray | None,
+) -> np.ndarray:
+    """Keep only broad connected dark regions for the cool-spool ramp.
+
+    The automatic proposal may legitimately contain a blue-grey spool because
+    a coat or large panel dominates the model.  That must not make a separate
+    pupil, seam, weapon detail, or shoe share the same blue cel ladder merely
+    because its pixels are also near black.  With topology available, require
+    each retained component to satisfy the same 20% model-area proof used by
+    the physical-spool proposal.  Without topology, keep the established
+    global-area fallback; a tiny isolated detail alone still fails closed.
+    """
+
+    mask = np.asarray(garment_mask, dtype=bool)
+    areas = np.asarray(areas_mm2, dtype=np.float64)
+    if mask.ndim != 1 or areas.shape != mask.shape:
+        return np.zeros(mask.shape, dtype=bool)
+    total_area = float(areas.sum())
+    required_area = _STRONG_CEL_COOL_DARK_AREA_FRACTION_MIN * total_area
+    if (
+        total_area <= 0.0
+        or float(areas[mask].sum()) < required_area
+    ):
+        return np.zeros_like(mask)
+    if neighbors is None:
+        return mask.copy()
+    adjacency = np.asarray(neighbors)
+    if (
+        adjacency.shape != (len(mask), 3)
+        or not np.issubdtype(adjacency.dtype, np.integer)
+    ):
+        return mask.copy()
+    selected = np.flatnonzero(mask)
+    local_lookup = np.full(len(mask), -1, dtype=np.int32)
+    local_lookup[selected] = np.arange(len(selected), dtype=np.int32)
+    chosen = adjacency[selected]
+    valid = (chosen >= 0) & (chosen < len(mask))
+    safe = np.where(valid, chosen, 0)
+    nearby_local = np.full(chosen.shape, -1, dtype=np.int32)
+    nearby_local[valid] = local_lookup[safe[valid]]
+    internal = nearby_local >= 0
+    rows = np.broadcast_to(
+        np.arange(len(selected), dtype=np.int32)[:, None],
+        chosen.shape,
+    )[internal]
+    columns = nearby_local[internal]
+    from scipy.sparse import coo_matrix
+    from scipy.sparse.csgraph import connected_components
+
+    graph = coo_matrix(
+        (np.ones(len(rows), dtype=np.uint8), (rows, columns)),
+        shape=(len(selected), len(selected)),
+    ).tocsr()
+    component_count, components = connected_components(
+        graph,
+        directed=False,
+        return_labels=True,
+    )
+    component_area = np.bincount(
+        components,
+        weights=areas[selected],
+        minlength=component_count,
+    )
+    component_faces = np.bincount(
+        components,
+        minlength=component_count,
+    )
+    accepted = (component_area >= required_area) & (component_faces >= 2)
+    result = np.zeros_like(mask)
+    result[selected[accepted[components]]] = True
+    return result
+
+
+def _compress_strong_cel_dark_garment_states(
+    indices: np.ndarray,
+    source_face_rgb: np.ndarray,
+    source_face_lab: np.ndarray,
+    tone_face_lab: np.ndarray,
+    print_palette_lab: np.ndarray,
+    enabled: np.ndarray,
+    tone: ToneSettings,
+    palette: PaletteSettings,
+    illustration_band_ids: np.ndarray | None,
+    areas_mm2: np.ndarray,
+    neighbors: np.ndarray | None,
+    vertices_unit: np.ndarray,
+    faces: np.ndarray,
+    *,
+    selective_profile_applied: bool = False,
+) -> tuple[np.ndarray, int]:
+    """Make each final requested light band one printable neutral state."""
+
+    candidates = _strong_cel_neutral_band_candidates(
+        palette,
+        print_palette_lab,
+        enabled,
+        tone,
+    )
+    if not len(candidates) or illustration_band_ids is None:
+        return indices, 0
+    raw_band_ids = np.asarray(illustration_band_ids)
+    band_count = int(getattr(tone, "illustration_bands", 4))
+    if (
+        raw_band_ids.shape != (len(indices),)
+        or not np.issubdtype(raw_band_ids.dtype, np.integer)
+        or (
+            len(raw_band_ids)
+            and (
+                int(raw_band_ids.min()) < 0
+                or int(raw_band_ids.max()) >= band_count
+            )
+        )
+    ):
+        raise EngineError("強調セル彩色の光帯IDが不正です")
+    strict_garment = _strong_cel_dark_garment_source_mask(
+        source_face_rgb,
+        source_face_lab,
+    )
+    # Grow only from immutable high-confidence dark cloth seeds.  A tiny hole
+    # accepted by the cleanup below must never become a bridge into another
+    # material or across a hard crease.
+    grown_garment = _grow_strong_cel_garment_highlight_regions(
+        strict_garment,
+        source_face_rgb,
+        source_face_lab,
+        areas_mm2,
+        neighbors,
+        vertices_unit,
+        faces,
+    )
+    filled_garment = _fill_strong_cel_garment_mask_holes(
+        strict_garment,
+        source_face_rgb,
+        source_face_lab,
+        areas_mm2,
+        neighbors,
+        vertices_unit=vertices_unit,
+        faces=faces,
+    )
+    garment = grown_garment | filled_garment
+    physical_lab = np.asarray(print_palette_lab, dtype=np.float64)[:4]
+    physical_chroma = np.sqrt(np.sum(physical_lab[:, 1:3] ** 2, axis=1))
+    has_cool_endpoint = bool(
+        palette.color_mode == COLOR_MODE_FULL_SPECTRUM
+        and np.any(
+            (physical_chroma >= _STRONG_CEL_COOL_PHYSICAL_LAB_CHROMA_MIN)
+            & (physical_chroma <= _STRONG_CEL_COOL_PHYSICAL_LAB_CHROMA_MAX)
+            & (np.abs(physical_lab[:, 1]) <= _STRONG_CEL_COOL_LAB_A_ABS_MAX)
+            & (physical_lab[:, 2] <= _STRONG_CEL_COOL_LAB_B_MAX)
+            & (physical_lab[:, 0] >= _STRONG_CEL_COOL_LAB_L_MIN)
+            & (physical_lab[:, 0] <= _STRONG_CEL_COOL_LAB_L_MAX)
+        )
+    )
+    if has_cool_endpoint:
+        garment = _strong_cel_broad_connected_material_mask(
+            garment,
+            areas_mm2,
+            neighbors,
+        )
+    if not np.any(garment):
+        return indices, 0
+    if selective_profile_applied:
+        # The selective profile already removed one-face peaks and enforced a
+        # hard area budget.  A later majority or source-detail promotion could
+        # grow lifted bands beyond that contract, so consume its IDs exactly.
+        cleaned_band_ids = raw_band_ids.copy()
+    else:
+        cleaned_band_ids = _smooth_strong_cel_band_ids(
+            raw_band_ids,
+            garment,
+            areas_mm2,
+            neighbors,
+        )
+        cleaned_band_ids = _refine_strong_cel_source_detail_bands(
+            cleaned_band_ids,
+            garment,
+            source_face_rgb,
+            areas_mm2,
+            neighbors,
+            band_count=band_count,
+            detail_strength=float(
+                getattr(tone, "illustration_detail_strength", 0.0)
+            ),
+        )
+    active_bands = np.unique(cleaned_band_ids[garment]).astype(
+        np.uint8,
+        copy=False,
+    )
+    target_lightness = np.asarray(
+        [
+            np.mean(
+                np.asarray(tone_face_lab, dtype=np.float64)[
+                    garment & (cleaned_band_ids == band),
+                    0,
+                ]
+            )
+            for band in active_bands
+        ],
+        dtype=np.float64,
+    )
+    ramp_states = _select_strong_cel_monotonic_states(
+        candidates,
+        np.asarray(print_palette_lab, dtype=np.float64)[candidates, 0],
+        target_lightness,
+    )
+    if len(ramp_states) != len(active_bands):
+        return indices, 0
+    result = np.asarray(indices, dtype=np.int8).copy()
+    for band, state in zip(active_bands, ramp_states, strict=True):
+        selected = garment & (cleaned_band_ids == band)
+        result[selected] = state
+    return result, int(np.count_nonzero(result != indices))
+
+
 def _flat_four_lab_chunks(face_rgb: np.ndarray) -> np.ndarray:
     """Convert large Flat-Four face buffers without a full float64 peak."""
 
@@ -3759,6 +7073,9 @@ def _flat_four_raw_chroma_mask(
     tone_face_lab: np.ndarray,
     source_face_rgb: np.ndarray,
     source_face_lab: np.ndarray,
+    *,
+    source_rgb_span_min: float = _FLAT_SHADOW_SOURCE_RGB_SPAN_MIN,
+    source_lab_chroma_min: float = _FLAT_SHADOW_SOURCE_LAB_CHROMA_MIN,
 ) -> np.ndarray:
     """Return raw chromatic faces that tone controls clipped to neutral."""
 
@@ -3787,8 +7104,8 @@ def _flat_four_raw_chroma_mask(
         )
         result[start:stop] = (
             (tone_chroma <= _FLAT_ACHROMATIC_SOURCE_CHROMA_MAX)
-            & (source_chroma >= _FLAT_SHADOW_SOURCE_LAB_CHROMA_MIN)
-            & (source_span >= _FLAT_SHADOW_SOURCE_RGB_SPAN_MIN)
+            & (source_chroma >= float(source_lab_chroma_min))
+            & (source_span >= float(source_rgb_span_min))
         )
     return result
 
@@ -3837,6 +7154,397 @@ def flat_four_required_white_rgb(
     return selected_rgb_sum / selected_weight
 
 
+def strong_cel_required_physical_rgb(
+    source_face_rgb: np.ndarray,
+    tone_face_rgb: np.ndarray,
+    areas: np.ndarray,
+    tone: ToneSettings,
+    color_mode: str,
+    *,
+    face_group_ids: np.ndarray | None = None,
+) -> np.ndarray | None:
+    """Reserve printable neutral endpoints for substantial black/blue-black cloth.
+
+    The stylised RGB samples still drive the ordinary palette optimiser.  This
+    function only adds a hard reservation when the model contains enough
+    low-chroma dark surface *and* High-Contrast Cel has generated enough
+    visible highlight area from it.  Small eyes, line work, and trim fail the
+    area gates and therefore do not alter the automatic four-colour proposal.
+    """
+
+    if (
+        str(getattr(tone, "illustration_mode", "off")).strip().lower()
+        != "cel_strong"
+    ):
+        return None
+    source = np.asarray(source_face_rgb)
+    styled = np.asarray(tone_face_rgb)
+    weights = np.asarray(areas)
+    if (
+        source.ndim != 2
+        or source.shape[1:] != (3,)
+        or styled.shape != source.shape
+        or weights.shape != (len(source),)
+    ):
+        raise EngineError("強調セル彩色の自動フィラメント判定データが不正です")
+    group_inverse: np.ndarray | None = None
+    group_dark_area: np.ndarray | None = None
+    group_dark_lab_sum: np.ndarray | None = None
+    if face_group_ids is not None:
+        raw_groups = np.asarray(face_group_ids)
+        if raw_groups.shape != (len(source),):
+            raise EngineError("強調セル彩色の素材グループ数が不正です")
+        try:
+            _group_values, group_inverse = np.unique(
+                raw_groups,
+                return_inverse=True,
+            )
+        except (TypeError, ValueError) as exc:
+            raise EngineError("強調セル彩色の素材グループが不正です") from exc
+        group_inverse = np.asarray(group_inverse, dtype=np.int32)
+        group_count = (
+            int(group_inverse.max()) + 1 if len(group_inverse) else 0
+        )
+        group_dark_area = np.zeros(group_count, dtype=np.float64)
+        group_dark_lab_sum = np.zeros((group_count, 3), dtype=np.float64)
+    luminance_weights = np.asarray((0.2126, 0.7152, 0.0722))
+    total = 0.0
+    dark_area = 0.0
+    dark_lab_sum = np.zeros(3, dtype=np.float64)
+    lifted_area = 0.0
+    peak_area = 0.0
+    for start in range(0, len(source), 25_000):
+        stop = min(start + 25_000, len(source))
+        source_chunk = np.asarray(source[start:stop], dtype=np.float64)
+        styled_chunk = np.asarray(styled[start:stop], dtype=np.float64)
+        weight_chunk = np.asarray(weights[start:stop], dtype=np.float64)
+        if (
+            not bool(np.all(np.isfinite(source_chunk)))
+            or not bool(np.all(np.isfinite(styled_chunk)))
+            or not bool(np.all(np.isfinite(weight_chunk)))
+            or bool(np.any(weight_chunk < 0.0))
+        ):
+            raise EngineError("強調セル彩色の自動フィラメント判定値が不正です")
+        total += float(weight_chunk.sum())
+        source_luma = source_chunk @ luminance_weights
+        styled_luma = styled_chunk @ luminance_weights
+        source_lab = srgb_to_lab(source_chunk)
+        dark_garment = _strong_cel_dark_garment_source_mask(
+            source_chunk,
+            source_lab,
+        )
+        lifted = (
+            dark_garment
+            & (styled_luma >= _STRONG_CEL_LIFTED_LUMA_MIN)
+            & (
+                styled_luma - source_luma
+                >= _STRONG_CEL_LIFT_DELTA_MIN
+            )
+        )
+        peak = dark_garment & (styled_luma >= _STRONG_CEL_PEAK_LUMA_MIN)
+        dark_area += float(weight_chunk[dark_garment].sum())
+        if np.any(dark_garment):
+            dark_lab_sum += (
+                source_lab[dark_garment].T @ weight_chunk[dark_garment]
+            )
+            if (
+                group_inverse is not None
+                and group_dark_area is not None
+                and group_dark_lab_sum is not None
+            ):
+                local_groups = group_inverse[start:stop][dark_garment]
+                local_weights = weight_chunk[dark_garment]
+                np.add.at(group_dark_area, local_groups, local_weights)
+                np.add.at(
+                    group_dark_lab_sum,
+                    local_groups,
+                    source_lab[dark_garment] * local_weights[:, None],
+                )
+        lifted_area += float(weight_chunk[lifted].sum())
+        peak_area += float(weight_chunk[peak].sum())
+    if (
+        total <= 0.0
+        or dark_area < _STRONG_CEL_DARK_AREA_FRACTION_MIN * total
+        or lifted_area < _STRONG_CEL_LIFTED_AREA_FRACTION_MIN * total
+    ):
+        return None
+    dominant_dark_area = dark_area
+    dominant_dark_lab_sum = dark_lab_sum
+    if (
+        group_dark_area is not None
+        and group_dark_lab_sum is not None
+        and len(group_dark_area)
+    ):
+        dominant_group = int(np.argmax(group_dark_area))
+        dominant_dark_area = float(group_dark_area[dominant_group])
+        dominant_dark_lab_sum = group_dark_lab_sum[dominant_group]
+    cool_cloth_profile = (
+        float(getattr(tone, "illustration_strength", 0.0))
+        >= _STRONG_CEL_COOL_STRENGTH_MIN
+        and dark_area
+        >= _STRONG_CEL_COOL_DARK_AREA_FRACTION_MIN * total
+        and dominant_dark_area
+        >= _STRONG_CEL_COOL_DARK_AREA_FRACTION_MIN * total
+        and lifted_area
+        >= _STRONG_CEL_COOL_LIFTED_AREA_FRACTION_MIN * total
+        and lifted_area
+        >= _STRONG_CEL_COOL_LIFTED_GARMENT_FRACTION_MIN * dark_area
+    )
+    # Full Spectrum can build a blue-black ladder from black, light, and one
+    # cool physical endpoint, leaving the separately merged fourth slot for
+    # skin when present.  Flat Four cannot synthesize those intermediate
+    # mixes, so it deliberately retains the established black/mid/(peak
+    # light) proposal below.  Without the broad-material proof Full Spectrum
+    # also retains its established neutral endpoint proposal.
+    if (
+        str(color_mode).strip().lower() == COLOR_MODE_FULL_SPECTRUM
+        and cool_cloth_profile
+    ):
+        cloth_anchor = _STRONG_CEL_COOL_ANCHOR_RGB
+        # Neutral black receives the intentional blue-grey print highlight.
+        # If the source material already carries a modest cool hue, preserve
+        # that hue instead of replacing every navy/violet garment with the
+        # same blue.  Saturated armour never reaches this branch because the
+        # dark-garment chroma gate excludes it.
+        mean_dark_lab = dominant_dark_lab_sum / max(
+            dominant_dark_area,
+            1.0e-12,
+        )
+        mean_dark_chroma = float(np.linalg.norm(mean_dark_lab[1:3]))
+        if mean_dark_chroma >= _STRONG_CEL_SOURCE_HUE_CHROMA_MIN:
+            lifted_lab = mean_dark_lab.copy()
+            lifted_lab[0] = _STRONG_CEL_SOURCE_HUE_TARGET_L
+            target_chroma = min(
+                _STRONG_CEL_SOURCE_HUE_CHROMA_MAX,
+                mean_dark_chroma * _STRONG_CEL_SOURCE_HUE_CHROMA_SCALE,
+            )
+            lifted_lab[1:3] *= target_chroma / mean_dark_chroma
+            cloth_anchor = np.clip(
+                lab_to_srgb(lifted_lab[None, :])[0],
+                0.0,
+                1.0,
+            )
+        return np.vstack(
+            (
+                _STRONG_CEL_DARK_ANCHOR_RGB,
+                _STRONG_CEL_LIGHT_ANCHOR_RGB,
+                cloth_anchor,
+            )
+        ).copy()
+
+    # Flat Four cannot synthesize intermediate greys.  Reserve its middle grey
+    # and, only when a meaningful highlight patch really exists, a separate
+    # light neutral.  Full Spectrum reserves black + near-white and obtains its
+    # middle greys from their printable mixed states.  A separate warm-material
+    # reservation may then keep one remaining physical slot for healthy skin.
+    if str(color_mode).strip().lower() == COLOR_MODE_FLAT_FOUR:
+        anchors = [
+            _STRONG_CEL_DARK_ANCHOR_RGB,
+            _STRONG_CEL_MID_ANCHOR_RGB,
+        ]
+        if peak_area >= _STRONG_CEL_PEAK_AREA_FRACTION_MIN * total:
+            source_white = flat_four_required_white_rgb(source, weights)
+            preserved_white = (
+                None
+                if source_white is None
+                else flat_four_required_white_rgb(styled, weights)
+            )
+            anchors.append(
+                _STRONG_CEL_LIGHT_ANCHOR_RGB
+                if preserved_white is None
+                else preserved_white
+            )
+        return np.vstack(anchors).copy()
+    return np.vstack(
+        (_STRONG_CEL_DARK_ANCHOR_RGB, _STRONG_CEL_LIGHT_ANCHOR_RGB)
+    ).copy()
+
+
+def strong_cel_required_warm_rgb(
+    source_face_rgb: np.ndarray,
+    areas: np.ndarray,
+    tone: ToneSettings,
+) -> np.ndarray | None:
+    """Return a brighter hue-preserving skin/brown base for strong cel output.
+
+    A dim AI texture can make skin optimise toward brown or grey.  Reserve one
+    warm physical filament from the raw material direction and raise only its
+    energy, so Full Spectrum can form lit skin by mixing it with white while
+    Flat Four keeps a visibly healthy single skin colour.
+    """
+
+    if (
+        str(getattr(tone, "illustration_mode", "off")).strip().lower()
+        != "cel_strong"
+    ):
+        return None
+    source = np.asarray(source_face_rgb)
+    weights = np.asarray(areas)
+    if source.ndim != 2 or source.shape[1:] != (3,) or weights.shape != (
+        len(source),
+    ):
+        raise EngineError("強調セル彩色の肌色候補判定データが不正です")
+    total = 0.0
+    warm_area = 0.0
+    warm_rgb_sum = np.zeros(3, dtype=np.float64)
+    for start in range(0, len(source), 25_000):
+        stop = min(start + 25_000, len(source))
+        source_chunk = np.asarray(source[start:stop], dtype=np.float64)
+        weight_chunk = np.asarray(weights[start:stop], dtype=np.float64)
+        if (
+            not bool(np.all(np.isfinite(source_chunk)))
+            or not bool(np.all(np.isfinite(weight_chunk)))
+            or bool(np.any(weight_chunk < 0.0))
+        ):
+            raise EngineError("強調セル彩色の肌色候補判定値が不正です")
+        selected = _strong_cel_dark_warm_source_mask(source_chunk)
+        total += float(weight_chunk.sum())
+        if np.any(selected):
+            selected_weights = weight_chunk[selected]
+            warm_area += float(selected_weights.sum())
+            warm_rgb_sum += source_chunk[selected].T @ selected_weights
+    if (
+        total <= 0.0
+        or warm_area
+        < _STRONG_CEL_DARK_WARM_AREA_FRACTION_MIN * total
+    ):
+        return None
+    mean = warm_rgb_sum / warm_area
+    peak = float(np.max(mean))
+    if peak <= 1e-12:
+        return None
+    return np.clip(
+        mean
+        * max(1.0, _STRONG_CEL_DARK_WARM_TARGET_MAX_CHANNEL / peak),
+        0.0,
+        1.0,
+    )
+
+
+def _strong_cel_smoothing_protected_mask(
+    source_face_rgb: np.ndarray,
+    tone_face_rgb: np.ndarray,
+    areas_mm2: np.ndarray,
+    neighbors: np.ndarray | None,
+    tone: ToneSettings,
+) -> np.ndarray | None:
+    """Protect coherent print-generated highlights from label smoothing."""
+
+    if (
+        str(getattr(tone, "illustration_mode", "off")).strip().lower()
+        != "cel_strong"
+        or neighbors is None
+    ):
+        return None
+    source = np.asarray(source_face_rgb, dtype=np.float64)
+    styled = np.asarray(tone_face_rgb, dtype=np.float64)
+    areas = np.asarray(areas_mm2, dtype=np.float64)
+    adjacency = np.asarray(neighbors)
+    if (
+        source.ndim != 2
+        or source.shape[1:] != (3,)
+        or styled.shape != source.shape
+        or areas.shape != (len(source),)
+        or adjacency.shape != (len(source), 3)
+    ):
+        return None
+    luminance_weights = np.asarray((0.2126, 0.7152, 0.0722))
+    source_luma = source @ luminance_weights
+    styled_luma = styled @ luminance_weights
+    candidate = (
+        (source_luma <= _STRONG_CEL_SMOOTH_SOURCE_LUMA_MAX)
+        & (
+            styled_luma - source_luma
+            >= _STRONG_CEL_SMOOTH_LIFT_DELTA_MIN
+        )
+    )
+    if not np.any(candidate):
+        return np.zeros(len(source), dtype=bool)
+    valid = (adjacency >= 0) & (adjacency < len(candidate))
+    nearby_candidate = np.zeros(adjacency.shape, dtype=bool)
+    nearby_candidate[valid] = candidate[adjacency[valid]]
+    core = candidate & (
+        (np.count_nonzero(nearby_candidate, axis=1)
+         >= _STRONG_CEL_SMOOTH_CORE_NEIGHBORS)
+        | (areas >= _STRONG_CEL_SMOOTH_SINGLE_FACE_AREA_MM2)
+    )
+    if not np.any(core):
+        return np.zeros(len(source), dtype=bool)
+    nearby_core = np.zeros(adjacency.shape, dtype=bool)
+    nearby_core[valid] = core[adjacency[valid]]
+    return candidate & (core | np.any(nearby_core, axis=1))
+
+
+def _flat_four_rgb_chromaticity(values: np.ndarray) -> np.ndarray:
+    """Return normalized RGB while keeping zero-energy rows finite."""
+
+    rgb = np.asarray(values, dtype=np.float64)
+    totals = np.sum(rgb, axis=1, keepdims=True)
+    return np.divide(
+        rgb,
+        totals,
+        out=np.zeros_like(rgb, dtype=np.float64),
+        where=totals > 1e-12,
+    )
+
+
+def _coherent_flat_four_recovery_mask(
+    original_indices: np.ndarray,
+    recovered_indices: np.ndarray,
+    neighbors: np.ndarray | None,
+    face_group_ids: np.ndarray | None = None,
+) -> np.ndarray:
+    """Protect only recovered faces supported by the same visible colour.
+
+    A single recovered triangle may be colour noise and remains eligible for
+    the existing majority smoother.  A recovered face is protected when an
+    adjacent face was recovered to the same physical state or already carried
+    that state before recovery.  Optional part IDs prevent support from leaking
+    across a coincident multipart boundary.
+    """
+
+    before = np.asarray(original_indices)
+    after = np.asarray(recovered_indices)
+    if before.ndim != 1 or after.shape != before.shape:
+        raise EngineError("Flat 4 Colorsの影補正保護面数が一致しません")
+    changed = before != after
+    protected = np.zeros(len(before), dtype=bool)
+    if not np.any(changed) or neighbors is None:
+        return protected
+    adjacency = np.asarray(neighbors)
+    if adjacency.shape != (len(before), 3) or not np.issubdtype(
+        adjacency.dtype, np.integer
+    ):
+        return protected
+    groups = None if face_group_ids is None else np.asarray(face_group_ids)
+    if groups is not None:
+        if groups.shape != (len(before),) or not np.issubdtype(
+            groups.dtype, np.integer
+        ):
+            raise EngineError("Flat 4 Colorsの影補正保護パーツIDが不正です")
+    # Multi-million-face GLBs are normal input.  Keep only the two full-face
+    # boolean arrays above and bound every Fx3 temporary to this chunk.
+    for start in range(0, len(before), 100_000):
+        stop = min(start + 100_000, len(before))
+        chunk_neighbors = adjacency[start:stop]
+        valid = (chunk_neighbors >= 0) & (chunk_neighbors < len(before))
+        safe_neighbors = np.where(valid, chunk_neighbors, 0)
+        if groups is not None:
+            valid &= (
+                groups[safe_neighbors] == groups[start:stop, None]
+            )
+        targets = after[start:stop, None]
+        same_target = after[safe_neighbors] == targets
+        supported_neighbor = changed[safe_neighbors] | (
+            before[safe_neighbors] == targets
+        )
+        protected[start:stop] = changed[start:stop] & np.any(
+            valid & same_target & supported_neighbor,
+            axis=1,
+        )
+    return protected
+
+
 def _recover_flat_four_chromatic_shadows(
     indices: np.ndarray,
     face_rgb: np.ndarray,
@@ -3844,6 +7552,9 @@ def _recover_flat_four_chromatic_shadows(
     palette_rgb: np.ndarray,
     palette_lab: np.ndarray,
     enabled_states: np.ndarray,
+    *,
+    source_rgb_span_min: float = _FLAT_SHADOW_SOURCE_RGB_SPAN_MIN,
+    source_lab_chroma_min: float = _FLAT_SHADOW_SOURCE_LAB_CHROMA_MIN,
 ) -> tuple[np.ndarray, int]:
     """Recover chromatic material colour hidden by baked dark shading.
 
@@ -3899,16 +7610,7 @@ def _recover_flat_four_chromatic_shadows(
     if not len(chromatic_slots) or not np.any(neutral_slots):
         return source_indices, 0
 
-    def chromaticity(values: np.ndarray) -> np.ndarray:
-        totals = np.sum(values, axis=1, keepdims=True)
-        return np.divide(
-            values,
-            totals,
-            out=np.zeros_like(values, dtype=np.float64),
-            where=totals > 1e-12,
-        )
-
-    physical_chromaticity = chromaticity(physical_rgb)
+    physical_chromaticity = _flat_four_rgb_chromaticity(physical_rgb)
     result: np.ndarray | None = None
     recovered_count = 0
     # Keep every temporary proportional to this fixed chunk, including the
@@ -3924,16 +7626,16 @@ def _recover_flat_four_chromatic_shadows(
         neutral_rgb = rgb[start:stop][neutral_faces]
         neutral_lab = lab[start:stop][neutral_faces]
         eligible = (
-            (np.ptp(neutral_rgb, axis=1) >= _FLAT_SHADOW_SOURCE_RGB_SPAN_MIN)
+            (np.ptp(neutral_rgb, axis=1) >= float(source_rgb_span_min))
             & (
                 np.linalg.norm(neutral_lab[:, 1:3], axis=1)
-                >= _FLAT_SHADOW_SOURCE_LAB_CHROMA_MIN
+                >= float(source_lab_chroma_min)
             )
         )
         if not np.any(eligible):
             continue
         chunk_faces = start + neutral_faces[eligible]
-        source_chromaticity = chromaticity(rgb[chunk_faces])
+        source_chromaticity = _flat_four_rgb_chromaticity(rgb[chunk_faces])
         candidate_delta = (
             source_chromaticity[:, None, :]
             - physical_chromaticity[chromatic_slots][None, :, :]
@@ -3964,6 +7666,863 @@ def _recover_flat_four_chromatic_shadows(
     if result is None:
         return source_indices, 0
     return result, recovered_count
+
+
+def _recover_strong_cel_dark_warm_faces(
+    indices: np.ndarray,
+    source_face_rgb: np.ndarray,
+    source_face_lab: np.ndarray,
+    palette_lab: np.ndarray,
+    enabled_states: np.ndarray,
+) -> tuple[np.ndarray, int]:
+    """Keep dark warm skin/brown material out of neutral Flat-Four slots."""
+
+    source_indices = np.asarray(indices)
+    source_rgb = np.asarray(source_face_rgb, dtype=np.float64)
+    source_lab = np.asarray(source_face_lab)
+    physical_lab = np.asarray(palette_lab, dtype=np.float64)[:4]
+    enabled = np.asarray(enabled_states, dtype=bool)[:4]
+    if source_indices.ndim != 1 or not np.issubdtype(
+        source_indices.dtype, np.integer
+    ):
+        raise EngineError("強調セル彩色の肌色復元状態が不正です")
+    if source_rgb.shape != (len(source_indices), 3) or source_lab.shape != (
+        len(source_indices),
+        3,
+    ):
+        raise EngineError("強調セル彩色の肌色復元データ数が一致しません")
+    if physical_lab.shape != (4, 3) or enabled.shape != (4,):
+        raise EngineError("強調セル彩色の肌色復元パレットが不正です")
+    if len(source_indices) and (
+        int(source_indices.min()) < 0 or int(source_indices.max()) >= 4
+    ):
+        raise EngineError("強調セル彩色の肌色復元状態がF1-F4範囲外です")
+    if not len(source_indices):
+        return source_indices, 0
+
+    palette_chroma = np.linalg.norm(physical_lab[:, 1:3], axis=1)
+    palette_hue = np.mod(
+        np.degrees(np.arctan2(physical_lab[:, 2], physical_lab[:, 1])),
+        360.0,
+    )
+    neutral_slots = enabled & (
+        palette_chroma <= _FLAT_SHADOW_NEUTRAL_PALETTE_CHROMA_MAX
+    )
+    warm_slots = np.flatnonzero(
+        enabled
+        & (palette_chroma >= _STRONG_CEL_WARM_PALETTE_CHROMA_MIN)
+        & (palette_hue >= _STRONG_CEL_WARM_PALETTE_HUE_MIN_DEGREES)
+        & (palette_hue <= _STRONG_CEL_WARM_PALETTE_HUE_MAX_DEGREES)
+    )
+    if not len(warm_slots) or not np.any(neutral_slots):
+        return source_indices, 0
+
+    warm_source = _strong_cel_dark_warm_source_mask(source_rgb)
+    selected = np.flatnonzero(
+        warm_source & neutral_slots[source_indices.astype(np.int64, copy=False)]
+    )
+    if not len(selected):
+        return source_indices, 0
+    source_hue = np.mod(
+        np.degrees(
+            np.arctan2(source_lab[selected, 2], source_lab[selected, 1])
+        ),
+        360.0,
+    )
+    hue_delta = np.abs(source_hue[:, None] - palette_hue[warm_slots][None, :])
+    hue_delta = np.minimum(hue_delta, 360.0 - hue_delta)
+    best_local = np.argmin(hue_delta, axis=1)
+    best_delta = hue_delta[np.arange(len(selected)), best_local]
+    accepted = best_delta <= _STRONG_CEL_WARM_PALETTE_HUE_DELTA_MAX_DEGREES
+    if not np.any(accepted):
+        return source_indices, 0
+    result = source_indices.astype(np.int8, copy=True)
+    result[selected[accepted]] = warm_slots[best_local[accepted]].astype(np.int8)
+    return result, int(np.count_nonzero(accepted))
+
+
+def _recover_strong_cel_full_spectrum_warm_recipes(
+    indices: np.ndarray,
+    source_face_rgb: np.ndarray,
+    source_face_lab: np.ndarray,
+    palette_lab: np.ndarray,
+    enabled_states: np.ndarray,
+    *,
+    detail_strength: float,
+) -> tuple[np.ndarray, int]:
+    """Recover only dark warm source faces mapped to neutral/cool recipes.
+
+    This is the Full Spectrum counterpart to the established Flat-Four warm
+    recovery.  It is strictly opt-in through ``illustration_detail_strength``.
+    The replacement must be an enabled warm recipe with source-hue agreement
+    and nearly the same display L* as the current state, so a skin shadow keeps
+    its existing band brightness instead of being lifted toward the highlight.
+    Neutral/cool cloth never passes the source warm guard, and an already-warm
+    state is left byte-for-byte unchanged.
+    """
+
+    source_indices = np.asarray(indices)
+    amount = float(detail_strength)
+    if amount <= 0.0:
+        return source_indices, 0
+    source_rgb = np.asarray(source_face_rgb, dtype=np.float64)
+    source_lab = np.asarray(source_face_lab, dtype=np.float64)
+    states_lab = np.asarray(palette_lab, dtype=np.float64)
+    enabled = np.asarray(enabled_states, dtype=bool)
+    if (
+        not math.isfinite(amount)
+        or amount > 1.0
+        or source_indices.ndim != 1
+        or not np.issubdtype(source_indices.dtype, np.integer)
+        or source_rgb.shape != (len(source_indices), 3)
+        or source_lab.shape != source_rgb.shape
+        or states_lab.ndim != 2
+        or states_lab.shape[1:] != (3,)
+        or enabled.shape != (len(states_lab),)
+        or not bool(np.all(np.isfinite(source_rgb)))
+        or not bool(np.all(np.isfinite(source_lab)))
+        or not bool(np.all(np.isfinite(states_lab)))
+        or (
+            len(source_indices)
+            and (
+                int(source_indices.min()) < 0
+                or int(source_indices.max()) >= len(states_lab)
+            )
+        )
+    ):
+        raise EngineError("強調セル彩色のFull Spectrum肌色復元データが不正です")
+    if not len(source_indices):
+        return source_indices, 0
+
+    state_chroma = np.linalg.norm(states_lab[:, 1:3], axis=1)
+    state_hue = np.mod(
+        np.degrees(np.arctan2(states_lab[:, 2], states_lab[:, 1])),
+        360.0,
+    )
+    warm_recipe = (
+        enabled
+        & (state_chroma >= _STRONG_CEL_DETAIL_WARM_RECIPE_CHROMA_MIN)
+        & (
+            state_hue
+            >= _STRONG_CEL_DETAIL_WARM_RECIPE_HUE_MIN_DEGREES
+        )
+        & (
+            state_hue
+            <= _STRONG_CEL_DETAIL_WARM_RECIPE_HUE_MAX_DEGREES
+        )
+    )
+    warm_states = np.flatnonzero(warm_recipe)
+    if not len(warm_states):
+        return source_indices, 0
+
+    current = source_indices.astype(np.int64, copy=False)
+    selected = np.flatnonzero(
+        _strong_cel_detail_warm_source_mask(source_rgb)
+        & ~warm_recipe[current]
+    )
+    if not len(selected):
+        return source_indices, 0
+    source_hue = np.mod(
+        np.degrees(
+            np.arctan2(source_lab[selected, 2], source_lab[selected, 1])
+        ),
+        360.0,
+    )
+    hue_delta = np.abs(source_hue[:, None] - state_hue[warm_states][None, :])
+    hue_delta = np.minimum(hue_delta, 360.0 - hue_delta)
+    current_lightness = states_lab[current[selected], 0]
+    lightness_delta = np.abs(
+        current_lightness[:, None] - states_lab[warm_states, 0][None, :]
+    )
+    eligible = (
+        hue_delta
+        <= _STRONG_CEL_DETAIL_WARM_RECIPE_HUE_DELTA_MAX_DEGREES
+    ) & (
+        lightness_delta
+        <= _STRONG_CEL_DETAIL_WARM_RECIPE_LIGHTNESS_DELTA_MAX
+    )
+    score = np.where(eligible, lightness_delta + 0.15 * hue_delta, np.inf)
+    best_local = np.argmin(score, axis=1)
+    accepted = np.isfinite(score[np.arange(len(selected)), best_local])
+    if not np.any(accepted):
+        return source_indices, 0
+    result = source_indices.astype(np.int8, copy=True)
+    result[selected[accepted]] = warm_states[best_local[accepted]].astype(
+        np.int8
+    )
+    return result, int(np.count_nonzero(result != source_indices))
+
+
+def _flat_four_shadow_candidate_targets(
+    indices: np.ndarray,
+    face_rgb: np.ndarray,
+    face_lab: np.ndarray,
+    palette_rgb: np.ndarray,
+    palette_lab: np.ndarray,
+    enabled_states: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Classify weak neutral assignments that still carry one F1-F4 hue.
+
+    The returned target is ``-1`` for a face that must stay behind the normal
+    Fill/assignment boundary.  This colour-only classifier deliberately makes
+    no topology decision; automatic recovery adds component/boundary proof,
+    while the opt-in manual material Fill adds clicked connectivity and the
+    active-part guard.
+    """
+
+    source_indices = np.asarray(indices)
+    rgb = np.asarray(face_rgb, dtype=np.float64)
+    lab = np.asarray(face_lab)
+    physical_rgb = np.asarray(palette_rgb, dtype=np.float64)[:4]
+    physical_lab = np.asarray(palette_lab, dtype=np.float64)[:4]
+    enabled = np.asarray(enabled_states, dtype=bool)[:4]
+    face_count = len(source_indices)
+    targets = np.full(face_count, -1, dtype=np.int8)
+    strict_notches = np.zeros(face_count, dtype=bool)
+    if source_indices.ndim != 1 or not np.issubdtype(
+        source_indices.dtype, np.integer
+    ):
+        raise EngineError("Flat 4 Colorsの影候補状態が不正です")
+    if rgb.shape != (face_count, 3) or lab.shape != rgb.shape:
+        raise EngineError("Flat 4 Colorsの影候補RGB/Lab数が一致しません")
+    if not np.issubdtype(lab.dtype, np.floating):
+        raise EngineError("Flat 4 Colorsの影候補Labが不正です")
+    if physical_rgb.shape != (4, 3) or physical_lab.shape != (4, 3):
+        raise EngineError("Flat 4 Colorsの影候補パレットが不正です")
+    if enabled.shape != (4,):
+        raise EngineError("Flat 4 Colorsの影候補有効状態が不正です")
+    if len(source_indices) and (
+        int(source_indices.min()) < 0 or int(source_indices.max()) >= 4
+    ):
+        raise EngineError("Flat 4 Colorsの影候補状態がF1-F4範囲外です")
+    if not face_count:
+        return targets, strict_notches
+
+    palette_chroma = np.linalg.norm(physical_lab[:, 1:3], axis=1)
+    neutral_slots = enabled & (
+        palette_chroma <= _FLAT_SHADOW_NEUTRAL_PALETTE_CHROMA_MAX
+    )
+    chromatic_slots = np.flatnonzero(
+        enabled
+        & (palette_chroma >= _FLAT_SHADOW_CHROMATIC_PALETTE_CHROMA_MIN)
+    )
+    if not len(chromatic_slots) or not np.any(neutral_slots):
+        return targets, strict_notches
+
+    physical_chromaticity = _flat_four_rgb_chromaticity(physical_rgb)
+    for start in range(0, face_count, 25_000):
+        stop = min(start + 25_000, face_count)
+        chunk_states = source_indices[start:stop]
+        neutral_local = np.flatnonzero(neutral_slots[chunk_states])
+        if not len(neutral_local):
+            continue
+        chunk_rgb = rgb[start:stop][neutral_local]
+        chunk_lab = lab[start:stop][neutral_local]
+        relaxed = (
+            (np.ptp(chunk_rgb, axis=1) >= _FLAT_REGION_SHADOW_SOURCE_RGB_SPAN_MIN)
+            & (
+                np.sum(chunk_rgb, axis=1)
+                >= _FLAT_REGION_SHADOW_SOURCE_RGB_SUM_MIN
+            )
+            & (
+                np.linalg.norm(chunk_lab[:, 1:3], axis=1)
+                >= _FLAT_REGION_SHADOW_SOURCE_LAB_CHROMA_MIN
+            )
+        )
+        if not np.any(relaxed):
+            continue
+        global_faces = start + neutral_local[relaxed]
+        source_chromaticity = _flat_four_rgb_chromaticity(rgb[global_faces])
+        candidate_delta = (
+            source_chromaticity[:, None, :]
+            - physical_chromaticity[chromatic_slots][None, :, :]
+        )
+        candidate_distances = np.linalg.norm(candidate_delta, axis=2)
+        best_local = np.argmin(candidate_distances, axis=1)
+        best_slots = chromatic_slots[best_local]
+        best_distances = candidate_distances[
+            np.arange(len(global_faces)), best_local
+        ]
+        current_slots = source_indices[global_faces].astype(
+            np.int64, copy=False
+        )
+        current_distances = np.linalg.norm(
+            source_chromaticity - physical_chromaticity[current_slots],
+            axis=1,
+        )
+        accepted = (
+            (best_distances <= _FLAT_REGION_SHADOW_CHROMATICITY_MAX)
+            & (
+                best_distances + _FLAT_REGION_SHADOW_CHROMATICITY_MARGIN
+                < current_distances
+            )
+        )
+        if not np.any(accepted):
+            continue
+        accepted_faces = global_faces[accepted]
+        targets[accepted_faces] = best_slots[accepted].astype(
+            np.int8, copy=False
+        )
+        accepted_rgb = rgb[accepted_faces]
+        accepted_lab = lab[accepted_faces]
+        strict_notches[accepted_faces] = (
+            (
+                np.ptp(accepted_rgb, axis=1)
+                >= _FLAT_REGION_NOTCH_SOURCE_RGB_SPAN_MIN
+            )
+            & (
+                np.linalg.norm(accepted_lab[:, 1:3], axis=1)
+                >= _FLAT_REGION_NOTCH_SOURCE_LAB_CHROMA_MIN
+            )
+            & (
+                best_distances[accepted]
+                <= _FLAT_REGION_NOTCH_CHROMATICITY_MAX
+            )
+            & (
+                best_distances[accepted]
+                + _FLAT_REGION_NOTCH_CHROMATICITY_MARGIN
+                < current_distances[accepted]
+            )
+        )
+    return targets, strict_notches
+
+
+def _recover_flat_four_chromatic_shadow_regions(
+    indices: np.ndarray,
+    face_rgb: np.ndarray,
+    face_lab: np.ndarray,
+    palette_rgb: np.ndarray,
+    palette_lab: np.ndarray,
+    enabled_states: np.ndarray,
+    neighbors: np.ndarray | None,
+    vertices_unit: np.ndarray,
+    faces: np.ndarray,
+    face_group_ids: np.ndarray | None = None,
+) -> tuple[np.ndarray, int, np.ndarray]:
+    """Recover only topology-backed very-dark chromatic surface regions.
+
+    This is deliberately narrower than lowering the ordinary per-face shadow
+    thresholds.  A weak candidate must be closer in normalized RGB to one
+    enabled chromatic F1-F4 slot, form a multi-face component with one target,
+    stay on one smooth part, and have a coherent boundary already assigned to
+    that target.  Ambiguous, isolated, oversized, or topology-less candidates
+    remain unchanged.
+    """
+
+    source_indices = np.asarray(indices)
+    rgb = np.asarray(face_rgb, dtype=np.float64)
+    lab = np.asarray(face_lab)
+    physical_rgb = np.asarray(palette_rgb, dtype=np.float64)[:4]
+    physical_lab = np.asarray(palette_lab, dtype=np.float64)[:4]
+    enabled = np.asarray(enabled_states, dtype=bool)[:4]
+    geometry = np.asarray(vertices_unit, dtype=np.float64)
+    triangles = np.asarray(faces)
+    groups = None if face_group_ids is None else np.asarray(face_group_ids)
+    face_count = len(source_indices)
+    empty_mask = np.zeros(face_count, dtype=bool)
+    if source_indices.ndim != 1 or not np.issubdtype(
+        source_indices.dtype, np.integer
+    ):
+        raise EngineError("Flat 4 Colorsの領域影補正状態が不正です")
+    if rgb.shape != (face_count, 3) or lab.shape != rgb.shape:
+        raise EngineError("Flat 4 Colorsの領域影補正RGB/Lab数が一致しません")
+    if not np.issubdtype(lab.dtype, np.floating):
+        raise EngineError("Flat 4 Colorsの領域影補正Labが不正です")
+    if physical_rgb.shape != (4, 3) or physical_lab.shape != (4, 3):
+        raise EngineError("Flat 4 Colorsの領域影補正パレットが不正です")
+    if enabled.shape != (4,):
+        raise EngineError("Flat 4 Colorsの領域影補正有効状態が不正です")
+    if geometry.ndim != 2 or geometry.shape[1:] != (3,):
+        raise EngineError("Flat 4 Colorsの領域影補正頂点が不正です")
+    if triangles.shape != (face_count, 3) or not np.issubdtype(
+        triangles.dtype, np.integer
+    ):
+        raise EngineError("Flat 4 Colorsの領域影補正面が不正です")
+    if len(triangles) and (
+        int(triangles.min()) < 0 or int(triangles.max()) >= len(geometry)
+    ):
+        raise EngineError("Flat 4 Colorsの領域影補正面に範囲外頂点があります")
+    if groups is not None:
+        if groups.shape != (face_count,) or not np.issubdtype(
+            groups.dtype, np.integer
+        ):
+            raise EngineError("Flat 4 Colorsの領域影補正パーツIDが不正です")
+    if len(source_indices) and (
+        int(source_indices.min()) < 0 or int(source_indices.max()) >= 4
+    ):
+        raise EngineError("Flat 4 Colorsの領域影補正状態がF1-F4範囲外です")
+    if not face_count:
+        return source_indices, 0, empty_mask
+
+    candidate_target, candidate_strict_notch = (
+        _flat_four_shadow_candidate_targets(
+            source_indices,
+            rgb,
+            lab,
+            physical_rgb,
+            physical_lab,
+            enabled,
+        )
+    )
+    candidate_mask = candidate_target >= 0
+    candidate_count = int(np.count_nonzero(candidate_mask))
+    if candidate_count == 0:
+        return source_indices, 0, empty_mask
+    if candidate_count > _FLAT_REGION_SHADOW_CANDIDATE_FACE_LIMIT:
+        return source_indices, 0, empty_mask
+
+    selected = np.flatnonzero(candidate_mask)
+    reusable_neighbors = False
+    if neighbors is not None:
+        raw_neighbors = np.asarray(neighbors)
+        reusable_neighbors = (
+            raw_neighbors.shape == (face_count, 3)
+            and np.issubdtype(raw_neighbors.dtype, np.integer)
+        )
+    if reusable_neighbors:
+        chosen_neighbors = raw_neighbors[selected]
+    elif face_count <= _FLAT_TOPOLOGY_BUILD_FACE_LIMIT:
+        adjacency = flat_four_topology_neighbors(
+            None,
+            triangles,
+            len(geometry),
+        )
+        if adjacency.shape != (face_count, 3) or not np.issubdtype(
+            adjacency.dtype, np.integer
+        ):
+            return source_indices, 0, empty_mask
+        chosen_neighbors = adjacency[selected]
+    else:
+        # Large generated GLBs commonly omit reusable adjacency.  The old
+        # path silently disabled region recovery above 500k faces; resolve
+        # only candidate edges instead so memory remains proportional to the
+        # colour evidence rather than to the complete source mesh.
+        sparse_neighbors = _flat_four_selected_face_neighbors(
+            triangles,
+            len(geometry),
+            selected,
+        )
+        if sparse_neighbors is None:
+            return source_indices, 0, empty_mask
+        chosen_neighbors = sparse_neighbors
+
+    local_lookup = np.full(face_count, -1, dtype=np.int32)
+    local_lookup[selected] = np.arange(len(selected), dtype=np.int32)
+    valid = (chosen_neighbors >= 0) & (chosen_neighbors < face_count)
+    safe_neighbors = np.where(valid, chosen_neighbors, 0)
+    if groups is not None:
+        valid &= groups[safe_neighbors] == groups[selected, None]
+    local_neighbors = np.full(chosen_neighbors.shape, -1, dtype=np.int32)
+    local_neighbors[valid] = local_lookup[safe_neighbors[valid]]
+    selected_targets = candidate_target[selected]
+    internal = (
+        valid
+        & (local_neighbors >= 0)
+        & (candidate_target[safe_neighbors] == selected_targets[:, None])
+    )
+
+    def face_pair_normal_dots(
+        owner_face_ids: np.ndarray,
+        neighbor_face_ids: np.ndarray,
+    ) -> np.ndarray:
+        normal_dots = np.zeros(len(owner_face_ids), dtype=np.float64)
+        for start in range(0, len(owner_face_ids), 25_000):
+            stop = min(start + 25_000, len(owner_face_ids))
+            owner_triangles = geometry[
+                triangles[owner_face_ids[start:stop]]
+            ]
+            neighbor_triangles = geometry[
+                triangles[neighbor_face_ids[start:stop]]
+            ]
+            owner_normals = np.cross(
+                owner_triangles[:, 1] - owner_triangles[:, 0],
+                owner_triangles[:, 2] - owner_triangles[:, 0],
+            )
+            neighbor_normals = np.cross(
+                neighbor_triangles[:, 1] - neighbor_triangles[:, 0],
+                neighbor_triangles[:, 2] - neighbor_triangles[:, 0],
+            )
+            owner_lengths = np.linalg.norm(owner_normals, axis=1)
+            neighbor_lengths = np.linalg.norm(neighbor_normals, axis=1)
+            valid_normals = (owner_lengths > 1e-15) & (
+                neighbor_lengths > 1e-15
+            )
+            chunk_dots = normal_dots[start:stop]
+            chunk_dots[valid_normals] = np.einsum(
+                "ij,ij->i",
+                owner_normals[valid_normals]
+                / owner_lengths[valid_normals, None],
+                neighbor_normals[valid_normals]
+                / neighbor_lengths[valid_normals, None],
+            )
+        return normal_dots
+
+    from scipy.sparse import coo_matrix
+    from scipy.sparse.csgraph import connected_components
+
+    local_rows = np.broadcast_to(
+        np.arange(len(selected), dtype=np.int32)[:, None],
+        local_neighbors.shape,
+    )
+    # A crease is a segmentation boundary, not a reason to discard every
+    # otherwise coherent face on both sides of it.  Split the graph before
+    # connected-components analysis.  Degenerate faces produce a zero dot and
+    # fail closed in the same way.
+    smooth_dot_min = float(
+        np.cos(np.deg2rad(_FLAT_REGION_SHADOW_SMOOTH_ANGLE_DEGREES))
+    )
+    if np.any(internal):
+        internal_flat_positions = np.flatnonzero(internal.ravel())
+        internal_owner_local = local_rows[internal]
+        internal_neighbor_local = local_neighbors[internal]
+        internal_normal_dots = face_pair_normal_dots(
+            selected[internal_owner_local],
+            selected[internal_neighbor_local],
+        )
+        smooth_internal = internal_normal_dots >= smooth_dot_min
+        if not np.all(smooth_internal):
+            internal.ravel()[
+                internal_flat_positions[~smooth_internal]
+            ] = False
+    graph_rows = local_rows[internal]
+    graph_columns = local_neighbors[internal]
+    graph = coo_matrix(
+        (
+            np.ones(len(graph_rows), dtype=np.uint8),
+            (graph_rows, graph_columns),
+        ),
+        shape=(len(selected), len(selected)),
+    ).tocsr()
+    component_count, components = connected_components(
+        graph,
+        directed=False,
+        return_labels=True,
+    )
+    components = np.asarray(components, dtype=np.int32)
+    component_faces = np.bincount(
+        components, minlength=component_count
+    )
+    component_target = np.full(component_count, -1, dtype=np.int8)
+    component_target[components] = selected_targets
+
+    boundary = valid & ~internal
+    component_grid = np.broadcast_to(
+        components[:, None], chosen_neighbors.shape
+    )
+    selected_grid = np.broadcast_to(
+        selected[:, None], chosen_neighbors.shape
+    )
+    if np.any(boundary):
+        boundary_components = component_grid[boundary]
+        boundary_owner_faces = selected_grid[boundary]
+        boundary_neighbor_faces = safe_neighbors[boundary]
+        boundary_count = np.bincount(
+            boundary_components, minlength=component_count
+        )
+        boundary_support = (
+            source_indices[boundary_neighbor_faces]
+            == component_target[boundary_components]
+        )
+        support_count = np.bincount(
+            boundary_components[boundary_support],
+            minlength=component_count,
+        )
+    else:
+        boundary_components = np.empty(0, dtype=np.int32)
+        boundary_owner_faces = np.empty(0, dtype=np.int32)
+        boundary_neighbor_faces = np.empty(0, dtype=np.int32)
+        boundary_count = np.zeros(component_count, dtype=np.int64)
+        support_count = np.zeros(component_count, dtype=np.int64)
+    invalid_count = np.bincount(
+        component_grid[~valid],
+        minlength=component_count,
+    )
+
+    component_min_internal_dot = np.ones(
+        component_count, dtype=np.float64
+    )
+    component_min_boundary_dot = np.ones(
+        component_count, dtype=np.float64
+    )
+
+    def accumulate_normal_minimum(
+        owner_face_ids: np.ndarray,
+        neighbor_face_ids: np.ndarray,
+        edge_components: np.ndarray,
+        destination: np.ndarray,
+    ) -> None:
+        for start in range(0, len(owner_face_ids), 100_000):
+            stop = min(start + 100_000, len(owner_face_ids))
+            np.minimum.at(
+                destination,
+                edge_components[start:stop],
+                face_pair_normal_dots(
+                    owner_face_ids[start:stop],
+                    neighbor_face_ids[start:stop],
+                ),
+            )
+
+    if len(boundary_owner_faces):
+        accumulate_normal_minimum(
+            boundary_owner_faces,
+            boundary_neighbor_faces,
+            boundary_components,
+            component_min_boundary_dot,
+        )
+    if len(graph_rows):
+        accumulate_normal_minimum(
+            selected[graph_rows],
+            selected[graph_columns],
+            components[graph_rows],
+            component_min_internal_dot,
+        )
+    component_min_normal_dot = np.minimum(
+        component_min_internal_dot,
+        component_min_boundary_dot,
+    )
+    multi_face_components = (
+        (component_faces >= _FLAT_REGION_SHADOW_COMPONENT_FACE_MIN)
+        & (boundary_count >= _FLAT_REGION_SHADOW_BOUNDARY_EDGE_MIN)
+        & (
+            support_count
+            >= _FLAT_REGION_SHADOW_BOUNDARY_STATE_SHARE_MIN
+            * boundary_count
+        )
+        & (component_min_normal_dot >= smooth_dot_min)
+    )
+    strict_notch_count = np.bincount(
+        components,
+        weights=candidate_strict_notch[selected].astype(np.int8),
+        minlength=component_count,
+    )
+    selected_chromaticity = _flat_four_rgb_chromaticity(rgb[selected])
+    component_chromaticity_sum = np.column_stack(
+        tuple(
+            np.bincount(
+                components,
+                weights=selected_chromaticity[:, channel],
+                minlength=component_count,
+            )
+            for channel in range(3)
+        )
+    )
+    component_mean_chromaticity = (
+        component_chromaticity_sum / component_faces[:, None]
+    )
+    component_mean_square_chromaticity = np.bincount(
+        components,
+        weights=np.einsum(
+            "ij,ij->i",
+            selected_chromaticity,
+            selected_chromaticity,
+        ),
+        minlength=component_count,
+    ) / component_faces
+    component_chromaticity_variance = np.maximum(
+        component_mean_square_chromaticity
+        - np.einsum(
+            "ij,ij->i",
+            component_mean_chromaticity,
+            component_mean_chromaticity,
+        ),
+        0.0,
+    )
+    component_chromaticity_rms = np.sqrt(
+        component_chromaticity_variance
+    )
+    multi_face_self_supported = (
+        (
+            component_faces
+            >= _FLAT_REGION_SELF_EVIDENCE_COMPONENT_FACE_MIN
+        )
+        & (
+            strict_notch_count
+            >= _FLAT_REGION_SELF_EVIDENCE_STRICT_FACE_MIN
+        )
+        & (
+            strict_notch_count
+            >= _FLAT_REGION_SELF_EVIDENCE_STRICT_SHARE_MIN
+            * component_faces
+        )
+        & (invalid_count == 0)
+        & (
+            component_chromaticity_rms
+            <= _FLAT_REGION_SELF_EVIDENCE_CHROMATICITY_RMS_MAX
+        )
+        & (component_min_internal_dot >= smooth_dot_min)
+    )
+    notch_smooth_dot_min = float(
+        np.cos(np.deg2rad(_FLAT_REGION_NOTCH_SMOOTH_ANGLE_DEGREES))
+    )
+    single_face_notches = (
+        (component_faces == 1)
+        & (strict_notch_count == 1)
+        # All three edges must lead to a valid face in the same part.  This
+        # rejects open shells, part seams and any ambiguous topology.
+        & (boundary_count == 3)
+        & (support_count >= _FLAT_REGION_NOTCH_SUPPORT_EDGE_MIN)
+        & (component_min_normal_dot >= notch_smooth_dot_min)
+    )
+    accepted_components = (
+        multi_face_components
+        | multi_face_self_supported
+        | single_face_notches
+    )
+    accepted = accepted_components[components]
+    if not np.any(accepted):
+        return source_indices, 0, empty_mask
+    accepted_faces = selected[accepted]
+    result = source_indices.astype(np.int8, copy=True)
+    result[accepted_faces] = component_target[components[accepted]]
+    protected = np.zeros(face_count, dtype=bool)
+    protected[accepted_faces] = True
+
+    palette_chroma = np.linalg.norm(physical_lab[:, 1:3], axis=1)
+    neutral_slots = enabled & (
+        palette_chroma <= _FLAT_SHADOW_NEUTRAL_PALETTE_CHROMA_MAX
+    )
+    chromatic_slots = np.flatnonzero(
+        enabled
+        & (palette_chroma >= _FLAT_SHADOW_CHROMATIC_PALETTE_CHROMA_MIN)
+    )
+    physical_chromaticity = _flat_four_rgb_chromaticity(physical_rgb)
+
+    def growth_targets(face_ids: np.ndarray) -> np.ndarray:
+        face_ids = np.asarray(face_ids, dtype=np.int64)
+        targets = np.full(len(face_ids), -1, dtype=np.int8)
+        if not len(face_ids) or not len(chromatic_slots):
+            return targets
+        states = source_indices[face_ids].astype(np.int64, copy=False)
+        eligible = neutral_slots[states]
+        candidate_rgb = rgb[face_ids]
+        candidate_lab = lab[face_ids]
+        eligible &= (
+            np.ptp(candidate_rgb, axis=1)
+            >= _FLAT_REGION_GROW_SOURCE_RGB_SPAN_MIN
+        )
+        eligible &= (
+            np.sum(candidate_rgb, axis=1)
+            >= _FLAT_REGION_GROW_SOURCE_RGB_SUM_MIN
+        )
+        eligible &= (
+            np.linalg.norm(candidate_lab[:, 1:3], axis=1)
+            >= _FLAT_REGION_GROW_SOURCE_LAB_CHROMA_MIN
+        )
+        if not np.any(eligible):
+            return targets
+        eligible_rows = np.flatnonzero(eligible)
+        source_chromaticity = _flat_four_rgb_chromaticity(
+            candidate_rgb[eligible_rows]
+        )
+        candidate_delta = (
+            source_chromaticity[:, None, :]
+            - physical_chromaticity[chromatic_slots][None, :, :]
+        )
+        candidate_distances = np.linalg.norm(candidate_delta, axis=2)
+        best_local = np.argmin(candidate_distances, axis=1)
+        best_slots = chromatic_slots[best_local]
+        best_distances = candidate_distances[
+            np.arange(len(eligible_rows)), best_local
+        ]
+        current_distances = np.linalg.norm(
+            source_chromaticity
+            - physical_chromaticity[states[eligible_rows]],
+            axis=1,
+        )
+        accepted_growth = (
+            (best_distances <= _FLAT_REGION_GROW_CHROMATICITY_MAX)
+            & (
+                best_distances + _FLAT_REGION_GROW_CHROMATICITY_MARGIN
+                < current_distances
+            )
+        )
+        targets[eligible_rows[accepted_growth]] = best_slots[
+            accepted_growth
+        ].astype(np.int8, copy=False)
+        return targets
+
+    frontier = accepted_faces.astype(np.int64, copy=False)
+    for _ring in range(_FLAT_REGION_GROW_RING_LIMIT):
+        if (
+            not len(frontier)
+            or len(frontier) > _FLAT_REGION_SHADOW_CANDIDATE_FACE_LIMIT
+        ):
+            break
+        if reusable_neighbors:
+            frontier_neighbors = raw_neighbors[frontier]
+        elif face_count <= _FLAT_TOPOLOGY_BUILD_FACE_LIMIT:
+            frontier_neighbors = adjacency[frontier]
+        else:
+            sparse_frontier_neighbors = _flat_four_selected_face_neighbors(
+                triangles,
+                len(geometry),
+                frontier,
+            )
+            if sparse_frontier_neighbors is None:
+                break
+            frontier_neighbors = sparse_frontier_neighbors
+        edge_valid = (
+            (frontier_neighbors >= 0)
+            & (frontier_neighbors < face_count)
+        )
+        safe_frontier_neighbors = np.where(
+            edge_valid,
+            frontier_neighbors,
+            0,
+        )
+        if groups is not None:
+            edge_valid &= (
+                groups[safe_frontier_neighbors]
+                == groups[frontier, None]
+            )
+        edge_valid &= ~protected[safe_frontier_neighbors]
+        if not np.any(edge_valid):
+            break
+        frontier_grid = np.broadcast_to(
+            frontier[:, None], frontier_neighbors.shape
+        )
+        target_grid = np.broadcast_to(
+            result[frontier, None], frontier_neighbors.shape
+        )
+        edge_owner_faces = frontier_grid[edge_valid]
+        edge_neighbor_faces = safe_frontier_neighbors[edge_valid]
+        edge_targets = target_grid[edge_valid]
+        smooth_edges = face_pair_normal_dots(
+            edge_owner_faces,
+            edge_neighbor_faces,
+        ) >= smooth_dot_min
+        if not np.any(smooth_edges):
+            break
+        edge_neighbor_faces = edge_neighbor_faces[smooth_edges]
+        edge_targets = edge_targets[smooth_edges]
+        order = np.argsort(edge_neighbor_faces, kind="stable")
+        edge_neighbor_faces = edge_neighbor_faces[order]
+        edge_targets = edge_targets[order]
+        neighbor_faces, starts, counts = np.unique(
+            edge_neighbor_faces,
+            return_index=True,
+            return_counts=True,
+        )
+        minimum_targets = np.minimum.reduceat(edge_targets, starts)
+        maximum_targets = np.maximum.reduceat(edge_targets, starts)
+        supported = (
+            (counts >= _FLAT_REGION_GROW_SUPPORT_EDGE_MIN)
+            & (minimum_targets == maximum_targets)
+        )
+        if not np.any(supported):
+            break
+        growth_faces = neighbor_faces[supported]
+        expected_targets = minimum_targets[supported]
+        inferred_targets = growth_targets(growth_faces)
+        accepted_growth = inferred_targets == expected_targets
+        if not np.any(accepted_growth):
+            break
+        frontier = growth_faces[accepted_growth].astype(
+            np.int64, copy=False
+        )
+        result[frontier] = inferred_targets[accepted_growth]
+        protected[frontier] = True
+    return result, int(np.count_nonzero(protected)), protected
 
 
 def _flat_four_embedded_achromatic_plan(
@@ -4705,25 +9264,50 @@ def recolor_level(
     if tone.pink_protection and len(pink_candidates) == 0:
         raise EngineError("F4系保護にはF4を含むパレットを1色以上有効にしてください")
 
-    tone_vertex, tone_face_rgb = _apply_tone_with_faces(
+    (
+        tone_vertex,
+        tone_face_rgb,
+        illustration_band_ids,
+        source_face_rgb,
+        areas_mm2,
+        selective_profile_applied,
+    ) = _apply_tone_with_selective_faces(
         level.vertex_colors,
         tone,
         vertices_unit=level.vertices_unit,
         faces=level.faces,
-    )
-    source_face_rgb = face_rgb_from_vertex_colors(
-        level.vertex_colors, level.faces
+        areas_unit=level.areas_unit,
+        neighbors=level.neighbors,
+        face_part_ids=getattr(level, "face_part_ids", None),
+        height_mm=height_mm,
     )
     face_lab = srgb_to_lab(tone_face_rgb)
     source_face_lab: np.ndarray | None = None
     flat_plan_lab = face_lab
-    if palette.color_mode == COLOR_MODE_FLAT_FOUR:
+    raw_chroma_recovery = _flat_four_raw_chroma_recovery_enabled(tone)
+    strong_chroma_recovery = _strong_cel_chroma_recovery_enabled(tone)
+    strong_cel_mode = (
+        str(getattr(tone, "illustration_mode", "off")).strip().lower()
+        == "cel_strong"
+    )
+    if palette.color_mode == COLOR_MODE_FLAT_FOUR or strong_cel_mode:
         source_face_lab = _flat_four_lab_chunks(source_face_rgb)
-        if _flat_four_raw_chroma_recovery_enabled(tone):
+    if palette.color_mode == COLOR_MODE_FLAT_FOUR:
+        if raw_chroma_recovery or strong_chroma_recovery:
             recovered_for_plan = _flat_four_raw_chroma_mask(
                 face_lab,
                 source_face_rgb,
                 source_face_lab,
+                source_rgb_span_min=(
+                    _STRONG_CEL_CHROMATIC_SOURCE_RGB_SPAN_MIN
+                    if strong_chroma_recovery
+                    else _FLAT_SHADOW_SOURCE_RGB_SPAN_MIN
+                ),
+                source_lab_chroma_min=(
+                    _STRONG_CEL_CHROMATIC_SOURCE_LAB_CHROMA_MIN
+                    if strong_chroma_recovery
+                    else _FLAT_SHADOW_SOURCE_LAB_CHROMA_MIN
+                ),
             )
             if np.any(recovered_for_plan):
                 flat_plan_lab = face_lab.astype(np.float32, copy=True)
@@ -4760,7 +9344,15 @@ def recolor_level(
             )
             nearest = np.argmin(np.sum(delta * delta, axis=2), axis=1)
             indices[chunk_indices] = candidates[nearest]
+    smoothing_protected = _strong_cel_smoothing_protected_mask(
+        source_face_rgb,
+        tone_face_rgb,
+        areas_mm2,
+        level.neighbors,
+        tone,
+    )
     if palette.color_mode == COLOR_MODE_FLAT_FOUR:
+        before_flat_recovery = indices
         indices, _flat_shadow_faces = _recover_flat_four_chromatic_shadows(
             indices,
             tone_face_rgb,
@@ -4769,10 +9361,11 @@ def recolor_level(
             assignment_palette_lab,
             enabled,
         )
-        if _flat_four_raw_chroma_recovery_enabled(tone):
+        if raw_chroma_recovery or strong_chroma_recovery:
             # white_point/contrast can clip a pale chromatic source to a
-            # neutral display value.  Raw vertex colour is authoritative only
-            # while the user has not intentionally desaturated or stylised it.
+            # neutral display value.  High-Contrast Cel additionally restores
+            # very dark but directionally chromatic material (notably deep
+            # skin) after its graphic lighting, so it cannot collapse to black.
             indices, _flat_clipped_faces = (
                 _recover_flat_four_chromatic_shadows(
                     indices,
@@ -4782,9 +9375,65 @@ def recolor_level(
                     assignment_palette_rgb,
                     assignment_palette_lab,
                     enabled,
+                    source_rgb_span_min=(
+                        _STRONG_CEL_CHROMATIC_SOURCE_RGB_SPAN_MIN
+                        if strong_chroma_recovery
+                        else _FLAT_SHADOW_SOURCE_RGB_SPAN_MIN
+                    ),
+                    source_lab_chroma_min=(
+                        _STRONG_CEL_CHROMATIC_SOURCE_LAB_CHROMA_MIN
+                        if strong_chroma_recovery
+                        else _FLAT_SHADOW_SOURCE_LAB_CHROMA_MIN
+                    ),
                 )
             )
-    areas_mm2 = level.areas_unit * float(height_mm) ** 2
+        if strong_chroma_recovery:
+            indices, _flat_warm_faces = _recover_strong_cel_dark_warm_faces(
+                indices,
+                source_face_rgb,
+                source_face_lab,
+                assignment_palette_lab,
+                enabled,
+            )
+        face_count = len(level.faces)
+        part_ids = np.asarray(getattr(level, "face_part_ids", np.empty(0)))
+        face_groups = part_ids if part_ids.shape == (face_count,) else None
+        coherent_recovery = _coherent_flat_four_recovery_mask(
+            before_flat_recovery,
+            indices,
+            level.neighbors,
+            face_groups,
+        )
+        region_rgb = (
+            source_face_rgb
+            if raw_chroma_recovery or strong_chroma_recovery
+            else tone_face_rgb
+        )
+        region_lab = (
+            source_face_lab
+            if raw_chroma_recovery or strong_chroma_recovery
+            else face_lab
+        )
+        indices, _flat_region_shadow_faces, region_recovery = (
+            _recover_flat_four_chromatic_shadow_regions(
+                indices,
+                region_rgb,
+                region_lab,
+                assignment_palette_rgb,
+                assignment_palette_lab,
+                enabled,
+                level.neighbors,
+                level.vertices_unit,
+                level.faces,
+                face_groups,
+            )
+        )
+        flat_recovery_protected = coherent_recovery | region_recovery
+        smoothing_protected = (
+            flat_recovery_protected
+            if smoothing_protected is None
+            else smoothing_protected | flat_recovery_protected
+        )
     indices, smoothed = _smooth_labels(
         indices,
         face_lab,
@@ -4792,10 +9441,9 @@ def recolor_level(
         areas_mm2,
         level.neighbors,
         tone,
+        protected_face_mask=smoothing_protected,
     )
     if palette.color_mode == COLOR_MODE_FLAT_FOUR:
-        face_count = len(level.faces)
-        part_ids = np.asarray(getattr(level, "face_part_ids", np.empty(0)))
         # Keep the stored topology raw here.  The Flat-only plan applies the
         # part boundary once after its cheap candidate-count preflight; doing
         # it here as well would duplicate a full F x 3 adjacency buffer.
@@ -4811,7 +9459,7 @@ def recolor_level(
                 level.vertices_unit,
                 level.faces,
                 source_face_lab,
-                part_ids if part_ids.shape == (face_count,) else None,
+                face_groups,
             )
         )
     indices, black_free_remapped = _apply_black_free_gradient(
@@ -4820,6 +9468,55 @@ def recolor_level(
         assignment_palette_lab,
         palette,
     )
+    if source_face_lab is not None:
+        if palette.color_mode == COLOR_MODE_FULL_SPECTRUM:
+            indices, _strong_cel_warm_recipe_faces = (
+                _recover_strong_cel_full_spectrum_warm_recipes(
+                    indices,
+                    source_face_rgb,
+                    source_face_lab,
+                    display_palette_lab,
+                    enabled,
+                    detail_strength=float(
+                        getattr(tone, "illustration_detail_strength", 0.0)
+                    ),
+                )
+            )
+        # This is the final automatic assignment stage.  It deliberately runs
+        # after generic smoothing, Flat recovery and the legacy hidden black-
+        # free remap so none of them can reintroduce uncontrolled print states.
+        # The explicitly gated detail pass may move a coherent source patch by
+        # one of the already requested cel bands only.
+        face_count = len(level.faces)
+        raw_part_ids = np.asarray(
+            getattr(level, "face_part_ids", np.empty(0))
+        )
+        cel_neighbors = level.neighbors
+        if raw_part_ids.shape == (face_count,) and face_count:
+            cel_neighbors = _local_part_neighbors(
+                level.neighbors,
+                np.arange(face_count, dtype=np.int32),
+                face_count,
+                raw_part_ids,
+            )
+        indices, _strong_cel_compressed_faces = (
+            _compress_strong_cel_dark_garment_states(
+                indices,
+                source_face_rgb,
+                source_face_lab,
+                face_lab,
+                display_palette_lab,
+                enabled,
+                tone,
+                palette,
+                illustration_band_ids,
+                areas_mm2,
+                cel_neighbors,
+                level.vertices_unit,
+                level.faces,
+                selective_profile_applied=selective_profile_applied,
+            )
+        )
     target_rgb = palette_rgb[indices]
     delta_e = np.linalg.norm(face_lab - display_palette_lab[indices], axis=1)
     counts = np.bincount(indices, minlength=PALETTE_STATE_COUNT)
@@ -4937,24 +9634,39 @@ def recolor_level_parts(
     assignment_palette_tables = build_part_assignment_palette_rgb_tables(
         settings, layout
     )
-    tone_vertex, tone_face_rgb = _apply_tone_with_faces(
+    (
+        tone_vertex,
+        tone_face_rgb,
+        illustration_band_ids,
+        source_face_rgb,
+        areas_mm2,
+        selective_profile_applied,
+    ) = _apply_tone_with_selective_faces(
         level.vertex_colors,
         tone,
         vertices_unit=level.vertices_unit,
         faces=level.faces,
-    )
-    source_face_rgb = face_rgb_from_vertex_colors(
-        level.vertex_colors, level.faces
+        areas_unit=level.areas_unit,
+        neighbors=level.neighbors,
+        face_part_ids=layout.face_part_ids,
+        height_mm=height_mm,
     )
     has_flat_part = any(
         part_palette.color_mode == COLOR_MODE_FLAT_FOUR
         for part_palette in palettes
     )
+    raw_chroma_recovery = _flat_four_raw_chroma_recovery_enabled(tone)
+    strong_chroma_recovery = _strong_cel_chroma_recovery_enabled(tone)
+    strong_cel_mode = (
+        str(getattr(tone, "illustration_mode", "off")).strip().lower()
+        == "cel_strong"
+    )
     source_face_lab = (
-        _flat_four_lab_chunks(source_face_rgb) if has_flat_part else None
+        _flat_four_lab_chunks(source_face_rgb)
+        if has_flat_part or strong_cel_mode
+        else None
     )
     face_lab = srgb_to_lab(tone_face_rgb)
-    areas_mm2 = level.areas_unit * float(height_mm) ** 2
     indices = np.empty(len(level.faces), dtype=np.int8)
     target_rgb = np.empty((len(level.faces), 3), dtype=np.float64)
     delta_e = np.empty(len(level.faces), dtype=np.float64)
@@ -4986,16 +9698,36 @@ def recolor_level_parts(
         local_faces = level.faces[selected]
         local_source_rgb: np.ndarray | None = None
         local_source_lab: np.ndarray | None = None
+        local_neighbors = _local_part_neighbors(
+            level.neighbors, selected, len(level.faces)
+        )
+        local_smoothing_protected = _strong_cel_smoothing_protected_mask(
+            source_face_rgb[selected],
+            local_rgb,
+            local_areas,
+            local_neighbors,
+            tone,
+        )
         local_plan_lab = local_lab
         if part_palette.color_mode == COLOR_MODE_FLAT_FOUR:
             local_source_rgb = source_face_rgb[selected]
             # ``has_flat_part`` guarantees the source Lab buffer exists here.
             local_source_lab = source_face_lab[selected]
-            if _flat_four_raw_chroma_recovery_enabled(tone):
+            if raw_chroma_recovery or strong_chroma_recovery:
                 recovered_for_plan = _flat_four_raw_chroma_mask(
                     local_lab,
                     local_source_rgb,
                     local_source_lab,
+                    source_rgb_span_min=(
+                        _STRONG_CEL_CHROMATIC_SOURCE_RGB_SPAN_MIN
+                        if strong_chroma_recovery
+                        else _FLAT_SHADOW_SOURCE_RGB_SPAN_MIN
+                    ),
+                    source_lab_chroma_min=(
+                        _STRONG_CEL_CHROMATIC_SOURCE_LAB_CHROMA_MIN
+                        if strong_chroma_recovery
+                        else _FLAT_SHADOW_SOURCE_LAB_CHROMA_MIN
+                    ),
                 )
                 if np.any(recovered_for_plan):
                     local_plan_lab = local_lab.astype(np.float32, copy=True)
@@ -5037,6 +9769,7 @@ def recolor_level_parts(
                 )
                 local_indices[chunk] = candidates[nearest]
         if part_palette.color_mode == COLOR_MODE_FLAT_FOUR:
+            before_flat_recovery = local_indices
             (
                 local_indices,
                 _flat_shadow_faces,
@@ -5048,7 +9781,7 @@ def recolor_level_parts(
                 assignment_palette_lab,
                 enabled,
             )
-            if _flat_four_raw_chroma_recovery_enabled(tone):
+            if raw_chroma_recovery or strong_chroma_recovery:
                 local_indices, _flat_clipped_faces = (
                     _recover_flat_four_chromatic_shadows(
                         local_indices,
@@ -5057,11 +9790,64 @@ def recolor_level_parts(
                         assignment_palette_tables[part_id],
                         assignment_palette_lab,
                         enabled,
+                        source_rgb_span_min=(
+                            _STRONG_CEL_CHROMATIC_SOURCE_RGB_SPAN_MIN
+                            if strong_chroma_recovery
+                            else _FLAT_SHADOW_SOURCE_RGB_SPAN_MIN
+                        ),
+                        source_lab_chroma_min=(
+                            _STRONG_CEL_CHROMATIC_SOURCE_LAB_CHROMA_MIN
+                            if strong_chroma_recovery
+                            else _FLAT_SHADOW_SOURCE_LAB_CHROMA_MIN
+                        ),
                     )
                 )
-        local_neighbors = _local_part_neighbors(
-            level.neighbors, selected, len(level.faces)
-        )
+            if strong_chroma_recovery:
+                local_indices, _flat_warm_faces = (
+                    _recover_strong_cel_dark_warm_faces(
+                        local_indices,
+                        local_source_rgb,
+                        local_source_lab,
+                        assignment_palette_lab,
+                        enabled,
+                    )
+                )
+            coherent_recovery = _coherent_flat_four_recovery_mask(
+                before_flat_recovery,
+                local_indices,
+                local_neighbors,
+            )
+            region_rgb = (
+                local_source_rgb
+                if raw_chroma_recovery or strong_chroma_recovery
+                else local_rgb
+            )
+            region_lab = (
+                local_source_lab
+                if raw_chroma_recovery or strong_chroma_recovery
+                else local_lab
+            )
+            (
+                local_indices,
+                _flat_region_shadow_faces,
+                region_recovery,
+            ) = _recover_flat_four_chromatic_shadow_regions(
+                local_indices,
+                region_rgb,
+                region_lab,
+                assignment_palette_tables[part_id],
+                assignment_palette_lab,
+                enabled,
+                local_neighbors,
+                level.vertices_unit,
+                local_faces,
+            )
+            flat_recovery_protected = coherent_recovery | region_recovery
+            local_smoothing_protected = (
+                flat_recovery_protected
+                if local_smoothing_protected is None
+                else local_smoothing_protected | flat_recovery_protected
+            )
         local_indices, smoothed = _smooth_labels(
             local_indices,
             local_lab,
@@ -5069,6 +9855,7 @@ def recolor_level_parts(
             local_areas,
             local_neighbors,
             tone,
+            protected_face_mask=local_smoothing_protected,
         )
         if part_palette.color_mode == COLOR_MODE_FLAT_FOUR:
             # Smoothing is read-only; reuse the already remapped local graph.
@@ -5094,6 +9881,46 @@ def recolor_level_parts(
             assignment_palette_lab,
             part_palette,
         )
+        if source_face_lab is not None:
+            if part_palette.color_mode == COLOR_MODE_FULL_SPECTRUM:
+                local_indices, _strong_cel_warm_recipe_faces = (
+                    _recover_strong_cel_full_spectrum_warm_recipes(
+                        local_indices,
+                        source_face_rgb[selected],
+                        source_face_lab[selected],
+                        display_palette_lab,
+                        enabled,
+                        detail_strength=float(
+                            getattr(
+                                tone,
+                                "illustration_detail_strength",
+                                0.0,
+                            )
+                        ),
+                    )
+                )
+            local_indices, _strong_cel_compressed_faces = (
+                _compress_strong_cel_dark_garment_states(
+                    local_indices,
+                    source_face_rgb[selected],
+                    source_face_lab[selected],
+                    local_lab,
+                    display_palette_lab,
+                    enabled,
+                    tone,
+                    part_palette,
+                    (
+                        None
+                        if illustration_band_ids is None
+                        else illustration_band_ids[selected]
+                    ),
+                    local_areas,
+                    local_neighbors,
+                    level.vertices_unit,
+                    local_faces,
+                    selective_profile_applied=selective_profile_applied,
+                )
+            )
         total_smoothed += smoothed
         total_black_free_remapped += black_free_remapped
         local_delta = np.linalg.norm(
@@ -6071,7 +10898,16 @@ def write_3mf_atomic(
     palette: PaletteSettings,
     part_palettes: dict[str, PaletteSettings] | None = None,
     print_uses_global_palette: bool = False,
+    *,
+    export_validation_level: str = "high",
 ) -> dict[str, object]:
+    try:
+        export_validation_level = _require_export_validation_level(export_validation_level)
+        _validate_export_mesh_arrays(prepared.final.vertices_unit, prepared.final.faces)
+        if isinstance(height_mm, (bool, np.bool_)) or not np.isfinite(height_mm) or height_mm <= 0:
+            raise ValueError("3MF height must be positive and finite")
+    except (TypeError, ValueError) as exc:
+        raise EngineError(str(exc)) from exc
     # PaletteSettings normally migrates the retired field on load.  These
     # guards also cover callers that mutate dataclass instances afterwards.
     palette = without_surface_shell_output(palette)
@@ -6120,6 +10956,12 @@ def write_3mf_atomic(
         prepared.final.vertices_unit,
         dtype=np.float64,
     ) * float(height_mm)
+    try:
+        _validate_export_mesh_arrays(export_vertices_mm, prepared.final.faces)
+    except ValueError as exc:
+        raise EngineError(str(exc)) from exc
+    if not np.isfinite(triangle_areas(export_vertices_mm, prepared.final.faces)).all():
+        raise EngineError("3MF coordinates overflow the supported numeric range")
     prepared_multipart_value = (prepared.assembly or {}).get(
         "multipart_self_intersection_provenance", {}
     )
@@ -6162,7 +11004,7 @@ def write_3mf_atomic(
             height_mm=float(height_mm),
             part_count=part_count,
         )
-        if export_recheck_eligible
+        if export_recheck_eligible and export_validation_level == "high"
         else None
     )
     palette_settings = AppSettings(
@@ -6328,6 +11170,7 @@ def write_3mf_atomic(
         "height_mm": float(height_mm),
         "part_count": int(part_count),
         "palette_mode": palette_mode,
+        "export_validation": _export_policy_metadata(export_validation_level),
     }
     _apply_export_self_intersection_records(
         assembly_metadata,
@@ -6599,6 +11442,8 @@ def write_3mf_atomic(
             trusted_multipart_export_records=(
                 trusted_multipart_export_records
             ),
+            **({"export_validation_level": export_validation_level}
+               if export_validation_level != "high" else {}),
         )
         os.replace(temporary, destination)
         validation["bytes"] = destination.stat().st_size
@@ -6633,6 +11478,12 @@ def write_3mf_atomic(
             temporary.unlink()
 
 
+# Deterministic internal generators need the core archive contract even after
+# the packaged runtime adapter replaces the public writer.  Keep this alias
+# bound once, before any adapter can monkeypatch ``write_3mf_atomic``.
+_CORE_WRITE_3MF_ATOMIC = write_3mf_atomic
+
+
 def validate_3mf(
     path: Path,
     expected_vertices: int,
@@ -6645,8 +11496,15 @@ def validate_3mf(
     trusted_multipart_pre_qem_face_counts: Sequence[int] | None = None,
     trusted_multipart_warning_policies: Sequence[str] | None = None,
     trusted_multipart_export_records: Sequence[dict[str, object]] | None = None,
+    *,
+    export_validation_level: str = "high",
 ) -> dict[str, object]:
     import xml.etree.ElementTree as ET
+
+    try:
+        export_validation_level = _require_export_validation_level(export_validation_level)
+    except ValueError as exc:
+        raise EngineError(str(exc)) from exc
 
     required = {
         "[Content_Types].xml",
@@ -6709,11 +11567,10 @@ def validate_3mf(
         palette_mode = str(
             palette_metadata.get("palette_mode", "full_spectrum")
         )
-        # Every mesh object emitted by this writer is a printable 3MF
-        # ``type=model`` object.  Topology validation must therefore never be
-        # conditional on a GUI/assembly flag: CLI and direct writer callers
-        # must not be able to serialize an open or invalid print solid.
-        require_watertight = True
+        # Only the explicit caller argument may relax geometry acceptance.
+        # Imported assembly flags or archived policy metadata cannot do so.
+        # Structural, index, colour and slicer-setting checks remain mandatory.
+        check_self_intersections = export_validation_level == "high"
         object_vertices: list[list[float]] | None = None
         object_faces: list[list[int]] | None = None
         with archive.open("3D/Objects/object_1.model") as stream:
@@ -6730,14 +11587,16 @@ def validate_3mf(
                         local_vertices_array = np.asarray(
                             object_vertices, dtype=np.float64
                         )
-                        local_faces_array = np.asarray(
-                            object_faces, dtype=np.int32
-                        )
+                        local_faces_array = np.asarray(object_faces, dtype=np.int64)
+                        try:
+                            _validate_export_mesh_arrays(local_vertices_array, local_faces_array)
+                        except ValueError as exc:
+                            raise EngineError(str(exc)) from exc
                         object_topologies.append(
                             mesh_quality(
                                 local_vertices_array,
                                 local_faces_array,
-                                check_self_intersections=require_watertight,
+                                check_self_intersections=check_self_intersections,
                                 self_intersection_face_id_limit=(
                                     trusted_parse_id_limits[mesh_objects - 1]
                                     if trusted_parse_id_limits is not None
@@ -6776,6 +11635,12 @@ def validate_3mf(
                 if event == "end":
                     element.clear()
     errors = []
+    archived_policy = assembly_metadata.get("export_validation")
+    if archived_policy is not None:
+        if archived_policy != _export_policy_metadata(export_validation_level):
+            errors.append("export validation policy mismatch")
+    elif export_validation_level != "high":
+        errors.append("missing explicit export validation policy")
     if missing:
         errors.append(f"不足member={missing}")
     if bad_member:
@@ -6854,13 +11719,178 @@ def validate_3mf(
         errors.append("サポート固定設定")
     single_mesh_generic = bool(assembly_metadata.get("single_mesh_generic"))
     repair_records_value = assembly_metadata.get("repair_records", [])
+
+    def _dominant_identity_repair_is_trusted(value: object) -> bool:
+        """Recognize only the filter's proved indexed-watertight identity path.
+
+        A retained dominant surface may already be indexed watertight, so its
+        selective seam transaction truthfully reports ``already_watertight``
+        instead of ``coincident_vertex_seam_weld``.  Admit that record without
+        pretending a weld occurred, but only when the nested component-filter
+        provenance and every source/output conservation rule agree.
+        """
+
+        if not isinstance(value, dict):
+            return False
+        filtered = value.get("dominant_surface_filter")
+        final_validation_record = value.get("final_validation")
+        if not isinstance(filtered, dict) or not isinstance(
+            final_validation_record,
+            dict,
+        ):
+            return False
+
+        count_keys = (
+            "source_vertices",
+            "output_vertices",
+            "source_faces",
+            "output_faces",
+        )
+        if not all(
+            isinstance(value.get(key), int)
+            and not isinstance(value.get(key), bool)
+            for key in count_keys
+        ):
+            return False
+        filtered_count_keys = (
+            "source_vertices",
+            "output_vertices",
+            "removed_vertices",
+            "source_faces",
+            "output_faces",
+            "removed_faces",
+            "component_count",
+            "kept_component_count",
+            "removed_component_count",
+            "selective_seam_output_vertices",
+            "selective_seam_output_faces",
+        )
+        if not all(
+            isinstance(filtered.get(key), int)
+            and not isinstance(filtered.get(key), bool)
+            for key in filtered_count_keys
+        ):
+            return False
+        final_count_keys = (
+            "final_vertex_count",
+            "final_face_count",
+        )
+        if not all(
+            isinstance(value.get(key), int)
+            and not isinstance(value.get(key), bool)
+            for key in final_count_keys
+        ):
+            return False
+        if not all(
+            isinstance(final_validation_record.get(key), int)
+            and not isinstance(final_validation_record.get(key), bool)
+            for key in count_keys
+        ):
+            return False
+
+        source_vertices = int(value["source_vertices"])
+        output_vertices = int(value["output_vertices"])
+        source_faces = int(value["source_faces"])
+        output_faces = int(value["output_faces"])
+        filtered_source_vertices = int(filtered["source_vertices"])
+        filtered_output_vertices = int(filtered["output_vertices"])
+        filtered_removed_vertices = int(filtered["removed_vertices"])
+        filtered_source_faces = int(filtered["source_faces"])
+        filtered_output_faces = int(filtered["output_faces"])
+        filtered_removed_faces = int(filtered["removed_faces"])
+        filtered_component_count = int(filtered["component_count"])
+        filtered_kept_count = int(filtered["kept_component_count"])
+        filtered_removed_count = int(filtered["removed_component_count"])
+        removed_components = filtered.get("removed_components")
+        added_faces = value.get("added_faces", 0)
+        removed_component_faces_are_valid = bool(
+            isinstance(removed_components, list)
+            and len(removed_components) == filtered_removed_count
+            and all(
+                isinstance(component, dict)
+                and isinstance(component.get("face_count"), int)
+                and not isinstance(component.get("face_count"), bool)
+                and int(component["face_count"]) > 0
+                and (
+                    (
+                        component.get("classification")
+                        == "internal_inverted_closed_shell"
+                        and component.get("closed") is True
+                    )
+                    or (
+                        component.get("classification")
+                        == "open_micro_fragment"
+                        and component.get("closed") is False
+                    )
+                )
+                for component in removed_components
+            )
+            and sum(
+                int(component["face_count"])
+                for component in removed_components
+            )
+            == filtered_removed_faces
+        )
+        return bool(
+            value.get("method") == "already_watertight"
+            and value.get("identity") is True
+            and value.get("closed") is True
+            and source_vertices > 0
+            and source_faces > 0
+            and source_vertices == output_vertices
+            and source_faces == output_faces
+            and source_vertices == vertices == expected_vertices
+            and source_faces == faces == expected_faces
+            and int(value["final_vertex_count"]) == vertices
+            and int(value["final_face_count"]) == faces
+            and int(final_validation_record["source_vertices"]) == vertices
+            and int(final_validation_record["output_vertices"]) == vertices
+            and int(final_validation_record["source_faces"]) == faces
+            and int(final_validation_record["output_faces"]) == faces
+            and isinstance(added_faces, int)
+            and not isinstance(added_faces, bool)
+            and added_faces == 0
+            and filtered.get("schema")
+            == "chromamatter.dominant-exact-position-surface.v1"
+            and filtered.get("method")
+            == "dominant_exact_position_surface_component_filter"
+            and filtered.get("dominant_selective_seam_method")
+            == "already_watertight"
+            and filtered.get("dominant_selective_seam_closed") is True
+            and filtered_source_vertices
+            == filtered_output_vertices + filtered_removed_vertices
+            and filtered_source_faces
+            == filtered_output_faces + filtered_removed_faces
+            and filtered_removed_vertices > 0
+            and filtered_removed_faces > 0
+            and filtered_output_vertices == source_vertices
+            and filtered_output_faces == source_faces
+            and int(filtered["selective_seam_output_vertices"])
+            == output_vertices
+            and int(filtered["selective_seam_output_faces"]) == output_faces
+            and filtered_kept_count == 1
+            and filtered_removed_count > 0
+            and filtered_component_count
+            == filtered_kept_count + filtered_removed_count
+            and removed_component_faces_are_valid
+            and filtered.get("face_order_preserved") is True
+            and filtered.get("geometry_coordinates_preserved") is True
+            and filtered.get("vertex_colors_preserved") is True
+            and filtered.get("whole_model_remesh") is False
+            and filtered.get("voxelization") is False
+            and filtered.get("hole_cap_generation") is False
+        )
+
     generic_repair_record = next(
         (
             dict(value)
             for value in repair_records_value
             if isinstance(value, dict)
-            and str(value.get("method", ""))
-            == "coincident_vertex_seam_weld"
+            and (
+                str(value.get("method", ""))
+                == "coincident_vertex_seam_weld"
+                or _dominant_identity_repair_is_trusted(value)
+            )
         ),
         {},
     ) if isinstance(repair_records_value, list) else {}
@@ -6872,9 +11902,18 @@ def validate_3mf(
     )
     generic_seam_warning_eligible = bool(
         single_mesh_generic
-        and generic_repair_record.get("boundary_pairing_proven") is True
-        and generic_repair_record.get("geometry_coordinates_preserved") is True
-        and generic_repair_record.get("face_count_preserved") is True
+        and (
+            (
+                generic_repair_record.get("method")
+                == "coincident_vertex_seam_weld"
+                and generic_repair_record.get("boundary_pairing_proven")
+                is True
+                and generic_repair_record.get("geometry_coordinates_preserved")
+                is True
+                and generic_repair_record.get("face_count_preserved") is True
+            )
+            or _dominant_identity_repair_is_trusted(generic_repair_record)
+        )
         and final_validation.get("positive_volume_validated") is True
         and final_validation.get("closed") is True
     )
@@ -7935,6 +12974,10 @@ def validate_3mf(
         face_limit = max(100, (face_count + 9_999) // 10_000)
         generic_warning_allowed = bool(
             generic_seam_warning_eligible
+            and (
+                generic_simplification_applied
+                or source_geometry_preserved
+            )
             and intersecting_faces > 0
             and intersecting_faces <= face_limit
             and 0.0 <= area_fraction <= 1.0e-4
@@ -8185,7 +13228,9 @@ def validate_3mf(
             multipart_warning_allowed
         )
         topology_record["self_intersection_warning"] = warning_allowed
-        if intersecting_faces == 0:
+        if intersecting_faces < 0:
+            topology_record["self_intersection_policy"] = "not_checked"
+        elif intersecting_faces == 0:
             topology_record["self_intersection_policy"] = "strict_zero"
         elif warning_allowed:
             topology_record["self_intersection_policy"] = (
@@ -8232,14 +13277,24 @@ def validate_3mf(
     valid_solids = all(
         solid_topology_is_valid(value) for value in object_topologies
     )
+    def selected_policy_accepts(value: dict[str, object]) -> bool:
+        return _export_accepts_topology(
+            export_validation_level, value, strict_valid=solid_topology_is_valid(value)
+        )
+
+    geometry_warnings = [
+        {"object": index, "issues": _export_topology_issue_codes(value)}
+        for index, value in enumerate(object_topologies, start=1)
+        if _export_topology_issue_codes(value)
+    ]
     if len(object_topologies) != expected_parts:
         errors.append(
             f"閉立体数={len(object_topologies)}/{expected_parts}"
         )
-    elif require_watertight and not valid_solids:
+    elif not all(selected_policy_accepts(value) for value in object_topologies):
         invalid_summaries: list[str] = []
         for index, value in enumerate(object_topologies, start=1):
-            if solid_topology_is_valid(value):
+            if selected_policy_accepts(value):
                 continue
             invalid_summaries.append(
                 f"object {index}: boundary={int(value.get('boundary_edges', -1))}, "
@@ -8304,7 +13359,9 @@ def validate_3mf(
         }
     )
     warning_policy = (
-        "strict_zero"
+        "not_checked"
+        if not check_self_intersections
+        else "strict_zero"
         if not warning_policies
         else warning_policies[0]
         if len(warning_policies) == 1
@@ -8312,6 +13369,13 @@ def validate_3mf(
     )
     return {
         "zip_crc_ok": True,
+        "geometry_validation_level": export_validation_level,
+        "geometry_warnings": geometry_warnings,
+        "geometry_warning_parts": len(geometry_warnings),
+        "geometry_issues_ignored": export_validation_level != "high",
+        "geometry_self_intersections_checked": check_self_intersections,
+        "orca_preview_required": bool(geometry_warnings) or export_validation_level != "high",
+        "valid_solids": valid_solids,
         "entries": len(names),
         "vertices": vertices,
         "faces": faces,
@@ -8585,6 +13649,29 @@ def make_report(
             ),
             "illustration_light": getattr(
                 tone, "illustration_light", "front_left"
+            ),
+            "illustration_light_intensity": float(
+                getattr(tone, "illustration_light_intensity", 1.0)
+            ),
+            "illustration_light_range": float(
+                getattr(tone, "illustration_light_range", 0.4)
+            ),
+            "illustration_detail_strength": float(
+                getattr(tone, "illustration_detail_strength", 0.0)
+            ),
+            "illustration_selective_highlight_fraction": float(
+                getattr(
+                    tone,
+                    "illustration_selective_highlight_fraction",
+                    0.0,
+                )
+            ),
+            "illustration_contour_policy": str(
+                getattr(
+                    tone,
+                    "illustration_contour_policy",
+                    "outer_crease_fold",
+                )
             ),
             "smoothed_faces": colors.smoothed_faces,
         },

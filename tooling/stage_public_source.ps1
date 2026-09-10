@@ -12,7 +12,7 @@ $repoRoot = (Get-Item -LiteralPath (Split-Path -Parent $PSScriptRoot)).FullName
 if (-not $Destination) {
     $Destination = Join-Path `
         $repoRoot `
-        "artifacts\ChromaMatter-0.8beta-r32.2-source-public-20260824"
+        "artifacts\ChromaMatter-0.9-source-public"
 }
 elseif (-not [System.IO.Path]::IsPathRooted($Destination)) {
     $Destination = Join-Path $repoRoot $Destination
@@ -117,6 +117,8 @@ $requiredToolingFiles = @(
     "tooling/update_budget_filament_library.py",
     "tooling/corresponding_source_components.json",
     "tooling/BUILD_PYTETWILD_WINDOWS.ps1",
+    "tooling/recipes/BUILD_PYTETWILD_WINDOWS_20260823.ps1",
+    "tooling/recipes/README.md",
     "tooling/requirements-pytetwild-build.lock",
     "tooling/patches/pytetwild-0.3.0-optional-pyvista.patch",
     "tooling/meshlab_windows_external_archives.lock.json",
@@ -635,14 +637,6 @@ function Assert-PublicManifestExactProperties {
     }
 }
 
-$partManifestLeaf = (
-    -join @(
-        [char]0x30D1,
-        [char]0x30FC,
-        [char]0x30C4,
-        [char]0x5225
-    )
-) + "3MF_manifest.json"
 $expectedDemoPayloadSpecs = @(
     [pscustomobject]@{
         Path = "Original AI model Color.glb"
@@ -653,46 +647,6 @@ $expectedDemoPayloadSpecs = @(
         Path = "Reference.jpg"
         MediaType = "image/jpeg"
         Role = "reference-image"
-    },
-    [pscustomobject]@{
-        Path = "3MF/Original AI model Color_FullSpectrum.3mf"
-        MediaType = "model/3mf"
-        Role = "combined-full-spectrum-3mf-demo"
-    },
-    [pscustomobject]@{
-        Path = "3MF/Original AI model Color_FullSpectrum_parts_2/01_RightArm_FullSpectrum.3mf"
-        MediaType = "model/3mf"
-        Role = "individual-part-3mf-demo"
-    },
-    [pscustomobject]@{
-        Path = "3MF/Original AI model Color_FullSpectrum_parts_2/02_LeftLeg_FullSpectrum.3mf"
-        MediaType = "model/3mf"
-        Role = "individual-part-3mf-demo"
-    },
-    [pscustomobject]@{
-        Path = "3MF/Original AI model Color_FullSpectrum_parts_2/03_Head_FullSpectrum.3mf"
-        MediaType = "model/3mf"
-        Role = "individual-part-3mf-demo"
-    },
-    [pscustomobject]@{
-        Path = "3MF/Original AI model Color_FullSpectrum_parts_2/04_LeftArm_FullSpectrum.3mf"
-        MediaType = "model/3mf"
-        Role = "individual-part-3mf-demo"
-    },
-    [pscustomobject]@{
-        Path = "3MF/Original AI model Color_FullSpectrum_parts_2/05_Torso_FullSpectrum.3mf"
-        MediaType = "model/3mf"
-        Role = "individual-part-3mf-demo"
-    },
-    [pscustomobject]@{
-        Path = "3MF/Original AI model Color_FullSpectrum_parts_2/06_RightLeg_FullSpectrum.3mf"
-        MediaType = "model/3mf"
-        Role = "individual-part-3mf-demo"
-    },
-    [pscustomobject]@{
-        Path = "3MF/Original AI model Color_FullSpectrum_parts_2/$partManifestLeaf"
-        MediaType = "application/json"
-        Role = "individual-part-3mf-manifest"
     }
 )
 $expectedDemoDocuments = @("README_EN.md", "README_JA.md", "NOTICE_EN.md", "NOTICE_JA.md")
@@ -740,7 +694,8 @@ function Read-ValidatedPublicDemoManifest {
         -Value $manifest `
         -Expected @(
             "schema_version", "document_id", "release_status",
-            "expected_documents", "payloads", "publication_gate"
+            "payload_profile", "expected_documents", "payloads",
+            "publication_gate"
         ) `
         -Context $Context
     if (
@@ -748,13 +703,17 @@ function Read-ValidatedPublicDemoManifest {
         $manifest.schema_version.GetType().FullName -notin @(
             "System.Int32", "System.Int64"
         ) -or
-        [long]$manifest.schema_version -ne 2 -or
+        [long]$manifest.schema_version -ne 3 -or
         $manifest.document_id -isnot [string] -or
-        [string]$manifest.document_id -cne "chromamatter.demo-data.r32.2" -or
+        [string]$manifest.document_id -cne
+            "chromamatter.demo-data.source-only.v1" -or
+        $manifest.payload_profile -isnot [string] -or
+        [string]$manifest.payload_profile -cne
+            "source-model-and-reference-only" -or
         $manifest.release_status -isnot [string] -or
         [string]$manifest.release_status -cne "approved-for-publication"
     ) {
-        throw "$Context has the wrong r32.2 identity or JSON value types."
+        throw "$Context has the wrong source-only identity or JSON value types."
     }
 
     if ($manifest.expected_documents -isnot [System.Array]) {
@@ -777,8 +736,16 @@ function Read-ValidatedPublicDemoManifest {
         throw "$Context payloads must be a JSON array."
     }
     $manifestPayloads = @($manifest.payloads)
+    if (@(
+        $manifestPayloads | Where-Object {
+            $_.path -is [string] -and
+            [System.IO.Path]::GetExtension([string]$_.path) -ieq ".3mf"
+        }
+    ).Count -ne 0) {
+        throw "$Context source-only profile forbids every 3MF payload."
+    }
     if ($manifestPayloads.Count -ne $expectedDemoPayloadSpecs.Count) {
-        throw "$Context must contain exactly 10 payloads."
+        throw "$Context must contain exactly 2 payloads."
     }
     for ($index = 0; $index -lt $expectedDemoPayloadSpecs.Count; $index++) {
         $payload = $manifestPayloads[$index]
@@ -820,8 +787,8 @@ function Read-ValidatedPublicDemoManifest {
         -Expected @(
             "status", "raw_glb_redistribution_confirmed",
             "reference_image_redistribution_confirmed",
-            "derived_3mf_redistribution_confirmed",
-            "hi3d_plan_terms_confirmed"
+            "hi3d_plan_terms_confirmed",
+            "derived_3mf_payloads_included"
         ) `
         -Context "$Context publication gate"
     if (
@@ -831,10 +798,10 @@ function Read-ValidatedPublicDemoManifest {
         $demoGate.raw_glb_redistribution_confirmed -ne $true -or
         $demoGate.reference_image_redistribution_confirmed -isnot [bool] -or
         $demoGate.reference_image_redistribution_confirmed -ne $true -or
-        $demoGate.derived_3mf_redistribution_confirmed -isnot [bool] -or
-        $demoGate.derived_3mf_redistribution_confirmed -ne $true -or
         $demoGate.hi3d_plan_terms_confirmed -isnot [bool] -or
-        $demoGate.hi3d_plan_terms_confirmed -ne $true
+        $demoGate.hi3d_plan_terms_confirmed -ne $true -or
+        $demoGate.derived_3mf_payloads_included -isnot [bool] -or
+        $demoGate.derived_3mf_payloads_included -ne $false
     ) {
         throw "$Context publication gate is not strictly approved."
     }

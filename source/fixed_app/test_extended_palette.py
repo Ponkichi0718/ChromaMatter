@@ -22,6 +22,24 @@ SECONDARY_RATIOS_B = [80, 75, 60, 40, 25, 20]
 
 
 class ExtendedPaletteTests(unittest.TestCase):
+    def test_palette_metrics_report_exact_zero_for_identical_lab_vectors(self) -> None:
+        rgb = np.asarray(
+            ((16, 16, 16), (224, 32, 48), (245, 245, 245), (255, 128, 176)),
+            dtype=np.uint8,
+        )
+        lab = mixer._rgb8_to_lab(rgb)
+        palette = rgb[[2, 0, 3, 1]]
+
+        score, fractions = mixer._palette_metrics(
+            lab,
+            np.ones(len(lab), dtype=np.float64),
+            palette,
+            tuple(index < 4 for index in range(mixer.PALETTE_STATE_COUNT)),
+        )
+
+        self.assertEqual(score, 0.0)
+        self.assertAlmostEqual(float(fractions[:4].sum()), 1.0, places=12)
+
     def test_build_palette_has_32_states_and_preserves_the_legacy_first_sixteen(self) -> None:
         legacy_overrides = [
             "#0B1C2D",

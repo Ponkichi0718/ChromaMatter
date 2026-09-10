@@ -13,7 +13,6 @@ BUILD_SCRIPT = REPOSITORY / "BUILD_MACOS_ARM64.sh"
 AUDIT_SCRIPT = REPOSITORY / "AUDIT_MACOS_APP.sh"
 INVENTORY_TOOL = REPOSITORY / "tooling" / "generate_macos_app_inventory.py"
 WORKFLOW = REPOSITORY / ".github" / "workflows" / "macos-arm64-alpha.yml"
-SOURCE_WORKFLOW = REPOSITORY / ".github" / "workflows" / "macos-source-alpha.yml"
 ISSUE_TEMPLATE = (
     REPOSITORY / ".github" / "ISSUE_TEMPLATE" / "macos_alpha_report.yml"
 )
@@ -65,10 +64,10 @@ class MacOSAlphaSpecTests(unittest.TestCase):
         self.assertIn('name=f"{MACOS_APP_NAME}.app"', text)
         self.assertIn("ChromaMatter-macOS-Alpha", text)
         self.assertIn("io.github.ponkichi0718.chromamatter.alpha", text)
-        self.assertIn('"CFBundleShortVersionString": "0.8.0"', text)
-        self.assertIn('"CFBundleVersion": "800"', text)
-        self.assertIn("ChromaMatter 0.8beta macOS alpha", text)
-        self.assertIn('version="0.8.0"', text)
+        self.assertIn('"CFBundleShortVersionString": "0.9.0"', text)
+        self.assertIn('"CFBundleVersion": "900"', text)
+        self.assertIn("ChromaMatter 0.9 macOS alpha", text)
+        self.assertIn('version="0.9.0"', text)
         self.assertIn('"LSMinimumSystemVersion": "15.0"', text)
         self.assertIn('codesign_identity=None', text)
         self.assertNotIn("version_info.txt", text)
@@ -159,10 +158,10 @@ class MacOSAlphaAutomationTests(unittest.TestCase):
     def test_workflow_is_ci_only_and_tester_zip_upload_is_opt_in(self) -> None:
         text = WORKFLOW.read_text(encoding="utf-8")
         self.assertIn("runs-on: macos-15", text)
-        self.assertEqual(text.count('"tooling/generate_macos_app_inventory.py"'), 2)
+        self.assertEqual(text.count('"tooling/generate_macos_app_inventory.py"'), 1)
         self.assertIn("uses: actions/setup-python@v7", text)
         self.assertIn("  push:\n", text)
-        self.assertIn("  pull_request:\n", text)
+        self.assertNotIn("  pull_request:\n", text)
         self.assertIn('python-version: "3.13.14"', text)
         self.assertIn("architecture: arm64", text)
         self.assertIn("upload_tester_alpha:", text)
@@ -203,56 +202,17 @@ class MacOSAlphaAutomationTests(unittest.TestCase):
         self.assertIn("GITHUB_STEP_SUMMARY", text)
         self.assertIn("TESTER ZIP CREATED", text)
         self.assertIn("DIAGNOSTICS ONLY", text)
-        self.assertIn("--require-engineering-gate-passed", text)
-        self.assertIn("python -m pip download", text)
-        self.assertIn('--dest "$wheelhouse"', text)
-        self.assertIn('--no-index', text)
-        self.assertIn('--find-links "$wheelhouse"', text)
-        for required_wheel in (
-            "numpy-2.5.1-cp313-cp313-macosx_14_0_arm64.whl",
-            "pymeshlab-2025.7.post1-cp313-cp313-macosx_11_0_arm64.whl",
-            "pytetwild-0.3.0-cp312-abi3-macosx_15_0_arm64.whl",
-            "rtree-1.4.1-py3-none-macosx_11_0_arm64.whl",
-            "scipy-1.18.0-cp313-cp313-macosx_14_0_arm64.whl",
-        ):
-            with self.subTest(required_wheel=required_wheel):
-                self.assertIn(f'--wheel "$wheelhouse/{required_wheel}"', text)
         self.assertGreaterEqual(text.count("MACOS_ALPHA_APP_INVENTORY.json"), 2)
         self.assertIn("discussions/9", text)
         self.assertNotIn("gh release", text.casefold())
         self.assertNotIn("softprops/action-gh-release", text.casefold())
-
-    def test_source_tester_workflow_runs_the_exact_launcher_path(self) -> None:
-        text = SOURCE_WORKFLOW.read_text(encoding="utf-8")
-        self.assertIn("runs-on: macos-15", text)
-        self.assertIn('python-version: "3.13.14"', text)
-        self.assertIn("architecture: arm64", text)
-        self.assertIn('ref: ${{ github.sha }}', text)
-        self.assertIn("bash -n ./START_MACOS_SOURCE_ALPHA.command", text)
-        self.assertIn(
-            '"$app_entry" --self-test-only',
-            text,
-        )
-        self.assertIn("tooling/stage_macos_source_app.py stage", text)
-        self.assertGreaterEqual(
-            text.count("tooling/stage_macos_source_app.py audit"),
-            2,
-        )
-        self.assertIn("CHROMAMATTER_ALPHA_HOME", text)
-        self.assertIn("ChromaMatter-Public-Four-Color-Test.glb", text)
-        self.assertIn('payload.get("ok") is not True', text)
-        self.assertIn("--ui-smoke --ui-smoke-language ja", text)
-        self.assertIn("--ui-smoke --ui-smoke-language en", text)
-        self.assertIn("no bundled Python/runtime/Mach-O", text)
-        self.assertIn("not evidence for the frozen prebuilt or notarized app", text)
-        self.assertNotIn("actions/upload-release-asset", text)
 
     def test_tester_documents_and_issue_form_protect_private_models(self) -> None:
         for path in (*TEST_GUIDES, *COMPLIANCE_NOTICES):
             with self.subTest(path=path.name):
                 self.assertTrue(path.is_file())
                 text = path.read_text(encoding="utf-8")
-                self.assertIn("0.8beta", text)
+                self.assertIn("0.9", text)
 
         english = TEST_GUIDES[0].read_text(encoding="utf-8")
         japanese = TEST_GUIDES[1].read_text(encoding="utf-8")

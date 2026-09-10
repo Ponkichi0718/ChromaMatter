@@ -780,8 +780,17 @@ def _palette_metrics(
             )
             local_assignments = np.argmin(distances, axis=1)
             assignments[batch] = active_indices[local_assignments]
+            # Recompute only the selected distances by direct subtraction.
+            # The fast a^2+b^2-2ab matrix above is suitable for assignment,
+            # but can leave a tiny positive residue for identical Lab vectors
+            # on some BLAS/CPU combinations.  This keeps the reported and
+            # compared score exact without clamping genuinely different hues.
+            selected_delta = (
+                target_lab[batch]
+                - palette_lab[active_indices[local_assignments]]
+            )
             minimum[batch] = np.sqrt(
-                distances[np.arange(len(batch)), local_assignments]
+                np.einsum("ij,ij->i", selected_delta, selected_delta)
             )
     total_weight = float(weights.sum())
     score = float(np.dot(weights, minimum) / total_weight)

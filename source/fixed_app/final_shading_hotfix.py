@@ -831,7 +831,13 @@ def install_export_adaptive_hotfix() -> bool:
         palette,
         part_palettes=None,
         print_uses_global_palette=False,
+        *,
+        export_validation_level="high",
     ):
+        validation_kwargs = (
+            {} if export_validation_level == "high"
+            else {"export_validation_level": export_validation_level}
+        )
         # Flat Four is a physical F1-F4 projection performed by the core 3MF
         # writer.  Adaptive shading operates in the 32-state mixed palette and
         # would otherwise regenerate/reuse mixed trees, replace dominant roots,
@@ -848,6 +854,7 @@ def install_export_adaptive_hotfix() -> bool:
                 palette,
                 part_palettes,
                 print_uses_global_palette,
+                **validation_kwargs,
             )
 
         # A physical palette chart must keep one uniform, independently
@@ -863,6 +870,7 @@ def install_export_adaptive_hotfix() -> bool:
                 palette,
                 part_palettes,
                 print_uses_global_palette,
+                **validation_kwargs,
             )
             details = {
                 "version": HOTFIX_VERSION,
@@ -916,6 +924,7 @@ def install_export_adaptive_hotfix() -> bool:
                 palette,
                 part_palettes,
                 print_uses_global_palette,
+                **validation_kwargs,
             )
             if isinstance(validation, dict):
                 validation["r8_export_adaptive"] = {
@@ -937,6 +946,7 @@ def install_export_adaptive_hotfix() -> bool:
                 palette,
                 part_palettes,
                 print_uses_global_palette,
+                **validation_kwargs,
             )
         finally:
             if previous is sentinel:

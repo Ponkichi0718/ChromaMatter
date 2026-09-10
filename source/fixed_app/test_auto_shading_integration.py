@@ -10,6 +10,7 @@ import auto_shading
 import smooth_paint
 import smooth_paint_hotfix
 import spectrum_mapper_hotfix as runtime_hotfix
+from spectrum_mapper.i18n import Translator
 from spectrum_mapper.models import MeshLevel, PaletteSettings
 from spectrum_mapper.paint import PaintSession
 from spectrum_mapper.paint_gui import PaintEditorWindow
@@ -233,6 +234,35 @@ class AutoShadingIntegrationTests(unittest.TestCase):
             "synthetic failure",
             parent=editor.window,
         )
+
+    def test_completion_error_dialog_respects_english_ui(self) -> None:
+        editor = SimpleNamespace(
+            i18n=Translator("en"),
+            _hotfix_auto_shading_active=True,
+            _hotfix_auto_shading_button=_Button("disabled"),
+            _close_requested=False,
+            window=object(),
+        )
+        snapshot = {
+            "_hotfix_auto_shading_done": True,
+            "_hotfix_auto_shading_error": "内部処理に失敗しました",
+            "message": "failed",
+            "changed": 0,
+        }
+
+        with (
+            mock.patch.object(runtime_hotfix, "_original_consume_snapshot"),
+            mock.patch.object(
+                runtime_hotfix.paint_gui.messagebox,
+                "showerror",
+            ) as showerror,
+        ):
+            PaintEditorWindow._consume_snapshot(editor, snapshot)
+
+        title, message = showerror.call_args.args
+        self.assertEqual(title, "Could Not Generate In-face Gradients")
+        self.assertEqual(message, "Review the error details")
+        self.assertNotRegex(title + message, r"[ぁ-んァ-ヶ一-龯]")
 
 
 if __name__ == "__main__":

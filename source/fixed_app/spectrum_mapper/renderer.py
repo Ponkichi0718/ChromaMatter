@@ -10,6 +10,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 from .models import ColorResult, MeshLevel
+from .ui_fonts import linux_pillow_font_candidates
 
 
 try:
@@ -22,6 +23,7 @@ else:
 
 
 ColorMode = Literal["source", "target"]
+PreviewDirection = Literal["front", "back", "left", "right", "top", "bottom"]
 ViewTheme = Literal["auto", "dark", "light", "neutral"]
 RGB = tuple[int, int, int]
 
@@ -405,25 +407,61 @@ def _release(resource: object | None) -> None:
             pass
 
 
-def _camera_mvp(vertices: np.ndarray, size: tuple[int, int]) -> np.ndarray:
+PREVIEW_DIRECTIONS: tuple[PreviewDirection, ...] = (
+    "front",
+    "back",
+    "left",
+    "right",
+    "top",
+    "bottom",
+)
+
+
+def _camera_mvp(
+    vertices: np.ndarray,
+    size: tuple[int, int],
+    direction: PreviewDirection = "front",
+) -> np.ndarray:
     minimum = vertices.min(axis=0).astype(np.float64)
     maximum = vertices.max(axis=0).astype(np.float64)
     center = (minimum + maximum) * 0.5
     extents = maximum - minimum
     diagonal = max(float(np.linalg.norm(extents)), 1e-6)
 
-    # Engine output is Z-up and its front faces -Y. Looking from -Y preserves
-    # the source image's front view without requiring GUI-side camera settings.
+    if direction not in PREVIEW_DIRECTIONS:
+        raise RendererError(f"Unknown preview direction: {direction}")
+
+    # Preserve the established front-view framing byte-for-byte. Other named
+    # views use the same orthographic margin while fitting the two axes visible
+    # from that direction.
     distance = max(diagonal * 2.5, float(extents[1]) * 3.0, 1.0)
-    eye = center + np.asarray((0.0, -distance, 0.01 * extents[2]), dtype=np.float64)
+    if direction == "front":
+        eye_offset = (0.0, -distance, 0.01 * extents[2])
+        up = (0.0, 0.0, 1.0)
+        visible_width = float(extents[0])
+        visible_height = float(extents[2])
+    else:
+        camera_specs = {
+            "back": ((0.0, distance, 0.0), (0.0, 0.0, 1.0), extents[0], extents[2]),
+            "left": ((-distance, 0.0, 0.0), (0.0, 0.0, 1.0), extents[1], extents[2]),
+            "right": ((distance, 0.0, 0.0), (0.0, 0.0, 1.0), extents[1], extents[2]),
+            "top": ((0.0, 0.0, distance), (0.0, 1.0, 0.0), extents[0], extents[1]),
+            "bottom": ((0.0, 0.0, -distance), (0.0, -1.0, 0.0), extents[0], extents[1]),
+        }
+        eye_offset, up, visible_width, visible_height = camera_specs[direction]
+    eye = center + np.asarray(eye_offset, dtype=np.float64)
     view = _look_at(
         eye.astype(np.float32),
         center.astype(np.float32),
-        np.asarray((0.0, 0.0, 1.0), dtype=np.float32),
+        np.asarray(up, dtype=np.float32),
     )
 
     aspect = size[0] / size[1]
-    half_height = max(float(extents[2]) * 0.55, float(extents[0]) * 0.55 / aspect, 1e-5)
+    half_height = max(
+        float(visible_height) * 0.55,
+        float(visible_width) * 0.55 / aspect,
+        1e-5,
+    )
     projection = _orthographic(
         -half_height * aspect,
         half_height * aspect,
@@ -525,6 +563,7 @@ def _render_with_context(
     size: tuple[int, int],
     background: RGB,
     shaded: bool,
+    direction: PreviewDirection = "front",
 ) -> Image.Image:
     vertices, faces = _validate_mesh(level)
     colors = _face_colors(result, mode, len(faces))
@@ -577,7 +616,7 @@ def _render_with_context(
                 }
             """,
         )
-        mvp = _camera_mvp(vertices, size)
+        mvp = _camera_mvp(vertices, size, direction)
         program["mvp"].write(mvp.T.astype(np.float32).tobytes())
         program["shade_strength"].value = (
             1.0 if _effective_shaded(result, mode, shaded) else 0.0
@@ -615,6 +654,7 @@ def _render_front_face_ids_with_context(
     faces: np.ndarray,
     *,
     size: tuple[int, int],
+    direction: PreviewDirection = "front",
 ) -> np.ndarray:
     """Render face IDs with the exact camera used by the legacy front view."""
 
@@ -646,7 +686,7 @@ def _render_front_face_ids_with_context(
                 }
             """,
         )
-        mvp = _camera_mvp(vertices, size)
+        mvp = _camera_mvp(vertices, size, direction)
         program["mvp"].write(mvp.T.astype(np.float32).tobytes())
 
         texture = context.texture(size, components=1, dtype="u4")
@@ -1428,6 +1468,7 @@ def render_front_preview(
     size: tuple[int, int] = (600, 740),
     background: Sequence[int] = (9, 10, 13),
     shaded: bool = True,
+    direction: PreviewDirection = "front",
 ) -> Image.Image:
     """Render a front-view model preview as a new RGB ``PIL.Image``.
 
@@ -1448,6 +1489,7 @@ def render_front_preview(
             size=render_size,
             background=render_background,
             shaded=bool(shaded),
+            direction=direction,
         )
     finally:
         _release(context)
@@ -1463,6 +1505,7 @@ def render_front_preview_pair(
     active_part_id: int | None = None,
     outline_color: Sequence[int] = (36, 224, 255),
     outline_thickness: int = 2,
+    direction: PreviewDirection = "front",
 ) -> FrontPreviewPair:
     """Render synchronized fixed-front source/target previews and face IDs.
 
@@ -1485,6 +1528,7 @@ def render_front_preview_pair(
             size=render_size,
             background=render_background,
             shaded=bool(shaded),
+            direction=direction,
         )
         target = _render_with_context(
             context,
@@ -1494,12 +1538,14 @@ def render_front_preview_pair(
             size=render_size,
             background=render_background,
             shaded=bool(shaded),
+            direction=direction,
         )
         face_ids = _render_front_face_ids_with_context(
             context,
             vertices,
             faces,
             size=render_size,
+            direction=direction,
         )
     finally:
         _release(context)
@@ -1579,7 +1625,7 @@ def _contain_on_panel(image: Image.Image, size: tuple[int, int], background: RGB
 
 
 def _font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
-    candidates = (
+    candidates = (*linux_pillow_font_candidates(),
         Path("/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc"),
         Path("/System/Library/Fonts/ヒラギノ丸ゴ ProN W4.ttc"),
         Path("/System/Library/Fonts/Supplemental/Arial Unicode.ttf"),

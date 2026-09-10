@@ -11,7 +11,10 @@ import numpy as np
 
 from spectrum_mapper.cli import _glb_import_smoke, build_parser, convert
 from spectrum_mapper.engine import write_3mf_atomic
-from spectrum_mapper.gltf_import import GltfImportPlan
+from spectrum_mapper.gltf_import import (
+    GLTF_REDUCED_SOURCE_FACE_LIMIT,
+    GltfImportPlan,
+)
 from spectrum_mapper.gui import MapperApp, _geometry_key
 from spectrum_mapper.i18n import Translator
 from spectrum_mapper.models import (
@@ -79,7 +82,9 @@ class GlbGuiWorkflowTests(unittest.TestCase):
         app.i18n = Translator("ja")
         app.target_faces_var = Variable(900_000)
         selected = Path("C:/models/large.glb")
-        plan = GltfImportPlan(2_500_000, 5_000_000, 1, 1, (4,))
+        plan = GltfImportPlan(
+            2_500_000, GLTF_REDUCED_SOURCE_FACE_LIMIT, 1, 1, (4,)
+        )
 
         with (
             patch(
@@ -154,6 +159,74 @@ class GlbGuiWorkflowTests(unittest.TestCase):
         self.assertIs(result[0], loaded_asset)
         self.assertIs(result[1], prepared)
 
+    def test_geometry_failure_warns_without_opening_3d_diagnostics(self) -> None:
+        app = MapperApp.__new__(MapperApp)
+        app.root = object()
+        app.i18n = Translator("en")
+        app.paint_editor = None
+        app.source_path = Path("C:/models/robot.glb")
+        app.asset = object()
+        previous_settings = AppSettings()
+        settings = AppSettings(
+            geometry=GeometrySettings(solidify_parts=True)
+        )
+        app.settings = settings
+        app.prepared = SimpleNamespace(
+            assembly={"solidify_parts": False}
+        )
+        app.prepared_key = _geometry_key(previous_settings.geometry)
+        app.manual_part_partition = None
+        app.pending_manual_part_partition = None
+        app.manual_joint_record = None
+        app.pending_manual_joint_record = None
+        app.manual_overrides = None
+        app._variables_to_settings = Mock(return_value=settings)
+        app.adjust_face_count_var = Variable(True)
+        app.solidify_parts_var = Variable(True)
+        app.repair_unmatched_boundaries_var = Variable(True)
+        app.status_var = Variable("")
+        app._update_face_count_status = Mock()
+        app._update_assembly_status = Mock()
+        app._show_boundary_diagnostics = Mock()
+        app._open_paint_editor = Mock()
+        app._open_boundary_diagnostics_on_paint = False
+        after_failed = Mock()
+        captured: dict[str, object] = {}
+
+        def capture_submit(label, work, done, *, on_error=None):
+            captured.update(label=label, work=work, done=done, on_error=on_error)
+            return True
+
+        app._submit_main = capture_submit
+
+        with (
+            patch("spectrum_mapper.gui.messagebox.showwarning") as warning,
+            patch("spectrum_mapper.gui.messagebox.showerror") as error,
+            patch("spectrum_mapper.gui.messagebox.askyesno") as confirm,
+        ):
+            self.assertTrue(
+                MapperApp._process_geometry(
+                    app,
+                    reuse_asset=True,
+                    after_failed=after_failed,
+                )
+            )
+            handled = captured["on_error"](
+                RuntimeError("repair failed"),
+                "worker traceback",
+            )
+
+        self.assertTrue(handled)
+        warning.assert_called_once()
+        self.assertIn("repair failed", warning.call_args.args[1])
+        self.assertNotIn("3D", warning.call_args.args[1])
+        error.assert_not_called()
+        confirm.assert_not_called()
+        after_failed.assert_called_once_with()
+        app._show_boundary_diagnostics.assert_not_called()
+        app._open_paint_editor.assert_not_called()
+        self.assertFalse(app._open_boundary_diagnostics_on_paint)
+
     def test_exact_glb_project_restore_keeps_source_and_part_names(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -224,7 +297,9 @@ class GlbGuiWorkflowTests(unittest.TestCase):
                 },
                 project_folder_name="large_source_project",
             )
-            plan = GltfImportPlan(2_500_000, 5_000_000, 1, 1, (4,))
+            plan = GltfImportPlan(
+                2_500_000, GLTF_REDUCED_SOURCE_FACE_LIMIT, 1, 1, (4,)
+            )
 
             cancelled = bare_load_app()
             with (
@@ -309,6 +384,7 @@ class GlbCliDispatchTests(unittest.TestCase):
             ANY,
             allow_large_reduced_source=True,
         )
+        self.assertEqual(export.call_args.args[1].palette.color_mode, "flat_four")
         self.assertEqual(export.call_args.args[2], Path("robot.3mf"))
 
     def test_convert_rejects_unsupported_suffix_clearly(self) -> None:

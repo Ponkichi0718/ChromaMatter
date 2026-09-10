@@ -90,6 +90,8 @@ class RadialExportPart:
     faces: np.ndarray
     extruder: int
     role: str
+    # Legacy serializer handshake: this asserts a closed physical volume.  It
+    # does not choose the slicer's sparse-infill density.
     solid_infill: bool = True
     source_state: int | None = None
     metadata: Mapping[str, object] = field(default_factory=dict)
@@ -777,7 +779,7 @@ def build_radial_shell(
             "schema": RADIAL_SHELL_SCHEMA,
             "region": "enclosed-core",
             "physical_material_only": True,
-            "sparse_infill_density_percent": 100,
+            "closed_physical_volume": True,
             "validation": core_record,
         },
     )
@@ -795,7 +797,7 @@ def build_radial_shell(
             "physical_material_only": True,
             "requested_skin_thickness_mm": thickness,
             "source_exterior_preserved_exactly": True,
-            "sparse_infill_density_percent": 100,
+            "closed_physical_volume": True,
             "validation": shell_record,
         },
     )
@@ -829,7 +831,7 @@ def build_radial_shell(
         "exact_touch_interfaces": 1,
         "positive_overlap_mm3": 0.0,
         "gap_mm": 0.0,
-        "solid_infill_percent": 100,
+        "closed_physical_volumes": True,
         "stage_b_surface_assignments_supported_by_api": True,
         "stage_b_owner_propagation_implemented": False,
         "diagnostics": diagnostics,

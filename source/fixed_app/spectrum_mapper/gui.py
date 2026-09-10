@@ -22,7 +22,7 @@ from .engine import (
     _local_part_neighbors,
     apply_palette_overrides,
     apply_palette_overrides_parts,
-    apply_tone_faces,
+    apply_tone_faces_for_mesh,
     face_rgb_from_vertex_colors,
     flat_four_required_white_rgb,
     load_vertex_color_model,
@@ -30,6 +30,8 @@ from .engine import (
     prepare_geometry,
     recolor_level,
     recolor_level_parts,
+    strong_cel_required_physical_rgb,
+    strong_cel_required_warm_rgb,
 )
 from .mixer import (
     NEUTRAL_PALETTE_STATES,
@@ -54,9 +56,14 @@ from .mixer import (
 )
 from .filament_recommender import (
     CATEGORY_PRIMARY,
+    DEFAULT_RECOMMENDATION_POLICY,
     FilamentCandidate,
     FilamentRecommendation,
+    RECOMMENDATION_POLICY_BASIC,
+    RECOMMENDATION_POLICY_FLEXIBLE,
+    curated_catalog_for_recommendation,
     map_catalog_to_curated_basics,
+    normalize_recommendation_policy,
     recommend_basic_filaments,
 )
 from .filament_materials import (
@@ -67,20 +74,28 @@ from .filament_materials import (
     normalize_filament_material,
 )
 from .filament_candidate_gui import FilamentCandidateWindow
+from .filament_database import srgb_hex_to_lab
 from .manual_joints import ManualJointError, replay_manual_joint
 from .manual_joint_state import ManualJointStateError, remap_manual_overrides
 from .models import (
     AppSettings,
     COLOR_MODE_FLAT_FOUR,
     COLOR_MODE_FULL_SPECTRUM,
+    DEFAULT_NEW_COLOR_MODE,
+    EXPORT_VALIDATION_LEVELS,
     ColorDepthSettings,
     FilamentSnapshotRef,
     GeometrySettings,
     PaletteSettings,
     PreparedGeometry,
+    RADIAL_CONVERSION_SELECTIVE_HYBRID,
+    RADIAL_CONVERSION_UNIFORM_STAGE_A,
+    RADIAL_SKIN_MODE_ADAPTIVE,
+    RADIAL_SKIN_MODE_UNIFORM,
     RadialSettings,
     ToneSettings,
     normalize_color_mode,
+    normalize_export_validation_level,
 )
 from .i18n import (
     LANGUAGE_DISPLAY_NAMES,
@@ -92,6 +107,11 @@ from .i18n import (
 )
 from .help_center import HelpCenterWindow, get_help_center
 from .legal_notice import LegalNoticeWindow, get_legal_notice
+from .ui_fonts import (
+    LinuxJapaneseFontUnavailable,
+    resolve_ui_font,
+    ui_font,
+)
 from .palette_state_count import apply_palette_state_count_change
 from .project_bundle import (
     ProjectBundleError,
@@ -135,6 +155,7 @@ from .platform_runtime import (
     find_snapmaker_orca,
     launch_snapmaker_orca,
     open_folder,
+    snapmaker_orca_picker_patterns,
 )
 from .reference_parts import (
     ReferencePartMatch,
@@ -152,6 +173,37 @@ from .radial_workflow import export_radial_bundle
 from .workflow import export_bundle
 
 
+def _merge_required_physical_rgb(
+    existing: np.ndarray | None,
+    candidate: np.ndarray | None,
+) -> np.ndarray | None:
+    """Append one protected colour without reserving the same light neutral twice."""
+
+    if candidate is None:
+        return existing
+    extra = np.asarray(candidate, dtype=np.float64).reshape(1, 3)
+    if existing is None:
+        return extra.copy()
+    current = np.asarray(existing, dtype=np.float64).reshape(-1, 3)
+    extra_is_light_neutral = bool(
+        float(np.min(extra[0])) >= 0.75 and float(np.ptp(extra[0])) <= 0.12
+    )
+    current_has_light_neutral = bool(
+        np.any(
+            (np.min(current, axis=1) >= 0.75)
+            & (np.ptp(current, axis=1) <= 0.12)
+        )
+    )
+    close_match = bool(
+        np.any(np.linalg.norm(current - extra[0], axis=1) <= 0.12)
+    )
+    if close_match or (extra_is_light_neutral and current_has_light_neutral):
+        return current.copy()
+    if len(current) >= 4:
+        return current.copy()
+    return np.vstack((current, extra))
+
+
 APP_TITLE = f"{APP_DISPLAY_NAME} {__version__} ({RELEASE_REVISION})"
 PHYSICAL_NAMES = ("F1", "F2", "F3", "F4")
 MATERIAL_GAMUT_WARNING_MEAN_DELTA_E76 = 18.0
@@ -165,6 +217,69 @@ MUTED = "#9AA8BA"
 ACCENT = "#56C7FF"
 SUCCESS = "#62D59A"
 WARNING = "#FFBF69"
+
+
+_RADIAL_CONVERSION_MODE_LABEL_KEYS = {
+    RADIAL_CONVERSION_UNIFORM_STAGE_A: "radial.mode.uniform_stage_a",
+    RADIAL_CONVERSION_SELECTIVE_HYBRID: "radial.mode.selective_hybrid",
+}
+_RADIAL_SKIN_MODE_LABEL_KEYS = {
+    RADIAL_SKIN_MODE_UNIFORM: "radial.skin_mode.uniform",
+    RADIAL_SKIN_MODE_ADAPTIVE: "radial.skin_mode.adaptive",
+}
+
+
+def _radial_conversion_mode_display(i18n: Translator, mode: object) -> str:
+    """Return the localized label for one persisted radial mode ID."""
+
+    key = _RADIAL_CONVERSION_MODE_LABEL_KEYS.get(str(mode))
+    if key is None:
+        raise ValueError("unsupported radial conversion mode")
+    return i18n.text(key)
+
+
+def _radial_conversion_mode_from_display(
+    i18n: Translator,
+    value: object,
+) -> str:
+    """Resolve a localized combo label without accepting a fuzzy value."""
+
+    text = str(value)
+    if text in _RADIAL_CONVERSION_MODE_LABEL_KEYS:
+        return text
+    key = i18n.key_for(text)
+    for mode, label_key in _RADIAL_CONVERSION_MODE_LABEL_KEYS.items():
+        if key == label_key:
+            return mode
+    raise ValueError(i18n.text("radial.reason.invalid_conversion_mode"))
+
+
+def _radial_skin_mode_display(i18n: Translator, mode: object) -> str:
+    key = _RADIAL_SKIN_MODE_LABEL_KEYS.get(str(mode))
+    if key is None:
+        raise ValueError("unsupported radial skin mode")
+    return i18n.text(key)
+
+
+def _radial_skin_mode_from_display(i18n: Translator, value: object) -> str:
+    text = str(value)
+    if text in _RADIAL_SKIN_MODE_LABEL_KEYS:
+        return text
+    key = i18n.key_for(text)
+    for mode, label_key in _RADIAL_SKIN_MODE_LABEL_KEYS.items():
+        if key == label_key:
+            return mode
+    raise ValueError(i18n.text("radial.reason.invalid_skin_mode"))
+
+
+def _ensure_translator(owner: object) -> Translator:
+    """Return the active translator, including for lightweight test hosts."""
+
+    translator = getattr(owner, "i18n", None)
+    if not callable(getattr(translator, "text", None)):
+        translator = Translator("ja")
+        setattr(owner, "i18n", translator)
+    return translator
 
 
 def inspect_color_depth_3mf(source_path: Path):
@@ -223,6 +338,11 @@ _RADIAL_ERROR_REASON_KEYS = {
     "source_exterior_not_preserved": "radial.reason.geometry_generation_failed",
     "shared_interface_mismatch": "radial.reason.geometry_generation_failed",
     "partition_volume_drift": "radial.reason.geometry_generation_failed",
+    "contrast_below_threshold": "radial.reason.contrast_below_threshold",
+    "invalid_minimum_lstar_delta": "radial.reason.invalid_contrast_threshold",
+    "invalid_conversion_mode": "radial.reason.invalid_conversion_mode",
+    "contrast_analysis_mismatch": "radial.reason.geometry_rejected",
+    "unsupported_radial_process_combination": "radial.reason.unsupported_process",
 }
 
 
@@ -249,7 +369,7 @@ def _color_depth_error_reason(i18n: Translator, exc: Exception) -> str:
     """Turn ColorDepth's stable fail-closed codes into actionable text."""
 
     if not isinstance(exc, (ColorDepthWorkflowError, ColorDepthError)):
-        return str(exc)
+        return i18n.dialog_detail_text(exc)
     details = exc.details
     key = _COLOR_DEPTH_ERROR_REASON_KEYS.get(
         exc.code,
@@ -277,7 +397,7 @@ def _radial_error_reason(i18n: Translator, exc: Exception) -> str:
     """Turn stable radial error codes into concrete localized next steps."""
 
     if not isinstance(exc, RadialShellError):
-        return str(exc)
+        return i18n.dialog_detail_text(exc)
     details = exc.details
 
     def filament(key: str) -> str:
@@ -303,6 +423,11 @@ def _radial_error_reason(i18n: Translator, exc: Exception) -> str:
         darkest=filament("darkest_slot"),
         slots=slots or "?",
         part_count=details.get("part_count", "?"),
+        threshold=details.get("minimum_lstar_delta", "?"),
+        actual=details.get("maximum_used_lstar_delta", "?"),
+        maximum=details.get("maximum_used_lstar_delta", "?"),
+        layer=details.get("layer_height_mm", "?"),
+        wall=details.get("wall_generator", "?"),
     )
 
 def _configuration_dir() -> Path:
@@ -334,6 +459,18 @@ def _developer_features_enabled_from_mapping(value: object) -> bool:
     return raw.get("developer_features_enabled") is True
 
 
+def _recommendation_policy_from_mapping(value: object) -> str:
+    """Restore the global proposal gamut without model-dependent colour data."""
+
+    raw = dict(value) if isinstance(value, dict) else {}
+    try:
+        return normalize_recommendation_policy(
+            raw.get("recommendation_policy", DEFAULT_RECOMMENDATION_POLICY)
+        )
+    except ValueError:
+        return DEFAULT_RECOMMENDATION_POLICY
+
+
 def _persistent_preferences_from_mapping(value: object) -> AppSettings:
     """Load only settings that are safe to carry to another OBJ.
 
@@ -359,12 +496,12 @@ def _persistent_preferences_from_mapping(value: object) -> AppSettings:
         palette_state_count = 16
     color_mode_value = raw.get(
         "color_mode",
-        legacy_palette.get("color_mode", COLOR_MODE_FULL_SPECTRUM),
+        legacy_palette.get("color_mode", DEFAULT_NEW_COLOR_MODE),
     )
     try:
         color_mode = normalize_color_mode(color_mode_value)
     except ValueError:
-        color_mode = COLOR_MODE_FULL_SPECTRUM
+        color_mode = DEFAULT_NEW_COLOR_MODE
     return _sanitize_public_settings(AppSettings.from_dict(
         {
             "geometry": raw.get("geometry", {}),
@@ -377,6 +514,7 @@ def _persistent_preferences_from_mapping(value: object) -> AppSettings:
             "manual_orbit_inverted": raw.get(
                 "manual_orbit_inverted", False
             ),
+            "export_validation_level": raw.get("export_validation_level", "high"),
         }
     ))
 
@@ -385,12 +523,16 @@ def _persistent_preferences_payload(
     settings: AppSettings,
     *,
     developer_features_enabled: bool = False,
+    recommendation_policy: object = DEFAULT_RECOMMENDATION_POLICY,
 ) -> dict[str, object]:
     """Serialize global preferences without model-dependent colour data."""
 
     return {
         "schema": _PREFERENCES_SCHEMA,
         "developer_features_enabled": developer_features_enabled is True,
+        "recommendation_policy": normalize_recommendation_policy(
+            recommendation_policy
+        ),
         "geometry": settings.to_dict()["geometry"],
         "color_depth": {
             "experimental_enabled": bool(
@@ -405,10 +547,33 @@ def _persistent_preferences_payload(
         # Preserve r20's hidden settings during migration even though its GUI
         # control has been replaced by ColorDepth Lab in r21.
         "radial": {
+            "experimental_enabled": bool(
+                settings.radial.experimental_enabled
+            ),
             "outer_skin_thickness_mm": float(
                 settings.radial.outer_skin_thickness_mm
             ),
             "layer_height_mm": float(settings.radial.layer_height_mm),
+            "minimum_lstar_delta": float(
+                settings.radial.minimum_lstar_delta
+            ),
+            "wall_generator": str(settings.radial.wall_generator),
+            "conversion_mode": str(settings.radial.conversion_mode),
+            "skin_thickness_mode": str(
+                settings.radial.skin_thickness_mode
+            ),
+            "adaptive_skin_min_thickness_mm": float(
+                settings.radial.adaptive_skin_min_thickness_mm
+            ),
+            "adaptive_skin_max_thickness_mm": float(
+                settings.radial.adaptive_skin_max_thickness_mm
+            ),
+            "adaptive_skin_gamma": float(
+                settings.radial.adaptive_skin_gamma
+            ),
+            "adaptive_skin_bands": int(
+                settings.radial.adaptive_skin_bands
+            ),
             "require_uniform_black_mix": bool(
                 settings.radial.require_uniform_black_mix
             ),
@@ -416,6 +581,9 @@ def _persistent_preferences_payload(
         "palette_state_count": int(settings.palette.palette_state_count),
         "color_mode": settings.palette.color_mode,
         "manual_orbit_inverted": bool(settings.manual_orbit_inverted),
+        "export_validation_level": normalize_export_validation_level(
+            settings.export_validation_level
+        ),
     }
 
 
@@ -451,6 +619,10 @@ def _sanitize_public_settings(settings: AppSettings) -> AppSettings:
     """
 
     settings.color_depth.experimental_enabled = False
+    # Radial output remains available only as dormant research source.  It is
+    # not part of the 0.9 application and must never be restored invisibly by
+    # an older preference or project bundle.
+    settings.radial.experimental_enabled = False
     settings.geometry.auto_joints = False
     settings.geometry.split_enabled = False
     for palette in (settings.palette, *settings.part_palettes.values()):
@@ -518,10 +690,23 @@ def _fresh_settings_for_new_obj(settings: AppSettings) -> AppSettings:
             recipe_policy=settings.color_depth.recipe_policy,
         ),
         radial=RadialSettings(
+            experimental_enabled=False,
             outer_skin_thickness_mm=(
                 settings.radial.outer_skin_thickness_mm
             ),
             layer_height_mm=settings.radial.layer_height_mm,
+            minimum_lstar_delta=settings.radial.minimum_lstar_delta,
+            wall_generator=settings.radial.wall_generator,
+            conversion_mode=settings.radial.conversion_mode,
+            skin_thickness_mode=settings.radial.skin_thickness_mode,
+            adaptive_skin_min_thickness_mm=(
+                settings.radial.adaptive_skin_min_thickness_mm
+            ),
+            adaptive_skin_max_thickness_mm=(
+                settings.radial.adaptive_skin_max_thickness_mm
+            ),
+            adaptive_skin_gamma=settings.radial.adaptive_skin_gamma,
+            adaptive_skin_bands=settings.radial.adaptive_skin_bands,
             require_uniform_black_mix=(
                 settings.radial.require_uniform_black_mix
             ),
@@ -533,6 +718,7 @@ def _fresh_settings_for_new_obj(settings: AppSettings) -> AppSettings:
         # model during the current application session.
         manual_view_backgrounds=dict(settings.manual_view_backgrounds),
         manual_orbit_inverted=settings.manual_orbit_inverted,
+        export_validation_level=settings.export_validation_level,
     ))
 
 
@@ -693,6 +879,23 @@ def _mix_optimizer_settings_key(settings: AppSettings) -> tuple[object, ...]:
         float(getattr(tone, "illustration_strength", 0.78)),
         int(getattr(tone, "illustration_bands", 4)),
         str(getattr(tone, "illustration_light", "front_left")),
+        float(getattr(tone, "illustration_light_intensity", 1.0)),
+        float(getattr(tone, "illustration_light_range", 0.4)),
+        float(getattr(tone, "illustration_detail_strength", 0.0)),
+        float(
+            getattr(
+                tone,
+                "illustration_selective_highlight_fraction",
+                0.0,
+            )
+        ),
+        str(
+            getattr(
+                tone,
+                "illustration_contour_policy",
+                "outer_crease_fold",
+            )
+        ),
         palette.material,
         palette.color_mode,
         tuple(str(value).upper() for value in palette.physical_hex),
@@ -816,25 +1019,25 @@ def _mix_optimization_preflight(
 ) -> tuple[str, str] | None:
     if settings.palette.color_mode == COLOR_MODE_FLAT_FOUR:
         return (
-            "フラット4色では混色しません",
-            "混色比率の最適化はFull Spectrum（混色）で使用できます。",
+            "mix.flat_unavailable.title",
+            "mix.flat_unavailable.message",
         )
     enabled = tuple(bool(value) for value in settings.palette.enabled_states)
     if len(enabled) != PALETTE_STATE_COUNT:
         return (
-            "パレット設定を確認してください",
-            f"パレット有効状態は{PALETTE_STATE_COUNT}個必要です。",
+            "mix.invalid_palette.title",
+            "mix.invalid_palette.message",
         )
     if not any(enabled[4:10]):
-        return "混色が無効です", "最適化する混色を少なくとも1色有効にしてください。"
+        return "mix.disabled.title", "mix.disabled.message"
     if not any(enabled[state] for state in NEUTRAL_PALETTE_STATES):
-        return "通常色が必要です", "通常色パレットを少なくとも1色有効にしてください。"
+        return "mix.normal_required.title", "mix.normal_required.message"
     if settings.tone.pink_protection and not any(
         enabled[state] for state in PINK_PALETTE_STATES
     ):
         return (
-            "F4系の色が必要です",
-            "F4系保護を使う場合は、F4を含むパレットを少なくとも1色有効にしてください。",
+            "mix.f4_required.title",
+            "mix.f4_required.message",
         )
     return None
 
@@ -846,6 +1049,8 @@ class MapperApp:
         *,
         smoke_test: bool = False,
         initial_project: Path | None = None,
+        initial_model: Path | None = None,
+        confirm_large_model: bool = False,
     ) -> None:
         self.root = root
         self.root.title(application_window_title(APP_TITLE))
@@ -856,6 +1061,8 @@ class MapperApp:
 
         self.i18n = Translator(load_language())
         self.localizer = TkLocalizer(self.i18n)
+        self.ui_font_probe = resolve_ui_font(self.root)
+        self.root.option_add("*Font", ui_font(10))
         self.settings = _sanitize_public_settings(
             self._load_persistent_settings()
         )
@@ -961,6 +1168,9 @@ class MapperApp:
                 "height": int(self.root.winfo_height()),
                 "screen_width": int(self.root.winfo_screenwidth()),
                 "screen_height": int(self.root.winfo_screenheight()),
+                "ui_font_family": self.ui_font_probe.family,
+                "japanese_glyph_width": self.ui_font_probe.japanese_width,
+                "fresh_profile_color_mode": self.settings.palette.color_mode,
             }
             if (
                 smoke_metrics["mapped"] != 1
@@ -968,6 +1178,9 @@ class MapperApp:
                 or smoke_metrics["height"] <= 1
                 or smoke_metrics["screen_width"] < 800
                 or smoke_metrics["screen_height"] < 600
+                or smoke_metrics["japanese_glyph_width"] <= 0
+                or smoke_metrics["fresh_profile_color_mode"]
+                != COLOR_MODE_FLAT_FOUR
             ):
                 raise RuntimeError(
                     f"Packaged UI smoke window is invalid: {smoke_metrics}"
@@ -975,6 +1188,14 @@ class MapperApp:
             self.root.after(900, self._on_close)
         elif initial_project is not None:
             self.root.after(180, lambda: self._load_project_path(initial_project))
+        elif initial_model is not None:
+            self.root.after(
+                180,
+                lambda: self._choose_obj(
+                    initial_model,
+                    confirm_large_model=confirm_large_model,
+                ),
+            )
 
     @property
     def source_path(self) -> Path | None:
@@ -998,7 +1219,7 @@ class MapperApp:
             style.theme_use("clam")
         except tk.TclError:
             pass
-        style.configure(".", background=BG, foreground=TEXT, font=("Yu Gothic UI", 10))
+        style.configure(".", background=BG, foreground=TEXT, font=ui_font(10))
         style.configure("TFrame", background=BG)
         style.configure("Panel.TFrame", background=PANEL)
         style.configure("Panel2.TFrame", background=PANEL_2)
@@ -1008,16 +1229,16 @@ class MapperApp:
         style.configure("Muted.TLabel", background=BG, foreground=MUTED)
         style.configure("PanelMuted.TLabel", background=PANEL, foreground=MUTED)
         style.configure("Panel2Muted.TLabel", background=PANEL_2, foreground=MUTED)
-        style.configure("Title.TLabel", background=BG, foreground=TEXT, font=("Yu Gothic UI", 16, "bold"))
+        style.configure("Title.TLabel", background=BG, foreground=TEXT, font=ui_font(16, "bold"))
         style.configure(
             "BrandTagline.TLabel",
             background=BG,
             foreground=MUTED,
-            font=("Yu Gothic UI", 8),
+            font=ui_font(8),
         )
         style.configure("Accent.TButton", background="#1479A8", foreground="white", padding=(14, 8))
         style.map("Accent.TButton", background=[("active", "#198FC5"), ("disabled", "#34404D")])
-        style.configure("Export.TButton", background="#1F9D68", foreground="white", padding=(18, 10), font=("Yu Gothic UI", 11, "bold"))
+        style.configure("Export.TButton", background="#1F9D68", foreground="white", padding=(18, 10), font=ui_font(11, "bold"))
         style.map("Export.TButton", background=[("active", "#27B779"), ("disabled", "#34404D")])
         style.configure("TButton", background=PANEL_2, foreground=TEXT, padding=(9, 6))
         style.map("TButton", background=[("active", "#2A3748")])
@@ -1025,7 +1246,7 @@ class MapperApp:
         style.configure("TNotebook.Tab", background=PANEL_2, foreground=MUTED, padding=(14, 8))
         style.map("TNotebook.Tab", background=[("selected", PANEL)], foreground=[("selected", TEXT)])
         style.configure("TLabelframe", background=PANEL, foreground=TEXT, bordercolor="#334055")
-        style.configure("TLabelframe.Label", background=PANEL, foreground=TEXT, font=("Yu Gothic UI", 10, "bold"))
+        style.configure("TLabelframe.Label", background=PANEL, foreground=TEXT, font=ui_font(10, "bold"))
         style.configure("TCheckbutton", background=PANEL, foreground=TEXT)
         style.map("TCheckbutton", background=[("active", PANEL)])
         style.configure("Panel2.TCheckbutton", background=PANEL_2, foreground=TEXT)
@@ -1151,9 +1372,17 @@ class MapperApp:
         )
         self.physical_vars = [tk.StringVar() for _ in range(4)]
         self.material_var = tk.StringVar(value=MATERIAL_PLA)
-        self.color_mode_var = tk.StringVar(value=COLOR_MODE_FULL_SPECTRUM)
+        self.color_mode_var = tk.StringVar(value=DEFAULT_NEW_COLOR_MODE)
+        self.recommendation_policy_var = tk.StringVar(
+            value=getattr(
+                self,
+                "_loaded_recommendation_policy",
+                DEFAULT_RECOMMENDATION_POLICY,
+            )
+        )
+        self.preview_direction_var = tk.StringVar(value="front")
         self.color_mode_help_var = tk.StringVar(
-            value=tr("palette.mode_full_help")
+            value=tr("palette.mode_flat_help")
         )
         self.enabled_vars = [tk.BooleanVar() for _ in range(PALETTE_STATE_COUNT)]
         self.palette_state_count_var = tk.IntVar(value=16)
@@ -1182,9 +1411,23 @@ class MapperApp:
         )
         self.color_depth_enabled_var = tk.BooleanVar(value=False)
         self.color_depth_outer_thickness_var = tk.DoubleVar(value=0.15)
-        # Compatibility alias for headless r20 GUI tests/hotfixes.  The r21
-        # visible control and export path use the ColorDepth name exclusively.
-        self.radial_skin_thickness_var = self.color_depth_outer_thickness_var
+        self.radial_enabled_var = tk.BooleanVar(value=False)
+        self.radial_conversion_mode_var = tk.StringVar(
+            value=tr("radial.mode.uniform_stage_a")
+        )
+        self.radial_skin_mode_var = tk.StringVar(
+            value=tr("radial.skin_mode.uniform")
+        )
+        self.radial_black_slot_var = tk.StringVar(value=PHYSICAL_NAMES[0])
+        self.radial_skin_thickness_var = tk.DoubleVar(value=0.15)
+        self.radial_adaptive_min_skin_var = tk.DoubleVar(value=0.10)
+        self.radial_adaptive_max_skin_var = tk.DoubleVar(value=0.30)
+        self.radial_adaptive_gamma_var = tk.DoubleVar(value=1.0)
+        self.radial_adaptive_bands_var = tk.IntVar(value=5)
+        self.radial_skin_mapping_summary_var = tk.StringVar(value="")
+        self.radial_min_lstar_delta_var = tk.DoubleVar(value=35.0)
+        self.radial_wall_generator_var = tk.StringVar(value="classic")
+        self.radial_contrast_summary_var = tk.StringVar(value="")
         self.height_var = tk.DoubleVar()
         self.target_faces_var = tk.IntVar()
         self.preview_faces_var = tk.IntVar()
@@ -1207,6 +1450,9 @@ class MapperApp:
         self.split_position_var = tk.DoubleVar(value=50.0)
         self.split_target_part_var = tk.IntVar(value=1)
         self.export_individual_parts_var = tk.BooleanVar(value=True)
+        self.export_validation_level_var = tk.StringVar(
+            value=tr("export.validation.high")
+        )
         self.black_point_var = tk.DoubleVar()
         self.white_point_var = tk.DoubleVar()
         self.gamma_var = tk.DoubleVar()
@@ -1364,9 +1610,25 @@ class MapperApp:
         footer.columnconfigure(1, weight=1)
         self.progress = ttk.Progressbar(footer, mode="determinate", maximum=100, length=180)
         self.progress.grid(row=0, column=0, padx=(0, 12))
-        ttk.Label(footer, textvariable=self.status_var, style="Muted.TLabel").grid(row=0, column=1, sticky="w")
+        # A long progress/error message must never push the output actions off-screen.
+        status_host = ttk.Frame(footer, width=1, height=26)
+        status_host.grid(row=0, column=1, sticky="ew")
+        status_host.grid_propagate(False)
+        self.status_label = ttk.Label(status_host, textvariable=self.status_var, style="Muted.TLabel")
+        self.status_label.place(x=0, rely=0.5, anchor="w", relwidth=1)
+        self.output_settings_button = ttk.Button(
+            footer, text=self.i18n.text("main.ribbon_output"),
+            command=self._show_output_settings,
+        )
+        self.output_settings_button.grid(row=0, column=2, padx=(12, 0))
+        self.close_parts_safely_button = ttk.Button(
+            footer, text=self.i18n.text("assembly.close_safely"),
+            command=self._solidify_from_footer, style="Accent.TButton",
+        )
+        self.close_parts_safely_button.grid(row=0, column=3, padx=(8, 0))
         self.export_button = ttk.Button(footer, text="3MFを書き出す", command=self._export, style="Export.TButton")
-        self.export_button.grid(row=0, column=2, padx=(12, 0))
+        self.export_button.grid(row=0, column=4, padx=(8, 0))
+        self._refresh_output_actions()
 
     def _on_language_selected(self, _event=None) -> None:
         self.set_language(language_from_display_name(self.language_var.get()))
@@ -1480,7 +1742,7 @@ class MapperApp:
         return self.i18n.text(key, **values)
 
     def _build_controls(self, parent: ttk.Frame) -> None:
-        """Build the two-page, collapsible main ribbon.
+        """Build the filament ribbon and the separate output-settings window.
 
         Stateful widgets keep their established public attributes.  Only their
         parents and grid positions change, so palette traces, hotfix adapters,
@@ -1503,7 +1765,7 @@ class MapperApp:
         self.main_ribbon_tab_bar.grid(row=0, column=0, sticky="ew")
         self.main_ribbon_tab_bar.columnconfigure(2, weight=1)
         self.main_ribbon_tab_buttons: dict[str, tk.Button] = {}
-        for column, page_name in enumerate(("filament", "output")):
+        for column, page_name in enumerate(("filament",)):
             button = tk.Button(
                 self.main_ribbon_tab_bar,
                 command=lambda name=page_name: self._on_main_ribbon_tab_clicked(name),
@@ -1515,7 +1777,7 @@ class MapperApp:
                 bd=0,
                 padx=19,
                 pady=6,
-                font=("Yu Gothic UI", 10, "bold"),
+                font=ui_font(10, "bold"),
                 cursor="hand2",
             )
             button.grid(row=0, column=column, padx=1)
@@ -1546,7 +1808,7 @@ class MapperApp:
         self.main_ribbon_body.grid(row=1, column=0, sticky="ew")
         self.main_ribbon_body.columnconfigure(0, weight=1)
         self.main_ribbon_pages: dict[str, ttk.Frame] = {}
-        for name in ("filament", "output"):
+        for name in ("filament",):
             page = ttk.Frame(self.main_ribbon_body, style="Panel.TFrame")
             page.grid(row=0, column=0, sticky="ew")
             page.grid_remove()
@@ -1567,24 +1829,9 @@ class MapperApp:
         self._build_parts_tab(parts_group)
         self._build_palette_tab(palette_group)
 
-        output_page = self.main_ribbon_pages["output"]
-        self.output_settings_page = output_page
-        output_page.columnconfigure(0, weight=4, minsize=380)
-        output_page.columnconfigure(1, weight=7, minsize=620)
-        geometry_group = ttk.LabelFrame(
-            output_page,
-            text=self.i18n.text("main.group_geometry"),
-            padding=(10, 7),
-        )
-        geometry_group.grid(row=0, column=0, sticky="nsew", padx=(0, 5))
-        assembly_group = ttk.LabelFrame(
-            output_page,
-            text=self.i18n.text("main.group_assembly"),
-            padding=(10, 7),
-        )
-        assembly_group.grid(row=0, column=1, sticky="nsew", padx=(5, 0))
-        self._build_geometry_tab(geometry_group)
-        self._build_assembly_tab(assembly_group)
+        # Construct once before variable binding/localization. Tk widgets cannot
+        # be reparented; retaining this hidden window also retains pending edits.
+        self._build_output_settings_window()
 
         # Tone controls now belong to Manual Editing.  The optimizer logic is
         # intentionally retained in MapperApp, and several legacy code paths
@@ -1602,6 +1849,141 @@ class MapperApp:
         self._refresh_main_ribbon_labels()
         self._apply_main_ribbon_state()
 
+    def _build_output_settings_window(self) -> None:
+        window = tk.Toplevel(self.root)
+        window.withdraw()
+        window.title(self.i18n.text("main.ribbon_output"))
+        window.configure(bg=PANEL)
+        window.transient(self.root)
+        window.protocol("WM_DELETE_WINDOW", self._hide_output_settings)
+        window.bind("<Escape>", self._hide_output_settings)
+        window.columnconfigure(0, weight=1)
+        window.rowconfigure(0, weight=1)
+        window.minsize(560, 380)
+        self.output_settings_window = window
+        self._output_settings_positioned = False
+
+        viewport = ttk.Frame(window, style="Panel.TFrame", padding=(10, 10, 4, 0))
+        viewport.grid(row=0, column=0, sticky="nsew")
+        viewport.columnconfigure(0, weight=1)
+        viewport.rowconfigure(0, weight=1)
+        canvas = tk.Canvas(viewport, background=PANEL, highlightthickness=0, width=1, height=1)
+        canvas.grid(row=0, column=0, sticky="nsew")
+        scrollbar = ttk.Scrollbar(viewport, orient="vertical", command=canvas.yview)
+        scrollbar.grid(row=0, column=1, sticky="ns")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        self.output_settings_canvas = canvas
+        output_page = ttk.Frame(canvas, style="Panel.TFrame")
+        self._output_settings_canvas_item = canvas.create_window(0, 0, window=output_page, anchor="nw")
+        self.output_settings_page = output_page
+        output_page.columnconfigure(0, weight=1)
+        output_page.columnconfigure(1, weight=1)
+        geometry_group = ttk.LabelFrame(
+            output_page,
+            text=self.i18n.text("main.group_geometry"),
+            padding=(10, 7),
+        )
+        geometry_group.grid(row=0, column=0, sticky="nsew", padx=(0, 5))
+        assembly_group = ttk.LabelFrame(
+            output_page,
+            text=self.i18n.text("output_settings.options"),
+            padding=(10, 7),
+        )
+        assembly_group.grid(row=0, column=1, sticky="nsew", padx=(5, 0))
+        self.output_geometry_group = geometry_group
+        self.output_assembly_group = assembly_group
+        self._build_geometry_tab(geometry_group)
+        self._build_assembly_tab(assembly_group)
+        self._output_settings_wrapped_labels = []
+        for widget in TkLocalizer._walk(output_page):
+            if isinstance(widget, ttk.Label) and int(widget.cget("wraplength") or 0) > 0:
+                self._output_settings_wrapped_labels.append(widget)
+        output_page.bind("<Configure>", lambda _event: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.bind("<Configure>", self._layout_output_settings)
+        window.bind("<MouseWheel>", self._scroll_output_settings)
+        window.bind("<Button-4>", self._scroll_output_settings)
+        window.bind("<Button-5>", self._scroll_output_settings)
+        actions = ttk.Frame(window, padding=(12, 8), style="Panel.TFrame")
+        actions.grid(row=1, column=0, sticky="ew")
+        actions.columnconfigure(0, weight=1)
+        self.output_settings_close_button = ttk.Button(
+            actions, text=self.i18n.text("output_settings.close"),
+            command=self._hide_output_settings,
+        )
+        self.output_settings_close_button.grid(row=0, column=1, sticky="e")
+
+    def _layout_output_settings(self, event) -> None:
+        width = max(1, int(event.width))
+        columns = 2 if width >= 1000 else 1
+        page = self.output_settings_page
+        page.columnconfigure(1, weight=1 if columns == 2 else 0)
+        self.output_geometry_group.grid_configure(row=0, column=0, padx=(0, 5 if columns == 2 else 0))
+        self.output_assembly_group.grid_configure(
+            row=0 if columns == 2 else 1, column=1 if columns == 2 else 0,
+            padx=(5 if columns == 2 else 0, 0), pady=(0 if columns == 2 else 10, 0),
+        )
+        for label in self._output_settings_wrapped_labels:
+            label.configure(wraplength=max(280, width // columns - 44))
+        self.output_settings_canvas.itemconfigure(self._output_settings_canvas_item, width=width)
+
+    def _scroll_output_settings(self, event) -> str | None:
+        # Do not override a combo/spinbox's own wheel behavior; no global binding.
+        if isinstance(event.widget, (ttk.Combobox, ttk.Spinbox)):
+            return None
+        bounds = self.output_settings_canvas.bbox("all")
+        if bounds is None or bounds[3] - bounds[1] <= self.output_settings_canvas.winfo_height():
+            return "break"
+        if getattr(event, "num", None) in (4, 5):
+            units = -1 if event.num == 4 else 1
+        else:
+            delta = int(getattr(event, "delta", 0))
+            if not delta:
+                return None
+            units = -max(1, abs(delta) // 120) * (1 if delta > 0 else -1)
+        self.output_settings_canvas.yview_scroll(units, "units")
+        return "break"
+
+    def _show_output_settings(self) -> None:
+        if getattr(self, "busy", False) or getattr(self, "app_closing", False):
+            return
+        window = self.output_settings_window
+        window.title(self.i18n.text("main.ribbon_output"))
+        if not self._output_settings_positioned:
+            self.root.update_idletasks()
+            screen_w, screen_h = window.winfo_screenwidth(), window.winfo_screenheight()
+            width, height = min(1080, screen_w - 60), min(540, screen_h - 100)
+            x = max(0, min(screen_w - width - 20, self.root.winfo_rootx() + (self.root.winfo_width() - width) // 2))
+            y = max(0, min(screen_h - height - 60, self.root.winfo_rooty() + 70))
+            window.geometry(f"{width}x{height}+{x}+{y}")
+            self._output_settings_positioned = True
+        window.deiconify()
+        window.lift()
+        self.export_validation_combo.focus_set()
+
+    def _hide_output_settings(self, _event=None) -> str:
+        window = getattr(self, "output_settings_window", None)
+        if window is not None:
+            window.withdraw()
+        return "break"
+
+    def _solidify_from_footer(self) -> None:
+        if getattr(self, "busy", False) or getattr(self, "app_closing", False):
+            return
+        self._hide_output_settings()
+        self._close_parts_safely()
+
+    def _refresh_output_actions(self) -> None:
+        busy = bool(getattr(self, "busy", False) or getattr(self, "app_closing", False))
+        settings_button = getattr(self, "output_settings_button", None)
+        if settings_button is not None:
+            settings_button.state(["disabled" if busy else "!disabled"])
+        solidify_button = getattr(self, "close_parts_safely_button", None)
+        if solidify_button is not None:
+            disabled = busy or getattr(self, "source_path", None) is None
+            solidify_button.state(["disabled" if disabled else "!disabled"])
+        if busy:
+            self._hide_output_settings()
+
     def _main_ribbon_label(self, page_name: str) -> str:
         key = {
             "filament": "main.ribbon_filament",
@@ -1610,6 +1992,12 @@ class MapperApp:
         return self.i18n.text(key) if key is not None else page_name
 
     def _refresh_main_ribbon_labels(self) -> None:
+        window = getattr(self, "output_settings_window", None)
+        if window is not None:
+            window.title(self.i18n.text("main.ribbon_output"))
+        output_button = getattr(self, "output_settings_button", None)
+        if output_button is not None:
+            output_button.configure(text=self.i18n.text("main.ribbon_output"))
         buttons = getattr(self, "main_ribbon_tab_buttons", {})
         for name, button in buttons.items():
             button.configure(text=self._main_ribbon_label(name))
@@ -1630,13 +2018,32 @@ class MapperApp:
             color_mode_label.configure(text=self.i18n.text("palette.color_mode"))
         mode_buttons = getattr(self, "color_mode_buttons", {})
         for mode, key in (
-            (COLOR_MODE_FULL_SPECTRUM, "palette.mode_full"),
             (COLOR_MODE_FLAT_FOUR, "palette.mode_flat"),
+            (COLOR_MODE_FULL_SPECTRUM, "palette.mode_full"),
         ):
             button = mode_buttons.get(mode)
             if button is not None:
                 button.configure(text=self.i18n.text(key))
         self._refresh_color_mode_widgets()
+        policy_group = getattr(self, "recommendation_policy_group", None)
+        if policy_group is not None:
+            policy_group.configure(
+                text=self.i18n.text("palette.recommendation_policy")
+            )
+        policy_buttons = getattr(self, "recommendation_policy_buttons", {})
+        for policy, key in (
+            (
+                RECOMMENDATION_POLICY_FLEXIBLE,
+                "palette.recommendation_policy_flexible",
+            ),
+            (
+                RECOMMENDATION_POLICY_BASIC,
+                "palette.recommendation_policy_basic",
+            ),
+        ):
+            button = policy_buttons.get(policy)
+            if button is not None:
+                button.configure(text=self.i18n.text(key))
         reprocess_geometry = getattr(self, "reprocess_geometry_button", None)
         if reprocess_geometry is not None:
             reprocess_geometry.configure(text=self.i18n.text("geometry.reprocess"))
@@ -1657,7 +2064,18 @@ class MapperApp:
         )
         if apply_physical_button is not None:
             apply_physical_button.configure(
-                text=self.i18n.text("palette.apply_physical")
+                text=self.i18n.text(
+                    "palette.apply_physical_common"
+                    if self.active_part_key is None
+                    else "palette.apply_physical_part"
+                )
+            )
+        copy_palette_button = getattr(
+            self, "copy_palette_to_all_parts_button", None
+        )
+        if copy_palette_button is not None:
+            copy_palette_button.configure(
+                text=self.i18n.text("parts.copy_selected_palette_to_all")
             )
         calibration_button = getattr(self, "calibration_chart_button", None)
         if calibration_button is not None:
@@ -1785,6 +2203,32 @@ class MapperApp:
             color_depth_help.configure(
                 text=self.i18n.text("color_depth.help")
             )
+        radial_labels = (
+            ("radial_group", "radial.group"),
+            ("radial_enable_checkbutton", "radial.enable"),
+            ("radial_conversion_mode_label", "radial.conversion_mode"),
+            ("radial_skin_mode_label", "radial.skin_mode"),
+            ("radial_adaptive_min_label", "radial.adaptive_min"),
+            ("radial_adaptive_max_label", "radial.adaptive_max"),
+            ("radial_adaptive_gamma_label", "radial.adaptive_gamma"),
+            ("radial_adaptive_bands_label", "radial.adaptive_bands"),
+            ("radial_black_slot_label", "radial.black_slot"),
+            ("radial_skin_thickness_label", "radial.skin_thickness"),
+            ("radial_contrast_threshold_label", "radial.contrast_threshold"),
+            ("radial_wall_generator_label", "radial.wall_generator"),
+            ("radial_export_button", "radial.export"),
+            ("radial_help_label", "radial.help"),
+        )
+        for widget_name, key in radial_labels:
+            widget = getattr(self, widget_name, None)
+            if widget is None:
+                continue
+            if widget_name == "radial_group":
+                widget.configure(text=self.i18n.text(key))
+            else:
+                widget.configure(text=self.i18n.text(key))
+        self._refresh_radial_widgets()
+        self._refresh_export_validation_widgets()
         self._refresh_developer_feature_visibility()
         self._refresh_color_depth_widgets()
         toggle = getattr(self, "main_ribbon_toggle_button", None)
@@ -1816,6 +2260,9 @@ class MapperApp:
         self._refresh_main_ribbon_labels()
 
     def _on_main_ribbon_tab_clicked(self, page_name: str) -> None:
+        if page_name == "output":
+            self._show_output_settings()
+            return
         if page_name not in self.main_ribbon_pages:
             return
         if page_name == self._main_ribbon_selected and self._main_ribbon_expanded:
@@ -1951,8 +2398,42 @@ class MapperApp:
             justify="left",
         ).grid(row=0, column=0, sticky="ew", pady=(0, 4))
 
+        self.recommendation_policy_group = ttk.LabelFrame(
+            guidance,
+            text=self.i18n.text("palette.recommendation_policy"),
+            padding=(6, 4),
+        )
+        self.recommendation_policy_group.grid(
+            row=1,
+            column=0,
+            sticky="ew",
+            pady=(2, 5),
+        )
+        self.recommendation_policy_buttons: dict[str, ttk.Radiobutton] = {}
+        for row, (policy, key) in enumerate(
+            (
+                (
+                    RECOMMENDATION_POLICY_FLEXIBLE,
+                    "palette.recommendation_policy_flexible",
+                ),
+                (
+                    RECOMMENDATION_POLICY_BASIC,
+                    "palette.recommendation_policy_basic",
+                ),
+            )
+        ):
+            button = ttk.Radiobutton(
+                self.recommendation_policy_group,
+                text=self.i18n.text(key),
+                value=policy,
+                variable=self.recommendation_policy_var,
+                command=self._on_recommendation_policy_changed,
+            )
+            button.grid(row=row, column=0, sticky="w")
+            self.recommendation_policy_buttons[policy] = button
+
         actions = ttk.Frame(guidance, style="Panel.TFrame")
-        actions.grid(row=1, column=0, sticky="ew")
+        actions.grid(row=2, column=0, sticky="ew")
         actions.columnconfigure(0, weight=1)
         actions.columnconfigure(1, weight=1)
         ttk.Button(
@@ -1967,11 +2448,14 @@ class MapperApp:
             command=self._recommend_all_parts,
             style="Accent.TButton",
         ).grid(row=0, column=1, sticky="ew", padx=(2, 0), pady=2)
-        ttk.Button(
+        self.copy_palette_to_all_parts_button = ttk.Button(
             actions,
-            text="現在の4色を全パーツへコピー",
+            text=self.i18n.text("parts.copy_selected_palette_to_all"),
             command=self._copy_palette_to_all_parts,
-        ).grid(row=1, column=0, columnspan=2, sticky="ew", pady=2)
+        )
+        self.copy_palette_to_all_parts_button.grid(
+            row=1, column=0, columnspan=2, sticky="ew", pady=2
+        )
         ttk.Button(
             actions,
             text="選択パーツを全体共通設定へ戻す",
@@ -1996,6 +2480,36 @@ class MapperApp:
             self.i18n.text("parts.u1_warning"),
             parent=self.root,
         )
+
+    def _on_recommendation_policy_changed(self) -> None:
+        """Persist the gamut used by future automatic proposals only."""
+
+        policy = self._selected_recommendation_policy()
+        self._save_persistent_settings()
+        self.status_var.set(
+            self.i18n.text(
+                "palette.recommendation_policy_changed",
+                mode=self.i18n.text(
+                    "palette.recommendation_policy_basic"
+                    if policy == RECOMMENDATION_POLICY_BASIC
+                    else "palette.recommendation_policy_flexible"
+                ),
+            )
+        )
+
+    def _selected_recommendation_policy(self) -> str:
+        variable = getattr(self, "recommendation_policy_var", None)
+        try:
+            policy = normalize_recommendation_policy(
+                variable.get()
+                if variable is not None
+                else DEFAULT_RECOMMENDATION_POLICY
+            )
+        except (ValueError, tk.TclError):
+            policy = DEFAULT_RECOMMENDATION_POLICY
+            if variable is not None:
+                variable.set(policy)
+        return policy
 
     def _build_palette_tab(self, tab: ttk.Frame) -> None:
         # Keep the base-filament chooser narrow and give the family strips the
@@ -2022,8 +2536,8 @@ class MapperApp:
         self.color_mode_buttons: dict[str, ttk.Button] = {}
         for column, (mode, key) in enumerate(
             (
-                (COLOR_MODE_FULL_SPECTRUM, "palette.mode_full"),
                 (COLOR_MODE_FLAT_FOUR, "palette.mode_flat"),
+                (COLOR_MODE_FULL_SPECTRUM, "palette.mode_full"),
             ),
             start=1,
         ):
@@ -2148,6 +2662,18 @@ class MapperApp:
             sticky="ew",
             pady=(5, 0),
         )
+        self.flat_physical_palette_help_label = ttk.Label(
+            physical,
+            style="PanelMuted.TLabel",
+            justify="left",
+        )
+        self.flat_physical_palette_help_label.grid(
+            row=6,
+            column=0,
+            columnspan=5,
+            sticky="w",
+            pady=(5, 0),
+        )
         self.filament_candidate_button.grid(
             row=7,
             column=0,
@@ -2222,7 +2748,7 @@ class MapperApp:
                     bg="#303846",
                     fg="#FFFFFF",
                     relief="flat",
-                    font=("Yu Gothic UI", 8, "bold"),
+                    font=ui_font(8, "bold"),
                 )
                 swatch.grid(row=0, column=1, ipady=3)
                 self.mix_state_cells[state_index] = cell
@@ -2556,6 +3082,7 @@ class MapperApp:
         )
         self._refresh_developer_feature_visibility()
         self._refresh_color_depth_widgets()
+        self._refresh_radial_widgets()
         self._refresh_color_mode_widgets()
 
     def _layout_mix_family_cells(self) -> None:
@@ -2731,7 +3258,7 @@ class MapperApp:
             style="PanelMuted.TLabel",
             wraplength=640,
             justify="left",
-        ).grid(row=0, column=0, sticky="w", pady=(0, 5))
+        ).grid(row=2, column=0, sticky="w", pady=(8, 5))
         ttk.Label(
             tab,
             textvariable=self.assembly_status_var,
@@ -2739,31 +3266,21 @@ class MapperApp:
             background=PANEL,
             wraplength=640,
             justify="left",
-        ).grid(row=1, column=0, sticky="w", pady=2)
+        ).grid(row=3, column=0, sticky="w", pady=2)
 
         actions = ttk.Frame(tab, style="Panel.TFrame")
-        actions.grid(row=2, column=0, sticky="ew", pady=(5, 2))
+        actions.grid(row=4, column=0, sticky="ew", pady=(5, 2))
         actions.columnconfigure(0, weight=1)
-        actions.columnconfigure(1, weight=1)
         ttk.Button(
             actions,
             text=self.i18n.text("assembly.keep_raw"),
             command=self._keep_original_parts_open,
         ).grid(row=0, column=0, sticky="ew", padx=(0, 3), pady=2)
-        self.close_parts_safely_button = ttk.Button(
-            actions,
-            text=self.i18n.text("assembly.close_safely"),
-            command=self._close_parts_safely,
-            style="Accent.TButton",
-        )
-        self.close_parts_safely_button.grid(
-            row=0, column=1, sticky="ew", padx=(3, 0), pady=2
-        )
         ttk.Checkbutton(
             tab,
             text=self.i18n.text("assembly.individual_3mf"),
             variable=self.export_individual_parts_var,
-        ).grid(row=3, column=0, sticky="w", pady=(4, 2))
+        ).grid(row=1, column=0, sticky="w", pady=(4, 2))
         ttk.Label(
             tab,
             text=self.i18n.text("assembly.layer_height"),
@@ -2771,18 +3288,290 @@ class MapperApp:
             background=PANEL,
             wraplength=640,
             justify="left",
-        ).grid(row=4, column=0, sticky="w", pady=(4, 2))
+        ).grid(row=5, column=0, sticky="w", pady=(4, 2))
         ttk.Label(
             tab,
             text=self.i18n.text("assembly.processing_help"),
             style="PanelMuted.TLabel",
             wraplength=640,
             justify="left",
-        ).grid(row=5, column=0, sticky="w", pady=(2, 0))
+        ).grid(row=6, column=0, sticky="w", pady=(2, 0))
+
+        validation_row = ttk.Frame(tab, style="Panel.TFrame")
+        validation_row.grid(row=0, column=0, sticky="w", pady=(4, 4))
+        self.export_validation_label = ttk.Label(
+            validation_row,
+            text=self.i18n.text("export.validation.label"),
+            style="Panel.TLabel",
+        )
+        self.export_validation_label.grid(row=0, column=0, sticky="w")
+        self.export_validation_combo = ttk.Combobox(
+            validation_row,
+            textvariable=self.export_validation_level_var,
+            values=tuple(
+                self.i18n.text(f"export.validation.{level}")
+                for level in EXPORT_VALIDATION_LEVELS
+            ),
+            state="readonly",
+            width=34,
+            style="HighContrast.TCombobox",
+        )
+        self.export_validation_combo.grid(row=0, column=1, padx=(8, 0), sticky="w")
+        self.export_validation_combo.bind(
+            "<<ComboboxSelected>>", self._on_export_validation_changed
+        )
+
+        self.radial_group = ttk.LabelFrame(
+            tab,
+            text=self.i18n.text("radial.group"),
+            padding=(7, 5),
+        )
+        self.radial_group.grid(row=7, column=0, sticky="ew", pady=(8, 0))
+        self.radial_group.columnconfigure(9, weight=1)
+        self.radial_enable_checkbutton = ttk.Checkbutton(
+            self.radial_group,
+            text=self.i18n.text("radial.enable"),
+            variable=self.radial_enabled_var,
+            command=self._on_radial_toggle,
+        )
+        self.radial_enable_checkbutton.grid(
+            row=0, column=0, columnspan=10, sticky="w"
+        )
+        self.radial_conversion_mode_label = ttk.Label(
+            self.radial_group,
+            text=self.i18n.text("radial.conversion_mode"),
+            style="Panel.TLabel",
+        )
+        self.radial_conversion_mode_label.grid(row=1, column=0, sticky="w")
+        self.radial_conversion_mode_combo = ttk.Combobox(
+            self.radial_group,
+            textvariable=self.radial_conversion_mode_var,
+            values=tuple(
+                _radial_conversion_mode_display(self.i18n, mode)
+                for mode in _RADIAL_CONVERSION_MODE_LABEL_KEYS
+            ),
+            state="disabled",
+            width=38,
+            style="HighContrast.TCombobox",
+        )
+        self.radial_conversion_mode_combo.grid(
+            row=1,
+            column=1,
+            columnspan=9,
+            sticky="w",
+            padx=(4, 0),
+            pady=(2, 3),
+        )
+        self.radial_conversion_mode_combo.bind(
+            "<<ComboboxSelected>>", self._on_radial_setting_changed
+        )
+        self.radial_black_slot_label = ttk.Label(
+            self.radial_group,
+            text=self.i18n.text("radial.black_slot"),
+            style="Panel.TLabel",
+        )
+        self.radial_black_slot_label.grid(row=2, column=0, sticky="w")
+        self.radial_black_slot_combo = ttk.Combobox(
+            self.radial_group,
+            textvariable=self.radial_black_slot_var,
+            values=PHYSICAL_NAMES,
+            state="disabled",
+            width=4,
+            style="HighContrast.TCombobox",
+        )
+        self.radial_black_slot_combo.grid(
+            row=2, column=1, sticky="w", padx=(4, 9)
+        )
+        self.radial_black_slot_combo.bind(
+            "<<ComboboxSelected>>", self._on_radial_setting_changed
+        )
+        self.radial_skin_thickness_label = ttk.Label(
+            self.radial_group,
+            text=self.i18n.text("radial.skin_thickness"),
+            style="Panel.TLabel",
+        )
+        self.radial_skin_thickness_label.grid(row=2, column=2, sticky="w")
+        self.radial_skin_thickness_spinbox = ttk.Spinbox(
+            self.radial_group,
+            from_=0.10,
+            to=0.60,
+            increment=0.01,
+            width=5,
+            textvariable=self.radial_skin_thickness_var,
+            command=self._on_radial_setting_changed,
+        )
+        self.radial_skin_thickness_spinbox.grid(
+            row=2, column=3, sticky="w", padx=(4, 2)
+        )
+        for sequence in ("<FocusOut>", "<Return>"):
+            self.radial_skin_thickness_spinbox.bind(
+                sequence, self._on_radial_setting_changed
+            )
+        ttk.Label(self.radial_group, text="mm", style="Panel.TLabel").grid(
+            row=2, column=4, sticky="w", padx=(0, 9)
+        )
+        self.radial_contrast_threshold_label = ttk.Label(
+            self.radial_group,
+            text=self.i18n.text("radial.contrast_threshold"),
+            style="Panel.TLabel",
+        )
+        self.radial_contrast_threshold_label.grid(row=2, column=5, sticky="w")
+        self.radial_contrast_threshold_spinbox = ttk.Spinbox(
+            self.radial_group,
+            from_=0.0,
+            to=100.0,
+            increment=1.0,
+            width=5,
+            textvariable=self.radial_min_lstar_delta_var,
+            command=self._on_radial_setting_changed,
+        )
+        self.radial_contrast_threshold_spinbox.grid(
+            row=2, column=6, sticky="w", padx=(4, 9)
+        )
+        for sequence in ("<FocusOut>", "<Return>"):
+            self.radial_contrast_threshold_spinbox.bind(
+                sequence, self._on_radial_setting_changed
+            )
+        self.radial_wall_generator_label = ttk.Label(
+            self.radial_group,
+            text=self.i18n.text("radial.wall_generator"),
+            style="Panel.TLabel",
+        )
+        self.radial_wall_generator_label.grid(row=2, column=7, sticky="w")
+        self.radial_wall_generator_combo = ttk.Combobox(
+            self.radial_group,
+            textvariable=self.radial_wall_generator_var,
+            values=("classic", "arachne"),
+            state="disabled",
+            width=8,
+            style="HighContrast.TCombobox",
+        )
+        self.radial_wall_generator_combo.grid(
+            row=2, column=8, sticky="w", padx=(4, 9)
+        )
+        self.radial_wall_generator_combo.bind(
+            "<<ComboboxSelected>>", self._on_radial_setting_changed
+        )
+        self.radial_export_button = ttk.Button(
+            self.radial_group,
+            text=self.i18n.text("radial.export"),
+            command=self._export_radial_experiment,
+            style="Accent.TButton",
+        )
+        self.radial_export_button.grid(row=2, column=9, sticky="e")
+        self.radial_skin_profile_frame = ttk.Frame(self.radial_group)
+        self.radial_skin_profile_frame.grid(
+            row=3, column=0, columnspan=10, sticky="ew", pady=(4, 0)
+        )
+        self.radial_skin_profile_frame.columnconfigure(10, weight=1)
+        self.radial_skin_mode_label = ttk.Label(
+            self.radial_skin_profile_frame,
+            text=self.i18n.text("radial.skin_mode"),
+            style="Panel.TLabel",
+        )
+        self.radial_skin_mode_label.grid(row=0, column=0, sticky="w")
+        self.radial_skin_mode_combo = ttk.Combobox(
+            self.radial_skin_profile_frame,
+            textvariable=self.radial_skin_mode_var,
+            state="disabled",
+            width=27,
+            style="HighContrast.TCombobox",
+        )
+        self.radial_skin_mode_combo.grid(
+            row=0, column=1, sticky="w", padx=(4, 9)
+        )
+        self.radial_skin_mode_combo.bind(
+            "<<ComboboxSelected>>", self._on_radial_setting_changed
+        )
+        adaptive_controls = (
+            ("radial_adaptive_min_label", "radial.adaptive_min", "radial_adaptive_min_skin_spinbox", self.radial_adaptive_min_skin_var, 0.10, 0.60, 0.01, 5),
+            ("radial_adaptive_max_label", "radial.adaptive_max", "radial_adaptive_max_skin_spinbox", self.radial_adaptive_max_skin_var, 0.10, 0.60, 0.01, 5),
+            ("radial_adaptive_gamma_label", "radial.adaptive_gamma", "radial_adaptive_gamma_spinbox", self.radial_adaptive_gamma_var, 0.25, 4.0, 0.05, 5),
+            ("radial_adaptive_bands_label", "radial.adaptive_bands", "radial_adaptive_bands_spinbox", self.radial_adaptive_bands_var, 4, 6, 1, 3),
+        )
+        for offset, (
+            label_name,
+            text_key,
+            widget_name,
+            variable,
+            minimum,
+            maximum,
+            increment,
+            width,
+        ) in enumerate(adaptive_controls):
+            column = 2 + offset * 2
+            label = ttk.Label(
+                self.radial_skin_profile_frame,
+                text=self.i18n.text(text_key),
+                style="Panel.TLabel",
+            )
+            label.grid(row=0, column=column, sticky="w")
+            setattr(self, label_name, label)
+            spinbox = ttk.Spinbox(
+                self.radial_skin_profile_frame,
+                from_=minimum,
+                to=maximum,
+                increment=increment,
+                width=width,
+                textvariable=variable,
+                command=self._on_radial_setting_changed,
+            )
+            spinbox.grid(
+                row=0, column=column + 1, sticky="w", padx=(3, 8)
+            )
+            setattr(self, widget_name, spinbox)
+            for sequence in ("<FocusOut>", "<Return>"):
+                spinbox.bind(sequence, self._on_radial_setting_changed)
+        self.radial_skin_mapping_summary_label = ttk.Label(
+            self.radial_skin_profile_frame,
+            textvariable=self.radial_skin_mapping_summary_var,
+            style="PanelMuted.TLabel",
+            wraplength=620,
+            justify="left",
+        )
+        self.radial_skin_mapping_summary_label.grid(
+            row=1, column=0, columnspan=11, sticky="w", pady=(2, 0)
+        )
+        self.radial_contrast_summary_label = ttk.Label(
+            self.radial_group,
+            textvariable=self.radial_contrast_summary_var,
+            style="Panel.TLabel",
+            wraplength=620,
+            justify="left",
+        )
+        self.radial_contrast_summary_label.grid(
+            row=4, column=0, columnspan=10, sticky="w", pady=(4, 0)
+        )
+        self.radial_help_label = ttk.Label(
+            self.radial_group,
+            text=self.i18n.text("radial.help"),
+            style="PanelMuted.TLabel",
+            wraplength=620,
+            justify="left",
+        )
+        self.radial_help_label.grid(
+            row=5, column=0, columnspan=10, sticky="w", pady=(2, 0)
+        )
+        self._refresh_radial_widgets()
 
     def _build_preview(self, parent: ttk.Frame) -> None:
         parent.columnconfigure(0, weight=1)
         parent.rowconfigure(0, weight=1)
+
+        directions = ttk.Frame(parent)
+        directions.grid(row=1, column=0, sticky="ew", pady=(5, 0))
+        ttk.Label(
+            directions,
+            text=self.i18n.text("preview.direction"),
+        ).pack(side="left", padx=(0, 7))
+        for key in ("front", "back", "left", "right", "top", "bottom"):
+            ttk.Radiobutton(
+                directions,
+                text=self.i18n.text(f"preview.direction_{key}"),
+                value=key,
+                variable=self.preview_direction_var,
+                command=self._on_preview_direction_changed,
+            ).pack(side="left", padx=2)
 
         self.preview_canvas = tk.Canvas(parent, bg="#090C11", highlightthickness=0, cursor="arrow")
         self.preview_canvas.grid(row=0, column=0, sticky="nsew")
@@ -2791,7 +3580,7 @@ class MapperApp:
 
         recipe = ttk.LabelFrame(parent, text="スポイト色の再現候補（公式混色モデルによる予測）", padding=8)
         self.recipe_panel = recipe
-        recipe.grid(row=1, column=0, sticky="ew", pady=(7, 0))
+        recipe.grid(row=2, column=0, sticky="ew", pady=(7, 0))
         recipe.columnconfigure(0, weight=1)
         self.recipe_tree = ttk.Treeview(recipe, columns=("pair", "ratio", "predicted", "error", "judge"), show="headings", height=5)
         headings = (("pair", "使用色"), ("ratio", "比率 A : B"), ("predicted", "予測色"), ("error", "ΔE76"), ("judge", "目安"))
@@ -2807,6 +3596,14 @@ class MapperApp:
         self.direct_match_label = ttk.Label(actions, text="基本色の近似: 未取得", style="Muted.TLabel", wraplength=210, justify="left")
         self.direct_match_label.pack(fill="x", pady=(10, 0))
         recipe.grid_remove()
+
+    def _on_preview_direction_changed(self) -> None:
+        if self.preview_direction_var.get() not in {
+            "front", "back", "left", "right", "top", "bottom"
+        }:
+            self.preview_direction_var.set("front")
+        if self.prepared is not None:
+            self._schedule_preview(immediate=True)
 
     def _set_recipe_panel_visible(self, visible: bool) -> None:
         if visible:
@@ -2879,11 +3676,13 @@ class MapperApp:
             )
 
     @staticmethod
-    def _darkest_physical_slot(physical_hex: list[str] | tuple[str, ...]) -> int:
-        """Return the darkest F1-F4 slot using relative sRGB luminance."""
+    def _physical_relative_luminances(
+        physical_hex: list[str] | tuple[str, ...],
+    ) -> tuple[float, ...]:
+        """Return relative sRGB luminance for a complete F1-F4 table."""
 
         if len(physical_hex) != 4:
-            return 0
+            raise ValueError("four physical colours are required")
 
         def luminance(value: str) -> float:
             normalized = normalize_hex(value)
@@ -2903,10 +3702,39 @@ class MapperApp:
                 + 0.0722 * linear[2]
             )
 
+        return tuple(luminance(value) for value in physical_hex)
+
+    @classmethod
+    def _darkest_physical_slot(
+        cls,
+        physical_hex: list[str] | tuple[str, ...],
+    ) -> int:
+        """Return the darkest F1-F4 slot using relative sRGB luminance."""
+
         try:
-            return min(range(4), key=lambda index: luminance(physical_hex[index]))
+            luminances = cls._physical_relative_luminances(physical_hex)
+            return min(range(4), key=lambda index: luminances[index])
         except (TypeError, ValueError):
             return 0
+
+    @classmethod
+    def _unique_darkest_physical_slot(
+        cls,
+        physical_hex: list[str] | tuple[str, ...],
+    ) -> int | None:
+        """Return the sole darkest F slot, matching radial's fail-closed gate."""
+
+        try:
+            luminances = cls._physical_relative_luminances(physical_hex)
+        except (TypeError, ValueError):
+            return None
+        darkest_value = min(luminances)
+        darkest = tuple(
+            index
+            for index, value in enumerate(luminances)
+            if abs(value - darkest_value) <= 1e-12
+        )
+        return darkest[0] if len(darkest) == 1 else None
 
     def _black_output_slot_index(self) -> int:
         try:
@@ -3351,7 +4179,7 @@ class MapperApp:
             self._load_black_free_gradient_variables(previous)
             messagebox.showerror(
                 self.i18n.text("palette.black_free_invalid_title"),
-                str(exc),
+                self.i18n.dialog_detail_text(exc),
                 parent=self.root,
             )
             return
@@ -3510,7 +4338,7 @@ class MapperApp:
         ) is True
 
     def _refresh_developer_feature_visibility(self) -> None:
-        # r25 public UI has no experimental entrance.  Widgets and callbacks
+        # The public application has no experimental entrance.  Widgets and callbacks
         # remain constructed for source compatibility, but are never managed.
         for name in (
             "black_free_gradient_group",
@@ -3683,6 +4511,396 @@ class MapperApp:
                     else "color_depth.disabled_status"
                 )
             )
+
+    def _radial_black_slot_index(self) -> int:
+        try:
+            return PHYSICAL_NAMES.index(str(self.radial_black_slot_var.get()))
+        except (AttributeError, ValueError, tk.TclError):
+            try:
+                physical = [variable.get() for variable in self.physical_vars]
+            except (AttributeError, tk.TclError):
+                physical = list(self.settings.palette.physical_hex)
+            return self._darkest_physical_slot(physical)
+
+    def _radial_export_target_label(self, part_key: str | None) -> str:
+        """Describe the frozen radial target as one part or the whole model."""
+
+        if part_key is None:
+            return self.i18n.text("radial.target_whole_model")
+        name = ""
+        prepared = getattr(self, "prepared", None)
+        try:
+            part_id = tuple(prepared.final.part_keys).index(str(part_key))
+            name = str(prepared.final.part_names[part_id])
+        except (AttributeError, IndexError, ValueError):
+            pass
+        if not name:
+            try:
+                name = str(self.settings.part_names.get(str(part_key), ""))
+            except AttributeError:
+                pass
+        return self.i18n.text(
+            "radial.target_selected_part",
+            name=name or str(part_key),
+        )
+
+    def _radial_contrast_rows(self) -> tuple[tuple[int, float, bool], ...]:
+        """Return partner-slot ΔL* rows for the compact laboratory summary."""
+
+        black_slot = self._radial_black_slot_index()
+        try:
+            physical = [str(variable.get()) for variable in self.physical_vars]
+            threshold = float(self.radial_min_lstar_delta_var.get())
+            black_lstar = float(srgb_hex_to_lab(physical[black_slot])[0])
+        except (AttributeError, IndexError, TypeError, ValueError, tk.TclError):
+            return ()
+        rows: list[tuple[int, float, bool]] = []
+        for slot, color in enumerate(physical):
+            if slot == black_slot:
+                continue
+            try:
+                delta = abs(float(srgb_hex_to_lab(color)[0]) - black_lstar)
+            except (TypeError, ValueError):
+                return ()
+            rows.append((slot, delta, delta + 1e-9 >= threshold))
+        return tuple(rows)
+
+    def _radial_adaptive_skin_rows(
+        self,
+    ) -> tuple[tuple[int, int, int, int, float, float], ...]:
+        """Preview eligible mixed-state target L* to adaptive skin depth."""
+
+        try:
+            palette = self._active_palette_for_controls()
+            physical = [str(variable.get()) for variable in self.physical_vars]
+            black_slot = self._radial_black_slot_index()
+            threshold = float(self.radial_min_lstar_delta_var.get())
+            settings = RadialSettings(
+                skin_thickness_mode=RADIAL_SKIN_MODE_ADAPTIVE,
+                adaptive_skin_min_thickness_mm=float(
+                    self.radial_adaptive_min_skin_var.get()
+                ),
+                adaptive_skin_max_thickness_mm=float(
+                    self.radial_adaptive_max_skin_var.get()
+                ),
+                adaptive_skin_gamma=float(self.radial_adaptive_gamma_var.get()),
+                adaptive_skin_bands=int(self.radial_adaptive_bands_var.get()),
+            )
+            _palette_hex, colours = build_palette_rgb(
+                physical,
+                palette.mix_hex_overrides,
+                palette.mix_ratios_b,
+                palette.secondary_mix_ratios_b,
+            )
+            specs = palette_mix_specs(
+                palette.mix_ratios_b,
+                palette.secondary_mix_ratios_b,
+            )
+            black_lstar = float(srgb_hex_to_lab(physical[black_slot])[0])
+        except (
+            AttributeError,
+            IndexError,
+            TypeError,
+            ValueError,
+            tk.TclError,
+        ):
+            return ()
+        rows: list[tuple[int, int, int, int, float, float]] = []
+        enabled_states = tuple(bool(value) for value in palette.enabled_states)
+        for state_id, (left, right, ratio_b) in enumerate(specs, start=4):
+            if state_id >= int(palette.palette_state_count):
+                break
+            if state_id >= len(enabled_states) or not enabled_states[state_id]:
+                continue
+            if black_slot not in (left, right):
+                continue
+            partner = right if left == black_slot else left
+            try:
+                partner_lstar = float(srgb_hex_to_lab(physical[partner])[0])
+                if abs(partner_lstar - black_lstar) + 1e-9 < threshold:
+                    continue
+                target_rgb = np.asarray(colours[state_id], dtype=np.float64)
+                target_hex = rgb8_to_hex(
+                    np.clip(np.rint(target_rgb * 255.0), 0, 255).astype(np.uint8)
+                    if float(np.nanmax(target_rgb)) <= 1.0 + 1e-9
+                    else np.clip(np.rint(target_rgb), 0, 255).astype(np.uint8)
+                )
+                target_lstar = float(srgb_hex_to_lab(target_hex)[0])
+                thickness = settings.skin_thickness_for_lstar(
+                    target_lstar,
+                    black_lstar=black_lstar,
+                    partner_lstar=partner_lstar,
+                )
+            except (IndexError, TypeError, ValueError):
+                return ()
+            rows.append(
+                (state_id, left, right, int(ratio_b), target_lstar, thickness)
+            )
+        return tuple(rows)
+
+    def _refresh_radial_widgets(self) -> None:
+        enabled_var = getattr(self, "radial_enabled_var", None)
+        if enabled_var is None:
+            return
+        try:
+            enabled = bool(enabled_var.get())
+        except (AttributeError, tk.TclError):
+            enabled = False
+        busy = bool(getattr(self, "busy", False))
+        mode_var = getattr(self, "radial_conversion_mode_var", None)
+        try:
+            conversion_mode = (
+                RADIAL_CONVERSION_UNIFORM_STAGE_A
+                if mode_var is None
+                else _radial_conversion_mode_from_display(
+                    self.i18n,
+                    mode_var.get(),
+                )
+            )
+        except (AttributeError, tk.TclError, ValueError):
+            conversion_mode = None
+        skin_mode_var = getattr(self, "radial_skin_mode_var", None)
+        try:
+            skin_mode = (
+                RADIAL_SKIN_MODE_UNIFORM
+                if skin_mode_var is None
+                else _radial_skin_mode_from_display(
+                    self.i18n, skin_mode_var.get()
+                )
+            )
+        except (AttributeError, tk.TclError, ValueError):
+            skin_mode = None
+        mode_combo = getattr(self, "radial_conversion_mode_combo", None)
+        if mode_combo is not None:
+            mode_combo.configure(
+                values=tuple(
+                    _radial_conversion_mode_display(self.i18n, mode)
+                    for mode in _RADIAL_CONVERSION_MODE_LABEL_KEYS
+                ),
+                state="readonly" if enabled and not busy else "disabled",
+            )
+        if mode_var is not None and conversion_mode is not None:
+            mode_var.set(
+                _radial_conversion_mode_display(self.i18n, conversion_mode)
+            )
+        selective_hybrid = (
+            conversion_mode == RADIAL_CONVERSION_SELECTIVE_HYBRID
+        )
+        profile_frame = getattr(self, "radial_skin_profile_frame", None)
+        if profile_frame is not None:
+            if selective_hybrid:
+                profile_frame.grid()
+            else:
+                profile_frame.grid_remove()
+        skin_mode_combo = getattr(self, "radial_skin_mode_combo", None)
+        if skin_mode_combo is not None:
+            skin_mode_combo.configure(
+                values=tuple(
+                    _radial_skin_mode_display(self.i18n, mode)
+                    for mode in _RADIAL_SKIN_MODE_LABEL_KEYS
+                ),
+                state=(
+                    "readonly"
+                    if enabled and selective_hybrid and not busy
+                    else "disabled"
+                ),
+            )
+        if skin_mode_var is not None and skin_mode is not None:
+            skin_mode_var.set(_radial_skin_mode_display(self.i18n, skin_mode))
+        checkbutton = getattr(self, "radial_enable_checkbutton", None)
+        if checkbutton is not None:
+            checkbutton.state(["disabled"] if busy else ["!disabled"])
+        combo = getattr(self, "radial_black_slot_combo", None)
+        if combo is not None:
+            combo.configure(
+                state="readonly" if enabled and not busy else "disabled"
+            )
+        wall_combo = getattr(self, "radial_wall_generator_combo", None)
+        if wall_combo is not None:
+            wall_combo.configure(
+                state="readonly" if enabled and not busy else "disabled"
+            )
+        uniform_skin_enabled = (
+            enabled
+            and not busy
+            and (
+                not selective_hybrid
+                or skin_mode == RADIAL_SKIN_MODE_UNIFORM
+            )
+        )
+        uniform_widget = getattr(self, "radial_skin_thickness_spinbox", None)
+        if uniform_widget is not None:
+            uniform_widget.state(
+                ["!disabled"] if uniform_skin_enabled else ["disabled"]
+            )
+        for name in ("radial_contrast_threshold_spinbox",):
+            widget = getattr(self, name, None)
+            if widget is not None:
+                widget.state(
+                    ["!disabled"] if enabled and not busy else ["disabled"]
+                )
+        adaptive_enabled = (
+            enabled
+            and selective_hybrid
+            and skin_mode == RADIAL_SKIN_MODE_ADAPTIVE
+            and not busy
+        )
+        for name in (
+            "radial_adaptive_min_skin_spinbox",
+            "radial_adaptive_max_skin_spinbox",
+            "radial_adaptive_gamma_spinbox",
+            "radial_adaptive_bands_spinbox",
+        ):
+            widget = getattr(self, name, None)
+            if widget is not None:
+                widget.state(
+                    ["!disabled"] if adaptive_enabled else ["disabled"]
+                )
+        button = getattr(self, "radial_export_button", None)
+        if button is not None:
+            selected_part_key = getattr(self, "active_part_key", None)
+            selected_part = selected_part_key is not None
+            if conversion_mode == RADIAL_CONVERSION_SELECTIVE_HYBRID:
+                button_key = (
+                    "radial.export_hybrid_selected"
+                    if selected_part
+                    else "radial.export_hybrid"
+                )
+            else:
+                button_key = (
+                    "radial.export_selected"
+                    if selected_part
+                    else "radial.export"
+                )
+            button.configure(
+                text=self.i18n.text(
+                    button_key,
+                    target=self._radial_export_target_label(selected_part_key),
+                )
+            )
+            button.state(
+                ["!disabled"]
+                if enabled and not busy and conversion_mode is not None
+                else ["disabled"]
+            )
+        help_label = getattr(self, "radial_help_label", None)
+        if help_label is not None:
+            help_label.configure(
+                text=self.i18n.text(
+                    "radial.help_hybrid_adaptive"
+                    if selective_hybrid
+                    and skin_mode == RADIAL_SKIN_MODE_ADAPTIVE
+                    else (
+                        "radial.help_hybrid"
+                        if selective_hybrid
+                        else "radial.help"
+                    )
+                )
+            )
+        mapping = getattr(self, "radial_skin_mapping_summary_var", None)
+        if mapping is not None:
+            if not selective_hybrid:
+                mapping.set("")
+            elif skin_mode == RADIAL_SKIN_MODE_UNIFORM:
+                try:
+                    thickness = float(self.radial_skin_thickness_var.get())
+                    mapping.set(
+                        self.i18n.text(
+                            "radial.skin_mapping_uniform",
+                            thickness=thickness,
+                        )
+                    )
+                except (AttributeError, TypeError, ValueError, tk.TclError):
+                    mapping.set(self.i18n.text("radial.skin_mapping_invalid"))
+            elif skin_mode == RADIAL_SKIN_MODE_ADAPTIVE:
+                rows = self._radial_adaptive_skin_rows()
+                if rows:
+                    mapping.set(
+                        "; ".join(
+                            self.i18n.text(
+                                "radial.skin_mapping_row",
+                                state=state_id + 1,
+                                left=PHYSICAL_NAMES[left],
+                                left_ratio=100 - ratio_b,
+                                right=PHYSICAL_NAMES[right],
+                                right_ratio=ratio_b,
+                                lstar=target_lstar,
+                                thickness=thickness,
+                            )
+                            for (
+                                state_id,
+                                left,
+                                right,
+                                ratio_b,
+                                target_lstar,
+                                thickness,
+                            ) in rows
+                        )
+                    )
+                else:
+                    mapping.set(self.i18n.text("radial.skin_mapping_invalid"))
+            else:
+                mapping.set(self.i18n.text("radial.skin_mapping_invalid"))
+        summary = getattr(self, "radial_contrast_summary_var", None)
+        if summary is None:
+            return
+        if not enabled:
+            summary.set(self.i18n.text("radial.summary_off"))
+            return
+        if conversion_mode is None:
+            summary.set(self.i18n.text("radial.summary_invalid_mode"))
+            return
+        rows = self._radial_contrast_rows()
+        if not rows:
+            summary.set(self.i18n.text("radial.summary_invalid"))
+            return
+        black_name = PHYSICAL_NAMES[self._radial_black_slot_index()]
+        items = "; ".join(
+            self.i18n.text(
+                "radial.summary_pair",
+                black=black_name,
+                partner=PHYSICAL_NAMES[slot],
+                delta=delta,
+                decision=self.i18n.text(
+                    "radial.summary_target"
+                    if target
+                    else (
+                        "radial.summary_preserved_conventional"
+                        if conversion_mode
+                        == RADIAL_CONVERSION_SELECTIVE_HYBRID
+                        else "radial.summary_conventional"
+                    )
+                ),
+            )
+            for slot, delta, target in rows
+        )
+        summary.set(items)
+
+    def _on_radial_setting_changed(self, _event=None) -> None:
+        self._refresh_radial_widgets()
+
+    def _on_radial_toggle(self) -> None:
+        if bool(getattr(self, "busy", False)):
+            try:
+                self.radial_enabled_var.set(
+                    bool(self.settings.radial.experimental_enabled)
+                )
+            except (AttributeError, tk.TclError):
+                pass
+            self._refresh_radial_widgets()
+            return
+        try:
+            enabled = bool(self.radial_enabled_var.get())
+        except (AttributeError, tk.TclError):
+            enabled = False
+        if hasattr(self.settings.radial, "experimental_enabled"):
+            self.settings.radial.experimental_enabled = enabled
+        self._refresh_radial_widgets()
+        self.status_var.set(
+            self.i18n.text(
+                "radial.enabled_status" if enabled else "radial.disabled_status"
+            )
+        )
 
     @staticmethod
     def _black_shares(
@@ -4063,10 +5281,20 @@ class MapperApp:
             target=self._physical_palette_target_label(target_key),
         )
         editor = getattr(self, "paint_editor", None)
-        reapply = getattr(editor, "reapply_palette_settings", None)
-        if callable(reapply):
-            reapply(target_key, self._copy_palette(palette), message=message)
-        self._clear_physical_palette_pending(target_key)
+        if target_key is None:
+            reapply_all = getattr(editor, "reapply_shading_settings", None)
+            if callable(reapply_all):
+                reapply_all(self.settings, message=message)
+            else:
+                reapply = getattr(editor, "reapply_palette_settings", None)
+                if callable(reapply):
+                    reapply(None, self._copy_palette(palette), message=message)
+            self._clear_all_physical_palette_pending()
+        else:
+            reapply = getattr(editor, "reapply_palette_settings", None)
+            if callable(reapply):
+                reapply(target_key, self._copy_palette(palette), message=message)
+            self._clear_physical_palette_pending(target_key)
         self._schedule_preview(immediate=True)
         self.status_var.set(message)
         return True
@@ -4109,6 +5337,7 @@ class MapperApp:
         elif self._palette_state_hex_snapshot(palette) == palette.assignment_palette_hex:
             palette.assignment_palette_hex = None
         self._assign_active_palette(palette)
+        self._propagate_common_physical_palette(palette)
         self._load_palette_variables(palette)
         self._note_mix_input_change()
         self._refresh_palette_widgets(schedule_preview=False)
@@ -4137,6 +5366,17 @@ class MapperApp:
                 self.physical_vars, palette.physical_hex, strict=True
             ):
                 variable.set(value)
+            # A part may have its own F1-F4 ordering.  Keep the radial black
+            # role attached to that part's sole darkest spool instead of
+            # carrying a stale slot over from the previously edited palette.
+            # Ambiguous ties remain untouched and are rejected later by the
+            # radial workflow's existing fail-closed black validation.
+            radial_black_var = getattr(self, "radial_black_slot_var", None)
+            radial_black_slot = self._unique_darkest_physical_slot(
+                palette.physical_hex
+            )
+            if radial_black_var is not None and radial_black_slot is not None:
+                radial_black_var.set(PHYSICAL_NAMES[radial_black_slot])
             for variable, value in zip(
                 self.enabled_vars, palette.enabled_states, strict=True
             ):
@@ -4188,6 +5428,7 @@ class MapperApp:
         self._refresh_black_free_gradient_widgets(palette)
         self._refresh_black_output_widgets(palette)
         self._refresh_surface_shell_widgets(palette)
+        self._refresh_radial_widgets()
         self._refresh_material_mode_buttons(palette.material)
         self._refresh_color_mode_widgets()
 
@@ -4235,6 +5476,38 @@ class MapperApp:
                     else "palette.mode_full_help"
                 )
             )
+        apply_button = getattr(self, "apply_physical_palette_button", None)
+        flat_help = getattr(self, "flat_physical_palette_help_label", None)
+        if apply_button is not None:
+            apply_button.configure(
+                text=self.i18n.text(
+                    "palette.apply_physical_common"
+                    if self.active_part_key is None
+                    else "palette.apply_physical_part"
+                )
+            )
+            if mode == COLOR_MODE_FLAT_FOUR:
+                apply_button.grid_remove()
+            else:
+                apply_button.grid()
+        if flat_help is not None:
+            flat_help.configure(
+                text=self.i18n.text(
+                    "palette.flat_physical_common_auto"
+                    if self.active_part_key is None
+                    else "palette.flat_physical_part_auto"
+                )
+            )
+            if mode == COLOR_MODE_FLAT_FOUR:
+                flat_help.grid()
+            else:
+                flat_help.grid_remove()
+        copy_button = getattr(self, "copy_palette_to_all_parts_button", None)
+        if copy_button is not None:
+            if self.active_part_key is None:
+                copy_button.grid_remove()
+            else:
+                copy_button.grid()
 
         physical = getattr(self, "physical_palette_group", None)
         mixed = getattr(self, "mixed_palette_group", None)
@@ -4354,7 +5627,7 @@ class MapperApp:
             self._refresh_color_mode_widgets()
             messagebox.showerror(
                 self.i18n.text("dialog.settings.title"),
-                str(exc),
+                self.i18n.dialog_detail_text(exc),
                 parent=self.root,
             )
             return
@@ -4425,6 +5698,58 @@ class MapperApp:
             self.settings.part_palettes[self.active_part_key] = palette
         return palette
 
+    def _selected_export_validation_level(self) -> str:
+        variable = getattr(self, "export_validation_level_var", None)
+        if variable is None:
+            return normalize_export_validation_level(
+                self.settings.export_validation_level
+            )
+        value = variable.get()
+        for level in EXPORT_VALIDATION_LEVELS:
+            if value in (level, self.i18n.text(f"export.validation.{level}")):
+                return level
+        return "high"
+
+    def _refresh_export_validation_widgets(self) -> None:
+        variable = getattr(self, "export_validation_level_var", None)
+        if variable is None:
+            return
+        # Language switches use the persisted ID, not a now-stale display label.
+        level = normalize_export_validation_level(self.settings.export_validation_level)
+        variable.set(self.i18n.text(f"export.validation.{level}"))
+        label = getattr(self, "export_validation_label", None)
+        if label is not None:
+            label.configure(text=self.i18n.text("export.validation.label"))
+        combo = getattr(self, "export_validation_combo", None)
+        if combo is not None:
+            combo.configure(values=tuple(
+                self.i18n.text(f"export.validation.{key}")
+                for key in EXPORT_VALIDATION_LEVELS
+            ))
+
+    def _on_export_validation_changed(self, _event=None) -> None:
+        self.settings.export_validation_level = self._selected_export_validation_level()
+        self._save_persistent_settings()
+
+    def _confirm_export_validation_level(self, settings: AppSettings) -> bool:
+        level = normalize_export_validation_level(settings.export_validation_level)
+        if level == "high":
+            return True
+        # Consent is per export, never saved in settings or inferred from a project.
+        accepted = messagebox.askyesno(
+            self.i18n.text("export.validation.confirm_title"),
+            self.i18n.text(
+                "export.validation.confirm",
+                level=self.i18n.text(f"export.validation.{level}"),
+            ),
+            default="no",
+            icon="warning",
+            parent=self.root,
+        )
+        if not accepted:
+            self.status_var.set(self.i18n.text("export.validation.cancelled"))
+        return bool(accepted)
+
     def _settings_to_variables(self) -> None:
         s = _sanitize_public_settings(self.settings)
         self.active_part_key = None
@@ -4455,6 +5780,7 @@ class MapperApp:
         self.export_individual_parts_var.set(
             s.geometry.export_individual_parts
         )
+        self._refresh_export_validation_widgets()
         self.black_point_var.set(s.tone.black_point)
         self.white_point_var.set(s.tone.white_point)
         self.gamma_var.set(s.tone.gamma)
@@ -4470,6 +5796,40 @@ class MapperApp:
             s.color_depth.outer_thickness_mm
         )
         self._refresh_color_depth_widgets()
+        # The radial laboratory is retained only as dormant source.  Do not
+        # allow a legacy project/preference to reactivate its hidden controls.
+        self.radial_enabled_var.set(False)
+        self.radial_skin_thickness_var.set(
+            s.radial.outer_skin_thickness_mm
+        )
+        self.radial_min_lstar_delta_var.set(
+            s.radial.minimum_lstar_delta
+        )
+        self.radial_wall_generator_var.set(s.radial.wall_generator)
+        self.radial_conversion_mode_var.set(
+            _radial_conversion_mode_display(
+                self.i18n,
+                s.radial.conversion_mode,
+            )
+        )
+        self.radial_skin_mode_var.set(
+            _radial_skin_mode_display(
+                self.i18n,
+                s.radial.skin_thickness_mode,
+            )
+        )
+        self.radial_adaptive_min_skin_var.set(
+            s.radial.adaptive_skin_min_thickness_mm
+        )
+        self.radial_adaptive_max_skin_var.set(
+            s.radial.adaptive_skin_max_thickness_mm
+        )
+        self.radial_adaptive_gamma_var.set(s.radial.adaptive_skin_gamma)
+        self.radial_adaptive_bands_var.set(s.radial.adaptive_skin_bands)
+        self.radial_black_slot_var.set(
+            PHYSICAL_NAMES[self._darkest_physical_slot(s.palette.physical_hex)]
+        )
+        self._refresh_radial_widgets()
         self._refresh_material_mode_buttons(self._active_palette_for_controls().material)
         self._update_face_count_status()
 
@@ -4581,18 +5941,87 @@ class MapperApp:
                         "front_left",
                     )
                 ),
+                illustration_light_intensity=float(
+                    getattr(
+                        self.settings.tone,
+                        "illustration_light_intensity",
+                        1.0,
+                    )
+                ),
+                illustration_light_range=float(
+                    getattr(
+                        self.settings.tone,
+                        "illustration_light_range",
+                        0.4,
+                    )
+                ),
+                illustration_detail_strength=float(
+                    getattr(
+                        self.settings.tone,
+                        "illustration_detail_strength",
+                        0.0,
+                    )
+                ),
+                illustration_selective_highlight_fraction=float(
+                    getattr(
+                        self.settings.tone,
+                        "illustration_selective_highlight_fraction",
+                        0.0,
+                    )
+                ),
+                illustration_contour_policy=str(
+                    getattr(
+                        self.settings.tone,
+                        "illustration_contour_policy",
+                        "outer_crease_fold",
+                    )
+                ),
             )
             if tone.white_point <= tone.black_point + 0.005:
                 raise ValueError("白点は黒点より十分大きくしてください")
+            radial_conversion_mode = _radial_conversion_mode_from_display(
+                self.i18n,
+                self.radial_conversion_mode_var.get(),
+            )
+            radial_skin_mode = _radial_skin_mode_from_display(
+                self.i18n,
+                self.radial_skin_mode_var.get(),
+            )
             radial = RadialSettings(
+                # Radial output is not a 0.9 application feature.  Preserve
+                # its schema fields for project compatibility, but always
+                # commit the hidden experiment as disabled.
+                experimental_enabled=False,
                 outer_skin_thickness_mm=float(
                     self.radial_skin_thickness_var.get()
                 ),
-                # The laboratory writer intentionally fixes the first model
-                # format to 0.20 mm.  This removes Z-cadence from the radial
-                # colour experiment and keeps the Orca preview reproducible.
-                layer_height_mm=0.20,
-                require_uniform_black_mix=True,
+                # The revived test profile is deliberately locked to the
+                # same 0.10 mm pitch as the physical validation coupon.
+                layer_height_mm=0.10,
+                minimum_lstar_delta=float(
+                    self.radial_min_lstar_delta_var.get()
+                ),
+                wall_generator=str(
+                    self.radial_wall_generator_var.get()
+                ),
+                conversion_mode=radial_conversion_mode,
+                skin_thickness_mode=radial_skin_mode,
+                adaptive_skin_min_thickness_mm=float(
+                    self.radial_adaptive_min_skin_var.get()
+                ),
+                adaptive_skin_max_thickness_mm=float(
+                    self.radial_adaptive_max_skin_var.get()
+                ),
+                adaptive_skin_gamma=float(
+                    self.radial_adaptive_gamma_var.get()
+                ),
+                adaptive_skin_bands=int(
+                    self.radial_adaptive_bands_var.get()
+                ),
+                require_uniform_black_mix=(
+                    radial_conversion_mode
+                    == RADIAL_CONVERSION_UNIFORM_STAGE_A
+                ),
             )
             color_depth = ColorDepthSettings(
                 experimental_enabled=False,
@@ -4631,6 +6060,7 @@ class MapperApp:
                     self.settings.manual_view_backgrounds
                 ),
                 manual_orbit_inverted=self.settings.manual_orbit_inverted,
+                export_validation_level=self._selected_export_validation_level(),
             )
             _enforce_black_free_gradient_developer_gate(
                 self.settings,
@@ -4641,13 +6071,14 @@ class MapperApp:
             if show_error:
                 messagebox.showerror(
                     self.i18n.text("dialog.settings.title"),
-                    str(exc),
+                    self.i18n.dialog_detail_text(exc),
                     parent=self.root,
                 )
             return None
 
     def _load_persistent_settings(self) -> AppSettings:
         self._loaded_developer_features_enabled = False
+        self._loaded_recommendation_policy = DEFAULT_RECOMMENDATION_POLICY
         path = _configuration_dir() / "settings.json"
         try:
             if path.is_file():
@@ -4655,10 +6086,15 @@ class MapperApp:
                 self._loaded_developer_features_enabled = (
                     _developer_features_enabled_from_mapping(payload)
                 )
+                self._loaded_recommendation_policy = (
+                    _recommendation_policy_from_mapping(payload)
+                )
                 return _persistent_preferences_from_mapping(payload)
         except Exception:
             pass
-        return AppSettings()
+        return AppSettings(
+            palette=PaletteSettings(color_mode=DEFAULT_NEW_COLOR_MODE)
+        )
 
     def _save_persistent_settings(self) -> None:
         settings = self._variables_to_settings(show_error=False)
@@ -4672,6 +6108,7 @@ class MapperApp:
                 developer_features_enabled=(
                     self._developer_features_are_enabled()
                 ),
+                recommendation_policy=self._selected_recommendation_policy(),
             )
             path.write_text(
                 json.dumps(persistent, ensure_ascii=False, indent=2),
@@ -4697,23 +6134,37 @@ class MapperApp:
         if self.manual_overrides is None or not np.any(self.manual_overrides >= 0):
             return True, None
         if self.prepared is None:
-            message = "色修正に対応する処理済みメッシュがありません。"
+            message_key = "dialog.paint_state_invalid.no_mesh"
         elif len(self.manual_overrides) != len(self.prepared.final.faces):
-            message = "色修正の面数が現在のメッシュと一致しません。"
+            message_key = "dialog.paint_state_invalid.face_count"
         else:
             current_fingerprint = mesh_fingerprint(self.prepared.final)
             if self.manual_fingerprint != current_fingerprint:
-                message = "色修正が別の形状に属しているため、安全に適用できません。"
+                message_key = "dialog.paint_state_invalid.fingerprint"
             else:
                 values = np.asarray(self.manual_overrides, dtype=np.int8)
                 return True, values.copy() if make_copy else values
         if show_error:
-            messagebox.showerror("色修正を適用できません", message, parent=self.root)
+            messagebox.showerror(
+                self.i18n.text("dialog.paint_state_invalid.title"),
+                self.i18n.text(message_key),
+                parent=self.root,
+            )
         return False, None
 
-    def _choose_obj(self) -> None:
+    def _choose_obj(
+        self,
+        selected_path: Path | str | None = None,
+        *,
+        confirm_large_model: bool = False,
+    ) -> None:
         if self.paint_editor is not None:
-            self.paint_editor.close(after_close=self._choose_obj)
+            self.paint_editor.close(
+                after_close=lambda: self._choose_obj(
+                    selected_path,
+                    confirm_large_model=confirm_large_model,
+                )
+            )
             return
         if self.busy:
             messagebox.showinfo(
@@ -4722,19 +6173,22 @@ class MapperApp:
                 parent=self.root,
             )
             return
-        value = filedialog.askopenfilename(
-            parent=self.root,
-            title=self.i18n.text("filedialog.open_obj"),
-            filetypes=(
-                (self.i18n.text("filedialog.model"), "*.obj *.glb"),
-                ("Wavefront OBJ", "*.obj"),
-                ("Binary glTF (GLB)", "*.glb"),
-                (self.i18n.text("filedialog.all"), "*.*"),
-            ),
-        )
-        if not value:
-            return
-        selected_source = Path(value)
+        if selected_path is None:
+            value = filedialog.askopenfilename(
+                parent=self.root,
+                title=self.i18n.text("filedialog.open_obj"),
+                filetypes=(
+                    (self.i18n.text("filedialog.model"), "*.obj *.glb"),
+                    ("Wavefront OBJ", "*.obj"),
+                    ("Binary glTF (GLB)", "*.glb"),
+                    (self.i18n.text("filedialog.all"), "*.*"),
+                ),
+            )
+            if not value:
+                return
+            selected_source = Path(value)
+        else:
+            selected_source = Path(selected_path)
         if selected_source.suffix.lower() not in {".obj", ".glb"}:
             messagebox.showerror(
                 self.i18n.text("dialog.source_format.title"),
@@ -4750,7 +6204,7 @@ class MapperApp:
             except GltfImportError as exc:
                 messagebox.showerror(
                     self.i18n.text("dialog.large_glb.inspect_title"),
-                    str(exc),
+                    self.i18n.dialog_detail_text(exc),
                     parent=self.root,
                 )
                 return
@@ -4768,16 +6222,17 @@ class MapperApp:
                         parent=self.root,
                     )
                     return
-                if not messagebox.askyesno(
-                    self.i18n.text("dialog.large_glb.confirm_title"),
-                    self.i18n.text(
-                        "dialog.large_glb.confirm_message",
-                        faces=f"{import_plan.triangle_count:,}",
-                        target=f"{LARGE_GLTF_REDUCTION_TARGET_FACES:,}",
-                    ),
-                    parent=self.root,
-                ):
-                    return
+                if not confirm_large_model:
+                    if not messagebox.askyesno(
+                        self.i18n.text("dialog.large_glb.confirm_title"),
+                        self.i18n.text(
+                            "dialog.large_glb.confirm_message",
+                            faces=f"{import_plan.triangle_count:,}",
+                            target=f"{LARGE_GLTF_REDUCTION_TARGET_FACES:,}",
+                        ),
+                        parent=self.root,
+                    ):
+                        return
                 large_glb_reduced = True
         self._large_glb_import_plan = (
             import_plan if large_glb_reduced else None
@@ -4884,15 +6339,17 @@ class MapperApp:
         except Exception as exc:
             messagebox.showerror(
                 self.i18n.text("dialog.open_image_error"),
-                str(exc),
+                self.i18n.dialog_detail_text(exc),
                 parent=self.root,
             )
             return
         self.reference_path = Path(value)
         self._note_mix_input_change()
-        self.ref_name_var.set(f"元画像: {self.reference_path.name}")
+        self.ref_name_var.set(
+            self.i18n.text("state.reference_selected", name=self.reference_path.name)
+        )
         self._draw_comparison_canvas()
-        self.status_var.set("元画像を読み込みました。スポイトを開始できます")
+        self.status_var.set(self.i18n.text("state.reference_loaded"))
         if (
             self.prepared is not None
             and (
@@ -5151,6 +6608,30 @@ class MapperApp:
             return
         self._solidify_parts_now()
 
+    def _is_single_logical_gltf(self) -> bool:
+        """Return whether the loaded GLB/glTF uses the single-model path."""
+
+        source_path = getattr(self, "source_path", None)
+        if source_path is None or source_path.suffix.lower() not in {
+            ".glb",
+            ".gltf",
+        }:
+            return False
+        source_asset = getattr(self, "asset", None)
+        if source_asset is None:
+            prepared = getattr(self, "prepared", None)
+            source_asset = getattr(prepared, "source", None)
+        if source_asset is None:
+            return True
+        part_names = tuple(getattr(source_asset, "part_names", ()) or ())
+        face_part_ids = getattr(source_asset, "face_part_ids", ())
+        faces = getattr(source_asset, "faces", ())
+        return not bool(
+            getattr(source_asset, "has_explicit_parts", False)
+            and len(part_names) > 1
+            and len(face_part_ids) == len(faces)
+        )
+
     def _solidify_parts_now(self) -> None:
         if self.prepared is None or self.source_path is None:
             messagebox.showinfo(
@@ -5187,10 +6668,14 @@ class MapperApp:
                 ),
                 parent=self.root,
             )
-            self._show_boundary_diagnostics()
             return
         self.solidify_parts_var.set(True)
-        self.repair_unmatched_boundaries_var.set(False)
+        # A single logical GLB may contain both duplicated UV seams and a few
+        # real tiny holes.  The engine still caps only <=2 mm strictly planar
+        # loops and rejects every open/non-manifold final result.
+        self.repair_unmatched_boundaries_var.set(
+            self._is_single_logical_gltf()
+        )
         self._process_geometry(reuse_asset=True)
 
     def _repair_small_boundaries_and_solidify(self) -> None:
@@ -5265,6 +6750,10 @@ class MapperApp:
         after_done=None,
         after_failed=None,
     ) -> bool:
+        # Some recovery/test hosts construct MapperApp without running the Tk
+        # initializer.  Keep those paths deterministic while the real app
+        # continues to use the user's selected language.
+        _ensure_translator(self)
         if self.paint_editor is not None:
             self.paint_editor.close(
                 after_close=lambda: self._process_geometry(
@@ -5309,13 +6798,11 @@ class MapperApp:
         )
         if (has_manual_paint or has_manual_structure) and topology_changed:
             if not messagebox.askyesno(
-                "手修正を確認",
-                "閉立体化・最終面数・上方向・微小部品・左右反転などで形状を変更します。"
-                "パーツ構成が同じ場合はブラシ修正を最も近い面へ引き継ぎますが、"
-                "形状によっては解除または確認修正が必要です。\n\n再処理しますか？",
+                self.i18n.text("geometry.reprocess_manual.title"),
+                self.i18n.text("geometry.reprocess_manual.message"),
                 parent=self.root,
             ):
-                self.status_var.set("形状再処理をキャンセルしました。手修正は保持されています")
+                self.status_var.set(self.i18n.text("geometry.reprocess_cancelled"))
                 return False
 
         def work():
@@ -5387,9 +6874,11 @@ class MapperApp:
             self.pending_manual_joint_record = None
             if joint_error:
                 messagebox.showwarning(
-                    "手動ジョイントを復元できません",
-                    "保存されたジョイントは現在の形状へ安全に再生成できないため、"
-                    f"ジョイントなしで開きます。\n\n{joint_error}",
+                    self.i18n.text("project.restore_joint.title"),
+                    self.i18n.text(
+                        "project.restore_joint.message",
+                        reason=self.i18n.dialog_detail_text(joint_error),
+                    ),
                     parent=self.root,
                 )
             self._note_mix_input_change()
@@ -5419,8 +6908,11 @@ class MapperApp:
                 except Exception as exc:
                     self.manual_part_partition = None
                     messagebox.showwarning(
-                        "フリーハンド分割を復元できません",
-                        f"形状が保存時と異なるため、元のパーツ構成で開きます。\n\n{exc}",
+                        self.i18n.text("project.restore_split.title"),
+                        self.i18n.text(
+                            "project.restore_split.message",
+                            reason=self.i18n.dialog_detail_text(exc),
+                        ),
                         parent=self.root,
                     )
                 finally:
@@ -5438,7 +6930,7 @@ class MapperApp:
                 self.settings.part_names = {}
                 messagebox.showwarning(
                     self.i18n.text("paint.part_rename_title"),
-                    str(exc),
+                    self.i18n.dialog_detail_text(exc),
                     parent=self.root,
                 )
             restored = False
@@ -5483,8 +6975,11 @@ class MapperApp:
                 except Exception as exc:
                     self.manual_overrides = None
                     messagebox.showwarning(
-                        "手修正を復元できません",
-                        f"形状が保存時と異なるため、自動変換色で開きます。\n\n{exc}",
+                        self.i18n.text("project.restore_paint.title"),
+                        self.i18n.text(
+                            "project.restore_paint.message",
+                            reason=self.i18n.dialog_detail_text(exc),
+                        ),
                         parent=self.root,
                     )
                 finally:
@@ -5543,25 +7038,52 @@ class MapperApp:
                 else 0
             )
             self._update_assembly_status()
+            geometry_details = ""
+            if joint_count:
+                geometry_details += self.i18n.text(
+                    "geometry.ready_joint_note", count=joint_count
+                )
+            if restored_joint:
+                geometry_details += self.i18n.text(
+                    "geometry.ready_restored_joint_note"
+                )
+            if restored and self.manual_overrides is not None:
+                geometry_details += self.i18n.text(
+                    "geometry.ready_manual_edits_note",
+                    count=int(np.count_nonzero(self.manual_overrides >= 0)),
+                )
+            if paint_carried_exact:
+                geometry_details += self.i18n.text(
+                    "geometry.ready_exact_transfer_note"
+                )
+            if paint_remapped:
+                geometry_details += self.i18n.text(
+                    "geometry.ready_remapped_transfer_note"
+                )
+            if adaptive_trees_carried:
+                geometry_details += self.i18n.text(
+                    "geometry.ready_adaptive_note", count=adaptive_trees_carried
+                )
+            if partition_restored:
+                geometry_details += self.i18n.text(
+                    "geometry.ready_partition_note"
+                )
             self.status_var.set(
-                f"形状準備完了: {len(self.prepared.final.faces):,}面 / "
-                f"印刷パーツ {part_count}個 / 閉じた印刷立体={self.prepared.topology['watertight']}"
-                + (f" / 組立ジョイント {joint_count}組" if joint_count else "")
-                + (" / 手動ジョイントを復元" if restored_joint else "")
-                + (f" / 手修正 {int(np.count_nonzero(self.manual_overrides >= 0)):,}面を復元" if restored and self.manual_overrides is not None else "")
-                + ("（面順・形状一致で完全引継ぎ）" if paint_carried_exact else "")
-                + ("（近傍面へ引継ぎ・要確認）" if paint_remapped else "")
-                + (f" / 適応ブラシ {adaptive_trees_carried:,}面を完全引継ぎ" if adaptive_trees_carried else "")
-                + (" / フリーハンド分割を復元" if partition_restored else "")
+                self.i18n.text(
+                    "geometry.ready_status",
+                    faces=len(self.prepared.final.faces),
+                    parts=part_count,
+                    watertight=self.prepared.topology["watertight"],
+                    details=geometry_details,
+                )
             )
             if stale_palette_keys:
                 messagebox.showwarning(
-                    "現在のパーツにない基本4色設定",
-                    f"以前のパーツ用の基本4色設定 {len(stale_palette_keys)} 件は、"
-                    "現在のモデルのパーツへ自動流用していません。\n\n"
-                    "［パーツ］タブの［全パーツを自動提案］で"
-                    "各パーツの基本4色を更新できます。"
-                    "旧設定はプロジェク内に保持されます。",
+                    self.i18n.text("project.stale_palette.title"),
+                    self.i18n.text(
+                        "project.stale_palette.message",
+                        count=len(stale_palette_keys),
+                    ),
                     parent=self.root,
                 )
             self._schedule_preview(immediate=True)
@@ -5595,22 +7117,20 @@ class MapperApp:
             self.status_var.set(
                 self.i18n.text("assembly.solidify_failed_kept_raw")
             )
-            inspect_now = messagebox.askyesno(
+            messagebox.showwarning(
                 self.i18n.text("assembly.solidify_stopped_title"),
                 self.i18n.text(
-                    "assembly.solidify_failed_detail", error=str(exc)
+                    "assembly.solidify_failed_detail",
+                    error=self.i18n.dialog_detail_text(exc),
                 ),
                 parent=self.root,
             )
-            if inspect_now and previous_assembly.get("boundary_diagnostics"):
-                self._open_boundary_diagnostics_on_paint = True
-                self.root.after(20, self._open_paint_editor)
             if callable(after_failed):
                 after_failed()
             return True
 
         return self._submit_main(
-            "モデルを解析・形状準備しています",
+            self.i18n.text("progress.model_analyzing"),
             work,
             done,
             on_error=failed,
@@ -5641,6 +7161,29 @@ class MapperApp:
             illustration_light=str(
                 getattr(tone, "illustration_light", "front_left")
             ),
+            illustration_light_intensity=float(
+                getattr(tone, "illustration_light_intensity", 1.0)
+            ),
+            illustration_light_range=float(
+                getattr(tone, "illustration_light_range", 0.4)
+            ),
+            illustration_detail_strength=float(
+                getattr(tone, "illustration_detail_strength", 0.0)
+            ),
+            illustration_selective_highlight_fraction=float(
+                getattr(
+                    tone,
+                    "illustration_selective_highlight_fraction",
+                    0.0,
+                )
+            ),
+            illustration_contour_policy=str(
+                getattr(
+                    tone,
+                    "illustration_contour_policy",
+                    "outer_crease_fold",
+                )
+            ),
         )
 
     def _sync_tone_variables(self, tone: ToneSettings) -> ToneSettings:
@@ -5670,6 +7213,52 @@ class MapperApp:
 
     def _on_editor_tone_reset_requested(self) -> None:
         self._on_editor_tone_settings_changed(ToneSettings())
+
+    def _on_editor_cel_palette_recommend_requested(self) -> None:
+        """Offer a strong-cel palette without silently replacing user colours."""
+
+        editor = getattr(self, "paint_editor", None)
+        dialog_parent = getattr(editor, "window", self.root)
+        if bool(getattr(self, "busy", False)):
+            messagebox.showinfo(
+                self.i18n.text("dialog.busy.title"),
+                self.i18n.text("dialog.busy.message"),
+                parent=dialog_parent,
+            )
+            return
+        tone = getattr(getattr(self, "settings", None), "tone", None)
+        if str(getattr(tone, "illustration_mode", "off")) != "cel_strong":
+            message = self.i18n.text(
+                "tone.illustration_recommend_unavailable"
+            )
+            self.status_var.set(message)
+            editor_status = getattr(editor, "status_var", None)
+            if editor_status is not None:
+                editor_status.set(message)
+            return
+
+        automatic = bool(
+            self._automatic_palette_can_follow_mode()
+            and not getattr(self, "_pending_physical_palette_targets", set())
+        )
+        if not automatic and not messagebox.askyesno(
+            self.i18n.text("tone.illustration_recommend_title"),
+            self.i18n.text("tone.illustration_recommend_confirm"),
+            parent=dialog_parent,
+        ):
+            message = self.i18n.text("tone.illustration_recommend_kept")
+            self.status_var.set(message)
+            editor_status = getattr(editor, "status_var", None)
+            if editor_status is not None:
+                editor_status.set(message)
+            return
+
+        message = self.i18n.text("tone.illustration_recommend_running")
+        self.status_var.set(message)
+        editor_status = getattr(editor, "status_var", None)
+        if editor_status is not None:
+            editor_status.set(message)
+        self._recommend_all_parts(automatic=automatic)
 
     def _on_editor_palette_settings_changed(
         self, part_key: str | None, palette: PaletteSettings
@@ -5794,7 +7383,7 @@ class MapperApp:
 
         def changed(values: np.ndarray) -> None:
             if self.prepared is not prepared_holder[0]:
-                self.status_var.set("形状が変わったため、旧メッシュの色修正を破棄しました")
+                self.status_var.set(self.i18n.text("paint.stale_discarded"))
                 return
             self.manual_overrides = np.asarray(values, dtype=np.int8).copy()
             self.manual_fingerprint = mesh_fingerprint(
@@ -5803,7 +7392,7 @@ class MapperApp:
             self._note_mix_input_change()
             count = int(np.count_nonzero(self.manual_overrides >= 0))
             self._refresh_black_free_gradient_widgets()
-            self.status_var.set(f"色修正を保持中: {count:,}面")
+            self.status_var.set(self.i18n.text("paint.kept_status", count=count))
 
         def parts_changed() -> None:
             if self.prepared is not prepared_holder[0]:
@@ -5827,8 +7416,10 @@ class MapperApp:
             self._note_mix_input_change()
             self._refresh_part_selector()
             self.status_var.set(
-                f"フリーハンド分割を保持中: "
-                f"印刷パーツ {len(self.prepared.final.part_keys)}個"
+                self.i18n.text(
+                    "separate.kept_status",
+                    count=len(self.prepared.final.part_keys),
+                )
             )
 
         def geometry_changed(
@@ -5856,13 +7447,17 @@ class MapperApp:
             self._refresh_part_selector()
             self._refresh_black_free_gradient_widgets()
             count = int(np.count_nonzero(self.manual_overrides >= 0))
+            action_key = (
+                "joint.kept_action"
+                if self.manual_joint_record is not None
+                else "joint.restored_action"
+            )
             self.status_var.set(
-                (
-                    "手動ジョイントを保持中"
-                    if self.manual_joint_record is not None
-                    else "ジョイント生成前の形状を復元"
+                self.i18n.text(
+                    "joint.kept_status",
+                    action=self.i18n.text(action_key),
+                    count=count,
                 )
-                + f" / 手修正 {count:,}面"
             )
 
         def part_name_changed(part_key: str, name: str) -> None:
@@ -5917,6 +7512,9 @@ class MapperApp:
                     self._on_editor_mix_optimization_undo_requested
                 ),
                 on_tone_reset_requested=self._on_editor_tone_reset_requested,
+                on_cel_palette_recommend_requested=(
+                    self._on_editor_cel_palette_recommend_requested
+                ),
             )
             self._set_mix_optimization_undo_enabled(
                 getattr(self, "last_mix_ratios", None) is not None
@@ -5940,7 +7538,7 @@ class MapperApp:
             self._open_boundary_diagnostics_on_paint = False
             messagebox.showerror(
                 self.i18n.text("dialog.open_paint_error"),
-                str(exc),
+                self.i18n.dialog_detail_text(exc),
                 parent=self.root,
             )
 
@@ -5959,6 +7557,7 @@ class MapperApp:
         self.progress["value"] = 0
         self.status_var.set(label)
         self.export_button.state(["disabled"])
+        self._refresh_output_actions()
         calibration_button = getattr(self, "calibration_chart_button", None)
         if calibration_button is not None:
             calibration_button.state(["disabled"])
@@ -5972,6 +7571,7 @@ class MapperApp:
         self._refresh_surface_shell_widgets()
         self._refresh_developer_feature_visibility()
         self._refresh_color_depth_widgets()
+        self._refresh_radial_widgets()
         self._refresh_color_mode_widgets()
 
         def runner() -> None:
@@ -5994,9 +7594,11 @@ class MapperApp:
             while True:
                 kind, payload = self.work_queue.get_nowait()
                 if kind == "progress":
-                    _phase, fraction, message = payload
+                    phase, fraction, message = payload
                     self.progress["value"] = float(fraction) * 100.0
-                    self.status_var.set(str(message))
+                    self.status_var.set(
+                        self.i18n.progress_text(str(phase), message)
+                    )
                 elif kind == "main_done":
                     if len(payload) == 3:
                         done, value, on_error = payload
@@ -6012,6 +7614,7 @@ class MapperApp:
                     if calibration_button is not None:
                         calibration_button.state(["!disabled"])
                     self._refresh_color_depth_widgets()
+                    self._refresh_radial_widgets()
                     self._refresh_black_free_gradient_widgets()
                     self._refresh_black_output_widgets()
                     self._refresh_surface_shell_widgets()
@@ -6025,7 +7628,14 @@ class MapperApp:
                     except Exception as exc:
                         details = traceback.format_exc()
                         self.progress["value"] = 0
-                        self.status_var.set(f"エラー: {exc}")
+                        self.status_var.set(
+                            self.i18n.text(
+                                "state.error",
+                                reason=self.i18n.status_text(
+                                    exc, fallback_key="state.error_reason"
+                                ),
+                            )
+                        )
                         handled = False
                         if callable(on_error):
                             try:
@@ -6034,10 +7644,21 @@ class MapperApp:
                                 handled = False
                         if not handled:
                             messagebox.showerror(
-                                "処理できませんでした",
-                                f"{exc}\n\n詳細は下記です。\n{details[-1800:]}",
+                                self.i18n.text("dialog.processing_failed.title"),
+                                self.i18n.text(
+                                    "dialog.processing_failed.message",
+                                    reason=self.i18n.dialog_detail_text(exc),
+                                    details=self.i18n.dialog_detail_text(
+                                        details[-1800:],
+                                        fallback_key="dialog.technical_details_unavailable",
+                                    ),
+                                ),
                                 parent=self.root,
                             )
+                    finally:
+                        # Exact project loads install source/prepared state in
+                        # done(); a chained job may also have made us busy again.
+                        self._refresh_output_actions()
                 elif kind == "main_error":
                     if len(payload) == 3:
                         exc, details, on_error = payload
@@ -6053,6 +7674,7 @@ class MapperApp:
                     if calibration_button is not None:
                         calibration_button.state(["!disabled"])
                     self._refresh_color_depth_widgets()
+                    self._refresh_radial_widgets()
                     self._refresh_black_free_gradient_widgets()
                     self._refresh_black_output_widgets()
                     self._refresh_surface_shell_widgets()
@@ -6061,7 +7683,14 @@ class MapperApp:
                         self._active_palette_for_controls().material
                     )
                     self._refresh_color_mode_widgets()
-                    self.status_var.set(f"エラー: {exc}")
+                    self.status_var.set(
+                        self.i18n.text(
+                            "state.error",
+                            reason=self.i18n.status_text(
+                                exc, fallback_key="state.error_reason"
+                            ),
+                        )
+                    )
                     handled = False
                     if callable(on_error):
                         try:
@@ -6069,7 +7698,19 @@ class MapperApp:
                         except Exception:
                             handled = False
                     if not handled:
-                        messagebox.showerror("処理できませんでした", f"{exc}\n\n詳細は下記です。\n{details[-1800:]}", parent=self.root)
+                        messagebox.showerror(
+                            self.i18n.text("dialog.processing_failed.title"),
+                            self.i18n.text(
+                                "dialog.processing_failed.message",
+                                reason=self.i18n.dialog_detail_text(exc),
+                                details=self.i18n.dialog_detail_text(
+                                    details[-1800:],
+                                    fallback_key="dialog.technical_details_unavailable",
+                                ),
+                            ),
+                            parent=self.root,
+                        )
+                    self._refresh_output_actions()
                 elif kind == "preview_done":
                     if len(payload) == 6:
                         generation, selection_key, colors, source, target, mean = payload
@@ -6085,13 +7726,20 @@ class MapperApp:
                         self.target_render = target
                         self._draw_comparison_canvas()
                         suffix = (
-                            f" / 手修正 {colors.manual_override_faces:,}面"
+                            self.i18n.text(
+                                "preview.manual_note",
+                                count=colors.manual_override_faces,
+                            )
                             if colors.manual_override_faces
                             else ""
                         )
                         self.status_var.set(
-                            f"プレビュー更新: 平均ΔE76 {mean:.1f} / "
-                            f"F4系 {colors.pink_area_fraction * 100:.2f}%{suffix}"
+                            self.i18n.text(
+                                "preview.updated_status",
+                                mean=mean,
+                                f4=colors.pink_area_fraction * 100,
+                                suffix=suffix,
+                            )
                         )
                 elif kind == "preview_error":
                     if len(payload) == 3:
@@ -6103,11 +7751,75 @@ class MapperApp:
                         generation == self.preview_generation
                         and selection_key == self.active_part_key
                     ):
-                        self.status_var.set(f"プレビューを作成できません: {exc}")
+                        self.status_var.set(
+                            self.i18n.text(
+                                "preview.error_status",
+                                reason=self.i18n.status_text(
+                                    exc, fallback_key="state.error_reason"
+                                ),
+                            )
+                        )
         except queue.Empty:
             pass
         if not self.app_closing and self.root.winfo_exists():
             self.poll_after_id = self.root.after(80, self._poll_queue)
+
+    def _propagate_common_physical_palette(
+        self,
+        common_palette: PaletteSettings,
+    ) -> tuple[str, ...]:
+        """Share a manually edited Common F1-F4 set with explicit parts.
+
+        Per-part mix recipes remain independent.  Full Spectrum also retains
+        each part's pre-edit assignment table so the explicit Apply action can
+        recolour the existing state IDs without silently rerouting faces.
+        Flat Four has no mixed routing to preserve and therefore follows its
+        established immediate reassignment path.
+        """
+
+        if self.active_part_key is not None:
+            return ()
+        physical = [normalize_hex(value) for value in common_palette.physical_hex]
+        refs = list(common_palette.physical_filament_refs)
+        changed: list[str] = []
+        for key, current in tuple(self.settings.part_palettes.items()):
+            previous_physical = [
+                normalize_hex(value) for value in current.physical_hex
+            ]
+            previous_refs = list(current.physical_filament_refs)
+            if previous_physical == physical and previous_refs == refs:
+                continue
+            updated = self._copy_palette(current)
+            if previous_physical != physical:
+                if updated.color_mode == COLOR_MODE_FLAT_FOUR:
+                    updated.assignment_palette_hex = None
+                elif updated.assignment_palette_hex is None:
+                    updated.assignment_palette_hex = (
+                        self._palette_state_hex_snapshot(current)
+                    )
+            updated.physical_hex = list(physical)
+            updated.physical_filament_refs = [
+                ref
+                if (
+                    ref is None
+                    or (
+                        ref.material == updated.material
+                        and ref.matched_hex == physical[index]
+                    )
+                )
+                else None
+                for index, ref in enumerate(refs)
+            ]
+            if (
+                updated.assignment_palette_hex is not None
+                and self._palette_state_hex_snapshot(updated)
+                == updated.assignment_palette_hex
+            ):
+                updated.assignment_palette_hex = None
+            self.settings.part_palettes[str(key)] = updated
+            self.part_recommendations.pop(str(key), None)
+            changed.append(str(key))
+        return tuple(changed)
 
     def _on_physical_palette_changed(self) -> None:
         """Refresh Flat Four immediately; stage Full while preserving its routing."""
@@ -6117,6 +7829,7 @@ class MapperApp:
         palette: PaletteSettings | None = None
         try:
             palette = self._commit_active_palette()
+            self._propagate_common_physical_palette(palette)
             valid = True
             if self.active_part_key is not None:
                 self.part_recommendations.pop(self.active_part_key, None)
@@ -6200,10 +7913,11 @@ class MapperApp:
 
         try:
             palette = self._commit_active_palette()
+            self._propagate_common_physical_palette(palette)
         except (ValueError, tk.TclError) as exc:
             messagebox.showerror(
                 self.i18n.text("dialog.settings.title"),
-                str(exc),
+                self.i18n.dialog_detail_text(exc),
                 parent=self.root,
             )
             return
@@ -6225,10 +7939,20 @@ class MapperApp:
             "palette.apply_physical_done", target=target
         )
         editor = getattr(self, "paint_editor", None)
-        reapply = getattr(editor, "reapply_palette_settings", None)
-        if callable(reapply):
-            reapply(target_key, self._copy_palette(palette), message=status)
-        self._clear_physical_palette_pending(target_key)
+        if target_key is None:
+            reapply_all = getattr(editor, "reapply_shading_settings", None)
+            if callable(reapply_all):
+                reapply_all(self.settings, message=status)
+            else:
+                reapply = getattr(editor, "reapply_palette_settings", None)
+                if callable(reapply):
+                    reapply(None, self._copy_palette(palette), message=status)
+            self._clear_all_physical_palette_pending()
+        else:
+            reapply = getattr(editor, "reapply_palette_settings", None)
+            if callable(reapply):
+                reapply(target_key, self._copy_palette(palette), message=status)
+            self._clear_physical_palette_pending(target_key)
         self._schedule_preview(immediate=True)
         self.status_var.set(status)
 
@@ -6247,7 +7971,7 @@ class MapperApp:
                 self._load_palette_variables(self._active_palette_for_controls())
                 messagebox.showerror(
                     self.i18n.text("palette.black_free_invalid_title"),
-                    str(exc),
+                    self.i18n.dialog_detail_text(exc),
                     parent=self.root,
                 )
                 return
@@ -6278,11 +8002,14 @@ class MapperApp:
             self._loading_palette_variables = False
         self._on_palette_changed()
         self.status_var.set(
-            f"{PALETTE_STATE_COUNT}色の滑らかパレットを有効にしました"
+            self.i18n.text(
+                "palette.state_count_enabled_status",
+                count=PALETTE_STATE_COUNT,
+            )
             if enabled
-            else (
-                f"追加{PALETTE_STATE_COUNT - 10}色を無効にし、"
-                "従来10色で割り当てます"
+            else self.i18n.text(
+                "palette.state_count_disabled_status",
+                disabled=PALETTE_STATE_COUNT - 10,
             )
         )
 
@@ -6354,8 +8081,7 @@ class MapperApp:
                 current = created = 0.0
             if not np.isclose(current, created, rtol=0.0, atol=1e-6):
                 self.status_var.set(
-                    "手動ジョイントの寸法を維持するには、出力高さを戻すか"
-                    "［パーツ処理］でジョイントを解除して配置し直してください"
+                    self.i18n.text("joint.height_mismatch_status")
                 )
                 return
         self._schedule_preview()
@@ -6448,6 +8174,7 @@ class MapperApp:
         ):
             label.configure(bg=color, fg=readable_text(color))
         self._layout_mix_family_cells()
+        self._refresh_radial_widgets()
         if schedule_preview:
             self._schedule_preview()
 
@@ -6539,7 +8266,7 @@ class MapperApp:
         except PartNameError as exc:
             messagebox.showerror(
                 self.i18n.text("paint.part_rename_title"),
-                str(exc),
+                self.i18n.dialog_detail_text(exc),
                 parent=self.root,
             )
             return
@@ -6599,15 +8326,18 @@ class MapperApp:
         try:
             plan = plan_palette_groups(self.settings, self.prepared.final)
             print_text = (
-                "全パーツが同じ物理4色なので、1回の印刷ジョブにできます。"
+                self.i18n.text("parts.print_one_job")
                 if plan.one_job
-                else (
-                    f"物理4色の構成が{len(plan.groups)}グループあります。"
-                    "このまま1回の印刷ジョブにはできません。"
+                else self.i18n.text(
+                    "parts.print_multiple_groups",
+                    count=len(plan.groups),
                 )
             )
         except ValueError as exc:
-            print_text = f"パーツ設定を確認してください: {exc}"
+            print_text = self.i18n.text(
+                "parts.settings_invalid",
+                reason=self.i18n.dialog_detail_text(exc),
+            )
         if self.active_part_key is None:
             target_text = self.i18n.text("parts.common")
         else:
@@ -6616,10 +8346,9 @@ class MapperApp:
                 target_text = self.prepared.final.part_names[part_id]
             except (ValueError, IndexError):
                 target_text = self.active_part_key
-        target_text = (
-            f"{target_text} is being edited"
-            if self.i18n.language == "en"
-            else f"{target_text} を編集中"
+        target_text = self.i18n.text(
+            "parts.editing_target",
+            target=target_text,
         )
         self.part_status_var.set(f"{target_text}\n{print_text}")
         iid = "__global__"
@@ -6638,8 +8367,8 @@ class MapperApp:
             self._commit_active_palette()
         except (ValueError, tk.TclError):
             messagebox.showerror(
-                "色設定を確認してください",
-                "現在の基本色または混色比率が不正なため、パーツを切り替えられません。",
+                self.i18n.text("palette.invalid.title"),
+                self.i18n.text("palette.invalid.switch_part"),
                 parent=self.root,
             )
             return
@@ -6704,7 +8433,11 @@ class MapperApp:
         try:
             palette = self._commit_active_palette()
         except (ValueError, tk.TclError) as exc:
-            messagebox.showerror("色設定を確認してください", str(exc), parent=self.root)
+            messagebox.showerror(
+                self.i18n.text("palette.invalid.title"),
+                self.i18n.dialog_detail_text(exc),
+                parent=self.root,
+            )
             return
         for key in self.prepared.final.part_keys:
             self.settings.part_palettes[key] = self._copy_palette(palette)
@@ -6713,12 +8446,17 @@ class MapperApp:
             self._clear_physical_palette_pending(key)
         self._clear_physical_palette_pending(self.active_part_key)
         self._refresh_part_tree()
+        status = self.i18n.text("parts.palette_copied_status")
+        editor = getattr(self, "paint_editor", None)
+        reapply_all = getattr(editor, "reapply_shading_settings", None)
+        if callable(reapply_all):
+            reapply_all(self.settings, message=status)
         self._schedule_preview(immediate=True)
-        self.status_var.set("現在の基本4色と混色比率を全パーツへコピーしました")
+        self.status_var.set(status)
 
     def _clear_selected_part_palette(self) -> None:
         if self.active_part_key is None:
-            self.status_var.set("全体共通設定は解除できません")
+            self.status_var.set(self.i18n.text("parts.common_cannot_clear_status"))
             return
         key = self.active_part_key
         self.settings.part_palettes.pop(key, None)
@@ -6728,13 +8466,15 @@ class MapperApp:
         self._load_palette_variables(self.settings.palette)
         self._refresh_palette_widgets(schedule_preview=True)
         self._refresh_part_tree()
-        self.status_var.set(f"{key} を全体共通の基本4色へ戻しました")
+        self.status_var.set(
+            self.i18n.text("parts.palette_reset_status", part=key)
+        )
 
     def _reference_samples_for_recommendation(
         self,
     ) -> tuple[np.ndarray | None, float, str]:
         if self.reference_image is None:
-            return None, 0.0, "元画像なし: 読み込んだモデルの色だけで判定"
+            return None, 0.0, self.i18n.text("palette.reference_none")
         image = self.reference_image.copy()
         image.thumbnail((512, 512), Image.Resampling.LANCZOS)
         extraction = extract_corner_foreground(image)
@@ -6742,10 +8482,10 @@ class MapperApp:
         if len(samples) < 64:
             samples = extraction.rgb.reshape(-1, 3)
             confidence = 0.08
-            note = "前景が小さいため低信頼の画像全体色を補助ヒントとして使用"
+            note = self.i18n.text("palette.reference_low_confidence")
         else:
             confidence = 0.20
-            note = "元画像の背景除外色を全体の補助ヒントとして使用"
+            note = self.i18n.text("palette.reference_foreground_used")
         if len(samples) > 20_000:
             step = int(np.ceil(len(samples) / 20_000))
             samples = samples[::step]
@@ -6764,6 +8504,7 @@ class MapperApp:
         black_free_brown_slot: int = 3,
         color_mode: str = COLOR_MODE_FULL_SPECTRUM,
         existing_palette: PaletteSettings | None = None,
+        preserve_existing_recipes: bool = False,
     ) -> PaletteSettings:
         candidates = tuple(getattr(recommendation, "candidates", ()))
         refs = [FilamentSnapshotRef.from_product(item) for item in candidates[:4]]
@@ -6771,6 +8512,9 @@ class MapperApp:
         flat_mode = (
             color_mode == COLOR_MODE_FLAT_FOUR
             and existing_palette is not None
+        )
+        preserve_recipes = bool(
+            preserve_existing_recipes and existing_palette is not None
         )
         return PaletteSettings(
             material=material,
@@ -6782,28 +8526,33 @@ class MapperApp:
             color_mode=color_mode,
             physical_hex=list(recommendation.physical_hex),
             enabled_states=(
-                [True] * 4 + list(existing_palette.enabled_states[4:])
-                if flat_mode
+                (
+                    [True] * 4 + list(existing_palette.enabled_states[4:])
+                    if flat_mode
+                    else list(existing_palette.enabled_states)
+                )
+                if flat_mode or preserve_recipes
                 else [True] * PALETTE_STATE_COUNT
             ),
             mix_hex_overrides=(
                 list(existing_palette.mix_hex_overrides)
-                if flat_mode
+                if flat_mode or preserve_recipes
                 else [None] * 6
             ),
             mix_ratios_b=(
                 list(existing_palette.mix_ratios_b)
-                if flat_mode
+                if flat_mode or preserve_recipes
                 else [recommendation.primary_ratio_b_percent] * 6
             ),
             secondary_mix_ratios_b=(
                 list(existing_palette.secondary_mix_ratios_b)
-                if flat_mode
+                if flat_mode or preserve_recipes
                 else [recommendation.secondary_ratio_b_percent] * 6
             ),
             output_mix_ratios_b=(
                 None
-                if not flat_mode or existing_palette.output_mix_ratios_b is None
+                if existing_palette is None
+                or existing_palette.output_mix_ratios_b is None
                 else list(existing_palette.output_mix_ratios_b)
             ),
             assignment_palette_hex=None,
@@ -6837,11 +8586,13 @@ class MapperApp:
         include_global = whole_model or tuple(part_ids) == all_part_ids
         requested_part_ids = tuple(part_ids)
         active_part_at_request = self.active_part_key
+        recommendation_policy = self._selected_recommendation_policy()
         input_snapshot = (
             self._mix_optimization_snapshot(settings),
             active_part_at_request,
             requested_part_ids,
             bool(whole_model),
+            recommendation_policy,
         )
         reference_image = (
             self.reference_image.copy()
@@ -6850,7 +8601,7 @@ class MapperApp:
         )
         global_reference_rgb: np.ndarray | None = None
         global_reference_confidence = 0.0
-        global_reference_note = "元画像なし: 読み込んだモデルの色だけで判定"
+        global_reference_note = self.i18n.text("palette.reference_none")
         if include_global:
             (
                 global_reference_rgb,
@@ -6861,11 +8612,19 @@ class MapperApp:
             )
 
         def work():
-            face_rgb = apply_tone_faces(
+            face_rgb = apply_tone_faces_for_mesh(
                 prepared.final.vertex_colors,
                 settings.tone,
                 vertices_unit=getattr(prepared.final, "vertices_unit", None),
                 faces=prepared.final.faces,
+                areas_unit=getattr(prepared.final, "areas_unit", None),
+                neighbors=getattr(prepared.final, "neighbors", None),
+                face_part_ids=getattr(prepared.final, "face_part_ids", None),
+                height_mm=float(settings.geometry.height_mm),
+            )
+            source_face_rgb = face_rgb_from_vertex_colors(
+                prepared.final.vertex_colors,
+                prepared.final.faces,
             )
             face_part_ids = np.asarray(prepared.final.face_part_ids)
             results: dict[str, FilamentRecommendation] = {}
@@ -6887,9 +8646,9 @@ class MapperApp:
                     if selected_material == MATERIAL_PLA:
                         # Preserve the established offline PLA workflow.  ABS
                         # and PETG never borrow PLA candidates.
-                        from .filament_recommender import DEFAULT_CURATED_CATALOG
-
-                        cached = tuple(DEFAULT_CURATED_CATALOG)
+                        cached = curated_catalog_for_recommendation(
+                            recommendation_policy
+                        )
                         catalogs[selected_material] = cached
                         catalog_unique_counts[selected_material] = len(
                             {candidate.hex_color for candidate in cached}
@@ -6934,7 +8693,10 @@ class MapperApp:
                     )
                     for product in usable
                 )
-                cached = map_catalog_to_curated_basics(product_catalog)
+                cached = map_catalog_to_curated_basics(
+                    product_catalog,
+                    recommendation_policy=recommendation_policy,
+                )
                 catalogs[selected_material] = cached
                 catalog_unique_counts[selected_material] = unique_count
                 return cached
@@ -6983,15 +8745,32 @@ class MapperApp:
                         used_reference_part_ids.add(part_id)
                 if key == "__global__":
                     recommendation_rgb = face_rgb
+                    recommendation_source_rgb = source_face_rgb
                     recommendation_areas = prepared.final.areas_unit
                     recommendation_faces = prepared.final.faces
                     recommendation_part_ids = face_part_ids
                 else:
                     recommendation_rgb = face_rgb[selected]
+                    recommendation_source_rgb = source_face_rgb[selected]
                     recommendation_areas = prepared.final.areas_unit[selected]
                     recommendation_faces = prepared.final.faces[selected]
                     recommendation_part_ids = face_part_ids[selected]
-                required_physical_rgb = None
+                required_physical_rgb = strong_cel_required_physical_rgb(
+                    recommendation_source_rgb,
+                    recommendation_rgb,
+                    recommendation_areas,
+                    settings.tone,
+                    local_palette.color_mode,
+                    face_group_ids=recommendation_part_ids,
+                )
+                required_physical_rgb = _merge_required_physical_rgb(
+                    required_physical_rgb,
+                    strong_cel_required_warm_rgb(
+                        recommendation_source_rgb,
+                        recommendation_areas,
+                        settings.tone,
+                    ),
+                )
                 final_neighbors = getattr(prepared.final, "neighbors", None)
                 final_vertices = getattr(
                     prepared.final, "vertices_unit", None
@@ -7012,10 +8791,7 @@ class MapperApp:
                             recommendation_neighbors,
                             final_vertices,
                             recommendation_faces,
-                            source_face_rgb=face_rgb_from_vertex_colors(
-                                prepared.final.vertex_colors,
-                                recommendation_faces,
-                            ),
+                            source_face_rgb=recommendation_source_rgb,
                             recover_source_chroma=(
                                 _flat_four_raw_chroma_recovery_enabled(
                                     settings.tone
@@ -7024,9 +8800,13 @@ class MapperApp:
                             face_group_ids=recommendation_part_ids,
                         )
                     )
-                    required_physical_rgb = flat_four_required_white_rgb(
+                    required_white_rgb = flat_four_required_white_rgb(
                         recommendation_rgb,
                         recommendation_areas,
+                    )
+                    required_physical_rgb = _merge_required_physical_rgb(
+                        required_physical_rgb,
+                        required_white_rgb,
                     )
                 results[key] = recommend_basic_filaments(
                     recommendation_rgb,
@@ -7068,10 +8848,11 @@ class MapperApp:
                 self.active_part_key,
                 requested_part_ids,
                 bool(whole_model),
+                self._selected_recommendation_policy(),
             ) if current_settings is not None else None
             if current_snapshot != input_snapshot:
                 self.status_var.set(
-                    "判定中にモデル・元画像・設定または選択パーツが変わったため、古い提案を破棄しました"
+                    self.i18n.text("palette.recommend_stale_status")
                 )
                 return
             for key, recommendation in results.items():
@@ -7103,6 +8884,16 @@ class MapperApp:
                     ),
                     color_mode=current_palette.color_mode,
                     existing_palette=current_palette,
+                    preserve_existing_recipes=(
+                        str(
+                            getattr(
+                                settings.tone,
+                                "illustration_mode",
+                                "off",
+                            )
+                        ).strip().lower()
+                        == "cel_strong"
+                    ),
                 )
                 if key == "__global__":
                     self.settings.palette = palette
@@ -7126,9 +8917,8 @@ class MapperApp:
                     self.settings, self.active_part_key
                 )
                 active_recommendation = results.get(self.active_part_key)
-            flat_mode = active_palette.color_mode == COLOR_MODE_FLAT_FOUR
             self._load_palette_variables(active_palette)
-            self._refresh_palette_widgets(schedule_preview=not flat_mode)
+            self._refresh_palette_widgets(schedule_preview=False)
             self._refresh_part_tree()
             chosen = (
                 active_recommendation
@@ -7151,60 +8941,89 @@ class MapperApp:
             ):
                 reference_note = global_reference_note
             elif reference_match is not None and reference_match.matched:
-                mirrored_note = "・左右反転補正" if reference_match.mirrored else ""
+                mirrored_note = (
+                    self.i18n.text("palette.reference_mirrored_suffix")
+                    if reference_match.mirrored
+                    else ""
+                )
                 used_ids = set(used_reference_part_ids)
                 requested_ids = set(requested_part_ids)
                 matched_count = len(used_ids & requested_ids)
                 if len(requested_part_ids) == 1 and matched_count == 0:
-                    reference_note = (
-                        "選択パーツは正面で確認できないため"
-                        "読み込んだモデルの色だけで判定 "
-                        f"(全体IoU {reference_match.selected_iou * 100:.0f}%)"
+                    reference_note = self.i18n.text(
+                        "palette.reference_selected_not_visible",
+                        iou=reference_match.selected_iou * 100,
                     )
                 else:
-                    reference_note = (
-                        f"元画像を3D正面へ対応: {matched_count}/"
-                        f"{len(requested_part_ids)}パーツ / "
-                        f"IoU {reference_match.selected_iou * 100:.0f}%"
-                        f"{mirrored_note}"
+                    reference_note = self.i18n.text(
+                        "palette.reference_matched",
+                        matched=matched_count,
+                        requested=len(requested_part_ids),
+                        iou=reference_match.selected_iou * 100,
+                        mirrored=mirrored_note,
                     )
             elif reference_match is not None:
-                reference_note = (
-                    "元画像との形状対応が弱いため"
-                    "読み込んだモデルの色だけで判定 "
-                    f"(IoU {reference_match.selected_iou * 100:.0f}%)"
+                reference_note = self.i18n.text(
+                    "palette.reference_weak",
+                    iou=reference_match.selected_iou * 100,
                 )
             elif reference_image is not None:
-                reference_note = (
-                    "元画像は未対応パーツのため"
-                    "読み込んだモデルの色だけで判定"
+                reference_note = self.i18n.text(
+                    "palette.reference_unsupported_part"
                 )
             else:
-                reference_note = (
-                    "元画像なし: 読み込んだモデルの色だけで判定"
-                )
+                reference_note = self.i18n.text("palette.reference_none")
             self.recommendation_var.set(
-                f"提案: {names}\n"
-                f"平均ΔE {mean:.1f} / ΔE12以内 {coverage * 100:.0f}% / "
-                f"信頼度 {chosen.confidence * 100:.0f}%\n"
-                f"{material_metric}\n"
-                f"{reference_note}"
-            )
-            result_status = (
-                (
-                    f"{len(results) - 1}パーツと全体共通の提案を適用しました"
-                    if "__global__" in results and len(results) > 1
-                    else f"{len(results)}件の基本フィラメント提案を適用しました"
+                self.i18n.text(
+                    "palette.recommendation_summary",
+                    names=names,
+                    mean=mean,
+                    coverage=coverage * 100,
+                    confidence=chosen.confidence * 100,
+                    material_metric=material_metric,
+                    reference_note=reference_note,
                 )
-                + ("（選択モードに合わせた自動判定）" if automatic else "")
             )
+            if "__global__" in results and len(results) > 1:
+                result_status = self.i18n.text(
+                    "palette.recommendation_status_parts_common",
+                    count=len(results) - 1,
+                )
+            else:
+                result_status = self.i18n.text(
+                    "palette.recommendation_status_count",
+                    count=len(results),
+                )
+            if automatic:
+                result_status += self.i18n.text(
+                    "palette.recommendation_status_automatic_suffix"
+                )
+            recommended_palettes = (
+                self.settings.palette
+                if key == "__global__"
+                else resolve_palette_for_part_key(self.settings, key)
+                for key in results
+            )
+            if (
+                str(
+                    getattr(settings.tone, "illustration_mode", "off")
+                )
+                == "cel_strong"
+                and any(
+                    palette.color_mode == COLOR_MODE_FULL_SPECTRUM
+                    and palette.output_mix_ratios_b is None
+                    for palette in recommended_palettes
+                )
+            ):
+                result_status += self.i18n.text(
+                    "palette.strong_cel_black_output_hint_suffix"
+                )
             self.status_var.set(result_status)
-            if flat_mode:
-                editor = getattr(self, "paint_editor", None)
-                reapply = getattr(editor, "reapply_shading_settings", None)
-                if callable(reapply):
-                    reapply(self.settings, message=result_status)
-                self._schedule_preview(immediate=True)
+            editor = getattr(self, "paint_editor", None)
+            reapply = getattr(editor, "reapply_shading_settings", None)
+            if callable(reapply):
+                reapply(self.settings, message=result_status)
+            self._schedule_preview(immediate=True)
             if (
                 chosen_material in {MATERIAL_ABS, MATERIAL_PETG}
                 and float(chosen.mean_delta_e76)
@@ -7221,7 +9040,9 @@ class MapperApp:
                     parent=self.root,
                 )
 
-        self._submit_main("基本フィラメント構成を判定しています", work, done)
+        self._submit_main(
+            self.i18n.text("progress.palette_recommend"), work, done
+        )
 
     def _recommend_selected_part(self) -> None:
         if self.prepared is None:
@@ -7276,7 +9097,14 @@ class MapperApp:
             initial = normalize_hex(self.physical_vars[index].get())
         except ValueError:
             initial = "#FFFFFF"
-        _rgb, color = colorchooser.askcolor(color=initial, title=f"{PHYSICAL_NAMES[index]}フィラメントの表示色", parent=self.root)
+        _rgb, color = colorchooser.askcolor(
+            color=initial,
+            title=self.i18n.text(
+                "palette.choose_physical_color_title",
+                slot=PHYSICAL_NAMES[index],
+            ),
+            parent=self.root,
+        )
         if color:
             self.physical_vars[index].set(color.upper())
 
@@ -7292,7 +9120,7 @@ class MapperApp:
                     self.i18n.text("filament_candidates.title"),
                     self.i18n.text(
                         "filament_candidates.error",
-                        reason=str(exc),
+                        reason=self.i18n.dialog_detail_text(exc),
                     ),
                     parent=self.root,
                 )
@@ -7514,34 +9342,58 @@ class MapperApp:
                 if part_reference is not None and part_reference.sample_count:
                     part_reference_rgb = part_reference.rgb_samples
                     part_reference_confidence = part_reference.confidence
-            all_face_rgb = apply_tone_faces(
+            all_face_rgb = apply_tone_faces_for_mesh(
                 prepared.final.vertex_colors,
                 settings.tone,
                 vertices_unit=getattr(prepared.final, "vertices_unit", None),
                 faces=prepared.final.faces,
+                areas_unit=getattr(prepared.final, "areas_unit", None),
+                neighbors=getattr(prepared.final, "neighbors", None),
+                face_part_ids=getattr(prepared.final, "face_part_ids", None),
+                height_mm=float(settings.geometry.height_mm),
+            )
+            all_source_face_rgb = face_rgb_from_vertex_colors(
+                prepared.final.vertex_colors,
+                prepared.final.faces,
             )
             face_rgb = all_face_rgb[selected_faces]
+            source_face_rgb = all_source_face_rgb[selected_faces]
             face_areas = prepared.final.areas_unit[selected_faces]
             final_neighbors = getattr(prepared.final, "neighbors", None)
             final_vertices = getattr(prepared.final, "vertices_unit", None)
-            required_physical_rgb = None
+            final_part_ids = getattr(
+                prepared.final,
+                "face_part_ids",
+                None,
+            )
+            selected_part_ids = (
+                np.asarray(final_part_ids)[selected_faces]
+                if final_part_ids is not None
+                and np.asarray(final_part_ids).shape
+                == (len(prepared.final.faces),)
+                else None
+            )
+            required_physical_rgb = strong_cel_required_physical_rgb(
+                source_face_rgb,
+                face_rgb,
+                face_areas,
+                settings.tone,
+                active_palette.color_mode,
+                face_group_ids=selected_part_ids,
+            )
+            required_physical_rgb = _merge_required_physical_rgb(
+                required_physical_rgb,
+                strong_cel_required_warm_rgb(
+                    source_face_rgb,
+                    face_areas,
+                    settings.tone,
+                ),
+            )
             if (
                 active_palette.color_mode == COLOR_MODE_FLAT_FOUR
                 and final_vertices is not None
             ):
                 selected_triangles = prepared.final.faces[selected_faces]
-                final_part_ids = getattr(
-                    prepared.final,
-                    "face_part_ids",
-                    None,
-                )
-                selected_part_ids = (
-                    np.asarray(final_part_ids)[selected_faces]
-                    if final_part_ids is not None
-                    and np.asarray(final_part_ids).shape
-                    == (len(prepared.final.faces),)
-                    else None
-                )
                 recommendation_neighbors = _local_part_neighbors(
                     final_neighbors,
                     selected_faces,
@@ -7554,10 +9406,7 @@ class MapperApp:
                         recommendation_neighbors,
                         final_vertices,
                         selected_triangles,
-                        source_face_rgb=face_rgb_from_vertex_colors(
-                            prepared.final.vertex_colors,
-                            selected_triangles,
-                        ),
+                        source_face_rgb=source_face_rgb,
                         recover_source_chroma=(
                             _flat_four_raw_chroma_recovery_enabled(
                                 settings.tone
@@ -7566,9 +9415,13 @@ class MapperApp:
                         face_group_ids=selected_part_ids,
                     )
                 )
-                required_physical_rgb = flat_four_required_white_rgb(
+                required_white_rgb = flat_four_required_white_rgb(
                     face_rgb,
                     face_areas,
+                )
+                required_physical_rgb = _merge_required_physical_rgb(
+                    required_physical_rgb,
+                    required_white_rgb,
                 )
             pink_mask = None
             if settings.tone.pink_protection:
@@ -7778,8 +9631,16 @@ class MapperApp:
                 parent=self.root,
             )
             return
-        self.physical_vars[index].set(rgb8_to_hex(self.sample_rgb))
+        color = rgb8_to_hex(self.sample_rgb)
+        self.physical_vars[index].set(color)
         self.enabled_vars[index].set(True)
+        self.status_var.set(
+            self.i18n.text(
+                "palette.base_applied",
+                slot=PHYSICAL_NAMES[index],
+                color=color,
+            )
+        )
 
     def _reset_physical_colors(self) -> None:
         defaults = PaletteSettings(
@@ -7838,8 +9699,12 @@ class MapperApp:
         )
         preflight_error = _mix_optimization_preflight(preflight_settings)
         if preflight_error is not None:
-            title, message = preflight_error
-            messagebox.showinfo(title, message, parent=dialog_parent)
+            title_key, message_key = preflight_error
+            messagebox.showinfo(
+                self.i18n.text(title_key),
+                self.i18n.text(message_key, count=PALETTE_STATE_COUNT),
+                parent=dialog_parent,
+            )
             return
         affected_manual_states = _enabled_manual_mix_states(
             self.manual_overrides,
@@ -7847,8 +9712,8 @@ class MapperApp:
         )
         if affected_manual_states:
             if not messagebox.askyesno(
-                "手修正の色も変化します",
-                "混色比率を変えると、手修正で指定した混色番号は維持されますが、その実際の混色が変わります。\n\n最適化を続けますか？",
+                self.i18n.text("mix.manual_warning.title"),
+                self.i18n.text("mix.manual_warning.message"),
                 parent=dialog_parent,
             ):
                 return
@@ -7856,7 +9721,7 @@ class MapperApp:
         input_snapshot = self._mix_optimization_snapshot(settings)
         if target_key is None:
             selected_faces = np.arange(len(prepared.final.faces))
-            target_label = "モデル全体"
+            target_label = self.i18n.text("parts.whole_model")
         else:
             part_id = prepared.final.part_keys.index(target_key)
             selected_faces = np.flatnonzero(
@@ -7903,12 +9768,10 @@ class MapperApp:
                 or self._mix_optimization_snapshot(current_settings) != input_snapshot
             ):
                 self._clear_mix_optimization_undo()
-                self.status_var.set(
-                    "最適化中に設定またはモデルが変わったため、結果を適用しませんでした"
-                )
+                self.status_var.set(self.i18n.text("mix.stale_status"))
                 messagebox.showinfo(
-                    "最適化結果を適用しませんでした",
-                    "最適化の途中で設定・モデル・手修正のいずれかが変更されました。現在の内容を保護するため、計算結果は破棄しました。必要であれば、もう一度自動最適化してください。",
+                    self.i18n.text("mix.stale_result.title"),
+                    self.i18n.text("mix.stale_result.message"),
                     parent=dialog_parent,
                 )
                 return
@@ -7933,18 +9796,23 @@ class MapperApp:
                 on_applied(target_key, self._copy_palette(updated_palette))
             if changed:
                 self.status_var.set(
-                    f"{target_label}の混色比率を最適化しました: "
-                    f"平均ΔE76 {result.initial_weighted_mean_delta_e76:.2f} → "
-                    f"{result.weighted_mean_delta_e76:.2f} "
-                    f"（{result.improvement_percent:.1f}%改善）"
+                    self.i18n.text(
+                        "mix.applied_status",
+                        target=target_label,
+                        before=result.initial_weighted_mean_delta_e76,
+                        after=result.weighted_mean_delta_e76,
+                        improvement=result.improvement_percent,
+                    )
                 )
             else:
-                self.status_var.set(
-                    "改善する混色比率が見つからなかったため、現在値を変更しませんでした"
-                )
+                self.status_var.set(self.i18n.text("mix.no_improvement_status"))
             self._schedule_preview(immediate=True)
 
-        self._submit_main(f"{target_label}の陰影へ混色6色を最適化しています", work, done)
+        self._submit_main(
+            self.i18n.text("progress.mix_optimize", target=target_label),
+            work,
+            done,
+        )
 
     def _undo_mix_optimization(self, *, on_applied=None) -> None:
         if self.last_mix_ratios is None:
@@ -7964,7 +9832,7 @@ class MapperApp:
         updated_palette = self._commit_active_palette()
         if on_applied is not None:
             on_applied(target_key, self._copy_palette(updated_palette))
-        self.status_var.set("直前の自動最適化前の混色比率へ戻しました")
+        self.status_var.set(self.i18n.text("mix.undo_status"))
         self._schedule_preview(immediate=True)
 
     def _schedule_preview(self, *, immediate: bool = False) -> None:
@@ -7997,6 +9865,11 @@ class MapperApp:
         if settings is None or self.prepared is None:
             return
         selection_key = self.active_part_key
+        preview_direction = self.preview_direction_var.get()
+        if preview_direction not in {
+            "front", "back", "left", "right", "top", "bottom"
+        }:
+            preview_direction = "front"
         use_manual = (
             self.manual_overrides is not None
             and len(self.manual_overrides) == len(self.prepared.final.faces)
@@ -8037,6 +9910,7 @@ class MapperApp:
                     size=(560, 700),
                     background=(9, 12, 17),
                     active_part_id=active_part_id,
+                    direction=preview_direction,
                 )
                 source = pair.source
                 target = pair.target
@@ -8059,11 +9933,10 @@ class MapperApp:
             self.root.after_cancel(self.canvas_after_id)
         self.canvas_after_id = self.root.after(80, self._draw_comparison_canvas)
 
-    def _placeholder(self, size: tuple[int, int], text: str) -> Image.Image:
+    def _placeholder(self, size: tuple[int, int]) -> Image.Image:
         image = Image.new("RGB", size, (9, 12, 17))
         draw = ImageDraw.Draw(image)
         draw.rounded_rectangle((12, 12, size[0] - 12, size[1] - 12), radius=12, outline=(43, 53, 68), width=2)
-        draw.text((size[0] // 2, size[1] // 2), text, fill=(145, 157, 175), anchor="mm")
         return image
 
     def _draw_comparison_canvas(self) -> None:
@@ -8091,33 +9964,38 @@ class MapperApp:
                 else "preview.target"
             ),
         )
-        sources: list[Image.Image] = []
-        sources.append(
-            self.reference_image
-            or self._placeholder(
-                (panel_width, panel_height),
-                self.i18n.text("preview.open_reference"),
-            )
+        placeholder_texts = (
+            (
+                self.i18n.text("preview.open_reference")
+                if self.reference_image is None
+                else None
+            ),
+            (
+                self.i18n.text("preview.process_obj")
+                if self.source_render is None
+                else None
+            ),
+            (
+                self.i18n.text("preview.target_placeholder")
+                if self.target_render is None
+                else None
+            ),
         )
-        sources.append(
-            self.source_render
-            or self._placeholder(
-                (panel_width, panel_height),
-                self.i18n.text("preview.process_obj"),
+        sources = [
+            source or self._placeholder((panel_width, panel_height))
+            for source in (
+                self.reference_image,
+                self.source_render,
+                self.target_render,
             )
-        )
-        sources.append(
-            self.target_render
-            or self._placeholder(
-                (panel_width, panel_height),
-                self.i18n.text("preview.target_placeholder"),
-            )
-        )
+        ]
         self.canvas_images.clear()
         self.reference_mapping = None
-        for index, (label, source) in enumerate(zip(labels, sources, strict=True)):
+        for index, (label, source, placeholder_text) in enumerate(
+            zip(labels, sources, placeholder_texts, strict=True)
+        ):
             x = margin + index * (panel_width + gap)
-            canvas.create_text(x + panel_width // 2, margin + title_height // 2, text=label, fill=TEXT, font=("Yu Gothic UI", 10, "bold"))
+            canvas.create_text(x + panel_width // 2, margin + title_height // 2, text=label, fill=TEXT, font=ui_font(10, "bold"))
             top = margin + title_height
             contained = ImageOps.contain(source.convert("RGB"), (panel_width, panel_height), method=Image.Resampling.LANCZOS)
             px = x + (panel_width - contained.width) // 2
@@ -8125,6 +10003,14 @@ class MapperApp:
             photo = ImageTk.PhotoImage(contained)
             self.canvas_images.append(photo)
             canvas.create_image(px, py, image=photo, anchor="nw")
+            if placeholder_text is not None:
+                canvas.create_text(
+                    x + panel_width // 2,
+                    top + panel_height // 2,
+                    text=placeholder_text,
+                    fill=MUTED,
+                    font=ui_font(10),
+                )
             canvas.create_rectangle(x, top, x + panel_width, top + panel_height, outline="#273242", width=1)
             if index == 0 and self.reference_image is not None:
                 self.reference_mapping = (px, py, contained.width, contained.height, self.reference_image.width, self.reference_image.height)
@@ -8136,7 +10022,7 @@ class MapperApp:
                 height - 18,
                 text=self.i18n.text("preview.click_reference"),
                 fill=ACCENT,
-                font=("Yu Gothic UI", 10, "bold"),
+                font=ui_font(10, "bold"),
             )
 
     def _toggle_eyedropper(self) -> None:
@@ -8228,13 +10114,10 @@ class MapperApp:
         self._apply_sample_to_physical(target)
         self.physical_eyedropper_target = None
         self.eyedropper_active = False
-        self.status_var.set(
-            self.i18n.text(
-                "palette.base_applied",
-                color=sample_hex,
-                slot=PHYSICAL_NAMES[target],
-            )
-        )
+        # ``_apply_sample_to_physical`` already reports the mode-specific
+        # result: Flat Four is refreshed immediately, while Full Spectrum is
+        # deliberately staged behind its explicit Apply action.  Do not
+        # replace that useful status with the old one-size-fits-all guidance.
         self._sync_eyedropper_controls()
 
     def _update_recipe_candidates(self) -> None:
@@ -8274,7 +10157,12 @@ class MapperApp:
         direct = min(endpoint_candidates, key=lambda value: value.delta_e76)
         direct_index = direct.color_a_index if direct.ratio_b_percent == 0 else direct.color_b_index
         self.direct_match_label.configure(
-            text=f"基本色の近似: {SHORT_NAMES[direct_index]}\nΔE76 {direct.delta_e76:.2f}（{self._quality(direct.delta_e76)}）"
+            text=self.i18n.text(
+                "recipe.direct_match",
+                slot=SHORT_NAMES[direct_index],
+                delta=direct.delta_e76,
+                quality=self._quality(direct.delta_e76),
+            )
         )
 
     def _quality(self, delta_e: float) -> str:
@@ -8312,7 +10200,12 @@ class MapperApp:
         self.mix_ratio_vars[pair_index].set(recipe.ratio_b_percent)
         self.enabled_vars[pair_index + 4].set(True)
         self.status_var.set(
-            f"{PAIR_NAMES[pair_index]} を {recipe.ratio_a_percent}:{recipe.ratio_b_percent} に設定しました"
+            self.i18n.text(
+                "mix.recipe_applied_status",
+                pair=PAIR_NAMES[pair_index],
+                ratio_a=recipe.ratio_a_percent,
+                ratio_b=recipe.ratio_b_percent,
+            )
         )
 
     def _project_payload_for_save(
@@ -8419,7 +10312,7 @@ class MapperApp:
         def failed(exc: Exception, _details: str) -> bool:
             messagebox.showerror(
                 self.i18n.text("project.save_error"),
-                str(exc),
+                self.i18n.dialog_detail_text(exc),
                 parent=self.root,
             )
             return True
@@ -8557,7 +10450,7 @@ class MapperApp:
         if part_name_error is not None:
             messagebox.showwarning(
                 self.i18n.text("paint.part_rename_title"),
-                part_name_error,
+                self.i18n.dialog_detail_text(part_name_error),
                 parent=self.root,
             )
         self.manual_overrides = manual_overrides
@@ -8602,8 +10495,8 @@ class MapperApp:
             return
         if self.busy:
             messagebox.showinfo(
-                "処理中です",
-                "現在の処理が終わってからプロジェクトを読み込んでください。",
+                self.i18n.text("dialog.busy.title"),
+                self.i18n.text("project.busy_load.message"),
                 parent=self.root,
             )
             return
@@ -8802,7 +10695,7 @@ class MapperApp:
                 except GltfImportError as exc:
                     messagebox.showerror(
                         self.i18n.text("dialog.large_glb.inspect_title"),
-                        str(exc),
+                        self.i18n.dialog_detail_text(exc),
                         parent=self.root,
                     )
                     return
@@ -8869,7 +10762,7 @@ class MapperApp:
         def failed(exc: Exception, _details: str) -> bool:
             messagebox.showerror(
                 self.i18n.text("project.load_error"),
-                str(exc),
+                self.i18n.dialog_detail_text(exc),
                 parent=self.root,
             )
             return True
@@ -8917,7 +10810,7 @@ class MapperApp:
             # mutate the in-flight calibration snapshot.
             palette = self._copy_palette(self._palette_from_variables())
         except (ValueError, tk.TclError) as exc:
-            reason = str(exc)
+            reason = self.i18n.dialog_detail_text(exc)
             self.status_var.set(
                 self.i18n.text("state.calibration_error", reason=reason)
             )
@@ -8981,13 +10874,13 @@ class MapperApp:
                     self.i18n.text("dialog.calibration_folder_error.title"),
                     self.i18n.text(
                         "dialog.calibration_folder_error.message",
-                        reason=str(exc),
+                        reason=self.i18n.dialog_detail_text(exc),
                     ),
                     parent=self.root,
                 )
 
         def on_error(exc: Exception, _details: str) -> bool:
-            reason = str(exc)
+            reason = self.i18n.dialog_detail_text(exc)
             self.status_var.set(
                 self.i18n.text("state.calibration_error", reason=reason)
             )
@@ -9159,7 +11052,8 @@ class MapperApp:
 
         def inspect_error(exc: Exception, _details: str) -> bool:
             reason = self.i18n.text(
-                "color_depth.reason.invalid_part_3mf", reason=str(exc)
+                "color_depth.reason.invalid_part_3mf",
+                reason=self.i18n.dialog_detail_text(exc),
             )
             self.status_var.set(reason)
             messagebox.showerror(
@@ -9302,8 +11196,6 @@ class MapperApp:
     def _export_radial_experiment(self) -> None:
         """Export the separate Cycle-free radial laboratory format."""
 
-        if not self._require_developer_features():
-            return
         if self.paint_editor is not None:
             self.paint_editor.close(after_close=self._export_radial_experiment)
             return
@@ -9324,6 +11216,13 @@ class MapperApp:
         settings = self._variables_to_settings(show_error=True)
         if settings is None:
             return
+        if not bool(settings.radial.experimental_enabled):
+            messagebox.showinfo(
+                self.i18n.text("radial.opt_in_required_title"),
+                self.i18n.text("radial.opt_in_required"),
+                parent=self.root,
+            )
+            return
         if self.prepared_key != _geometry_key(settings.geometry):
             self._process_geometry(
                 reuse_asset=self.asset is not None,
@@ -9334,6 +11233,65 @@ class MapperApp:
             make_copy=True
         )
         if not valid_paint:
+            return
+        # Freeze the visible target before confirmation and before crossing
+        # the worker boundary.  A later UI selection must never redirect an
+        # already-confirmed experimental export to another part.
+        selected_part_key = getattr(self, "active_part_key", None)
+        export_target = self._radial_export_target_label(selected_part_key)
+        black_slot = self._radial_black_slot_index()
+        summary_var = getattr(self, "radial_contrast_summary_var", None)
+        try:
+            contrast_summary = str(summary_var.get())
+        except (AttributeError, tk.TclError):
+            contrast_summary = ""
+        selective_hybrid = (
+            settings.radial.conversion_mode
+            == RADIAL_CONVERSION_SELECTIVE_HYBRID
+        )
+        adaptive_skin = (
+            selective_hybrid
+            and settings.radial.skin_thickness_mode
+            == RADIAL_SKIN_MODE_ADAPTIVE
+        )
+        mapping_var = getattr(self, "radial_skin_mapping_summary_var", None)
+        try:
+            skin_mapping = str(mapping_var.get())
+        except (AttributeError, tk.TclError):
+            skin_mapping = ""
+        if not messagebox.askyesno(
+            self.i18n.text(
+                "radial.confirm_title_hybrid"
+                if selective_hybrid
+                else "radial.confirm_title"
+            ),
+            self.i18n.text(
+                "radial.confirm_message_hybrid_adaptive"
+                if adaptive_skin
+                else (
+                    "radial.confirm_message_hybrid"
+                    if selective_hybrid
+                    else "radial.confirm_message"
+                ),
+                black=PHYSICAL_NAMES[black_slot],
+                target=export_target,
+                thickness=float(settings.radial.outer_skin_thickness_mm),
+                threshold=float(settings.radial.minimum_lstar_delta),
+                layer=float(settings.radial.layer_height_mm),
+                wall=str(settings.radial.wall_generator),
+                summary=contrast_summary,
+                minimum=float(
+                    settings.radial.adaptive_skin_min_thickness_mm
+                ),
+                maximum=float(
+                    settings.radial.adaptive_skin_max_thickness_mm
+                ),
+                gamma=float(settings.radial.adaptive_skin_gamma),
+                bands=int(settings.radial.adaptive_skin_bands),
+                mapping=skin_mapping,
+            ),
+            parent=self.root,
+        ):
             return
         value = filedialog.asksaveasfilename(
             parent=self.root,
@@ -9348,8 +11306,9 @@ class MapperApp:
             return
         destination = Path(value)
         prepared = self.prepared
-        black_slot = self._black_output_slot_index()
-        running = self.i18n.text("radial.running")
+        running = self.i18n.text(
+            "radial.running_hybrid" if selective_hybrid else "radial.running"
+        )
 
         def work():
             return export_radial_bundle(
@@ -9359,17 +11318,36 @@ class MapperApp:
                 black_slot=black_slot,
                 manual_overrides=manual_overrides,
                 progress=self._thread_progress,
+                part_key=selected_part_key,
             )
 
         def done(result) -> None:
             self.status_var.set(str(result.model_path))
             should_open_folder = messagebox.askyesno(
-                self.i18n.text("radial.done_title"),
                 self.i18n.text(
-                    "radial.done_message",
+                    "radial.done_title_hybrid"
+                    if selective_hybrid
+                    else "radial.done_title"
+                ),
+                self.i18n.text(
+                    "radial.done_message_hybrid_adaptive"
+                    if adaptive_skin
+                    else (
+                        "radial.done_message_hybrid"
+                        if selective_hybrid
+                        else "radial.done_message"
+                    ),
                     path=str(result.model_path),
                     thickness=float(result.skin_thickness_mm),
                     layer=float(result.layer_height_mm),
+                    minimum=float(
+                        settings.radial.adaptive_skin_min_thickness_mm
+                    ),
+                    maximum=float(
+                        settings.radial.adaptive_skin_max_thickness_mm
+                    ),
+                    gamma=float(settings.radial.adaptive_skin_gamma),
+                    bands=int(settings.radial.adaptive_skin_bands),
                 ),
                 parent=self.root,
             )
@@ -9405,7 +11383,7 @@ class MapperApp:
         boundaries: int,
         unmatched: int,
     ) -> None:
-        """Stop an unsafe export while keeping boundary recovery actionable."""
+        """Stop an unsafe export and report the repair failure without 3D UI."""
 
         title = self.i18n.text(title_key)
         message = self.i18n.text(
@@ -9413,34 +11391,20 @@ class MapperApp:
             boundaries=int(boundaries),
             unmatched=int(unmatched),
         )
-        records = assembly.get("boundary_diagnostics", [])
-        can_inspect = bool(
-            isinstance(records, (list, tuple)) and records
-        )
         self.status_var.set(
             self.i18n.text("assembly.export_auto_solidify_stopped")
         )
-        if not can_inspect:
-            messagebox.showerror(title, message, parent=self.root)
-            return
-        inspect_now = messagebox.askyesno(
-            title,
-            message
-            + self.i18n.text("assembly.export_auto_solidify_inspect"),
-            parent=self.root,
-        )
-        if inspect_now:
-            self._show_boundary_diagnostics()
+        messagebox.showerror(title, message, parent=self.root)
 
     def _start_export_auto_solidification(
         self, settings: AppSettings
     ) -> bool:
         """Safely solidify an open model, then resume export on success only.
 
-        This intentionally does not enable ``repair_unmatched_boundaries``.
-        Export-time convenience may weld proven GLB seams or matched part
-        boundaries, but a real/unmatched hole still requires an explicit user
-        repair action and its stricter small-planar-hole checks.
+        A single logical GLB also opts into the existing strict tiny-hole
+        repair.  That path caps only planar loops up to 2 mm, then must pass the
+        same watertight, manifold, winding, positive-volume and 3MF checks.
+        Multipart inputs keep the established matched-seam-only behaviour.
         """
 
         if self.prepared is None or self.source_path is None:
@@ -9468,9 +11432,10 @@ class MapperApp:
             )
             return False
 
-        # Do not silently turn the opt-in tiny-hole capper on at export time.
-        # Matched seams are safe to close automatically; unmatched openings
-        # can represent intentional vents, gaps, or genuinely missing faces.
+        # Explicit multipart unmatched loops can represent intentional vents,
+        # assembly gaps, or genuinely missing faces, so export must still stop.
+        # The ordinary single-logical GLB path below has no multipart loop
+        # records and may opt into only the separately bounded strict capper.
         if unmatched > 0:
             self._offer_export_boundary_recovery(
                 title_key="assembly.export_auto_solidify_unsafe_title",
@@ -9493,6 +11458,10 @@ class MapperApp:
             and len(source_part_names) > 1
             and len(source_face_part_ids) == len(source_faces)
         )
+        repair_single_gltf_tiny_holes = bool(
+            source_suffix in {".glb", ".gltf"}
+            and not explicit_multipart
+        )
         if (
             source_suffix not in {".glb", ".gltf"}
             and not explicit_multipart
@@ -9511,7 +11480,11 @@ class MapperApp:
         proceed = messagebox.askyesno(
             self.i18n.text("assembly.export_auto_solidify_title"),
             self.i18n.text(
-                "assembly.export_auto_solidify_confirm",
+                (
+                    "assembly.export_auto_solidify_confirm_single"
+                    if repair_single_gltf_tiny_holes
+                    else "assembly.export_auto_solidify_confirm"
+                ),
                 boundaries=boundaries,
             ),
             parent=self.root,
@@ -9534,7 +11507,9 @@ class MapperApp:
             self.repair_unmatched_boundaries_var.set(previous_repair)
 
         self.solidify_parts_var.set(True)
-        self.repair_unmatched_boundaries_var.set(False)
+        self.repair_unmatched_boundaries_var.set(
+            repair_single_gltf_tiny_holes
+        )
         self.status_var.set(
             self.i18n.text("assembly.export_auto_solidify_running")
         )
@@ -9569,7 +11544,11 @@ class MapperApp:
         if self.prepared_key != _geometry_key(settings.geometry):
             self._process_geometry(reuse_asset=self.asset is not None, after_done=self._export)
             return
-        if not bool(self.prepared.topology.get("watertight")):
+        if (
+            normalize_export_validation_level(settings.export_validation_level)
+            in {"high", "medium"}
+            and not bool(self.prepared.topology.get("watertight"))
+        ):
             self._start_export_auto_solidification(settings)
             return
         grouping = plan_palette_groups(settings, self.prepared.final)
@@ -9598,25 +11577,22 @@ class MapperApp:
                     return
             else:
                 part_export_note = (
-                    "\n\n同時に、生成した分割パーツごとの基本4色を使う"
-                    "独立3MFも出力します。"
+                    self.i18n.text("export.part_palette_conflict.note")
                     if settings.geometry.export_individual_parts
                     else ""
                 )
                 force_common_palette = messagebox.askyesno(
-                    "パーツ別4色は1回で印刷できません",
-                    f"現在は{len(grouping.groups)}種類の基本フィラメント構成があります。\n\n"
-                    "Snapmaker U1へ同時装填できる物理フィラメントは4本なので、"
-                    "異なる構成を1つの4色印刷ジョブへ正しく記録できません。\n\n"
-                    "モデルの印刷パーツ構造と個別設定メタデータは保持したまま、"
-                    "印刷色だけ［全体共通］の4色へ統合して出力しますか？\n"
-                    + part_export_note
-                    + "\n［いいえ］では出力を中止し、調整プロジェクトの設定を保ちます。",
+                    self.i18n.text("export.part_palette_conflict.title"),
+                    self.i18n.text(
+                        "export.part_palette_conflict.message",
+                        groups=len(grouping.groups),
+                        note=part_export_note,
+                    ),
                     parent=self.root,
                 )
                 if not force_common_palette:
                     self.status_var.set(
-                        "3MF出力を中止しました。印刷パーツ別設定は保持されています"
+                        self.i18n.text("export.part_palette_cancelled_status")
                     )
                     return
         valid_paint, manual_overrides = self._validated_manual_overrides(
@@ -9643,6 +11619,8 @@ class MapperApp:
         )
         if not value:
             return
+        if not self._confirm_export_validation_level(settings):
+            return
         destination = Path(value)
         include_vertex_obj = bool(self.include_obj_var.get())
         prepared = self.prepared
@@ -9663,10 +11641,33 @@ class MapperApp:
 
         def done(result) -> None:
             individual_count = len(result.part_model_paths)
+            geometry_level = normalize_export_validation_level(
+                result.validation.get(
+                    "geometry_validation_level", settings.export_validation_level
+                )
+            )
+            geometry_defects = bool(
+                result.validation.get("geometry_warnings")
+                or result.validation.get("geometry_warning_parts")
+                or result.validation.get("geometry_issues_ignored")
+                or result.validation.get("valid_solids") is False
+            )
+            review_required = geometry_level != "high" or geometry_defects
+            geometry_note = (
+                self.i18n.text(
+                    "export.validation.done_note",
+                    level=self.i18n.text(f"export.validation.{geometry_level}"),
+                )
+                if geometry_level != "high"
+                else ""
+            )
+            if geometry_defects:
+                geometry_note += self.i18n.text("export.validation.defects_note")
             if result.individual_only:
                 self.status_var.set(
                     self.i18n.text(
-                        "export.individual_only_status",
+                        "export.validation.individual_status"
+                        if review_required else "export.individual_only_status",
                         count=individual_count,
                     )
                 )
@@ -9679,7 +11680,7 @@ class MapperApp:
                 )
                 status_key = (
                     "export.done_status_warning"
-                    if warning_parts
+                    if warning_parts or review_required
                     else "export.done_status"
                 )
                 status_text = self.i18n.text(
@@ -9707,7 +11708,12 @@ class MapperApp:
                     else ""
                 )
                 assembly = dict(prepared.assembly or {})
-                if bool(assembly.get("single_mesh_generic")):
+                if (
+                    geometry_level != "high"
+                    or result.validation.get("valid_solids") is not True
+                ):
+                    structure_message = self.i18n.text("export.current_structure")
+                elif bool(assembly.get("single_mesh_generic")):
                     structure_message = self.i18n.text(
                         "export.single_glb_structure"
                     )
@@ -9747,7 +11753,7 @@ class MapperApp:
                             or 0.0
                         ),
                     )
-                    if warning_parts
+                    if warning_parts and geometry_level == "high"
                     else ""
                 )
                 dialog_title = self.i18n.text("export.done_title")
@@ -9759,6 +11765,9 @@ class MapperApp:
                     + warning_message
                     + self.i18n.text("export.done_instructions")
                 )
+            if review_required:
+                dialog_title = self.i18n.text("export.validation.done_title")
+                dialog_body = geometry_note + dialog_body
             answer = messagebox.askyesno(
                 dialog_title,
                 dialog_body,
@@ -9772,7 +11781,7 @@ class MapperApp:
                 )
                 open_folder(output_folder)
 
-        self._submit_main("3MFを書き出しています", work, done)
+        self._submit_main(self.i18n.text("progress.export_start"), work, done)
 
     def _launch_orca(self) -> None:
         executable = find_snapmaker_orca()
@@ -9787,8 +11796,16 @@ class MapperApp:
             value = filedialog.askopenfilename(
                 parent=self.root,
                 title=self.i18n.text("filedialog.select_orca"),
-                filetypes=(
-                    (self.i18n.text("filedialog.executable"), "*.exe"),
+                filetypes=tuple(
+                    (
+                        self.i18n.text(
+                            "filedialog.executable"
+                            if pattern == "*.exe"
+                            else "filedialog.all"
+                        ),
+                        pattern,
+                    )
+                    for pattern in snapmaker_orca_picker_patterns()
                 ),
             )
             if not value:
@@ -9796,11 +11813,11 @@ class MapperApp:
             executable = Path(value)
         try:
             launch_snapmaker_orca(executable)
-            self.status_var.set("Snapmaker Orcaを起動しました。3MFはプロジェクトとして開いてください")
+            self.status_var.set(self.i18n.text("state.orca_launched"))
         except OSError as exc:
             messagebox.showerror(
                 self.i18n.text("dialog.launch_orca_error"),
-                str(exc),
+                self.i18n.dialog_detail_text(exc),
                 parent=self.root,
             )
 
@@ -9847,9 +11864,36 @@ class MapperApp:
             pass
 
 
-def launch_app(*, smoke_test: bool = False, initial_project: Path | None = None) -> int:
+def launch_app(
+    *,
+    smoke_test: bool = False,
+    initial_project: Path | None = None,
+    initial_model: Path | None = None,
+    confirm_large_model: bool = False,
+) -> int:
     root = tk.Tk()
-    MapperApp(root, smoke_test=smoke_test, initial_project=initial_project)
+    try:
+        MapperApp(
+            root,
+            smoke_test=smoke_test,
+            initial_project=initial_project,
+            initial_model=initial_model,
+            confirm_large_model=confirm_large_model,
+        )
+    except LinuxJapaneseFontUnavailable as exc:
+        print(f"ChromaMatter Linux font prerequisite failed: {exc}", file=sys.stderr)
+        root.withdraw()
+        if not smoke_test:
+            try:
+                messagebox.showerror(
+                    "ChromaMatter Linux prerequisite",
+                    str(exc),
+                    parent=root,
+                )
+            except tk.TclError:
+                pass
+        root.destroy()
+        return 2
     root.mainloop()
     return 0
 

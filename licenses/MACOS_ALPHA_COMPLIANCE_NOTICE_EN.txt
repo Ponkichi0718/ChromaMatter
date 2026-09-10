@@ -7,7 +7,7 @@ published Windows stable and Flat Four Test 3 releases. It is not a normal
 public macOS Release, release/compliance evidence, or a claim of supported
 macOS compatibility.
 
-Product display version: 0.8beta (unchanged)
+Product display version: 0.9
 
 ChromaMatter application code remains GPL-3.0-or-later. Bundled third-party
 components retain their own terms. The alpha dependency set includes, among

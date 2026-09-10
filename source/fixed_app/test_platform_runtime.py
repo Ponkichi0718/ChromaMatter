@@ -15,6 +15,14 @@ from spectrum_mapper import platform_runtime
 from spectrum_mapper import volume_partition
 
 
+def _posix_absolute(*parts: str) -> str:
+    return "/" + "/".join(parts)
+
+
+def _windows_absolute(drive: str, *parts: str) -> str:
+    return drive + ":\\" + "\\".join(parts)
+
+
 class ApplicationDataPathTests(unittest.TestCase):
     def test_explicit_application_data_directory_is_platform_independent(self) -> None:
         result = platform_runtime.application_data_directory(
@@ -24,7 +32,7 @@ class ApplicationDataPathTests(unittest.TestCase):
                     "/tmp/chromamatter-isolated-profile"
                 )
             },
-            home=Path("/Users/must-not-be-used"),
+            home=Path(_posix_absolute("Users", "must-not-be-used")),
         )
 
         self.assertEqual(
@@ -41,35 +49,67 @@ class ApplicationDataPathTests(unittest.TestCase):
                         "relative/profile"
                     )
                 },
-                home=Path("/Users/must-not-be-used"),
+                home=Path(_posix_absolute("Users", "must-not-be-used")),
             )
 
     def test_windows_keeps_legacy_profile_directory(self) -> None:
         result = platform_runtime.application_data_directory(
             platform_name="win32",
-            environ={"APPDATA": r"C:\Users\test\AppData\Roaming"},
-            home=Path(r"C:\Users\test"),
+            environ={
+                "APPDATA": _windows_absolute(
+                    "C", "Users", "test", "AppData", "Roaming"
+                )
+            },
+            home=Path(_windows_absolute("C", "Users", "test")),
         )
 
         self.assertEqual(
             result,
-            Path(r"C:\Users\test\AppData\Roaming") / "TripoSpectrumMapper",
+            Path(
+                _windows_absolute("C", "Users", "test", "AppData", "Roaming")
+            )
+            / "TripoSpectrumMapper",
         )
 
     def test_macos_uses_application_support(self) -> None:
         result = platform_runtime.application_data_directory(
             platform_name="darwin",
             environ={"APPDATA": "/must/not/be/used"},
-            home=Path("/Users/tester"),
+            home=Path(_posix_absolute("Users", "tester")),
         )
 
         self.assertEqual(
             result,
-            Path("/Users/tester/Library/Application Support/ChromaMatter"),
+            Path(
+                _posix_absolute(
+                    "Users", "tester", "Library", "Application Support", "ChromaMatter"
+                )
+            ),
         )
 
-    def test_only_macos_title_is_marked_alpha(self) -> None:
-        base = "ChromaMatter — AI Model Print Studio 0.8beta (r32.2)"
+    def test_linux_uses_explicit_xdg_config_home(self) -> None:
+        result = platform_runtime.application_data_directory(
+            platform_name="linux",
+            environ={"XDG_CONFIG_HOME": "/var/tmp/test-config"},
+            home=Path(_posix_absolute("home", "must-not-be-used")),
+        )
+
+        self.assertEqual(result, Path("/var/tmp/test-config/ChromaMatter"))
+
+    def test_linux_defaults_to_dot_config(self) -> None:
+        result = platform_runtime.application_data_directory(
+            platform_name="linux",
+            environ={},
+            home=Path(_posix_absolute("home", "tester")),
+        )
+
+        self.assertEqual(
+            result,
+            Path(_posix_absolute("home", "tester", ".config", "ChromaMatter")),
+        )
+
+    def test_alpha_titles_are_platform_specific(self) -> None:
+        base = "ChromaMatter — AI Model Print Studio 0.9 (r33)"
 
         self.assertEqual(
             platform_runtime.application_window_title(
@@ -82,6 +122,12 @@ class ApplicationDataPathTests(unittest.TestCase):
                 base, platform_name="darwin"
             ),
             f"{base} — macOS alpha",
+        )
+        self.assertEqual(
+            platform_runtime.application_window_title(
+                base, platform_name="linux"
+            ),
+            f"{base} — Linux alpha",
         )
 
 
@@ -104,12 +150,27 @@ class DesktopLaunchTests(unittest.TestCase):
         popen = Mock()
 
         platform_runtime.open_folder(
-            "/Users/tester/output",
+            _posix_absolute("Users", "tester", "output"),
             platform_name="darwin",
             popen=popen,
         )
 
-        popen.assert_called_once_with(["open", "/Users/tester/output"])
+        popen.assert_called_once_with(
+            ["open", _posix_absolute("Users", "tester", "output")]
+        )
+
+    def test_open_folder_uses_xdg_open_on_linux(self) -> None:
+        popen = Mock()
+
+        platform_runtime.open_folder(
+            _posix_absolute("home", "tester", "output"),
+            platform_name="linux",
+            popen=popen,
+        )
+
+        popen.assert_called_once_with(
+            ["xdg-open", _posix_absolute("home", "tester", "output")]
+        )
 
     def test_finds_and_launches_macos_application_bundle(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -146,6 +207,44 @@ class DesktopLaunchTests(unittest.TestCase):
 
         popen.assert_called_once_with(
             [str(executable)], cwd=str(executable.parent)
+        )
+
+    def test_finds_and_launches_linux_path_executable(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            executable = Path(temporary) / "snapmaker-orca"
+            executable.write_bytes(b"test executable placeholder")
+
+            found = platform_runtime.find_snapmaker_orca(
+                platform_name="linux",
+                home=Path(temporary) / "home",
+                which=lambda name: (
+                    str(executable) if name == "snapmaker-orca" else None
+                ),
+            )
+
+            self.assertEqual(found, executable)
+            popen = Mock()
+            platform_runtime.launch_snapmaker_orca(
+                found,
+                platform_name="linux",
+                popen=popen,
+            )
+            popen.assert_called_once_with(
+                [str(executable)], cwd=str(executable.parent)
+            )
+
+    def test_manual_orca_picker_accepts_extensionless_linux_executable(self) -> None:
+        self.assertEqual(
+            platform_runtime.snapmaker_orca_picker_patterns(
+                platform_name="linux"
+            ),
+            ("*",),
+        )
+        self.assertEqual(
+            platform_runtime.snapmaker_orca_picker_patterns(
+                platform_name="win32"
+            ),
+            ("*.exe",),
         )
 
 

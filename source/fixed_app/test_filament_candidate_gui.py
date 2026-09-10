@@ -15,12 +15,18 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from spectrum_mapper.filament_candidate_gui import FilamentCandidateWindow
 from spectrum_mapper.filament_database import FilamentProduct
+from spectrum_mapper.filament_recommender import (
+    RECOMMENDATION_POLICY_BASIC,
+    RECOMMENDATION_POLICY_FLEXIBLE,
+    map_catalog_to_curated_basics,
+)
 from spectrum_mapper.i18n import Translator
 from spectrum_mapper.models import (
     AppSettings,
     COLOR_MODE_FLAT_FOUR,
     COLOR_MODE_FULL_SPECTRUM,
     PaletteSettings,
+    ToneSettings,
 )
 from spectrum_mapper.owned_filaments import OwnedFilamentInventory
 
@@ -169,13 +175,17 @@ class _ProductMatcher(_Matcher):
 
 
 def _wait_for(root, predicate, timeout: float = 3.0) -> bool:
+    import _tkinter
+
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
-        root.update()
         if predicate():
             return True
-        time.sleep(0.01)
-    root.update()
+        # Tcl update drains the whole queue; a continually replenished queue
+        # prevents the Python timeout/predicate from being checked again.
+        processed = root.tk.dooneevent(_tkinter.ALL_EVENTS | _tkinter.DONT_WAIT)
+        if not processed:
+            time.sleep(min(0.01, max(0.0, deadline - time.monotonic())))
     return bool(predicate())
 
 
@@ -205,6 +215,30 @@ class FilamentCandidateTranslationTests(unittest.TestCase):
             "Assign to F4",
         )
         self.assertIn("stock are not guaranteed", translator.text("filament_candidates.notice"))
+
+    def test_recommendation_policy_labels_explain_both_catalog_ranges(self) -> None:
+        translator = Translator("ja")
+        self.assertEqual(
+            translator.text("palette.recommendation_policy"),
+            "自動提案の色範囲",
+        )
+        self.assertIn(
+            "中間色も許可",
+            translator.text("palette.recommendation_policy_flexible"),
+        )
+        self.assertEqual(
+            translator.text("palette.recommendation_policy_basic"),
+            "従来の基本色＋肌色",
+        )
+        translator.set_language("en")
+        self.assertIn(
+            "intermediate colors",
+            translator.text("palette.recommendation_policy_flexible"),
+        )
+        self.assertEqual(
+            translator.text("palette.recommendation_policy_basic"),
+            "Classic basic colors + skin tones",
+        )
 
 
 class FilamentCandidateWindowTests(unittest.TestCase):
@@ -692,6 +726,240 @@ class FilamentCandidateWindowTests(unittest.TestCase):
             self.assertIsNone(palette.assignment_palette_hex)
             self.assertEqual(app._pending_physical_palette_targets, set())
             schedule_preview.assert_called_once_with(immediate=True)
+            editor.reapply_shading_settings.assert_called_once_with(
+                app.settings,
+                message=app.status_var.get(),
+            )
+        finally:
+            app.paint_editor = None
+            self._close_app(root, app)
+
+    def test_recommendation_policy_switch_preserves_current_palette(self) -> None:
+        root, app = self._create_app()
+        try:
+            before = app.settings.to_dict()["palette"]
+            self.assertEqual(
+                app.recommendation_policy_var.get(),
+                RECOMMENDATION_POLICY_FLEXIBLE,
+            )
+
+            with patch.object(app, "_save_persistent_settings") as save:
+                app.recommendation_policy_var.set(RECOMMENDATION_POLICY_BASIC)
+                app._on_recommendation_policy_changed()
+
+            save.assert_called_once_with()
+            self.assertEqual(app.settings.to_dict()["palette"], before)
+            self.assertIn("現在のF1", app.status_var.get())
+            self.assertIn("変更していません", app.status_var.get())
+            self.assertIn(
+                "従来の基本色＋肌色",
+                app.recommendation_policy_buttons[
+                    RECOMMENDATION_POLICY_BASIC
+                ].cget("text"),
+            )
+
+            app.set_language("en", persist=False)
+            root.update_idletasks()
+            self.assertEqual(
+                app.recommendation_policy_group.cget("text"),
+                "Auto-Proposal Color Range",
+            )
+            self.assertIn(
+                "intermediate colors",
+                app.recommendation_policy_buttons[
+                    RECOMMENDATION_POLICY_FLEXIBLE
+                ].cget("text"),
+            )
+        finally:
+            self._close_app(root, app)
+
+    def test_async_recommendation_captures_policy_and_discards_stale_result(self) -> None:
+        root, app = self._create_app()
+        products = _products()[:4]
+        recommendation = SimpleNamespace(
+            physical_hex=tuple(product.matched_hex for product in products),
+            primary_ratio_b_percent=33,
+            secondary_ratio_b_percent=67,
+            candidates=products,
+            mean_delta_e76=4.5,
+            coverage_fraction=0.9,
+            confidence=0.85,
+        )
+        queued: dict[str, object] = {}
+
+        def capture_work(_label, function, done, **_kwargs):
+            queued["function"] = function
+            queued["done"] = done
+            return True
+
+        try:
+            app.settings.palette = PaletteSettings(
+                color_mode=COLOR_MODE_FULL_SPECTRUM
+            )
+            app._load_palette_variables(app.settings.palette)
+            app.prepared = SimpleNamespace(
+                final=SimpleNamespace(
+                    vertices_unit=np.asarray(
+                        [
+                            [0.0, 0.0, 0.0],
+                            [1.0, 0.0, 0.0],
+                            [0.0, 1.0, 0.0],
+                        ],
+                        dtype=np.float64,
+                    ),
+                    vertex_colors=np.asarray(
+                        [
+                            [0.9, 0.1, 0.1],
+                            [0.8, 0.2, 0.1],
+                            [0.7, 0.1, 0.2],
+                        ],
+                        dtype=np.float64,
+                    ),
+                    faces=np.asarray([[0, 1, 2]], dtype=np.int64),
+                    areas_unit=np.asarray([1.0], dtype=np.float64),
+                    face_part_ids=np.asarray([0], dtype=np.int64),
+                    part_keys=["part-0"],
+                    part_names=["Head"],
+                ),
+                preview=SimpleNamespace(),
+            )
+            app.prepared_key = ("recommendation-policy-stale",)
+            app.recommendation_policy_var.set(
+                RECOMMENDATION_POLICY_FLEXIBLE
+            )
+            before = app.settings.to_dict()["palette"]
+
+            with (
+                patch(
+                    "spectrum_mapper.filament_database.FilamentRepository.list_products",
+                    return_value=products,
+                ),
+                patch(
+                    "spectrum_mapper.gui.map_catalog_to_curated_basics",
+                    wraps=map_catalog_to_curated_basics,
+                ) as map_catalog,
+                patch(
+                    "spectrum_mapper.gui.recommend_basic_filaments",
+                    return_value=recommendation,
+                ),
+                patch.object(
+                    app, "_submit_main", side_effect=capture_work
+                ),
+            ):
+                app._recommend_part_ids((), whole_model=True)
+                app.recommendation_policy_var.set(
+                    RECOMMENDATION_POLICY_BASIC
+                )
+                payload = queued["function"]()
+                map_catalog.assert_called_once()
+                self.assertEqual(
+                    map_catalog.call_args.kwargs["recommendation_policy"],
+                    RECOMMENDATION_POLICY_FLEXIBLE,
+                )
+                queued["done"](payload)
+
+            self.assertEqual(app.settings.to_dict()["palette"], before)
+            self.assertEqual(
+                app.status_var.get(),
+                app.i18n.text("palette.recommend_stale_status"),
+            )
+        finally:
+            self._close_app(root, app)
+
+    def test_full_recommendation_reapplies_open_editor_and_main_preview(self) -> None:
+        root, app = self._create_app()
+        products = _products()[:4]
+        recommendation = SimpleNamespace(
+            physical_hex=tuple(product.matched_hex for product in products),
+            primary_ratio_b_percent=33,
+            secondary_ratio_b_percent=67,
+            candidates=products,
+            mean_delta_e76=4.5,
+            coverage_fraction=0.9,
+            confidence=0.85,
+        )
+        try:
+            app.settings.palette = PaletteSettings(
+                color_mode=COLOR_MODE_FULL_SPECTRUM
+            )
+            app._sync_tone_variables(
+                ToneSettings(illustration_mode="cel_strong")
+            )
+            app._load_palette_variables(app.settings.palette)
+            app.prepared = SimpleNamespace(
+                final=SimpleNamespace(
+                    vertices_unit=np.asarray(
+                        [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+                        dtype=np.float64,
+                    ),
+                    vertex_colors=np.asarray(
+                        [[0.9, 0.1, 0.1], [0.8, 0.2, 0.1], [0.7, 0.1, 0.2]],
+                        dtype=np.float64,
+                    ),
+                    faces=np.asarray([[0, 1, 2]], dtype=np.int64),
+                    areas_unit=np.asarray([1.0], dtype=np.float64),
+                    face_part_ids=np.asarray([0], dtype=np.int64),
+                    part_keys=["part-0"],
+                    part_names=["Head"],
+                ),
+                preview=SimpleNamespace(),
+            )
+            app.prepared_key = ("basic-full-editor-sync",)
+            editor = SimpleNamespace(reapply_shading_settings=Mock())
+            app.paint_editor = editor
+
+            def run_synchronously(_label, function, done, **_kwargs):
+                done(function())
+                return True
+
+            with (
+                patch(
+                    "spectrum_mapper.filament_database.FilamentRepository.list_products",
+                    return_value=products,
+                ),
+                patch(
+                    "spectrum_mapper.gui.recommend_basic_filaments",
+                    return_value=recommendation,
+                ),
+                patch.object(app, "_submit_main", side_effect=run_synchronously),
+                patch.object(app, "_schedule_preview") as schedule_preview,
+            ):
+                app._recommend_part_ids((), whole_model=True)
+
+            schedule_preview.assert_called_once_with(immediate=True)
+            editor.reapply_shading_settings.assert_called_once_with(
+                app.settings,
+                message=app.status_var.get(),
+            )
+            hint = app.i18n.text(
+                "palette.strong_cel_black_output_hint_suffix"
+            )
+            self.assertIn(hint, app.status_var.get())
+
+            custom_output = [20 + index for index in range(28)]
+            app.settings.palette.output_mix_ratios_b = list(custom_output)
+            app._load_palette_variables(app.settings.palette)
+            editor.reapply_shading_settings.reset_mock()
+            with (
+                patch(
+                    "spectrum_mapper.filament_database.FilamentRepository.list_products",
+                    return_value=products,
+                ),
+                patch(
+                    "spectrum_mapper.gui.recommend_basic_filaments",
+                    return_value=recommendation,
+                ),
+                patch.object(app, "_submit_main", side_effect=run_synchronously),
+                patch.object(app, "_schedule_preview") as schedule_preview_again,
+            ):
+                app._recommend_part_ids((), whole_model=True)
+
+            self.assertEqual(
+                app.settings.palette.output_mix_ratios_b,
+                custom_output,
+            )
+            self.assertNotIn(hint, app.status_var.get())
+            schedule_preview_again.assert_called_once_with(immediate=True)
             editor.reapply_shading_settings.assert_called_once_with(
                 app.settings,
                 message=app.status_var.get(),

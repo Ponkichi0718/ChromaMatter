@@ -402,15 +402,15 @@ app = BUNDLE(
     name=f"{MACOS_APP_NAME}.app",
     icon=str(APP / "assets" / "obj_adjuster_icon.png"),
     bundle_identifier="io.github.ponkichi0718.chromamatter.alpha",
-    version="0.8.0",
+    version="0.9.0",
     info_plist={
         "CFBundleDisplayName": "ChromaMatter macOS Alpha",
         "CFBundleName": "ChromaMatter macOS Alpha",
-        "CFBundleGetInfoString": "ChromaMatter 0.8beta macOS alpha",
-        # Apple bundle metadata stays numeric even though the in-app public
-        # display version remains the unchanged product string ``0.8beta``.
-        "CFBundleShortVersionString": "0.8.0",
-        "CFBundleVersion": "800",
+        "CFBundleGetInfoString": "ChromaMatter 0.9 macOS alpha",
+        # Apple bundle metadata remains numeric and follows the in-app 0.9
+        # product version.
+        "CFBundleShortVersionString": "0.9.0",
+        "CFBundleVersion": "900",
         "LSMinimumSystemVersion": "15.0",
         "LSArchitecturePriority": ["arm64"],
         "NSHighResolutionCapable": True,

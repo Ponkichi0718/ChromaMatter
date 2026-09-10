@@ -21,6 +21,7 @@ from PIL import Image, ImageDraw, ImageFont
 from . import engine, mixer
 from .filament_materials import generic_filament_profile, normalize_filament_material
 from .models import ColorResult, MeshLevel, ObjAsset, PaletteSettings, PreparedGeometry
+from .ui_fonts import linux_pillow_font_candidates
 
 
 CALIBRATION_SCHEMA = "obj-adjuster.palette-calibration.v1"
@@ -1180,7 +1181,7 @@ def _inspect_3mf(
 
 
 def _font(size: int, *, bold: bool = False) -> ImageFont.ImageFont:
-    candidates = (
+    candidates = (*linux_pillow_font_candidates(bold=bold),
         Path(
             "/System/Library/Fonts/ヒラギノ角ゴシック W6.ttc"
             if bold

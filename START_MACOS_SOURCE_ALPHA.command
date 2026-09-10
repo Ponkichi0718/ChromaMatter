@@ -15,7 +15,7 @@ RUNTIME_LOCK="$FIXED_APP/requirements-runtime-macos-arm64.lock"
 GLB_GENERATOR="$SCRIPT_DIR/samples/generate_macos_alpha_test_glb.py"
 
 PYTHON_VERSION_REQUIRED="3.13.14"
-SOURCE_ALPHA_TAG="v0.8beta-macos-source-alpha1"
+SOURCE_ALPHA_TAG="0.9-macos-source-app"
 PYTHON_INSTALLER_URL="https://www.python.org/ftp/python/3.13.14/python-3.13.14-macos11.pkg"
 PYTHON_INSTALLER_SHA256="8e58affb218c155a1dfdc27b291f817129669f8760e7a297adb2e4439ba5d2e8"
 PUBLIC_GLB_SHA256="1b6092448e62a93f5e29a9c6dda1265a7a2179c2eacd293f7d8f02d1f268c563"

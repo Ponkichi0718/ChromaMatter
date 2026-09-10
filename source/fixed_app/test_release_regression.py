@@ -314,21 +314,21 @@ class ReleaseRegressionTests(unittest.TestCase):
         self.assertEqual(hidden_adaptive_roots, set())
         self.assertTrue(np.all(~masks.guard[collapsed]))
 
-    def test_public_runtime_version_remains_0_8beta(self) -> None:
+    def test_public_runtime_version_is_0_9(self) -> None:
         import spectrum_mapper
         from spectrum_mapper import gui
 
-        self.assertEqual(spectrum_mapper.__version__, "0.8beta")
-        self.assertEqual(hotfix.HOTFIX_VERSION, "0.8beta")
+        self.assertEqual(spectrum_mapper.__version__, "0.9")
+        self.assertEqual(hotfix.HOTFIX_VERSION, "0.9")
         self.assertEqual(spectrum_mapper.APP_NAME, "ChromaMatter")
         self.assertEqual(
             spectrum_mapper.APP_DISPLAY_NAME,
             "ChromaMatter — AI Model Print Studio",
         )
-        self.assertEqual(spectrum_mapper.EDITION_LABEL, "AI Model Print Studio r32.2")
+        self.assertEqual(spectrum_mapper.EDITION_LABEL, "AI Model Print Studio r33")
         self.assertEqual(
             gui.APP_TITLE,
-            "ChromaMatter — AI Model Print Studio 0.8beta (r32.2)",
+            "ChromaMatter — AI Model Print Studio 0.9 (r33)",
         )
 
 

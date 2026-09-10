@@ -21,7 +21,13 @@ from spectrum_mapper import (
     VERSION_PINNED_UNTIL_USER_REQUEST,
     __version__,
 )
-from spectrum_mapper.gui import APP_TITLE, MapperApp, _geometry_key
+from spectrum_mapper.gui import (
+    APP_TITLE,
+    MapperApp,
+    _geometry_key,
+    _sanitize_public_settings,
+)
+from spectrum_mapper.i18n import Translator
 from spectrum_mapper.models import AppSettings
 from test_manual_joints import _prepared_pair
 from test_part_integration import two_part_prepared
@@ -41,12 +47,12 @@ class MainGuiLayoutTests(unittest.TestCase):
             APP_DISPLAY_NAME,
             "ChromaMatter — AI Model Print Studio",
         )
-        self.assertEqual(__version__, "0.8beta")
-        self.assertEqual(RELEASE_REVISION, "r32.2")
-        self.assertEqual(EDITION_LABEL, "AI Model Print Studio r32.2")
+        self.assertEqual(__version__, "0.9")
+        self.assertEqual(RELEASE_REVISION, "r33")
+        self.assertEqual(EDITION_LABEL, "AI Model Print Studio r33")
         self.assertEqual(
             APP_TITLE,
-            "ChromaMatter — AI Model Print Studio 0.8beta (r32.2)",
+            "ChromaMatter — AI Model Print Studio 0.9 (r33)",
         )
         self.assertTrue(VERSION_PINNED_UNTIL_USER_REQUEST)
 
@@ -176,8 +182,27 @@ class MainGuiLayoutTests(unittest.TestCase):
         MapperApp._solidify_parts_now(app)
 
         app.solidify_parts_var.set.assert_called_once_with(True)
-        app.repair_unmatched_boundaries_var.set.assert_called_once_with(False)
+        app.repair_unmatched_boundaries_var.set.assert_called_once_with(True)
         app._process_geometry.assert_called_once_with(reuse_asset=True)
+
+    def test_solidify_stop_does_not_open_3d_boundary_inspection(self) -> None:
+        app = MapperApp.__new__(MapperApp)
+        app.root = object()
+        app.i18n = Translator("en")
+        app.source_path = Path("C:/models/multipart.glb")
+        app.prepared = SimpleNamespace(
+            assembly={"unmatched_boundary_loop_count": 2},
+            topology={"watertight": False},
+        )
+        app.status_var = Mock()
+        app._show_boundary_diagnostics = Mock()
+
+        with patch("spectrum_mapper.gui.messagebox.showwarning") as warning:
+            MapperApp._solidify_parts_now(app)
+
+        self.assertIn("2 open boundaries", warning.call_args.args[1])
+        self.assertNotIn("3D", warning.call_args.args[1])
+        app._show_boundary_diagnostics.assert_not_called()
 
     def test_single_glb_closed_status_explains_uv_seam_weld(self) -> None:
         app = MapperApp.__new__(MapperApp)
@@ -197,6 +222,52 @@ class MainGuiLayoutTests(unittest.TestCase):
             "assembly.status_closed_single_glb"
         )
         app.assembly_status_var.set.assert_called_once_with("GLB seam status")
+
+    def test_radial_experiment_is_absent_from_public_output(self) -> None:
+        try:
+            import tkinter as tk
+        except ImportError as exc:
+            self.skipTest(f"Tk is unavailable: {exc}")
+        try:
+            root = tk.Tk()
+        except tk.TclError as exc:
+            self.skipTest(f"Tk is unavailable: {exc}")
+        root.withdraw()
+        app = None
+        try:
+            with (
+                patch.object(
+                    MapperApp,
+                    "_load_persistent_settings",
+                    return_value=AppSettings(),
+                ),
+                patch("spectrum_mapper.gui.load_language", return_value="ja"),
+                patch.object(MapperApp, "_save_persistent_settings"),
+            ):
+                app = MapperApp(root)
+                root.update_idletasks()
+
+                output_page = app.output_settings_page
+                radial_parent = app.radial_group
+                while radial_parent not in (root, output_page):
+                    radial_parent = radial_parent.master
+                self.assertIs(radial_parent, output_page)
+                self.assertEqual(app.radial_group.winfo_manager(), "")
+                self.assertFalse(app.radial_enabled_var.get())
+        finally:
+            if app is not None:
+                with patch.object(MapperApp, "_save_persistent_settings"):
+                    app._on_close()
+            else:
+                root.destroy()
+
+    def test_public_settings_disable_legacy_radial_opt_in(self) -> None:
+        settings = AppSettings()
+        settings.radial.experimental_enabled = True
+
+        sanitized = _sanitize_public_settings(settings)
+
+        self.assertFalse(sanitized.radial.experimental_enabled)
 
     def test_main_ribbon_preserves_controls_and_split_stays_off(self) -> None:
         try:
@@ -242,19 +313,20 @@ class MainGuiLayoutTests(unittest.TestCase):
                 tab_widgets = app.main_ribbon_pages
                 self.assertEqual(
                     tuple(tab_widgets),
-                    ("filament", "output"),
+                    ("filament",),
                 )
                 self.assertEqual(
                     tuple(
                         app.main_ribbon_tab_buttons[name].cget("text")
                         for name in tab_widgets
                     ),
-                    ("フィラメント設定", "出力設定"),
+                    ("フィラメント設定",),
                 )
+                self.assertEqual(app.output_settings_button.cget("text"), "出力設定")
                 self.assertEqual(app.main_ribbon_body.winfo_manager(), "grid")
 
-                # Laboratory implementations remain in source but neither the
-                # gate nor any experimental group enters the public layout.
+                # Laboratory implementations remain in source, but neither
+                # the gate nor any experimental group enters the public UI.
                 self.assertEqual(
                     app.developer_features_enable_checkbutton.winfo_manager(),
                     "",
@@ -263,6 +335,7 @@ class MainGuiLayoutTests(unittest.TestCase):
                     app.black_free_gradient_group,
                     app.surface_shell_group,
                     app.color_depth_group,
+                    app.radial_group,
                 ):
                     self.assertEqual(group.winfo_manager(), "")
                 app.color_depth_enabled_var.set(True)
@@ -280,14 +353,21 @@ class MainGuiLayoutTests(unittest.TestCase):
                 sanitized = app._variables_to_settings()
                 self.assertIsNotNone(sanitized)
                 self.assertFalse(sanitized.color_depth.experimental_enabled)
+                self.assertFalse(sanitized.radial.experimental_enabled)
                 self.assertFalse(sanitized.geometry.auto_joints)
 
                 app._toggle_main_ribbon()
                 self.assertEqual(app.main_ribbon_body.winfo_manager(), "")
+                # A transient child cannot be made visible while its parent
+                # remains deliberately withdrawn by this test fixture.
+                root.state("normal")
                 app._on_main_ribbon_tab_clicked("output")
-                self.assertEqual(app._main_ribbon_selected, "output")
-                self.assertTrue(app._main_ribbon_expanded)
-                self.assertEqual(app.main_ribbon_body.winfo_manager(), "grid")
+                self.assertEqual(app._main_ribbon_selected, "filament")
+                self.assertFalse(app._main_ribbon_expanded)
+                self.assertEqual(app.main_ribbon_body.winfo_manager(), "")
+                self.assertEqual(app.output_settings_window.state(), "normal")
+                # Continue the pre-existing visible-filament control audit.
+                app._toggle_main_ribbon()
 
                 toolbar_text = []
                 comboboxes = []
@@ -523,7 +603,7 @@ class MainGuiLayoutTests(unittest.TestCase):
                 )
                 assembly_text = "\n".join(
                     str(widget.cget("text"))
-                    for widget in descendants(tab_widgets["output"])
+                    for widget in descendants(app.output_settings_page)
                     if "text" in widget.keys() and publicly_managed(widget)
                 )
                 self.assertIn("出力高さ mm", assembly_text)

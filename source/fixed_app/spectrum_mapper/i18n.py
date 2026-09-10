@@ -36,6 +36,304 @@ CATALOG: dict[str, dict[str, str]] = {
     "toolbar.language_opposite": {"ja": "Language", "en": "言語"},
     "toolbar.launch_orca": {"ja": "Snapmaker Orca起動", "en": "Launch Snapmaker Orca"},
     "toolbar.export_3mf": {"ja": "3MFを書き出す", "en": "Export 3MF"},
+    # Backend progress callbacks retain a plain-text fallback for CLI logs.
+    # The GUI uses these phase labels whenever that fallback is written in the
+    # other interface language.
+    "progress.scan": {"ja": "モデル構造を確認しています…", "en": "Checking model structure…"},
+    "progress.parse": {"ja": "モデルを読み込んでいます…", "en": "Loading model…"},
+    "progress.clean": {"ja": "形状を整理しています…", "en": "Preparing model geometry…"},
+    "progress.simplify": {"ja": "メッシュを最適化しています…", "en": "Optimizing mesh…"},
+    "progress.solidify": {"ja": "閉立体化しています…", "en": "Creating watertight solids…"},
+    "progress.joints": {"ja": "組立ジョイントを生成しています…", "en": "Creating assembly joints…"},
+    "progress.validate": {"ja": "印刷用形状を検証しています…", "en": "Validating printable geometry…"},
+    "progress.preview": {"ja": "プレビューを準備しています…", "en": "Preparing preview…"},
+    "progress.done": {"ja": "処理が完了しました", "en": "Processing complete"},
+    "progress.volume_partition": {"ja": "印刷用の体積を生成しています…", "en": "Building printable volumes…"},
+    "progress.color": {"ja": "最終メッシュへ色を割り当てています…", "en": "Assigning colors to the final mesh…"},
+    "progress.3mf": {"ja": "Snapmaker Orca用3MFを書き出しています…", "en": "Writing the Snapmaker Orca 3MF…"},
+    "progress.part_3mf": {"ja": "パーツ別3MFを書き出しています…", "en": "Writing per-part 3MF files…"},
+    "progress.obj": {"ja": "予備の頂点カラーOBJを書き出しています…", "en": "Writing the fallback vertex-color OBJ…"},
+    "progress.report": {"ja": "検証レポートを作成しています…", "en": "Creating the validation report…"},
+    "progress.radial_color": {"ja": "ラジアル外皮の色を確認しています…", "en": "Checking radial-shell colors…"},
+    "progress.radial_geometry": {"ja": "ラジアル外皮を生成しています…", "en": "Building radial-shell geometry…"},
+    "progress.radial_3mf": {"ja": "ラジアル実験3MFを書き出しています…", "en": "Writing the radial experiment 3MF…"},
+    "progress.radial_done": {"ja": "ラジアル実験3MFを保存しました", "en": "Radial experiment 3MF saved"},
+    "progress.color_depth_3mf_inspect": {"ja": "入力3MFを検証しています…", "en": "Validating the source 3MF…"},
+    "progress.color_depth_labels": {"ja": "ColorDepthの対象色を確認しています…", "en": "Checking ColorDepth target colors…"},
+    "progress.color_depth_geometry": {"ja": "ColorDepth形状を生成しています…", "en": "Building ColorDepth geometry…"},
+    "progress.color_depth_3mf": {"ja": "ColorDepth 3MFを書き出しています…", "en": "Writing the ColorDepth 3MF…"},
+    "progress.color_depth_done": {"ja": "ColorDepth 3MFを保存しました", "en": "ColorDepth 3MF saved"},
+    "progress.model_analyzing": {"ja": "モデルを解析・形状準備しています…", "en": "Analyzing and preparing model geometry…"},
+    "progress.palette_recommend": {"ja": "基本フィラメント構成を判定しています…", "en": "Choosing the four base filaments…"},
+    "progress.mix_optimize": {"ja": "{target}の陰影へ混色6色を最適化しています…", "en": "Optimizing six mixes for {target} shading…"},
+    "progress.export_start": {"ja": "3MFを書き出しています…", "en": "Exporting 3MF…"},
+    "progress.unknown": {"ja": "処理しています…", "en": "Processing…"},
+    "state.updated": {"ja": "更新しました", "en": "Updated"},
+    "state.error": {"ja": "エラー: {reason}", "en": "Error: {reason}"},
+    "state.error_reason": {
+        "ja": "処理内容を確認してください",
+        "en": "Review the error details",
+    },
+    "dialog.technical_details_unavailable": {
+        "ja": "技術的な詳細を表示できません",
+        "en": "Additional technical details are unavailable in English.",
+    },
+    "state.reference_loaded": {
+        "ja": "元画像を読み込みました。スポイトを開始できます",
+        "en": "Reference image loaded. The eyedropper is ready.",
+    },
+    "state.orca_launched": {
+        "ja": "Snapmaker Orcaを起動しました。3MFはプロジェクトとして開いてください",
+        "en": "Snapmaker Orca launched. Open the 3MF as a project.",
+    },
+    "geometry.reprocess_cancelled": {
+        "ja": "形状再処理をキャンセルしました。手修正は保持されています",
+        "en": "Geometry reprocessing was cancelled. Manual edits were preserved.",
+    },
+    "geometry.ready_status": {
+        "ja": "形状準備完了: {faces:,}面 / 印刷パーツ {parts}個 / 閉じた印刷立体={watertight}{details}",
+        "en": "Geometry ready: {faces:,} faces / {parts} print parts / watertight={watertight}{details}",
+    },
+    "geometry.ready_joint_note": {
+        "ja": " / 組立ジョイント {count}組",
+        "en": " / {count} assembly joint pair(s)",
+    },
+    "geometry.ready_restored_joint_note": {
+        "ja": " / 手動ジョイントを復元",
+        "en": " / manual joint restored",
+    },
+    "geometry.ready_manual_edits_note": {
+        "ja": " / 手修正 {count:,}面を復元",
+        "en": " / restored {count:,} manually edited faces",
+    },
+    "geometry.ready_exact_transfer_note": {
+        "ja": "（面順・形状一致で完全引継ぎ）",
+        "en": " (exact transfer: face order and geometry match)",
+    },
+    "geometry.ready_remapped_transfer_note": {
+        "ja": "（近傍面へ引継ぎ・要確認）",
+        "en": " (remapped to nearby faces; review required)",
+    },
+    "geometry.ready_adaptive_note": {
+        "ja": " / 適応ブラシ {count:,}面を完全引継ぎ",
+        "en": " / exactly transferred {count:,} adaptive-brush faces",
+    },
+    "geometry.ready_partition_note": {
+        "ja": " / フリーハンド分割を復元",
+        "en": " / freehand separation restored",
+    },
+    "paint.stale_discarded": {
+        "ja": "形状が変わったため、旧メッシュの色修正を破棄しました",
+        "en": "The geometry changed, so manual edits for the previous mesh were discarded.",
+    },
+    "paint.kept_status": {
+        "ja": "色修正を保持中: {count:,}面",
+        "en": "Preserving manual edits: {count:,} faces",
+    },
+    "separate.kept_status": {
+        "ja": "フリーハンド分割を保持中: 印刷パーツ {count}個",
+        "en": "Preserving freehand separation: {count} print parts",
+    },
+    "joint.kept_status": {
+        "ja": "{action} / 色修正 {count:,}面",
+        "en": "{action} / {count:,} manually edited faces",
+    },
+    "joint.kept_action": {"ja": "手動ジョイントを保持中", "en": "Preserving manual joint"},
+    "joint.restored_action": {"ja": "ジョイント生成前の形状を復元", "en": "Restored geometry from before joint creation"},
+    "preview.updated_status": {
+        "ja": "プレビュー更新: 平均ΔE76 {mean:.1f} / F4系 {f4:.2f}%{suffix}",
+        "en": "Preview updated: mean delta-E76 {mean:.1f} / F4 family {f4:.2f}%{suffix}",
+    },
+    "preview.manual_note": {
+        "ja": " / 手修正 {count:,}面",
+        "en": " / {count:,} manually edited faces",
+    },
+    "preview.error_status": {
+        "ja": "プレビューを作成できません: {reason}",
+        "en": "Could not create the preview: {reason}",
+    },
+    "palette.state_count_enabled_status": {
+        "ja": "{count}色の滑らかパレットを有効にしました",
+        "en": "Enabled the smooth {count}-color palette",
+    },
+    "palette.state_count_disabled_status": {
+        "ja": "追加{disabled}色を無効にし、残り10色で割り当てます",
+        "en": "Disabled {disabled} additional colors; mapping now uses the remaining 10 colors",
+    },
+    "joint.height_mismatch_status": {
+        "ja": "手動ジョイントの寸法を維持するには、出力高さを戻すか［パーツ処理］でジョイントを解除して配置し直してください",
+        "en": "To preserve the manual-joint dimensions, restore the output height or remove and place the joint again under Part Processing.",
+    },
+    "parts.palette_copied_status": {
+        "ja": "現在の基本4色と混色比率を全パーツへコピーしました",
+        "en": "Copied the current four base colors and mix ratios to all parts",
+    },
+    "parts.copy_selected_palette_to_all": {
+        "ja": "このパーツの4色設定を全パーツへコピー",
+        "en": "Copy This Part's 4-Color Setup to All Parts",
+    },
+    "parts.common_cannot_clear_status": {
+        "ja": "全体共通設定は解除できません",
+        "en": "The Common to All settings cannot be cleared",
+    },
+    "parts.palette_reset_status": {
+        "ja": "{part} を全体共通の基本4色へ戻しました",
+        "en": "Reset {part} to the Common to All four base colors",
+    },
+    "parts.print_one_job": {
+        "ja": "全パーツが同じ物理4色なので、1回の印刷ジョブにできます。",
+        "en": "All parts use the same four physical filaments, so they can be printed in one job.",
+    },
+    "parts.print_multiple_groups": {
+        "ja": "物理4色の構成が{count}グループあります。このまま1回の印刷ジョブにはできません。",
+        "en": "There are {count} different four-filament sets, so they cannot be printed together in one job as configured.",
+    },
+    "parts.settings_invalid": {
+        "ja": "パーツ設定を確認してください: {reason}",
+        "en": "Check the part settings: {reason}",
+    },
+    "parts.editing_target": {
+        "ja": "{target} を編集中",
+        "en": "{target} is being edited",
+    },
+    "parts.whole_model": {"ja": "モデル全体", "en": "the whole model"},
+    "palette.recommend_stale_status": {
+        "ja": "判定中にモデル・元画像・設定または選択パーツが変わったため、古い提案を破棄しました",
+        "en": "The model, reference, settings, or selected part changed during analysis, so the outdated recommendation was discarded.",
+    },
+    "palette.recommendation_summary": {
+        "ja": "提案: {names}\n平均ΔE {mean:.1f} / ΔE12以内 {coverage:.0f}% / 信頼度 {confidence:.0f}%\n{material_metric}\n{reference_note}",
+        "en": "Suggestion: {names}\nMean delta-E {mean:.1f} / within delta-E12 {coverage:.0f}% / confidence {confidence:.0f}%\n{material_metric}\n{reference_note}",
+    },
+    "palette.recommendation_status_parts_common": {
+        "ja": "{count}パーツと全体共通の提案を適用しました",
+        "en": "Applied suggestions to {count} parts and Common to All",
+    },
+    "palette.recommendation_status_count": {
+        "ja": "{count}件の基本フィラメント提案を適用しました",
+        "en": "Applied {count} base-filament suggestions",
+    },
+    "palette.recommendation_status_automatic_suffix": {
+        "ja": "（選択モードに合わせた自動判定）",
+        "en": " (automatically evaluated for the selected mode)",
+    },
+    "palette.recommendation_policy": {
+        "ja": "自動提案の色範囲",
+        "en": "Auto-Proposal Color Range",
+    },
+    "palette.recommendation_policy_flexible": {
+        "ja": "拡張（中間色も許可）",
+        "en": "Expanded (include intermediate colors)",
+    },
+    "palette.recommendation_policy_basic": {
+        "ja": "従来の基本色＋肌色",
+        "en": "Classic basic colors + skin tones",
+    },
+    "palette.recommendation_policy_changed": {
+        "ja": "次回の自動提案から「{mode}」を使用します。現在のF1～F4は変更していません。",
+        "en": "Future automatic proposals will use {mode}. The current F1-F4 colors were not changed.",
+    },
+    "palette.strong_cel_black_output_hint_suffix": {
+        "ja": " / 実機印刷では実機黒補正ONを推奨",
+        "en": " / Physical prints: Physical Black Correction recommended",
+    },
+    "palette.reference_none": {
+        "ja": "元画像なし: 読み込んだモデルの色だけで判定",
+        "en": "No reference image: evaluated from the loaded model colors only",
+    },
+    "palette.reference_low_confidence": {
+        "ja": "前景が小さいため低信頼の画像全体色を補助ヒントとして使用",
+        "en": "The foreground is small, so the whole-image colors were used as a low-confidence hint",
+    },
+    "palette.reference_foreground_used": {
+        "ja": "元画像の背景除外色を全体の補助ヒントとして使用",
+        "en": "Background-excluded reference colors were used as a whole-model hint",
+    },
+    "palette.reference_selected_not_visible": {
+        "ja": "選択パーツは正面で確認できないため読み込んだモデルの色だけで判定 (全体IoU {iou:.0f}%)",
+        "en": "The selected part is not visible from the front, so it was evaluated from the loaded model colors only (overall IoU {iou:.0f}%)",
+    },
+    "palette.reference_matched": {
+        "ja": "元画像を3D正面へ対応: {matched}/{requested}パーツ / IoU {iou:.0f}%{mirrored}",
+        "en": "Matched reference to the 3D front view: {matched}/{requested} parts / IoU {iou:.0f}%{mirrored}",
+    },
+    "palette.reference_mirrored_suffix": {
+        "ja": "・左右反転補正",
+        "en": " / mirrored alignment",
+    },
+    "palette.reference_weak": {
+        "ja": "元画像との形状対応が弱いため読み込んだモデルの色だけで判定 (IoU {iou:.0f}%)",
+        "en": "The reference shape match is weak, so the model was evaluated from its loaded colors only (IoU {iou:.0f}%)",
+    },
+    "palette.reference_unsupported_part": {
+        "ja": "元画像は未対応パーツのため読み込んだモデルの色だけで判定",
+        "en": "The reference does not cover this part, so it was evaluated from the loaded model colors only",
+    },
+    "mix.stale_status": {
+        "ja": "最適化中に設定またはモデルが変わったため、結果を適用しませんでした",
+        "en": "Settings or the model changed during optimization, so the result was not applied.",
+    },
+    "mix.applied_status": {
+        "ja": "{target}の混色比率を最適化しました: 平均ΔE76 {before:.2f} → {after:.2f}（{improvement:.1f}%改善）",
+        "en": "Optimized mix ratios for {target}: mean delta-E76 {before:.2f} -> {after:.2f} ({improvement:.1f}% improvement)",
+    },
+    "mix.no_improvement_status": {
+        "ja": "改善する混色比率が見つからなかったため、現在値を変更しませんでした",
+        "en": "No better mix ratios were found, so the current values were kept.",
+    },
+    "mix.undo_status": {
+        "ja": "直前の自動最適化前の混色比率へ戻しました",
+        "en": "Restored the mix ratios from before the previous automatic optimization",
+    },
+    "mix.recipe_applied_status": {
+        "ja": "{pair} を {ratio_a}:{ratio_b} に設定しました",
+        "en": "Set {pair} to {ratio_a}:{ratio_b}",
+    },
+    "export.part_palette_cancelled_status": {
+        "ja": "3MF出力を中止しました。印刷パーツ別設定は保持されています",
+        "en": "3MF export was cancelled. Per-part print settings were preserved.",
+    },
+    "dialog.paint_state_invalid.title": {"ja": "色修正を適用できません", "en": "Manual Color Edits Cannot Be Applied"},
+    "dialog.paint_state_invalid.no_mesh": {"ja": "色修正に対応する処理済みメッシュがありません。", "en": "There is no processed mesh associated with these color edits."},
+    "dialog.paint_state_invalid.face_count": {"ja": "色修正の面数が現在のメッシュと一致しません。", "en": "The color-edit face count does not match the current mesh."},
+    "dialog.paint_state_invalid.fingerprint": {"ja": "色修正が別の形状に属しているため、安全に適用できません。", "en": "These color edits belong to a different shape and cannot be applied safely."},
+    "geometry.reprocess_manual.title": {"ja": "手修正を確認", "en": "Review Manual Edits"},
+    "geometry.reprocess_manual.message": {"ja": "閉立体化・最終面数・上方向・微小部品・左右反転などで形状を変更します。パーツ構成が同じ場合はブラシ修正を最も近い面へ引き継ぎますが、形状によっては解除または確認修正が必要です。\n\n再処理しますか？", "en": "Solidification, final face count, up axis, small-part cleanup, mirroring, and related settings can change the shape. Brush edits are transferred to the nearest faces when the part structure still matches, but some models may require edits to be cleared or reviewed.\n\nReprocess the model?"},
+    "project.restore_joint.title": {"ja": "手動ジョイントを復元できません", "en": "Manual Joint Could Not Be Restored"},
+    "project.restore_joint.message": {"ja": "保存されたジョイントは現在の形状へ安全に再生成できないため、ジョイントなしで開きます。\n\n{reason}", "en": "The saved joint cannot be regenerated safely on the current shape. The project will open without that joint.\n\n{reason}"},
+    "project.restore_split.title": {"ja": "フリーハンド分割を復元できません", "en": "Freehand Separation Could Not Be Restored"},
+    "project.restore_split.message": {"ja": "形状が保存時と異なるため、元のパーツ構成で開きます。\n\n{reason}", "en": "The shape differs from the saved project. The original part structure will be used.\n\n{reason}"},
+    "project.restore_paint.title": {"ja": "手修正を復元できません", "en": "Manual Edits Could Not Be Restored"},
+    "project.restore_paint.message": {"ja": "形状が保存時と異なるため、自動変換色で開きます。\n\n{reason}", "en": "The shape differs from the saved project. The model will open with automatically mapped colors.\n\n{reason}"},
+    "project.stale_palette.title": {"ja": "現在のパーツにない基本4色設定", "en": "Saved Four-Color Settings Do Not Match Current Parts"},
+    "project.stale_palette.message": {"ja": "以前のパーツ用の基本4色設定 {count} 件は、現在のモデルのパーツへ自動流用していません。\n\n［パーツ］タブの［全パーツを自動提案］で各パーツの基本4色を更新できます。旧設定はプロジェクト内に保持されます。", "en": "{count} saved four-color setting(s) belong to parts that are not present in the current model, so they were not reused automatically.\n\nUse Recommend All Parts on the Parts tab to update each part. The old settings remain stored in the project."},
+    "dialog.processing_failed.title": {"ja": "処理できませんでした", "en": "Processing Failed"},
+    "dialog.processing_failed.message": {"ja": "{reason}\n\n詳細は下記です。\n{details}", "en": "{reason}\n\nTechnical details:\n{details}"},
+    "palette.invalid.title": {"ja": "色設定を確認してください", "en": "Check Color Settings"},
+    "palette.invalid.switch_part": {"ja": "現在の基本色または混色比率が不正なため、パーツを切り替えられません。", "en": "The active base colors or mix ratios are invalid, so the selected part cannot be changed."},
+    "mix.flat_unavailable.title": {"ja": "フラット4色では混色しません", "en": "Flat Four Does Not Use Mixes"},
+    "mix.flat_unavailable.message": {"ja": "混色比率の最適化はFull Spectrum（混色）で使用できます。", "en": "Mix-ratio optimization is available in Full Spectrum (Mixing) mode."},
+    "mix.invalid_palette.title": {"ja": "パレット設定を確認してください", "en": "Check Palette Settings"},
+    "mix.invalid_palette.message": {"ja": "パレット有効状態は{count}個必要です。", "en": "The palette requires {count} enabled-state entries."},
+    "mix.disabled.title": {"ja": "混色が無効です", "en": "Mixes Are Disabled"},
+    "mix.disabled.message": {"ja": "最適化する混色を少なくとも1色有効にしてください。", "en": "Enable at least one mixed color to optimize."},
+    "mix.normal_required.title": {"ja": "通常色が必要です", "en": "A Standard Color Is Required"},
+    "mix.normal_required.message": {"ja": "通常色パレットを少なくとも1色有効にしてください。", "en": "Enable at least one standard palette color."},
+    "mix.f4_required.title": {"ja": "F4系の色が必要です", "en": "An F4 Color Is Required"},
+    "mix.f4_required.message": {"ja": "F4系保護を使う場合は、F4を含むパレットを少なくとも1色有効にしてください。", "en": "When F4 protection is enabled, enable at least one palette color that contains F4."},
+    "mix.manual_warning.title": {"ja": "手修正の色も変化します", "en": "Manual-Edit Colors Will Also Change"},
+    "mix.manual_warning.message": {"ja": "混色比率を変えると、手修正で指定した混色番号は維持されますが、その実際の混色が変わります。\n\n最適化を続けますか？", "en": "Changing mix ratios preserves the mixed-color numbers used by manual edits, but changes their physical colors.\n\nContinue optimization?"},
+    "mix.stale_result.title": {"ja": "最適化結果を適用しませんでした", "en": "Optimization Result Was Not Applied"},
+    "mix.stale_result.message": {"ja": "最適化の途中で設定・モデル・手修正のいずれかが変更されました。現在の内容を保護するため、計算結果は破棄しました。必要であれば、もう一度自動最適化してください。", "en": "Settings, the model, or manual edits changed while optimization was running. The result was discarded to protect the current work. Run automatic optimization again if needed."},
+    "project.busy_load.message": {"ja": "現在の処理が終わってからプロジェクトを読み込んでください。", "en": "Wait for the current operation to finish before loading a project."},
+    "export.part_palette_conflict.title": {"ja": "パーツ別4色は1回で印刷できません", "en": "Different Part Palettes Cannot Print in One Job"},
+    "export.part_palette_conflict.note": {"ja": "\n\n同時に、生成した分割パーツごとの基本4色を使う独立3MFも出力します。", "en": "\n\nSeparate 3MF files using each generated part's own four colors will also be exported."},
+    "export.part_palette_conflict.message": {"ja": "現在は{groups}種類の基本フィラメント構成があります。\n\nSnapmaker U1へ同時装填できる物理フィラメントは4本なので、異なる構成を1つの4色印刷ジョブへ正しく記録できません。\n\nモデルの印刷パーツ構造と個別設定メタデータは保持したまま、印刷色だけ［全体共通］の4色へ統合して出力しますか？{note}\n［いいえ］では出力を中止し、調整プロジェクトの設定を保ちます。", "en": "This model currently uses {groups} different base-filament sets.\n\nThe Snapmaker U1 can load only four physical filaments at once, so different sets cannot be represented correctly in one four-color print job.\n\nKeep the printable part structure and per-part metadata, but export the print colors using the Common to All palette?{note}\nChoose No to cancel export and preserve the ChromaMatter project settings."},
+    "joint.target_missing": {"ja": "ジョイント対象のパーツが現在の形状にありません", "en": "The selected joint parts are no longer present in the current shape."},
+    "paint.clear_all.title": {"ja": "手修正を解除", "en": "Clear Manual Edits"},
+    "paint.clear_all.message": {"ja": "ブラシ・塗りつぶし・境界ならしによる修正をすべて解除しますか？\n自動変換色へ戻ります。", "en": "Clear all brush, fill, and boundary-smoothing edits?\nThe model will return to automatically mapped colors."},
+    "paint.cleanup_warning.title": {"ja": "3D表示の終了警告", "en": "3D View Shutdown Warning"},
+    "paint.cleanup_warning.message": {"ja": "色修正は保持しましたが、3D表示の終了処理で警告が発生しました。\n\n{reason}", "en": "Color edits were preserved, but a warning occurred while closing the 3D view.\n\n{reason}"},
     # This compact notice is always reachable from the public toolbar.  Exact
     # release URLs and local document locations are supplied by legal_notice.py.
     "legal_notice.title": {
@@ -398,6 +696,41 @@ CATALOG: dict[str, dict[str, str]] = {
         "ja": "{folder}\n\n異素材を混在させた統合3MFは作成せず、各パーツを対応素材の独立3MFとして{count}個保存しました。\n\n通常層0.08 mmは記録済みです。サポートはOrca側で選び、Snapmaker Orcaでは各3MFを『プロジェクトとして開く』で開いてください。\n\n保存フォルダーを開きますか？",
         "en": "{folder}\n\nNo combined cross-material 3MF was created. {count} parts were saved as independent 3MF projects for their selected materials.\n\nThe 0.08 mm normal layer height is recorded. Choose supports in Orca and open each 3MF with Open as project in Snapmaker Orca.\n\nOpen the output folder?",
     },
+    "output_settings.close": {"ja": "閉じる", "en": "Close"},
+    "output_settings.options": {"ja": "出力オプション", "en": "Output Options"},
+    "export.validation.label": {"ja": "形状チェック", "en": "Geometry check"},
+    "export.validation.high": {"ja": "高", "en": "High"},
+    "export.validation.medium": {"ja": "中", "en": "Medium"},
+    "export.validation.low": {"ja": "低", "en": "Low"},
+    "export.validation.ignore": {
+        "ja": "形状の不具合を無視（非推奨）",
+        "en": "Ignore defects (not recommended)",
+    },
+    "export.validation.confirm_title": {
+        "ja": "出力前の確認", "en": "Confirm Export",
+    },
+    "export.validation.confirm": {
+        "ja": "形状チェック: {level}\n欠落や形状の変化が生じる場合があります。印刷前にOrcaのスライスプレビューを必ず確認してください。\n出力しますか？",
+        "en": "Geometry check: {level}\nShapes may change or be missing. You must check Orca's Slice Preview before printing.\nExport anyway?",
+    },
+    "export.validation.cancelled": {
+        "ja": "3MF出力をキャンセルしました", "en": "3MF export cancelled",
+    },
+    "export.validation.done_title": {
+        "ja": "出力完了（要確認）", "en": "Export Complete — Review Required",
+    },
+    "export.validation.done_note": {
+        "ja": "形状チェック: {level}。印刷前にOrcaのスライスプレビューを必ず確認してください。\n\n",
+        "en": "Geometry check: {level}. You must check Orca's Slice Preview before printing.\n\n",
+    },
+    "export.validation.defects_note": {
+        "ja": "形状の警告あり。Orcaのスライスプレビューを確認してください。\n\n",
+        "en": "Geometry warnings remain. Check Orca's Slice Preview.\n\n",
+    },
+    "export.validation.individual_status": {
+        "ja": "パーツ別3MFを{count}個保存・Orcaプレビュー要確認",
+        "en": "Saved {count} part 3MF files — verify the Orca preview",
+    },
     "export.done_status": {
         "ja": "出力完了（積層ピッチ0.08 mm）: {name}",
         "en": "Export complete (0.08 mm layer height): {name}",
@@ -444,6 +777,10 @@ CATALOG: dict[str, dict[str, str]] = {
         "en": "Set {slot} from Image",
     },
     "palette.set_base_short": {"ja": "画像から", "en": "From Image"},
+    "palette.choose_physical_color_title": {
+        "ja": "{slot}フィラメントの表示色",
+        "en": "Display Color for {slot} Filament",
+    },
     "palette.pick_base_status": {
         "ja": "元画像をクリックすると{slot}へ直接反映します",
         "en": "Click the reference image to apply the sampled color directly to {slot}",
@@ -461,16 +798,32 @@ CATALOG: dict[str, dict[str, str]] = {
         "en": "Sampled: ({x}, {y}) = {color}",
     },
     "palette.base_applied": {
-        "ja": "{color}を{slot}へ設定しました。［現在の4色をプレビュー・3MFへ反映］で確認してください",
-        "en": "Set {slot} to {color}. Choose Apply Current F1-F4 to Preview / 3MF to review it",
+        "ja": "{color}を{slot}へ設定しました",
+        "en": "Set {slot} to {color}",
     },
     "palette.apply_physical": {
         "ja": "現在の4色をプレビュー・3MFへ反映",
         "en": "Apply Current F1-F4 to Preview / 3MF",
     },
+    "palette.apply_physical_common": {
+        "ja": "全体の4色をプレビュー・3MFへ反映",
+        "en": "Apply Common F1-F4 to Whole Model / 3MF",
+    },
+    "palette.apply_physical_part": {
+        "ja": "このパーツの4色をプレビュー・3MFへ反映",
+        "en": "Apply This Part's F1-F4 to Preview / 3MF",
+    },
+    "palette.flat_physical_common_auto": {
+        "ja": "全体共通のF1〜F4は、選ぶとすぐ全パーツへ反映されます",
+        "en": "Common F1-F4 changes apply to every part immediately",
+    },
+    "palette.flat_physical_part_auto": {
+        "ja": "F1〜F4は、選ぶとすぐこのパーツへ反映されます",
+        "en": "F1-F4 changes apply to this part immediately",
+    },
     "palette.apply_physical_pending": {
-        "ja": "基本4色を変更しました。［現在の4色をプレビュー・3MFへ反映］で、現在の色番号を保ったまま確認できます。",
-        "en": "The four base colors changed. Choose Apply Current F1-F4 to Preview / 3MF to review them without changing the current color IDs.",
+        "ja": "基本4色を変更しました。基本フィラメント欄の青い反映ボタンで、現在の色番号を保ったままプレビューと3MFへ反映してください。",
+        "en": "The four base colors changed. Use the blue Apply button in Four Base Filaments to update the preview and 3MF without changing the current color IDs.",
     },
     "palette.apply_physical_done": {
         "ja": "{target}の色番号を保ったまま、現在のF1〜F4を変換プレビューと3MFへ反映しました",
@@ -485,8 +838,8 @@ CATALOG: dict[str, dict[str, str]] = {
         "en": "Base Colors Not Yet Applied",
     },
     "palette.apply_physical_required": {
-        "ja": "次の設定では、基本4色の変更が変換プレビューへまだ反映されていません。\n\n{targets}\n\n各対象を選び、［現在の4色をプレビュー・3MFへ反映］を実行してから3MFを書き出してください。",
-        "en": "Base-color changes have not yet been applied to the converted preview for:\n\n{targets}\n\nSelect each target and choose Apply Current F1-F4 to Preview / 3MF before exporting.",
+        "ja": "次の設定では、基本4色の変更が変換プレビューへまだ反映されていません。\n\n{targets}\n\n対象を選び、基本フィラメント欄の青い反映ボタンを押してから3MFを書き出してください。全体共通なら1回でモデル全体へ反映されます。",
+        "en": "Base-color changes have not yet been applied to the converted preview for:\n\n{targets}\n\nSelect the target and use the blue Apply button in Four Base Filaments before exporting. Common to All applies the change to the whole model in one step.",
     },
     "palette.reset_base": {"ja": "基本4色を初期値へ戻す", "en": "Reset Four Base Colors"},
     "palette.mix_group": {"ja": "混色パレット（F1〜F4）", "en": "Mixed Palette (F1-F4)"},
@@ -853,32 +1206,217 @@ CATALOG: dict[str, dict[str, str]] = {
         "en": "The surface could not be partitioned into gap-free, overlap-free physical material regions. No approximate output was saved.",
     },
     "radial.group": {
-        "ja": "完全ラジアル黒内層（r20実験版）",
-        "en": "Full-radial black interior (r20 laboratory)",
+        "ja": "黒コア＋高明度差外皮（ラジアル実験）",
+        "en": "Black core + high-contrast skin (radial lab)",
+    },
+    "radial.enable": {
+        "ja": "ラジアル実験を有効にする（SLICE ONLY）",
+        "en": "Enable the radial experiment (SLICE ONLY)",
+    },
+    "radial.conversion_mode": {
+        "ja": "ラジアル方式",
+        "en": "Radial method",
+    },
+    "radial.mode.uniform_stage_a": {
+        "ja": "Stage A（全面・単一state検証）",
+        "en": "Stage A (uniform full-surface validation)",
+    },
+    "radial.mode.selective_hybrid": {
+        "ja": "選択式ハイブリッド（高ΔL*のみラジアル）",
+        "en": "Selective hybrid (radial for high ΔL* only)",
+    },
+    "radial.black_slot": {
+        "ja": "黒コアのFスロット",
+        "en": "Black-core F slot",
     },
     "radial.skin_thickness": {
-        "ja": "相手色の外皮厚",
-        "en": "Partner-color skin",
+        "ja": "相手フィラメントの外皮厚",
+        "en": "Partner-filament skin",
+    },
+    "radial.skin_mode": {
+        "ja": "外皮厚方式",
+        "en": "Skin-depth method",
+    },
+    "radial.skin_mode.uniform": {
+        "ja": "一定厚（既定）",
+        "en": "Uniform depth (default)",
+    },
+    "radial.skin_mode.adaptive": {
+        "ja": "適応厚（target L*・セル段階）",
+        "en": "Adaptive depth (target L* cel bands)",
+    },
+    "radial.adaptive_min": {
+        "ja": "最小 mm",
+        "en": "Min mm",
+    },
+    "radial.adaptive_max": {
+        "ja": "最大 mm",
+        "en": "Max mm",
+    },
+    "radial.adaptive_gamma": {
+        "ja": "厚みγ",
+        "en": "Depth γ",
+    },
+    "radial.adaptive_bands": {
+        "ja": "セル段階",
+        "en": "Cel bands",
+    },
+    "radial.contrast_threshold": {
+        "ja": "HEX明度差 ΔL*以上",
+        "en": "HEX lightness gap ΔL* ≥",
+    },
+    "radial.wall_generator": {
+        "ja": "壁生成方法",
+        "en": "Wall generator",
     },
     "radial.export": {
-        "ja": "ラジアル実験3MFを書き出す…",
-        "en": "Export radial laboratory 3MF…",
+        "ja": "モデル全体をStage A実験3MFとして書き出す…",
+        "en": "Export whole model as a Stage A laboratory 3MF…",
+    },
+    "radial.export_hybrid": {
+        "ja": "モデル全体を選択式ハイブリッド実験3MFとして書き出す…",
+        "en": "Export whole model as a selective-hybrid laboratory 3MF…",
+    },
+    "radial.export_selected": {
+        "ja": "{target}だけをStage A実験3MFとして書き出す…",
+        "en": "Export only {target} as a Stage A laboratory 3MF…",
+    },
+    "radial.export_hybrid_selected": {
+        "ja": "{target}だけを選択式ハイブリッド実験3MFとして書き出す…",
+        "en": "Export only {target} as a selective-hybrid laboratory 3MF…",
+    },
+    "radial.target_whole_model": {
+        "ja": "モデル全体",
+        "en": "the whole model",
+    },
+    "radial.target_selected_part": {
+        "ja": "選択パーツ「{name}」",
+        "en": "selected part “{name}”",
     },
     "radial.help": {
-        "ja": "Grouped Cycleは使わず、相手色の閉じた外皮と純黒の内部を同一PrintObject内の物理F1〜F4パーツとして生成します。初版は、閉立体1パーツの全面が同じ黒混色stateである場合だけ安全に変換します。複数色・部分塗り・複数パーツは近似せず停止します。生成物はSLICE ONLYです。",
-        "en": "Uses no Grouped Cycle. It creates a closed partner-color skin and a pure-black interior as physical F1-F4 parts in one PrintObject. This first release safely converts only one closed part whose entire exterior uses one black-containing mixed state. Multi-color, partially painted, and multi-part models stop instead of being approximated. Output is SLICE ONLY.",
+        "ja": "Grouped Cycleは使わず、選択した黒コアFと、F1〜F4に設定した表示HEXから算出したCIELAB明度差（ΔL*）が十分にある任意の相手Fから、閉じた相手色外皮と純黒内部を生成します。HEX判定は仮の線引きで、実フィラメントの透過性・顔料差は実機検証で再調整が必要です。純黒面と閾値未満の黒混色は変換対象外です。ただしStage Aは、閉立体1パーツの外面100%が同じ1種類の対象黒混色stateである場合だけ出力します。純黒面、閾値未満、別state、部分塗り、複数パーツを含む場合は近似せず停止します。0.10 mmピッチの検証用で、生成物はSLICE ONLYです。",
+        "en": "Uses no Grouped Cycle. From the selected black-core F slot and any partner F slot with sufficient CIELAB lightness contrast (ΔL*) calculated from the configured F1-F4 display HEX values, it builds a closed partner-colour skin and pure-black interior. The HEX gate is provisional; real filament transmission and pigment differences still require physical calibration. Pure-black faces and black mixes below the threshold are excluded from conversion. Stage A can export only one watertight part whose entire exterior is one identical eligible black-mix state. Pure-black faces, below-threshold mixes, another state, partial painting, or multiple parts stop without approximation. This is a 0.10 mm validation workflow and its output is SLICE ONLY.",
+    },
+    "radial.help_hybrid": {
+        "ja": "選択した黒コアFを含む混色のうち、F1〜F4の表示HEXから算出したCIELAB明度差（ΔL*）が閾値以上のstateだけを、相手フィラメント外皮＋純黒コアへ変換します。純黒面、閾値未満の黒混色、黒を含まないstateは元の通常方式を維持します。同じ相手Fでも混色比率が異なる複数stateを対象にできますが、形状は閉立体1パーツ・1組のF1〜F4に限定し、安全に領域分割できなければ近似せず停止します。0.10 mmピッチの検証用で、生成物はSLICE ONLYです。通常のプレビューと3MF出力は変更しません。",
+        "en": "Among mixed states containing the selected black-core F slot, only states whose CIELAB lightness gap (ΔL*) from the configured F1-F4 display HEX values meets the threshold are converted into a partner-filament skin plus pure-black core. Pure-black faces, below-threshold black mixes, and states without black retain their original conventional method. Multiple eligible states, including different ratios with the same partner F, are allowed, but the geometry is limited to one watertight part with one F1-F4 set and stops without approximation if the regions cannot be partitioned safely. This is a 0.10 mm validation workflow and its output is SLICE ONLY. Normal preview and 3MF export remain unchanged.",
+    },
+    "radial.help_hybrid_adaptive": {
+        "ja": "選択式ハイブリッドの対象となる高ΔL*黒混色だけで、混色比から得たtarget L*に応じて相手フィラメント外皮厚を変えます。明るいpartner側に近いstateほど厚く、暗い黒側ほど薄くします。連続勾配ではなく既定4〜6段階の離散セル帯へ丸め、γを1より大きくすると暗い薄皮側を強調します。純黒面、閾値未満の黒混色、黒を含まないstateは通常方式のままです。表示する混色比／target L*→厚みは事前確認用です。0.10 mmピッチの未校正SLICE ONLY実験で、通常のプレビューと3MF出力は変更しません。",
+        "en": "For eligible high-ΔL* black mixes in Selective hybrid, partner-filament skin depth varies with target L* derived from the mix ratio. States nearer the bright partner use a thicker skin; darker states nearer black use a thinner skin. Depth is rounded into 4–6 discrete cel bands rather than a continuous gradient; gamma above 1 emphasizes the dark/thin end. Pure-black faces, below-threshold black mixes, and states without black retain the conventional method. The displayed mix ratio / target L* → depth mapping is a preflight preview. This is an uncalibrated 0.10 mm SLICE ONLY experiment; normal preview and 3MF export remain unchanged.",
+    },
+    "radial.skin_mapping_uniform": {
+        "ja": "一定厚：対象となる高ΔL*黒混色はすべて {thickness:.2f} mm",
+        "en": "Uniform: every eligible high-ΔL* black mix uses {thickness:.2f} mm",
+    },
+    "radial.skin_mapping_invalid": {
+        "ja": "混色比／target L*→厚みを計算できません。F1〜F4、閾値、最小・最大厚、γ、セル段階を確認してください。",
+        "en": "Could not calculate mix ratio / target L* → depth. Check F1-F4, threshold, min/max depth, gamma, and cel bands.",
+    },
+    "radial.skin_mapping_row": {
+        "ja": "S{state:02d} {left} {left_ratio}%＋{right} {right_ratio}% / target L*={lstar:.1f} → {thickness:.2f} mm",
+        "en": "S{state:02d} {left} {left_ratio}% + {right} {right_ratio}% / target L*={lstar:.1f} → {thickness:.2f} mm",
+    },
+    "radial.summary_off": {
+        "ja": "OFF：通常のプレビューと3MF出力には影響しません。",
+        "en": "OFF: normal preview and 3MF export are unchanged.",
+    },
+    "radial.summary_invalid": {
+        "ja": "ΔL*を計算できません。F1〜F4の色と黒コアFを確認してください。",
+        "en": "ΔL* could not be calculated. Check the F1-F4 colours and black-core slot.",
+    },
+    "radial.summary_invalid_mode": {
+        "ja": "ラジアル方式が不正です。Stage Aまたは選択式ハイブリッドを選び直してください。",
+        "en": "The radial method is invalid. Select Stage A or Selective hybrid again.",
+    },
+    "radial.summary_pair": {
+        "ja": "{black}+{partner} ΔL*={delta:.1f}：{decision}",
+        "en": "{black}+{partner} ΔL*={delta:.1f}: {decision}",
+    },
+    "radial.summary_target": {
+        "ja": "対象（高明度差）",
+        "en": "target (high contrast)",
+    },
+    "radial.summary_below_threshold": {
+        "ja": "対象外（閾値未満）",
+        "en": "excluded (below threshold)",
+    },
+    # Compatibility name used by the first Stage A GUI implementation.
+    "radial.summary_conventional": {
+        "ja": "対象外（閾値未満）",
+        "en": "excluded (below threshold)",
+    },
+    "radial.summary_preserved_conventional": {
+        "ja": "通常方式を維持（閾値未満）",
+        "en": "preserve conventional method (below threshold)",
+    },
+    "radial.pure_black_excluded": {
+        "ja": "純黒面はラジアル変換の対象外です。Stage Aでは純黒面が1面でもあると出力を停止します。",
+        "en": "Pure-black faces are excluded from radial conversion. Stage A stops if even one pure-black face is present.",
+    },
+    "radial.enabled_status": {
+        "ja": "ラジアル実験を有効にしました。選択した方式は実験3MFだけに適用され、通常の3MF出力は変更されません。",
+        "en": "Radial lab enabled. The selected method applies only to its laboratory 3MF; normal 3MF export remains unchanged.",
+    },
+    "radial.disabled_status": {
+        "ja": "ラジアル実験を無効にしました。",
+        "en": "Radial lab disabled.",
+    },
+    "radial.opt_in_required_title": {
+        "ja": "ラジアル実験を明示的に有効にしてください",
+        "en": "Explicitly enable the radial experiment",
+    },
+    "radial.opt_in_required": {
+        "ja": "この出力は実験機能です。先に『ラジアル実験を有効にする』をオンにし、Stage Aまたは選択式ハイブリッドを選んでください。通常の3MF出力には影響しません。",
+        "en": "This is an experimental export. First turn on Enable the radial experiment, then select Stage A or Selective hybrid. Normal 3MF export is unaffected.",
+    },
+    "radial.confirm_title": {
+        "ja": "SLICE ONLYのStage A実験を続けますか？",
+        "en": "Continue with the SLICE ONLY Stage A experiment?",
+    },
+    "radial.confirm_message": {
+        "ja": "出力対象: {target}\n黒コア {black}／対象閾値 ΔL* {threshold:.1f}以上／相手外皮 {thickness:.2f} mm／{layer:.2f} mmピッチ／壁生成 {wall} で実験3MFを生成します。\n\nStage Aは、閉立体1パーツの全面が同じ1種類の対象黒混色stateである場合だけ出力します。純黒面と閾値未満の混色は変換対象外で、それらが含まれる場合は近似せず停止します。出力はSLICE ONLYです。Snapmaker Orcaでプロジェクトとして開き、印刷前に全レイヤーを確認してください。\n\n続けますか？",
+        "en": "Export target: {target}\nCreate an experimental 3MF with black core {black}, target threshold ΔL* ≥ {threshold:.1f}, partner skin {thickness:.2f} mm, {layer:.2f} mm layers, and {wall} wall generation.\n\nStage A exports only one watertight part whose entire exterior is one identical eligible black-mix state. Pure-black faces and below-threshold mixes are excluded; if either is present, the export stops instead of approximating. Output is SLICE ONLY. Open it as a project in Snapmaker Orca and inspect every layer before printing.\n\nContinue?",
+    },
+    "radial.confirm_title_hybrid": {
+        "ja": "SLICE ONLYの選択式ハイブリッド実験を続けますか？",
+        "en": "Continue with the SLICE ONLY selective-hybrid experiment?",
+    },
+    "radial.confirm_message_hybrid": {
+        "ja": "出力対象: {target}\n黒コア {black}／対象閾値 ΔL* {threshold:.1f}以上／相手外皮 {thickness:.2f} mm／{layer:.2f} mmピッチ／壁生成 {wall} で選択式ハイブリッド3MFを生成します。\n\n高ΔL*の黒混色だけを相手F外皮＋黒コアへ変換します。純黒面、閾値未満の黒混色、黒を含まないstateは元の通常方式を維持します。閉立体1パーツを安全に領域分割できない場合は、近似せず出力を停止します。通常の3MF出力とプレビューは変更されません。出力はSLICE ONLYです。Snapmaker Orcaでプロジェクトとして開き、印刷前に全レイヤーを確認してください。\n\n現在の判定: {summary}\n\n続けますか？",
+        "en": "Export target: {target}\nCreate a selective-hybrid 3MF with black core {black}, target threshold ΔL* ≥ {threshold:.1f}, partner skin {thickness:.2f} mm, {layer:.2f} mm layers, and {wall} wall generation.\n\nOnly high-ΔL* black mixes are converted into a partner-F skin plus black core. Pure-black faces, below-threshold black mixes, and states without black retain their original conventional method. If one watertight part cannot be partitioned safely, export stops without approximation. Normal 3MF export and preview are unchanged. Output is SLICE ONLY. Open it as a project in Snapmaker Orca and inspect every layer before printing.\n\nCurrent classification: {summary}\n\nContinue?",
+    },
+    "radial.confirm_message_hybrid_adaptive": {
+        "ja": "出力対象: {target}\n黒コア {black}／対象閾値 ΔL* {threshold:.1f}以上／適応外皮 {minimum:.2f}〜{maximum:.2f} mm／厚みγ {gamma:.2f}／{bands}段階セル帯／{layer:.2f} mmピッチ／壁生成 {wall} で選択式ハイブリッド3MFを生成します。\n\n高ΔL*の黒混色だけを、混色比から得たtarget L*に応じて明るいpartner側ほど厚く、暗い黒側ほど薄い外皮＋黒コアへ変換します。純黒面、閾値未満、非黒stateは通常方式を維持します。閉立体1パーツを安全に分割できなければ近似せず停止します。出力は未校正SLICE ONLYです。Snapmaker Orcaで全レイヤーを確認してください。\n\n厚み対応: {mapping}\n判定: {summary}\n\n続けますか？",
+        "en": "Export target: {target}\nCreate a selective-hybrid 3MF with black core {black}, target threshold ΔL* ≥ {threshold:.1f}, adaptive skin {minimum:.2f}–{maximum:.2f} mm, depth gamma {gamma:.2f}, {bands} discrete cel bands, {layer:.2f} mm layers, and {wall} wall generation.\n\nOnly high-ΔL* black mixes are converted to a partner skin plus black core: target L* from the mix ratio gives thicker skin toward the bright partner and thinner skin toward black. Pure-black, below-threshold, and non-black states retain the conventional method. Export stops without approximation if one watertight part cannot be partitioned safely. Output is uncalibrated SLICE ONLY. Inspect every layer in Snapmaker Orca.\n\nDepth mapping: {mapping}\nClassification: {summary}\n\nContinue?",
     },
     "radial.running": {
-        "ja": "完全ラジアル実験3MFを生成しています…",
-        "en": "Creating the full-radial laboratory 3MF…",
+        "ja": "Stage Aラジアル実験3MFを生成しています…",
+        "en": "Creating the Stage A radial laboratory 3MF…",
+    },
+    "radial.running_hybrid": {
+        "ja": "選択式ハイブリッド実験3MFを生成しています…",
+        "en": "Creating the selective-hybrid laboratory 3MF…",
     },
     "radial.done_title": {
-        "ja": "ラジアル実験3MFを生成しました",
-        "en": "Radial laboratory 3MF created",
+        "ja": "Stage Aラジアル実験3MFを生成しました",
+        "en": "Stage A radial laboratory 3MF created",
+    },
+    "radial.done_title_hybrid": {
+        "ja": "選択式ハイブリッド実験3MFを生成しました",
+        "en": "Selective-hybrid laboratory 3MF created",
     },
     "radial.done_message": {
-        "ja": "{path}\n\n外皮 {thickness:.2f} mm／固定 {layer:.2f} mmピッチです。Snapmaker Orcaでは『プロジェクトとして開く』を選び、まずスライスと全レイヤーのプレビューだけを確認してください。まだ自動で印刷許可にはなりません。\n\n保存フォルダーを開きますか？",
-        "en": "{path}\n\nPartner skin {thickness:.2f} mm / fixed {layer:.2f} mm layers. In Snapmaker Orca, choose Open as project and inspect slicing plus every layer before anything else. This output is not automatically approved for printing.\n\nOpen the saved folder?",
+        "ja": "{path}\n\nΔL*閾値を満たした任意の相手Fから外皮 {thickness:.2f} mm、黒コア、{layer:.2f} mmピッチのStage A検証用3MFを生成しました。出力はSLICE ONLYです。Snapmaker Orcaでは『プロジェクトとして開く』を選び、スライスと全レイヤーを確認してください。自動的に印刷許可にはなりません。\n\n保存フォルダーを開きますか？",
+        "en": "{path}\n\nCreated a Stage A validation 3MF with a {thickness:.2f} mm skin from an eligible arbitrary partner F slot, black core, and {layer:.2f} mm layers. Output is SLICE ONLY. In Snapmaker Orca, choose Open as project and inspect slicing and every layer. This output is not automatically approved for printing.\n\nOpen the saved folder?",
+    },
+    "radial.done_message_hybrid": {
+        "ja": "{path}\n\n高ΔL*の黒混色だけに相手外皮 {thickness:.2f} mm＋黒コアを適用し、純黒面・閾値未満・その他のstateは通常方式を維持した、{layer:.2f} mmピッチの選択式ハイブリッド検証用3MFを生成しました。出力はSLICE ONLYです。Snapmaker Orcaでは『プロジェクトとして開く』を選び、スライスと全レイヤーを確認してください。自動的に印刷許可にはなりません。\n\n保存フォルダーを開きますか？",
+        "en": "{path}\n\nCreated a {layer:.2f} mm-layer selective-hybrid validation 3MF: only high-ΔL* black mixes use a {thickness:.2f} mm partner skin plus black core, while pure-black, below-threshold, and other states retain the conventional method. Output is SLICE ONLY. In Snapmaker Orca, choose Open as project and inspect slicing and every layer. This output is not automatically approved for printing.\n\nOpen the saved folder?",
+    },
+    "radial.done_message_hybrid_adaptive": {
+        "ja": "{path}\n\n高ΔL*黒混色だけに、target L*を{bands}段階へ丸めた {minimum:.2f}〜{maximum:.2f} mm（γ {gamma:.2f}）の適応外皮＋黒コアを適用した、{layer:.2f} mmピッチの選択式ハイブリッド検証用3MFを生成しました。純黒面・閾値未満・非黒stateは通常方式を維持します。出力は未校正SLICE ONLYです。Snapmaker Orcaで全レイヤーを確認してください。\n\n保存フォルダーを開きますか？",
+        "en": "{path}\n\nCreated a {layer:.2f} mm-layer selective-hybrid validation 3MF. Only high-ΔL* black mixes use a {minimum:.2f}–{maximum:.2f} mm adaptive partner skin (gamma {gamma:.2f}, target L* rounded to {bands} cel bands) plus black core. Pure-black, below-threshold, and non-black states retain the conventional method. Output is uncalibrated SLICE ONLY. Inspect every layer in Snapmaker Orca.\n\nOpen the saved folder?",
     },
     "radial.error_title": {
         "ja": "ラジアル実験3MFを生成できません",
@@ -909,8 +1447,8 @@ CATALOG: dict[str, dict[str, str]] = {
         "en": "This laboratory export supports exactly one closed print part (currently {part_count}). Reduce the target to one part and try again.",
     },
     "radial.reason.single_palette_required": {
-        "ja": "対象に複数のフィラメント構成があります。1パーツ・1組のF1〜F4設定にそろえてから再実行してください。",
-        "en": "The target uses multiple filament sets. Use one part with one F1-F4 set and try again.",
+        "ja": "モデル全体の対象に複数のフィラメント構成があります。パーツ一覧で1パーツを選んでそのパーツだけを書き出すか、全パーツを同じ1組のF1〜F4設定にそろえてください。",
+        "en": "The whole-model target uses multiple filament sets. Select one part in the Parts list to export only that part, or give every part the same F1-F4 set.",
     },
     "radial.reason.closed_mesh_required": {
         "ja": "形状が、穴のない閉立体1個として安全に確認できません。メッシュの穴・自己交差・分離した殻を修復してください。",
@@ -921,8 +1459,32 @@ CATALOG: dict[str, dict[str, str]] = {
         "en": "Repair-generated faces prevent an exterior-preservation guarantee. Fix the source model into a closed solid, then process it again.",
     },
     "radial.reason.uniform_black_mix_required": {
-        "ja": "外面全体が同じ『黒＋相手色』の混色ではありません。初版では1種類の黒混色だけで全面を塗り、部分塗りや複数混色をなくしてください。",
-        "en": "The whole exterior is not one identical black-plus-partner mix. For this first release, cover every exterior face with one black-containing mix and remove partial or multi-state painting.",
+        "ja": "外面全体が同じ1種類の対象『黒＋相手F』混色stateではありません。Stage Aでは全面を同じ対象stateにそろえ、純黒面、閾値未満、部分塗り、別stateをなくしてください。",
+        "en": "The entire exterior is not one identical eligible black-plus-partner-F mix state. For Stage A, use the same eligible state over every face and remove pure black, below-threshold mixes, partial painting, and other states.",
+    },
+    "radial.reason.opt_in_required": {
+        "ja": "ラジアル実験が無効です。方式を選び、明示的に有効にしてから再実行してください。",
+        "en": "The radial experiment is disabled. Select a method, explicitly enable it, and try again.",
+    },
+    "radial.reason.invalid_conversion_mode": {
+        "ja": "ラジアル方式が不正です。Stage Aまたは選択式ハイブリッドを選び直してください。",
+        "en": "The radial method is invalid. Select Stage A or Selective hybrid again.",
+    },
+    "radial.reason.invalid_skin_mode": {
+        "ja": "外皮厚方式が不正です。一定厚または適応厚を選び直してください。",
+        "en": "The skin-depth method is invalid. Select Uniform or Adaptive again.",
+    },
+    "radial.reason.contrast_below_threshold": {
+        "ja": "使用中の黒混色の最大明度差はΔL* {maximum:.1f}で、対象閾値{threshold:.1f}未満です。相手Fまたは閾値を確認してください。近似出力は保存していません。",
+        "en": "The largest lightness contrast among used black mixes is ΔL* {maximum:.1f}, below the {threshold:.1f} target threshold. Check the partner F slot or threshold. No approximate output was saved.",
+    },
+    "radial.reason.invalid_contrast_threshold": {
+        "ja": "ΔL*の対象閾値が不正です。0〜100の数値で指定してください。",
+        "en": "The ΔL* target threshold is invalid. Enter a number from 0 to 100.",
+    },
+    "radial.reason.unsupported_process": {
+        "ja": "{layer:.2f} mmピッチと壁生成『{wall}』の組合せは検証済みStage Aプロファイルではありません。0.10 mmのclassicまたはarachneを選んでください（旧0.20 mmはclassicのみ）。",
+        "en": "The {layer:.2f} mm layer height with the {wall} wall generator is not a validated Stage A profile. Choose classic or arachne at 0.10 mm (legacy 0.20 mm supports classic only).",
     },
     "radial.reason.skin_thickness_failed": {
         "ja": "指定した外皮厚では内部を安全に残せません。外皮を薄くするか、細すぎる部分のない大きなモデルで試してください。",
@@ -1198,18 +1760,98 @@ CATALOG: dict[str, dict[str, str]] = {
     "tone.delta_e": {"ja": "許容 ΔE", "en": "Allowed ΔE"},
     "tone.illustration_off": {"ja": "オフ", "en": "Off"},
     "tone.illustration_cel": {"ja": "セル彩色", "en": "Cel Colour"},
+    "tone.illustration_cel_strong": {
+        "ja": "セル彩色（強調）",
+        "en": "High-Contrast Cel",
+    },
+    "tone.illustration_recommend": {
+        "ja": "強調セル向け4色を提案",
+        "en": "Suggest 4 Colors for Cel",
+    },
+    "tone.illustration_recommend_title": {
+        "ja": "強調セル向け4色を再提案",
+        "en": "Suggest 4 Colors for High-Contrast Cel",
+    },
+    "tone.illustration_recommend_confirm": {
+        "ja": "現在のF1〜F4は手動設定または読込プロジェクトの色です。\n\n全パーツのF1〜F4を強調セル向けに置き換えますか？\nFull Spectrumでは、広い暗色・低彩度の素材を検出した時だけ青灰色を優先します。混色比率と面の手修正は保持されます。",
+        "en": "The current F1-F4 colors were edited manually or loaded from a project.\n\nReplace F1-F4 for every part with a high-contrast cel proposal?\nIn Full Spectrum, cool blue-grey is prioritised only for broad, dark low-chroma material. Mix ratios and manual face paint will be kept.",
+    },
+    "tone.illustration_recommend_help": {
+        "ja": "Full Spectrumでは、広い暗色・低彩度の素材を検出した時だけ黒・明色・肌色・青灰色を優先します。Flat Fourの配色、混色比率、面の手修正は保持します。",
+        "en": "In Full Spectrum, only broad, dark low-chroma material prioritises black, light, skin and cool blue-grey. Flat Four colors, mix ratios and manual face paint stay unchanged.",
+    },
+    "tone.illustration_recommend_running": {
+        "ja": "強調セル向けの4色を再提案しています…",
+        "en": "Suggesting four colors for high-contrast cel…",
+    },
+    "tone.illustration_recommend_kept": {
+        "ja": "現在のF1〜F4を保持しました",
+        "en": "Kept the current F1-F4 colors",
+    },
+    "tone.illustration_recommend_unavailable": {
+        "ja": "セル彩色（強調）を選ぶと4色を再提案できます",
+        "en": "Select High-Contrast Cel to request a new four-color proposal",
+    },
     "tone.illustration_noir": {
         "ja": "陰影モノクロ",
         "en": "Shaded Monochrome",
     },
     "tone.illustration_strength": {
-        "ja": "陰影強度",
-        "en": "Shade Strength",
+        "ja": "彩色効果",
+        "en": "Style Amount",
     },
     "tone.illustration_bands": {"ja": "階調", "en": "Bands"},
     "tone.illustration_light": {
-        "ja": "光（固定正面）",
-        "en": "Light (Fixed Front)",
+        "ja": "光源方向（正面図）",
+        "en": "Light Direction (Front View)",
+    },
+    "tone.illustration_light_intensity": {
+        "ja": "光の強さ",
+        "en": "Light Strength",
+    },
+    "tone.illustration_light_range": {
+        "ja": "光の範囲",
+        "en": "Light Range",
+    },
+    "tone.illustration_selective_highlight": {
+        "ja": "ハイライト範囲",
+        "en": "Highlight Area",
+    },
+    "tone.illustration_selective_highlight_standard": {
+        "ja": "標準",
+        "en": "Standard",
+    },
+    "tone.illustration_selective_highlight_5": {
+        "ja": "5%（推奨）",
+        "en": "5% (Recommended)",
+    },
+    "tone.illustration_selective_highlight_8": {
+        "ja": "8%",
+        "en": "8%",
+    },
+    "tone.illustration_selective_highlight_12": {
+        "ja": "12%",
+        "en": "12%",
+    },
+    "tone.illustration_contour_policy": {
+        "ja": "輪郭として暗くする面",
+        "en": "Faces Darkened as Contours",
+    },
+    "tone.illustration_contour_outer": {
+        "ja": "外周のみ",
+        "en": "Silhouette Only",
+    },
+    "tone.illustration_contour_outer_crease": {
+        "ja": "外周＋明確な稜線",
+        "en": "Silhouette + Sharp Edges",
+    },
+    "tone.illustration_contour_outer_crease_fold": {
+        "ja": "外周＋稜線＋確実な折れ目（推奨・現状）",
+        "en": "Silhouette + Edges + Confirmed Folds (Recommended / Current)",
+    },
+    "tone.illustration_contour_help": {
+        "ja": "線を描く設定ではありません。選んだ形状付近の面を既存の暗い印刷色へ割り当てます。ハイライト5～12%で使用します。",
+        "en": "This does not draw lines. It assigns faces near the selected geometry to an existing darker print color. Use with a 5-12% Highlight Area.",
     },
     "tone.light_front_left": {"ja": "左上", "en": "Upper Left"},
     "tone.light_front": {"ja": "正面", "en": "Front"},
@@ -1285,7 +1927,7 @@ CATALOG: dict[str, dict[str, str]] = {
     "assembly.status_single_model": {"ja": "パーツ情報なし: 1モデルとして保持", "en": "No part markers: retained as one model"},
     "assembly.status_open": {"ja": "元パーツ {parts}個を保持（未閉立体）\n開口 {loops} / 対応済み {seams}組 / 要確認 {unmatched}", "en": "Original {parts} parts retained (not solid)\nOpen loops {loops} / matched seams {seams} / needs review {unmatched}"},
     "assembly.status_closed": {"ja": "閉立体化済み: {parts}パーツ / 微小開口修復 {repaired}箇所", "en": "Solidified: {parts} parts / tiny openings repaired {repaired}"},
-    "assembly.status_closed_single_glb": {"ja": "閉立体化済み: GLBのUV/テクスチャ継ぎ目を統合（穴埋めによる形状追加なし）", "en": "Solidified: GLB UV/texture seams welded (no invented cap geometry)"},
+    "assembly.status_closed_single_glb": {"ja": "閉立体化済み: 単一GLBを安全に正規化", "en": "Solidified: single GLB normalized safely"},
     "assembly.raw_already_active": {"ja": "元パーツを保った未閉立体の状態です", "en": "The original open-part state is already active"},
     "assembly.diagnostics_title": {"ja": "開口境界の診断", "en": "Open-Boundary Diagnostics"},
     "assembly.no_open_boundaries": {"ja": "3Dで確認する開口境界はありません。", "en": "There are no open boundaries to inspect in 3D."},
@@ -1293,13 +1935,13 @@ CATALOG: dict[str, dict[str, str]] = {
     "assembly.single_model_unchanged": {"ja": "Tripoの明示パーツ情報がないため、この操作では形状を変更しません。", "en": "This OBJ has no explicit Tripo part data, so this action will not change its geometry."},
     "assembly.already_closed": {"ja": "すべての印刷パーツは既に閉じています", "en": "All print parts are already closed"},
     "assembly.solidify_stopped_title": {"ja": "閉立体化を安全停止", "en": "Solidification Stopped Safely"},
-    "assembly.solidify_stopped_unmatched": {"ja": "対応相手のない開口が {count}箇所あります。誤った蓋で形状を変えないよう処理は開始せず、元パーツを保持しました。\n\nマニュアル修正を開き、赤い問題境界を確認します。小さな穴だけなら［微小な問題境界を修復して閉じる β］を使用できます。", "en": "There are {count} open boundaries without a matching partner. To avoid changing the model with an incorrect cap, processing was not started and the original parts were retained.\n\nManual Editing will open with problem boundaries in red. For tiny holes only, use Repair Tiny Problem Boundaries and Close β."},
+    "assembly.solidify_stopped_unmatched": {"ja": "対応相手のない開口が {count}箇所あります。誤った蓋で形状を変えないよう処理は開始せず、元パーツを保持しました。\n\n小さな穴だけなら［閉立体化］で安全な局所修復を試せます。大きな欠損は元モデル側で修復してください。", "en": "There are {count} open boundaries without a matching partner. To avoid changing the model with an incorrect cap, processing was not started and the original parts were retained.\n\nFor tiny holes, [Solidify] can try the safe local repair. Repair larger missing surfaces in the source model."},
     "assembly.repair_confirm_title": {"ja": "微小開口を修復して閉じる β", "en": "Repair Tiny Openings and Close β"},
     "assembly.repair_confirm": {"ja": "要確認の開口 {count}箇所（最大幅 {largest:.3f} mm）へ局所的な蓋を作り、その後に元のパーツ構成を保って閉立体化します。\n\n幅2.0 mm以下で平面性を確認できた小穴だけが対象です。大きい欠損・自己交差・危険な形状は変更せず安全停止します。続けますか？", "en": "Create local caps for {count} openings needing review (largest span {largest:.3f} mm), then solidify while preserving the original part structure.\n\nOnly planar tiny holes up to 2.0 mm are eligible. Large gaps, self-intersections, or unsafe geometry remain unchanged and stop safely. Continue?"},
     "assembly.solidify_failed_kept_raw": {"ja": "閉立体化を安全停止し、読み込んだ元パーツを保持しました", "en": "Solidification stopped safely; the imported original parts were retained"},
-    "assembly.solidify_failed_detail": {"ja": "閉立体化を完了できませんでしたが、読み込んだ元パーツ・色・手修正は失われていません。\n\n{error}\n\n開口境界を3Dで確認しますか？", "en": "Solidification could not finish, but the imported original parts, colors, and manual edits were preserved.\n\n{error}\n\nInspect the open boundaries in 3D?"},
+    "assembly.solidify_failed_detail": {"ja": "閉立体化を完了できませんでしたが、読み込んだ元パーツ・色・手修正は失われていません。\n\n{error}\n\n大きな欠損または複雑な形状は元モデル側で修復してください。", "en": "Solidification could not finish, but the imported original parts, colors, and manual edits were preserved.\n\n{error}\n\nRepair large missing surfaces or complex geometry in the source model."},
     "assembly.export_blocked_title": {"ja": "未閉立体のため3MF出力を停止", "en": "3MF Export Blocked: Parts Are Open"},
-    "assembly.export_blocked_open": {"ja": "境界エッジが {boundaries}本残っています（要確認 {unmatched}箇所）。Snapmaker Orca側の自動修復で色や形状を失わないよう、3MFはまだ出力しません。\n\n［パーツ処理］で閉立体化または修復してください。開口を3Dで確認しますか？", "en": "{boundaries} boundary edges remain ({unmatched} need review). To prevent Snapmaker Orca repair from losing colors or altering the shape, 3MF export has not started.\n\nSolidify or repair the model under Part Processing. Inspect the openings in 3D now?"},
+    "assembly.export_blocked_open": {"ja": "境界エッジが {boundaries}本残っています（要確認 {unmatched}箇所）。Snapmaker Orca側の自動修復で色や形状を失わないよう、3MFはまだ出力しません。\n\n［出力設定］で閉立体化を試すか、元モデル側で開口を修復してください。", "en": "{boundaries} boundary edges remain ({unmatched} need review). To prevent Snapmaker Orca repair from losing colors or altering the shape, 3MF export has not started.\n\nTry Solidify under Output Settings, or repair the openings in the source model."},
     "assembly.export_auto_solidify_title": {
         "ja": "未閉立体を自動閉立体化して3MF出力",
         "en": "Automatically Solidify Before 3MF Export",
@@ -1307,6 +1949,10 @@ CATALOG: dict[str, dict[str, str]] = {
     "assembly.export_auto_solidify_confirm": {
         "ja": "境界エッジが {boundaries}本残っています。\n\nChromaMatterが、対応を安全確認できたパーツ境界またはGLBの同一座標継ぎ目だけを自動で閉立体化し、成功後に3MF出力を再開します。実際の穴と判断した開口へ自動で蓋は作りません。\n\n閉立体化して出力を続けますか？",
         "en": "{boundaries} boundary edges remain.\n\nChromaMatter will automatically solidify only safely matched part boundaries or coincident GLB seams, then resume 3MF export after it succeeds. It will not automatically cap openings identified as real holes.\n\nSolidify and continue export?",
+    },
+    "assembly.export_auto_solidify_confirm_single": {
+        "ja": "境界エッジが {boundaries}本残っています。\n\nChromaMatterがGLBの同一座標継ぎ目を統合し、残った開口のうち幅2.0 mm以下で厳密に平面な小穴だけを局所修復します。閉立体・面向き・正体積などの検証に合格した場合だけ3MF出力を再開します。\n\n修復して出力を続けますか？",
+        "en": "{boundaries} boundary edges remain.\n\nChromaMatter will weld coincident GLB seams and locally repair only remaining strictly planar tiny holes up to 2.0 mm. 3MF export resumes only after watertightness, winding, positive volume, and the other solid checks pass.\n\nRepair and continue export?",
     },
     "assembly.export_auto_solidify_running": {
         "ja": "3MF出力前に安全な閉立体化を実行しています",
@@ -1321,8 +1967,8 @@ CATALOG: dict[str, dict[str, str]] = {
         "en": "3MF Export Stopped Safely: Real Openings Detected",
     },
     "assembly.export_auto_solidify_unsafe": {
-        "ja": "対応相手のない開口が {unmatched}箇所あります（境界エッジ {boundaries}本）。誤った蓋で形状を変えないよう、3MF出力時の自動閉立体化では塞ぎません。元の形状・色・手修正は保持されています。\n\n赤い問題境界を確認し、実際の欠損を元モデルで修正してください。微小な穴だと確認できる場合だけ、［出力設定］の［閉立体化］から明示的に修復できます。",
-        "en": "There are {unmatched} openings without matching partners ({boundaries} boundary edges). Export-time automatic solidification will not cap them, avoiding an incorrect shape change. The original geometry, colors, and manual edits are preserved.\n\nInspect the red problem boundaries and repair real missing surfaces in the source model. Only when you have confirmed they are tiny holes, use [Solidify] under Output Settings to explicitly request repair.",
+        "ja": "対応相手のない開口が {unmatched}箇所あります（境界エッジ {boundaries}本）。誤った蓋で形状を変えないよう、3MF出力時の自動閉立体化では塞ぎません。元の形状・色・手修正は保持されています。\n\n実際の欠損は元モデル側で修復してください。微小な穴だと確認できる場合だけ、［出力設定］の［閉立体化］から局所修復を試せます。",
+        "en": "There are {unmatched} openings without matching partners ({boundaries} boundary edges). Export-time automatic solidification will not cap them, avoiding an incorrect shape change. The original geometry, colors, and manual edits are preserved.\n\nRepair real missing surfaces in the source model. Only when they are confirmed tiny holes, use [Solidify] under Output Settings to try the local repair.",
     },
     "assembly.export_auto_solidify_unsupported_title": {
         "ja": "このモデルは自動閉立体化できません",
@@ -1339,10 +1985,6 @@ CATALOG: dict[str, dict[str, str]] = {
     "assembly.export_auto_solidify_incomplete": {
         "ja": "閉立体化後も境界エッジが {boundaries}本残っています（要確認 {unmatched}箇所）。未閉立体の3MFは出力しません。元の形状・色・手修正は保持されています。",
         "en": "{boundaries} boundary edges remain after solidification ({unmatched} need review). An open 3MF will not be exported. The original geometry, colors, and manual edits are preserved.",
-    },
-    "assembly.export_auto_solidify_inspect": {
-        "ja": "\n\n開口境界を3Dで確認しますか？",
-        "en": "\n\nInspect the open boundaries in 3D?",
     },
     "assembly.export_auto_solidify_stopped": {
         "ja": "未閉立体のため3MF出力を安全停止しました。元の状態は保持されています",
@@ -1376,6 +2018,13 @@ CATALOG: dict[str, dict[str, str]] = {
     "preview.open_reference": {"ja": "元画像を開いてください", "en": "Open a reference image"},
     "preview.process_obj": {"ja": "モデルを処理すると表示されます", "en": "Shown after processing a model"},
     "preview.target_placeholder": {"ja": "変換色プレビュー", "en": "Converted Color Preview"},
+    "preview.direction": {"ja": "表示方向", "en": "View"},
+    "preview.direction_front": {"ja": "前", "en": "Front"},
+    "preview.direction_back": {"ja": "後", "en": "Back"},
+    "preview.direction_left": {"ja": "左", "en": "Left"},
+    "preview.direction_right": {"ja": "右", "en": "Right"},
+    "preview.direction_top": {"ja": "上", "en": "Top"},
+    "preview.direction_bottom": {"ja": "下", "en": "Bottom"},
     "preview.click_reference": {"ja": "元画像をクリックして色を取得", "en": "Click the reference image to sample a color"},
     "recipe.colors": {"ja": "使用色", "en": "Colors"},
     "recipe.ratio": {"ja": "比率 A : B", "en": "Ratio A : B"},
@@ -1383,6 +2032,10 @@ CATALOG: dict[str, dict[str, str]] = {
     "recipe.guide": {"ja": "目安", "en": "Quality"},
     "recipe.apply": {"ja": "選択レシピを\n混色スロットへ反映", "en": "Apply Selected Recipe\nto Mix Slot"},
     "recipe.direct_none": {"ja": "基本色の近似: 未取得", "en": "Nearest Base Color: Not Sampled"},
+    "recipe.direct_match": {
+        "ja": "基本色の近似: {slot}\nΔE76 {delta:.2f}（{quality}）",
+        "en": "Nearest Base Color: {slot}\ndelta-E76 {delta:.2f} ({quality})",
+    },
     "recipe.very_close": {"ja": "かなり近い", "en": "Very close"},
     "recipe.close": {"ja": "近い", "en": "Close"},
     "recipe.test_print": {"ja": "要試刷り", "en": "Test print"},
@@ -1392,6 +2045,7 @@ CATALOG: dict[str, dict[str, str]] = {
     "state.obj_none": {"ja": "モデル: 未選択", "en": "MODEL: Not selected"},
     "state.source_selected": {"ja": "モデル: {name}", "en": "MODEL: {name}"},
     "state.reference_none": {"ja": "元画像: 未選択", "en": "Reference: Not selected"},
+    "state.reference_selected": {"ja": "元画像: {name}", "en": "Reference: {name}"},
     "state.not_sampled": {"ja": "未取得", "en": "Not sampled"},
     "state.parts_hint": {"ja": "モデル読込後にパーツを表示", "en": "Parts appear after opening a model"},
     "state.recommend_hint": {"ja": "モデルの色から原色・無彩色・肌色系を提案できます", "en": "Recommend primaries, neutrals, and skin-tone filaments from model colors"},
@@ -2211,6 +2865,10 @@ CATALOG: dict[str, dict[str, str]] = {
     "paint.airbrush_applied": {"ja": "エアブラシを{count:,}面へ反映しました", "en": "Airbrushed {count:,} faces"},
     "paint.smudge_applied": {"ja": "{count:,}面をなじませました", "en": "Smudged {count:,} faces"},
     "paint.smooth_passes": {"ja": "ならし回数", "en": "Smooth Passes"},
+    "paint.fill_include_shadows": {
+        "ja": "影と判定した同系色まで塗りつぶす（Flat Four）",
+        "en": "Include connected shaded regions of the same color family (Flat Four)",
+    },
     "paint.paint_color": {"ja": "塗る色", "en": "Paint Color"},
     "paint.close": {"ja": "修正を保持して閉じる", "en": "Keep Corrections and Close"},
     "paint.nib": {"ja": "筆先", "en": "Nib"},
@@ -2247,9 +2905,130 @@ CATALOG: dict[str, dict[str, str]] = {
         "ja": "面内グラデーションを生成",
         "en": "Generate In-face Gradients",
     },
+    "paint.auto_shading_busy": {
+        "ja": "陰影の自動補正を処理中です…",
+        "en": "Automatic shading correction is already running…",
+    },
+    "paint.auto_shading_generating": {
+        "ja": "面内グラデーションを生成しています…",
+        "en": "Generating in-face gradients…",
+    },
+    "paint.auto_shading_done": {
+        "ja": "面内グラデーションを生成しました{limit_note}",
+        "en": "Generated in-face gradients{limit_note}",
+    },
+    "paint.auto_shading_limit_note": {
+        "ja": "・品質上限内で適用",
+        "en": " within the quality limit",
+    },
+    "paint.auto_shading_error": {
+        "ja": "陰影の自動補正を適用できませんでした",
+        "en": "Could not apply automatic shading correction",
+    },
+    "paint.auto_shading_error_title": {
+        "ja": "面内グラデーションを生成できません",
+        "en": "Could Not Generate In-face Gradients",
+    },
+    "paint.auto_shading_no_target": {
+        "ja": "手描き修正を除く陰影補正対象がありません",
+        "en": "There are no shading-correction targets outside manual edits",
+    },
+    "paint.auto_shading_no_gradient": {
+        "ja": "補正できる面内グラデーションは見つかりませんでした",
+        "en": "No correctable in-face gradients were found",
+    },
+    "paint.smooth_restored": {
+        "ja": "滑らかブラシの色修正を復元しました",
+        "en": "Restored Smooth Brush color edits",
+    },
+    "paint.smooth_erased_status": {
+        "ja": "滑らかブラシで自動色へ戻しました",
+        "en": "Restored automatic colors with Smooth Brush",
+    },
+    "paint.smooth_airbrush_status": {
+        "ja": "色 {state} をエアブラシで重ねました",
+        "en": "Layered color {state} with Airbrush",
+    },
+    "paint.smooth_painted_status": {
+        "ja": "色 {state} で{nib}に塗りました",
+        "en": "Painted with color {state} using {nib}",
+    },
+    "paint.smooth_nib": {"ja": "滑らか", "en": "Smooth Brush"},
+    "paint.pressure_nib": {"ja": "筆圧ペン", "en": "Pressure Pen"},
+    "paint.tapered_nib": {"ja": "先細りペン", "en": "Tapered Pen"},
+    "paint.smooth_batch_failed_status": {
+        "ja": "{succeeded}筆を確定、{failed}筆を処理できませんでした",
+        "en": "Committed {succeeded} stroke(s); {failed} stroke(s) failed",
+    },
+    "paint.smooth_batch_done_status": {
+        "ja": "{count}筆を順番に確定しました",
+        "en": "Committed {count} strokes in order",
+    },
+    "paint.no_strokes_status": {"ja": "筆跡はありません", "en": "No strokes to apply"},
     "paint.controls_hint": {"ja": "左: ツール操作　右ドラッグ: 回転　ホイールドラッグ: 移動　ホイール: 拡大　C / Alt+左: 3Dスポイト", "en": "Left: use tool   Right drag: rotate   Middle drag: pan   Wheel: zoom   C / Alt+Left: 3D Eyedropper"},
     "paint.initializing": {"ja": "最終メッシュを準備しています…", "en": "Preparing the final mesh…"},
     "paint.edit_count_zero": {"ja": "手修正 0面", "en": "Manual edits: 0 faces"},
+    "paint.edit_count": {"ja": "手修正 {count:,}面", "en": "Manual edits: {count:,} faces"},
+    "paint.ready_status": {"ja": "色修正の準備ができました", "en": "Manual Editing is ready"},
+    "paint.reference_color_selected": {
+        "ja": "元画像から塗る色を選びました",
+        "en": "Selected a paint color from the reference image",
+    },
+    "paint.reference_best_mix": {
+        "ja": "理論上の最良混色 {a}:{b} = {ratio_a}:{ratio_b} (予測 {predicted}, ΔE {delta:.2f})",
+        "en": "Best theoretical mix {a}:{b} = {ratio_a}:{ratio_b} (predicted {predicted}, delta-E {delta:.2f})",
+    },
+    "paint.reference_sample_result": {
+        "ja": "スポイト {sample} → 現在の印刷色 {state} {name} (ΔE {delta:.2f})。{recipe}",
+        "en": "Sampled {sample} -> current print color {state} {name} (delta-E {delta:.2f}). {recipe}",
+    },
+    "paint.brush_drawing": {
+        "ja": "ブラシ線を入力中…マウスを離すと反映します",
+        "en": "Drawing a brush stroke… release the mouse to apply",
+    },
+    "paint.queued_status": {
+        "ja": "前の処理後に続けて反映します…",
+        "en": "Queued; this will be applied after the current operation…",
+    },
+    "paint.status_with_faces": {
+        "ja": "{message}（{count:,}面）",
+        "en": "{message} ({count:,} faces)",
+    },
+    "paint.updated_status": {"ja": "更新しました", "en": "Updated"},
+    "paint.closing_status": {
+        "ja": "最後の色修正を確定して閉じています…",
+        "en": "Committing the final color edits and closing…",
+    },
+    "paint.closed_status": {
+        "ja": "最後の色修正を確定しました",
+        "en": "Committed the final color edits",
+    },
+    "paint.brush_erased_status": {
+        "ja": "自動色へ戻しました",
+        "en": "Restored automatic colors",
+    },
+    "paint.brush_applied_status": {
+        "ja": "色 {state} でブラシ修正しました",
+        "en": "Painted with color {state}",
+    },
+    "paint.fill_applied_status": {
+        "ja": "同じ色でつながった領域を色 {state} へ変更しました",
+        "en": "Changed the connected same-color region to color {state}",
+    },
+    "paint.fill_material_applied_status": {
+        "ja": "影と判定した同系色の領域を色 {state} へ変更しました",
+        "en": "Changed the connected shaded color-family region to color {state}",
+    },
+    "paint.smooth_applied_status": {
+        "ja": "三角形単位の突出・くぼみをならしました",
+        "en": "Smoothed triangle-level protrusions and recesses",
+    },
+    "paint.undo_status": {"ja": "1操作戻しました", "en": "Undid one operation"},
+    "paint.redo_status": {"ja": "1操作やり直しました", "en": "Redid one operation"},
+    "paint.clear_status": {
+        "ja": "すべて自動変換色へ戻しました",
+        "en": "Restored all faces to automatically mapped colors",
+    },
     "paint.choose_color": {"ja": "塗る色を選択してください", "en": "Select a paint color"},
     "paint.sample_initial": {"ja": "元画像をクリックすると現在の{count}色から近い色を選びます", "en": "Click the reference image to choose the nearest of the current {count} print colors"},
     "paint.selected_color": {"ja": "選択中 {state}: {name}{suffix}", "en": "Selected {state}: {name}{suffix}"},
@@ -2320,6 +3099,14 @@ CATALOG: dict[str, dict[str, str]] = {
     },
     "separate.wait_for_view": {"ja": "3D表示の更新後に、もう一度囲んでください", "en": "Wait for the 3D view to update, then draw the region again"},
     "separate.checking": {"ja": "囲んだ独立形状を確認しています…", "en": "Checking the enclosed disconnected shape…"},
+    "separate.processing": {
+        "ja": "色を保持したまま新しいパーツへ分離しています…",
+        "en": "Separating a new part while preserving its colors…",
+    },
+    "separate.added_status": {
+        "ja": "{part} を追加しました",
+        "en": "Added {part}",
+    },
     "separate.cancelled": {"ja": "フリーハンド分割をキャンセルしました", "en": "Freehand separation was cancelled"},
     "separate.draw_prompt": {"ja": "右側の3D表示で、分けたい独立形状を囲んでください", "en": "Enclose the disconnected shape in the 3D view on the right"},
     "separate.trace_prompt": {"ja": "分けたい独立形状の外側を一周してください", "en": "Trace once around the disconnected shape to separate"},
@@ -2348,6 +3135,46 @@ CATALOG: dict[str, dict[str, str]] = {
     "preview.open_manual": {"ja": "クリックしてマニュアル修正", "en": "Click to Open Manual Editing"},
     "state.opening_manual": {"ja": "マニュアル修正を開いています…", "en": "Opening Manual Editing…"},
 }
+
+
+PROGRESS_PHASE_KEYS: dict[str, str] = {
+    phase: f"progress.{phase}"
+    for phase in (
+        "scan",
+        "parse",
+        "clean",
+        "simplify",
+        "solidify",
+        "joints",
+        "validate",
+        "preview",
+        "done",
+        "volume_partition",
+        "color",
+        "3mf",
+        "part_3mf",
+        "obj",
+        "report",
+        "radial_color",
+        "radial_geometry",
+        "radial_3mf",
+        "radial_done",
+        "color_depth_3mf_inspect",
+        "color_depth_labels",
+        "color_depth_geometry",
+        "color_depth_3mf",
+        "color_depth_done",
+    )
+}
+
+
+def _contains_japanese(value: object) -> bool:
+    return any(
+        "\u3040" <= character <= "\u30ff"
+        or "\u3400" <= character <= "\u9fff"
+        or "\uff66" <= character <= "\uff9f"
+        for character in str(value)
+    )
 
 
 def normalize_language(value: object) -> str:
@@ -2411,6 +3238,62 @@ class Translator:
         text = str(displayed_text)
         key = self.key_for(text)
         return self.text(key) if key is not None else text
+
+    def status_text(
+        self,
+        fallback: object,
+        *,
+        fallback_key: str = "state.updated",
+    ) -> str:
+        """Keep the English status bar free of untranslated Japanese copy.
+
+        Worker results may contain legacy text that predates the translation
+        catalog.  Known text is translated exactly; an unknown Japanese result
+        falls back to a concise English status instead of leaking across the
+        interface-language boundary.
+        """
+
+        translated = self.translate_known(fallback)
+        if self.language == "en" and _contains_japanese(translated):
+            return self.text(fallback_key)
+        return translated
+
+    def dialog_detail_text(
+        self,
+        detail: object,
+        *,
+        fallback_key: str = "state.error_reason",
+    ) -> str:
+        """Render exception or traceback details without crossing UI languages.
+
+        Japanese dialogs retain the original backend detail.  English dialogs
+        retain known catalog translations and ordinary English diagnostics,
+        while an unknown value containing Japanese is replaced by the selected
+        safe catalog fallback.  Keeping this policy in one adapter prevents
+        ``str(exc)`` and traceback text from bypassing dialog localization.
+        """
+
+        return self.status_text(detail, fallback_key=fallback_key)
+
+    def progress_text(self, phase: object, fallback: object) -> str:
+        """Render one backend progress message in the current UI language.
+
+        Detailed same-language fallbacks retain counts and part names.  When a
+        backend emits the other language, the stable phase provides a concise
+        localized label instead of leaking Japanese into the English UI (or
+        English into the Japanese UI).
+        """
+
+        fallback_text = str(fallback)
+        fallback_is_japanese = _contains_japanese(fallback_text)
+        if (
+            self.language == "ja" and fallback_is_japanese
+        ) or (
+            self.language == "en" and not fallback_is_japanese
+        ):
+            return self.translate_known(fallback_text)
+        key = PROGRESS_PHASE_KEYS.get(str(phase), "progress.unknown")
+        return self.text(key)
 
 
 def default_preferences_path() -> Path:

@@ -60,7 +60,10 @@ _MAX_ACCESSOR_VALUES = 16_000_000
 _MAX_TOTAL_ACCESSOR_VALUES = 64_000_000
 _MAX_IMPORTED_VERTICES = 3_000_000
 _MAX_IMPORTED_FACES = 3_000_000
-_MAX_REDUCED_SOURCE_FACES = 5_000_000
+# Indexed TRIANGLES use three scalar accessor values per face.  Keep this
+# admission below the independent per-accessor limit as well as the other
+# file, vertex, and total-accessor budgets enforced by the preflight.
+_MAX_REDUCED_SOURCE_FACES = 5_250_000
 LARGE_GLTF_REDUCTION_TARGET_FACES = 450_000
 GLTF_SOURCE_VERTEX_LIMIT = _MAX_IMPORTED_VERTICES
 GLTF_NORMAL_SOURCE_FACE_LIMIT = _MAX_IMPORTED_FACES
@@ -1796,10 +1799,10 @@ def load_gltf_asset(
     ``'auto'`` only omits it for the conservative multipart segmentation
     signature documented by :func:`_auto_segmentation_vertex_colours`.
 
-    ``allow_large_reduced_source`` explicitly admits a supported
-    3,000,001--5,000,000 triangle source.  The returned asset records a hard
-    450,000-face working-model ceiling which ``prepare_geometry`` enforces on
-    every initial or repeated processing pass.
+    ``allow_large_reduced_source`` explicitly admits a supported source above
+    the normal face limit and within the configured reduced-source limit.  The
+    returned asset records a hard 450,000-face working-model ceiling which
+    ``prepare_geometry`` enforces on every initial or repeated processing pass.
     """
 
     if (
@@ -1842,7 +1845,7 @@ def load_gltf_asset(
             "この大規模GLBは安全な縮約読込の条件を満たしません: "
             f"{plan.triangle_count:,} 三角形 / "
             f"{plan.vertex_count_upper_bound:,} 頂点。"
-            "5,000,000面以下の静的TRIANGLESへ変換してください"
+            f"{_MAX_REDUCED_SOURCE_FACES:,}面以下の静的TRIANGLESへ変換してください"
         )
     if plan.requires_reduced_mode and not allow_large_reduced_source:
         raise GltfImportError(

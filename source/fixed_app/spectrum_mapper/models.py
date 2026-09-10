@@ -26,6 +26,11 @@ ProgressCallback = Callable[[str, float, str], None]
 
 COLOR_MODE_FULL_SPECTRUM = "full_spectrum"
 COLOR_MODE_FLAT_FOUR = "flat_four"
+# New sessions and headless conversions start with the direct four-filament
+# workflow.  Keep ``PaletteSettings.color_mode`` on the legacy Full Spectrum
+# value below so projects that predate the explicit colour-mode field retain
+# their original meaning when they are loaded.
+DEFAULT_NEW_COLOR_MODE = COLOR_MODE_FLAT_FOUR
 SUPPORTED_COLOR_MODES = (
     COLOR_MODE_FULL_SPECTRUM,
     COLOR_MODE_FLAT_FOUR,
@@ -99,19 +104,86 @@ class ToneSettings:
     illustration_strength: float = 0.78
     illustration_bands: int = 4
     illustration_light: str = "front_left"
+    # ``illustration_strength`` is the amount of the stylised result blended
+    # over the source colour.  Keep the actual light controls independent:
+    # intensity changes the brightness of each established light band, while
+    # range changes how far the key light wraps around the model.
+    illustration_light_intensity: float = 1.0
+    illustration_light_range: float = 0.4
+    # Experimental source-detail preservation.  Zero deliberately reproduces
+    # all existing projects; non-zero values are currently enabled only by
+    # controlled tests/internal settings until a reviewed UI is added.
+    illustration_detail_strength: float = 0.0
+    # Separate opt-in trial: constrain every lifted Strong-Cel band to a small
+    # coherent area budget.  Zero is exact legacy/detail behavior; an enabled
+    # value is the requested whole-model surface fraction (5-12 percent).
+    illustration_selective_highlight_fraction: float = 0.0
+    # Which geometric evidence may move the darker face beside an edge down
+    # one existing printable band.  The default is the exact policy used by
+    # the first selective-highlight implementation, so older project output
+    # remains unchanged.
+    illustration_contour_policy: str = "outer_crease_fold"
 
     def __post_init__(self) -> None:
         mode = str(self.illustration_mode).strip().lower()
         light = str(self.illustration_light).strip().lower()
         strength = float(self.illustration_strength)
-        if mode not in {"off", "cel", "noir"}:
+        light_intensity = float(self.illustration_light_intensity)
+        light_range = float(self.illustration_light_range)
+        detail_strength = float(self.illustration_detail_strength)
+        selective_fraction = float(
+            self.illustration_selective_highlight_fraction
+        )
+        contour_policy = str(self.illustration_contour_policy).strip().lower()
+        if mode not in {"off", "cel", "cel_strong", "noir"}:
             raise ValueError(f"unsupported illustration mode: {self.illustration_mode}")
-        if light not in {"front_left", "front", "front_right"}:
+        if light not in {
+            "front_left",
+            "top",
+            "front_right",
+            "left",
+            "front",
+            "right",
+            "bottom_left",
+            "bottom",
+            "bottom_right",
+        }:
             raise ValueError(
                 f"unsupported illustration light: {self.illustration_light}"
             )
         if not bool(np.isfinite(strength)) or not 0.0 <= strength <= 1.0:
             raise ValueError("illustration strength must be in 0..1")
+        if (
+            not bool(np.isfinite(light_intensity))
+            or not 0.0 <= light_intensity <= 1.5
+        ):
+            raise ValueError("illustration light intensity must be in 0..1.5")
+        if not bool(np.isfinite(light_range)) or not 0.0 <= light_range <= 1.0:
+            raise ValueError("illustration light range must be in 0..1")
+        if (
+            not bool(np.isfinite(detail_strength))
+            or not 0.0 <= detail_strength <= 1.0
+        ):
+            raise ValueError("illustration detail strength must be in 0..1")
+        if (
+            not bool(np.isfinite(selective_fraction))
+            or (
+                selective_fraction != 0.0
+                and not 0.05 <= selective_fraction <= 0.12
+            )
+        ):
+            raise ValueError(
+                "illustration selective highlight fraction must be 0 or in 0.05..0.12"
+            )
+        if contour_policy not in {
+            "outer",
+            "outer_crease",
+            "outer_crease_fold",
+        }:
+            raise ValueError(
+                "unsupported illustration contour policy: "
+                f"{self.illustration_contour_policy}"
+            )
         if (
             isinstance(self.illustration_bands, (bool, np.bool_))
             or int(self.illustration_bands) != self.illustration_bands
@@ -122,6 +194,11 @@ class ToneSettings:
         self.illustration_strength = strength
         self.illustration_bands = int(self.illustration_bands)
         self.illustration_light = light
+        self.illustration_light_intensity = light_intensity
+        self.illustration_light_range = light_range
+        self.illustration_detail_strength = detail_strength
+        self.illustration_selective_highlight_fraction = selective_fraction
+        self.illustration_contour_policy = contour_policy
 
 
 @dataclass(frozen=True, slots=True)
@@ -387,6 +464,20 @@ class PaletteSettings:
         self.physical_filament_refs = refs
 
 
+RADIAL_CONVERSION_UNIFORM_STAGE_A = "uniform_stage_a"
+RADIAL_CONVERSION_SELECTIVE_HYBRID = "selective_hybrid"
+SUPPORTED_RADIAL_CONVERSION_MODES = (
+    RADIAL_CONVERSION_UNIFORM_STAGE_A,
+    RADIAL_CONVERSION_SELECTIVE_HYBRID,
+)
+RADIAL_SKIN_MODE_UNIFORM = "uniform"
+RADIAL_SKIN_MODE_ADAPTIVE = "adaptive"
+SUPPORTED_RADIAL_SKIN_MODES = (
+    RADIAL_SKIN_MODE_UNIFORM,
+    RADIAL_SKIN_MODE_ADAPTIVE,
+)
+
+
 @dataclass
 class RadialSettings:
     """Settings for the separate, fail-closed radial-shell laboratory export.
@@ -399,30 +490,185 @@ class RadialSettings:
     project format without reviving the unsafe grouped-Cycle experiment.
     """
 
+    experimental_enabled: bool = False
     outer_skin_thickness_mm: float = 0.15
-    layer_height_mm: float = 0.20
+    layer_height_mm: float = 0.10
+    minimum_lstar_delta: float = 35.0
+    wall_generator: str = "classic"
+    # Missing values in r20/Stage-A projects must remain the original,
+    # full-exterior validation workflow.  Selective hybrid is therefore an
+    # explicit string choice rather than an inference from the legacy
+    # ``require_uniform_black_mix`` flag.
+    conversion_mode: str = RADIAL_CONVERSION_UNIFORM_STAGE_A
+    # Selective Hybrid keeps the established constant-depth shell unless the
+    # user explicitly opts into the adaptive cel-band mapping.  Old projects
+    # have no field and therefore migrate to ``uniform`` without changing
+    # their output contract.
+    skin_thickness_mode: str = RADIAL_SKIN_MODE_UNIFORM
+    adaptive_skin_min_thickness_mm: float = 0.10
+    adaptive_skin_max_thickness_mm: float = 0.30
+    adaptive_skin_gamma: float = 1.0
+    adaptive_skin_bands: int = 5
     require_uniform_black_mix: bool = True
 
     def __post_init__(self) -> None:
+        if not isinstance(self.experimental_enabled, (bool, np.bool_)):
+            raise ValueError("experimental_enabled must be a boolean")
+        if isinstance(self.outer_skin_thickness_mm, (bool, np.bool_)) or not isinstance(
+            self.outer_skin_thickness_mm,
+            (int, float, np.integer, np.floating),
+        ):
+            raise ValueError("outer_skin_thickness_mm must be a finite number")
         thickness = float(self.outer_skin_thickness_mm)
-        if not np.isfinite(thickness) or not 0.14 <= thickness <= 0.60:
+        if not np.isfinite(thickness) or not 0.10 <= thickness <= 0.60:
             raise ValueError(
-                "outer_skin_thickness_mm must be between 0.14 and 0.60 mm"
+                "outer_skin_thickness_mm must be between 0.10 and 0.60 mm"
             )
+        if isinstance(self.layer_height_mm, (bool, np.bool_)) or not isinstance(
+            self.layer_height_mm,
+            (int, float, np.integer, np.floating),
+        ):
+            raise ValueError("layer_height_mm must be a finite number")
         layer_height = float(self.layer_height_mm)
-        # The dedicated experimental archive and its static validator are
-        # intentionally calibrated to one fixed pitch.  Accepting another
-        # value here would make the report/guide disagree with the 0.20 mm
-        # project actually written by radial_export.
-        if not np.isfinite(layer_height) or layer_height != 0.20:
+        # Stage A now targets the 0.10 mm validation profile.  Keep 0.20 mm
+        # readable so existing r20 projects can still be opened explicitly.
+        if not np.isfinite(layer_height) or layer_height not in (0.10, 0.20):
             raise ValueError(
-                "layer_height_mm must be 0.20 mm for the radial MVP"
+                "layer_height_mm must be 0.10 or 0.20 mm for radial Stage A"
             )
+        if isinstance(self.minimum_lstar_delta, (bool, np.bool_)) or not isinstance(
+            self.minimum_lstar_delta,
+            (int, float, np.integer, np.floating),
+        ):
+            raise ValueError("minimum_lstar_delta must be a finite number")
+        minimum_lstar_delta = float(self.minimum_lstar_delta)
+        if (
+            not np.isfinite(minimum_lstar_delta)
+            or not 0.0 <= minimum_lstar_delta <= 100.0
+        ):
+            raise ValueError("minimum_lstar_delta must be between 0 and 100")
+        if not isinstance(self.wall_generator, str) or self.wall_generator not in {
+            "classic",
+            "arachne",
+        }:
+            raise ValueError("wall_generator must be 'classic' or 'arachne'")
+        if (
+            not isinstance(self.conversion_mode, str)
+            or self.conversion_mode not in SUPPORTED_RADIAL_CONVERSION_MODES
+        ):
+            raise ValueError(
+                "conversion_mode must be 'uniform_stage_a' or "
+                "'selective_hybrid'"
+            )
+        if (
+            not isinstance(self.skin_thickness_mode, str)
+            or self.skin_thickness_mode not in SUPPORTED_RADIAL_SKIN_MODES
+        ):
+            raise ValueError(
+                "skin_thickness_mode must be 'uniform' or 'adaptive'"
+            )
+        adaptive_values = (
+            (
+                "adaptive_skin_min_thickness_mm",
+                self.adaptive_skin_min_thickness_mm,
+            ),
+            (
+                "adaptive_skin_max_thickness_mm",
+                self.adaptive_skin_max_thickness_mm,
+            ),
+            ("adaptive_skin_gamma", self.adaptive_skin_gamma),
+        )
+        checked_adaptive: dict[str, float] = {}
+        for name, value in adaptive_values:
+            if isinstance(value, (bool, np.bool_)) or not isinstance(
+                value,
+                (int, float, np.integer, np.floating),
+            ):
+                raise ValueError(f"{name} must be a finite number")
+            checked = float(value)
+            if not np.isfinite(checked):
+                raise ValueError(f"{name} must be a finite number")
+            checked_adaptive[name] = checked
+        adaptive_min = checked_adaptive["adaptive_skin_min_thickness_mm"]
+        adaptive_max = checked_adaptive["adaptive_skin_max_thickness_mm"]
+        adaptive_gamma = checked_adaptive["adaptive_skin_gamma"]
+        if not 0.10 <= adaptive_min <= 0.60:
+            raise ValueError(
+                "adaptive_skin_min_thickness_mm must be between 0.10 and 0.60 mm"
+            )
+        if not 0.10 <= adaptive_max <= 0.60:
+            raise ValueError(
+                "adaptive_skin_max_thickness_mm must be between 0.10 and 0.60 mm"
+            )
+        if adaptive_min >= adaptive_max:
+            raise ValueError(
+                "adaptive_skin_min_thickness_mm must be smaller than "
+                "adaptive_skin_max_thickness_mm"
+            )
+        if not 0.25 <= adaptive_gamma <= 4.0:
+            raise ValueError("adaptive_skin_gamma must be between 0.25 and 4.0")
+        if isinstance(self.adaptive_skin_bands, (bool, np.bool_)) or not isinstance(
+            self.adaptive_skin_bands,
+            (int, np.integer),
+        ):
+            raise ValueError("adaptive_skin_bands must be an integer from 4 to 6")
+        adaptive_bands = int(self.adaptive_skin_bands)
+        if not 4 <= adaptive_bands <= 6:
+            raise ValueError("adaptive_skin_bands must be an integer from 4 to 6")
         if not isinstance(self.require_uniform_black_mix, (bool, np.bool_)):
             raise ValueError("require_uniform_black_mix must be a boolean")
+        self.experimental_enabled = bool(self.experimental_enabled)
         self.outer_skin_thickness_mm = thickness
         self.layer_height_mm = layer_height
+        self.minimum_lstar_delta = minimum_lstar_delta
+        self.adaptive_skin_min_thickness_mm = adaptive_min
+        self.adaptive_skin_max_thickness_mm = adaptive_max
+        self.adaptive_skin_gamma = adaptive_gamma
+        self.adaptive_skin_bands = adaptive_bands
         self.require_uniform_black_mix = bool(self.require_uniform_black_mix)
+
+    def skin_thickness_for_lstar(
+        self,
+        target_lstar: float,
+        black_lstar: float,
+        partner_lstar: float,
+    ) -> float:
+        """Map one target L* to the selected uniform/adaptive shell depth.
+
+        Adaptive mode normalizes the target between the selected black and
+        partner filaments, applies the user gamma, then snaps it to 4--6 cel
+        bands.  The public UI shows this same deterministic mapping before the
+        geometry workflow consumes it.
+        """
+
+        if self.skin_thickness_mode == RADIAL_SKIN_MODE_UNIFORM:
+            return float(self.outer_skin_thickness_mm)
+        values = (target_lstar, black_lstar, partner_lstar)
+        if any(
+            isinstance(value, (bool, np.bool_))
+            or not isinstance(value, (int, float, np.integer, np.floating))
+            or not np.isfinite(float(value))
+            for value in values
+        ):
+            raise ValueError("target, black and partner L* must be finite numbers")
+        target = float(target_lstar)
+        black = float(black_lstar)
+        partner = float(partner_lstar)
+        if partner <= black + 1e-12:
+            raise ValueError("partner L* must be greater than black L*")
+        normalized = float(np.clip((target - black) / (partner - black), 0.0, 1.0))
+        curved = normalized ** float(self.adaptive_skin_gamma)
+        intervals = int(self.adaptive_skin_bands) - 1
+        band_index = min(intervals, int(np.floor(curved * intervals + 0.5)))
+        band_fraction = float(band_index) / float(intervals)
+        return float(
+            self.adaptive_skin_min_thickness_mm
+            + (
+                self.adaptive_skin_max_thickness_mm
+                - self.adaptive_skin_min_thickness_mm
+            )
+            * band_fraction
+        )
 
 
 COLOR_DEPTH_UNCALIBRATED_POLICY = "uncalibrated-common-skin-slice-only"
@@ -488,6 +734,15 @@ def without_surface_shell_output(palette: PaletteSettings) -> PaletteSettings:
     return safe
 
 
+EXPORT_VALIDATION_LEVELS = ("high", "medium", "low", "ignore")
+
+
+def normalize_export_validation_level(value: object) -> str:
+    """Never turn malformed project/preferences data into relaxed validation."""
+
+    return value if isinstance(value, str) and value in EXPORT_VALIDATION_LEVELS else "high"
+
+
 @dataclass
 class AppSettings:
     geometry: GeometrySettings = field(default_factory=GeometrySettings)
@@ -508,15 +763,28 @@ class AppSettings:
     # Orbit direction is a global interaction preference.  Keep it outside the
     # per-model background table so every newly opened model feels consistent.
     manual_orbit_inverted: bool = False
+    # Export-only policy: changing this must not invalidate prepared geometry.
+    # Non-default policies require fresh GUI consent for every export.
+    export_validation_level: str = "high"
+
+    def __post_init__(self) -> None:
+        self.export_validation_level = normalize_export_validation_level(
+            self.export_validation_level
+        )
 
     def to_dict(self) -> dict[str, object]:
         result = asdict(self)
+        result["export_validation_level"] = normalize_export_validation_level(
+            self.export_validation_level
+        )
+        if result["export_validation_level"] == "high":
+            result.pop("export_validation_level")
         # Keep a no-correction/no-shell project structurally identical to the
         # legacy settings JSON.  Optional output fields persist only when
         # active, so loading then saving an old project stays stable.
         tone = result.get("tone")
         if isinstance(tone, dict) and tone.get("illustration_mode") == "off":
-            # Dormant slider values do not affect output.  Omitting all four
+            # Dormant controls do not affect output.  Omitting all illustration
             # keys keeps an ordinary project loadable by pre-filter releases;
             # this build restores the documented defaults on reload.
             for key in (
@@ -524,8 +792,29 @@ class AppSettings:
                 "illustration_strength",
                 "illustration_bands",
                 "illustration_light",
+                "illustration_light_intensity",
+                "illustration_light_range",
+                "illustration_detail_strength",
+                "illustration_selective_highlight_fraction",
+                "illustration_contour_policy",
             ):
                 tone.pop(key, None)
+        if isinstance(tone, dict) and not tone.get(
+            "illustration_detail_strength", 0.0
+        ):
+            # Keep every existing Cel/Strong-Cel project structurally stable
+            # until the explicitly gated detail layer is enabled.
+            tone.pop("illustration_detail_strength", None)
+        if isinstance(tone, dict) and not tone.get(
+            "illustration_selective_highlight_fraction", 0.0
+        ):
+            tone.pop("illustration_selective_highlight_fraction", None)
+        if isinstance(tone, dict) and tone.get(
+            "illustration_contour_policy", "outer_crease_fold"
+        ) == "outer_crease_fold":
+            # This is the historical selective-highlight behavior.  Omit it
+            # even while active so old project JSON keeps the same structure.
+            tone.pop("illustration_contour_policy", None)
         palette = result.get("palette")
         if (
             isinstance(palette, dict)
@@ -645,6 +934,9 @@ class AppSettings:
             part_names=part_names,
             manual_view_backgrounds=manual_view_backgrounds,
             manual_orbit_inverted=manual_orbit_inverted,
+            export_validation_level=normalize_export_validation_level(
+                value.get("export_validation_level", "high")
+            ),
         )
 
 

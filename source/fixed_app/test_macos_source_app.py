@@ -4,359 +4,194 @@ import json
 import os
 from pathlib import Path
 import plistlib
-import re
+import shutil
+import stat
 import subprocess
-import sys
 import tempfile
 import unittest
+import zipfile
 
 from tooling import stage_macos_source_app as app_tool
 
 
-FIXED_APP = Path(__file__).resolve().parent
-REPOSITORY = FIXED_APP.parents[1]
-STAGER = REPOSITORY / "tooling" / "stage_macos_source_app.py"
-WORKFLOW = REPOSITORY / ".github" / "workflows" / "macos-source-alpha.yml"
-TEST_GUIDE = REPOSITORY / "publication" / "MACOS_SOURCE_APP_TESTING_EN.md"
-APP_NAME = "ChromaMatter Source Alpha.app"
-FORBIDDEN_MAGIC = {
-    b"\xfe\xed\xfa\xce",
-    b"\xce\xfa\xed\xfe",
-    b"\xfe\xed\xfa\xcf",
-    b"\xcf\xfa\xed\xfe",
-    b"\xca\xfe\xba\xbe",
-    b"\xbe\xba\xfe\xca",
-    b"\xca\xfe\xba\xbf",
-    b"\xbf\xba\xfe\xca",
-    b"\x7fELF",
-}
+REPOSITORY = Path(__file__).resolve().parents[2]
 
 
 class MacOSSourceBackedAppTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        head = subprocess.run(
-            ["git", "-C", os.fspath(REPOSITORY), "rev-parse", "HEAD"],
-            capture_output=True,
-            check=False,
-            text=True,
-        )
-        if head.returncode != 0:
-            raise unittest.SkipTest("source-app staging tests require a Git worktree")
-        cls.source_commit = head.stdout.strip()
+        if shutil.which("git") is None:
+            raise unittest.SkipTest("git is required for exact-source fixtures")
         cls.temporary = tempfile.TemporaryDirectory()
+        cls.addClassCleanup(cls.temporary.cleanup)
         cls.root = Path(cls.temporary.name)
-        cls.app = cls.root / APP_NAME
-        completed = subprocess.run(
-            [
-                sys.executable,
-                os.fspath(STAGER),
-                "stage",
-                "--repository-root",
-                os.fspath(REPOSITORY),
-                "--output",
-                os.fspath(cls.app),
-                "--source-commit",
-                cls.source_commit,
-            ],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        if completed.returncode != 0:
-            raise AssertionError(completed.stderr or completed.stdout)
-        cls.stage_result = json.loads(completed.stdout)
+        cls.repository = cls.root / "repository"
+        cls.repository.mkdir()
+        # Commit a synthetic fixture only: never stage or commit the owner's tree.
+        fixture = {
+            ".gitattributes": b"*.command text eol=lf\n",
+            "LICENSE": b"Synthetic licence fixture\n",
+            "FEATURES_EN.md": b"Synthetic features\n",
+            "source/fixed_app/TripoSpectrumMapper_fixed.py": b"# fixture entrypoint\n",
+            "source/fixed_app/spectrum_mapper/cli.py": b"# fixture cli\n",
+            "source/fixed_app/spectrum_mapper/export_validation.py": b"# current policy fixture\n",
+            "source/fixed_app/assets/mixer_model.npz": b"non-native asset fixture\n",
+            "source/fixed_app/test_private.py": b"# never package tests\n",
+            "source/fixed_app/public_binary/DemoData/private.glb": b"must not package\n",
+            "samples/generate_macos_alpha_test_glb.py": b"# rights-safe generator fixture\n",
+        }
+        for relative in (app_tool.SOURCE_LAUNCHER, app_tool.TEST_GUIDE,
+                         "source/fixed_app/requirements-runtime-macos-arm64.lock",
+                         "source/fixed_app/assets/obj_adjuster_icon.png"):
+            fixture[relative] = (REPOSITORY / relative).read_bytes()
+        for relative, payload in fixture.items():
+            target = cls.repository / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(payload)
+        cls.git("init", "--quiet")
+        cls.git("config", "core.autocrlf", "false")
+        cls.git("add", ".")
+        cls.git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
+                "commit", "--quiet", "-m", "Synthetic source-app fixture")
+        cls.source_commit = cls.git("rev-parse", "HEAD").strip()
+        cls.app = cls.root / "stage" / app_tool.APP_NAME
+        app_tool.stage(cls.repository, cls.app, cls.source_commit)
 
     @classmethod
-    def tearDownClass(cls) -> None:
-        cls.temporary.cleanup()
+    def git(cls, *arguments: str) -> str:
+        return subprocess.run(["git", "-C", str(cls.repository), *arguments],
+                              capture_output=True, text=True, check=True).stdout
 
-    def test_bundle_is_finder_app_with_source_alpha_identity(self) -> None:
-        plist = plistlib.loads((self.app / "Contents" / "Info.plist").read_bytes())
+    def copied_app(self, root: Path) -> Path:
+        app = root / app_tool.APP_NAME
+        shutil.copytree(self.app, app)
+        return app
+
+    def test_finder_identity_and_truthful_source_only_scope(self) -> None:
+        plist = plistlib.loads((self.app / "Contents/Info.plist").read_bytes())
         self.assertEqual(plist["CFBundlePackageType"], "APPL")
-        self.assertEqual(plist["CFBundleDisplayName"], "ChromaMatter Source Alpha")
-        self.assertEqual(
-            plist["CFBundleIdentifier"],
-            "io.github.ponkichi0718.chromamatter.source-alpha",
-        )
+        self.assertEqual(plist["CFBundleShortVersionString"], "0.9.0")
+        self.assertEqual(plist["CFBundleVersion"], "900")
         self.assertEqual(plist["LSMinimumSystemVersion"], "15.0")
         self.assertEqual(plist["LSArchitecturePriority"], ["arm64"])
-        self.assertTrue((self.app / "Contents" / "Resources" / "AppIcon.icns").is_file())
+        report = app_tool.audit(self.app)
+        self.assertEqual(report["native_runtime_binary_count"], 0)
+        self.assertFalse(report["demo_data_bundled"])
+        self.assertEqual(report["native_validation_status"], "not-run-on-macos-for-this-source-commit")
+        notice = (self.app / "Contents/Resources" / app_tool.NOTICE_NAME).read_text()
+        self.assertIn("not been runtime-tested on macOS", notice)
+        self.assertNotIn("153-file", notice)
 
-    def test_source_paths_reject_controls_and_normalization_collisions(self) -> None:
-        with self.assertRaisesRegex(app_tool.SourceAppError, "Unsafe source path"):
-            app_tool._safe_relative("source/line\nbreak.py")
-        self.assertEqual(
-            app_tool._normalized_path_key("source/e\N{COMBINING ACUTE ACCENT}.py"),
-            app_tool._normalized_path_key(
-                "source/\N{LATIN SMALL LETTER E WITH ACUTE}.py"
-            ),
-        )
-        with tempfile.TemporaryDirectory() as raw:
-            root = Path(raw) / APP_NAME
-            root.mkdir()
-            decomposed = root / "e\N{COMBINING ACUTE ACCENT}.txt"
-            composed = root / "\N{LATIN SMALL LETTER E WITH ACUTE}.txt"
-            decomposed.write_text("decomposed", encoding="ascii")
-            composed.write_text("composed", encoding="ascii")
-            if len(list(root.iterdir())) != 2:
-                self.skipTest("filesystem normalizes Unicode filenames")
-            with self.assertRaisesRegex(
-                app_tool.SourceAppError,
-                "Case/Unicode-colliding source app paths",
-            ):
-                app_tool._manifest_records(root)
-
-    def test_wrapper_opens_existing_launcher_in_terminal_without_bypasses(self) -> None:
-        wrapper = (
-            self.app / "Contents" / "MacOS" / "ChromaMatterSourceAlpha"
-        ).read_text(encoding="utf-8")
-        self.assertIn("exec /usr/bin/open -a Terminal", wrapper)
-        self.assertIn('exec "$SOURCE_LAUNCHER" "$@"', wrapper)
-        self.assertIn("START_MACOS_SOURCE_ALPHA.command", wrapper)
-        executable = "\n".join(
-            line for line in wrapper.splitlines() if not line.lstrip().startswith("#")
-        )
-        for forbidden in (
-            r"(?m)^\s*sudo\b",
-            r"(?m)^\s*spctl\b",
-            r"(?m)^\s*xattr\b",
-            r"(?m)^\s*installer\s+-pkg\b",
-            r"(?m)^\s*codesign\b",
-        ):
-            self.assertIsNone(re.search(forbidden, executable, re.IGNORECASE))
-
-    def test_bundle_carries_production_source_but_not_tests_or_build_recipe(self) -> None:
-        source_root = (
-            self.app / "Contents" / "Resources" / "ChromaMatterSource"
-        )
-        launcher = source_root / "START_MACOS_SOURCE_ALPHA.command"
-        self.assertTrue(launcher.is_file())
-        for required in (
-            "source/fixed_app/TripoSpectrumMapper_fixed.py",
-            "source/fixed_app/spectrum_mapper/gui.py",
-            "source/fixed_app/assets/mixer_model.npz",
-            "source/fixed_app/resources/filament_db/filament_color_database_2026-08.sqlite",
-            "samples/generate_macos_alpha_test_glb.py",
-            "licenses/GPL-3.0.txt",
-            "LICENSE",
-        ):
-            with self.subTest(required=required):
-                self.assertTrue(source_root.joinpath(*required.split("/")).is_file())
-        self.assertFalse(
-            (source_root / "source" / "fixed_app" / "test_macos_packaging.py").exists()
-        )
-        self.assertFalse(
-            (source_root / "source" / "fixed_app" / "TripoSpectrumMapper_macos_arm64.spec").exists()
-        )
-        self.assertFalse((source_root / "source" / "fixed_app" / "public_binary").exists())
-
-    def test_stage_is_bound_to_head_and_uses_committed_source_bytes(self) -> None:
-        mismatched = self.root / "mismatch" / APP_NAME
-        completed = subprocess.run(
-            [
-                sys.executable,
-                os.fspath(STAGER),
-                "stage",
-                "--repository-root",
-                os.fspath(REPOSITORY),
-                "--output",
-                os.fspath(mismatched),
-                "--source-commit",
-                "f" * 40,
-            ],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        self.assertNotEqual(completed.returncode, 0)
-        self.assertIn("must equal repository HEAD", completed.stderr)
-
-        committed_launcher = subprocess.run(
-            [
-                "git",
-                "-C",
-                os.fspath(REPOSITORY),
-                "show",
-                f"{self.source_commit}:START_MACOS_SOURCE_ALPHA.command",
-            ],
-            capture_output=True,
-            check=True,
-        ).stdout
-        bundled_launcher = (
-            self.app
-            / "Contents"
-            / "Resources"
-            / "ChromaMatterSource"
-            / "START_MACOS_SOURCE_ALPHA.command"
-        ).read_bytes()
-        self.assertEqual(bundled_launcher, committed_launcher)
-
-    def test_manifest_is_exact_and_declares_no_bundled_runtime(self) -> None:
-        path = (
-            self.app
-            / "Contents"
-            / "Resources"
-            / "SOURCE_BACKED_APP_MANIFEST.json"
-        )
-        manifest = json.loads(path.read_text(encoding="ascii"))
-        self.assertEqual(manifest["schema"], "chromamatter.macos-source-backed-app.v1")
-        self.assertEqual(manifest["source_commit"], self.source_commit)
-        self.assertTrue(manifest["source_backed"])
-        self.assertFalse(manifest["bundled_python_runtime"])
-        self.assertFalse(manifest["bundled_third_party_runtime_binaries"])
-        self.assertFalse(manifest["prebuilt_app_distribution_gate_bypassed"])
-        self.assertTrue(manifest["first_launch_opens_terminal"])
-        self.assertEqual(
-            self.stage_result["status"], "source-backed-app-audit-passed"
-        )
-        self.assertEqual(self.stage_result["native_runtime_binary_count"], 0)
-
-    def test_every_payload_is_regular_and_contains_no_native_binary_magic(self) -> None:
-        forbidden_suffixes = {
-            ".a",
-            ".bundle",
-            ".dll",
-            ".dylib",
-            ".exe",
-            ".framework",
-            ".o",
-            ".pkg",
-            ".pyc",
-            ".pyd",
-            ".so",
-            ".whl",
-        }
+    def test_committed_current_modules_but_no_tests_demo_or_runtime(self) -> None:
+        source = self.app / "Contents/Resources" / app_tool.SOURCE_DIRECTORY
+        committed_launcher = subprocess.check_output([
+            "git", "-C", str(self.repository), "show",
+            f"{self.source_commit}:{app_tool.SOURCE_LAUNCHER}",
+        ])
+        self.assertEqual((source / app_tool.SOURCE_LAUNCHER).read_bytes(),
+                         committed_launcher)
+        self.assertTrue((source / "source/fixed_app/spectrum_mapper/export_validation.py").is_file())
+        self.assertFalse((source / "source/fixed_app/test_private.py").exists())
+        self.assertFalse((source / "source/fixed_app/public_binary").exists())
         for path in self.app.rglob("*"):
-            if path.is_dir():
-                continue
-            relative = path.relative_to(self.app).as_posix()
-            with self.subTest(path=relative):
-                self.assertFalse(path.is_symlink())
-                self.assertTrue(path.is_file())
-                self.assertNotIn(path.suffix.casefold(), forbidden_suffixes)
-                self.assertNotIn(path.read_bytes()[:4], FORBIDDEN_MAGIC)
+            if path.is_file():
+                self.assertNotIn(path.suffix.casefold(), app_tool.FORBIDDEN_SUFFIXES)
 
-    def test_independent_audit_passes_and_tamper_fails(self) -> None:
-        completed = subprocess.run(
-            [
-                sys.executable,
-                os.fspath(STAGER),
-                "audit",
-                "--app-bundle",
-                os.fspath(self.app),
-            ],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        self.assertEqual(completed.returncode, 0, completed.stderr)
+    def test_unsafe_paths_and_unicode_keys(self) -> None:
+        for relative in ("../bad", "/bad", "C:/bad", "a\\bad", "a/../bad", "a//bad", "a/./bad", "line\nbad"):
+            with self.subTest(relative=relative), self.assertRaises(app_tool.SourceAppError):
+                app_tool._safe_relative(relative)
+        self.assertEqual(app_tool._normalized_path_key("e\u0301.txt"),
+                         app_tool._normalized_path_key("\u00e9.txt"))
 
-        target = (
-            self.app
-            / "Contents"
-            / "Resources"
-            / "ChromaMatterSource"
-            / "FEATURES_EN.md"
-        )
+    def test_wrapper_opens_terminal_without_security_bypass(self) -> None:
+        text = (self.app / "Contents/MacOS" / app_tool.EXECUTABLE_NAME).read_text()
+        self.assertIn('exec "$SOURCE_LAUNCHER" "$@"', text)
+        self.assertIn("exec /usr/bin/open -a Terminal", text)
+        executable = "\n".join(line for line in text.splitlines() if not line.startswith("#"))
+        for command in ("sudo ", "spctl ", "xattr ", "codesign ", "installer -pkg"):
+            self.assertNotIn(command, executable)
+
+    def test_nonhead_and_existing_output_are_rejected(self) -> None:
+        with self.assertRaisesRegex(app_tool.SourceAppError, "must equal repository HEAD"):
+            app_tool.stage(self.repository, self.root / "invalid" / app_tool.APP_NAME, "f" * 40)
+        with self.assertRaisesRegex(app_tool.SourceAppError, "existing app bundle"):
+            app_tool.stage(self.repository, self.app, self.source_commit)
+
+    def test_dirty_and_untracked_source_are_rejected(self) -> None:
+        target = self.repository / "FEATURES_EN.md"
         original = target.read_bytes()
         try:
-            target.write_bytes(original + b"\n")
-            rejected = subprocess.run(
-                [
-                    sys.executable,
-                    os.fspath(STAGER),
-                    "audit",
-                    "--app-bundle",
-                    os.fspath(self.app),
-                ],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            self.assertNotEqual(rejected.returncode, 0)
-            self.assertIn("manifest mismatch", rejected.stderr)
+            target.write_bytes(original + b"uncommitted\n")
+            with self.assertRaisesRegex(app_tool.SourceAppError, "clean committed"):
+                app_tool.stage(self.repository, self.root / "dirty" / app_tool.APP_NAME, self.source_commit)
         finally:
             target.write_bytes(original)
+        untracked = self.repository / "new_feature.py"
+        try:
+            untracked.write_text("# untracked\n")
+            with self.assertRaisesRegex(app_tool.SourceAppError, "clean committed"):
+                app_tool.stage(self.repository, self.root / "untracked" / app_tool.APP_NAME, self.source_commit)
+        finally:
+            untracked.unlink()
 
-    def test_ci_exercises_embedded_launcher_and_fresh_archive_audit(self) -> None:
-        workflow = WORKFLOW.read_text(encoding="utf-8")
-        self.assertIn("tooling/stage_macos_source_app.py stage", workflow)
-        self.assertGreaterEqual(
-            workflow.count("tooling/stage_macos_source_app.py audit"),
-            2,
-        )
-        self.assertIn(
-            "tooling/stage_macos_source_package.py extract-demo",
-            workflow,
-        )
-        self.assertIn("tooling/stage_macos_source_package.py stage", workflow)
-        self.assertGreaterEqual(
-            workflow.count("tooling/stage_macos_source_package.py audit"),
-            2,
-        )
-        self.assertGreaterEqual(
-            workflow.count('Contents/MacOS/ChromaMatterSourceAlpha" --self-test-only'),
-            1,
-        )
-        self.assertIn("ditto -c -k --keepParent", workflow)
-        self.assertIn("ditto -x -k", workflow)
-        self.assertGreaterEqual(
-            workflow.count(
-                "CHROMAMATTER_ALPHA_HOME: ${{ runner.temp }}/chromamatter-source-alpha"
-            ),
-            3,
-        )
-        self.assertIn("ChromaMatter-Public-Four-Color-Test.glb.sha256", workflow)
-        self.assertIn("SOURCE_COMMIT.txt", workflow)
-        self.assertIn("workflow_commit != root_commit", workflow)
-        self.assertIn("root_commit != manifest_commit", workflow)
-        self.assertIn("root_commit != app_commit", workflow)
-        self.assertIn("ChromaMatter-0.8beta-macos-source-app-alpha2.zip", workflow)
-        self.assertIn("ChromaMatter-0.8beta-macos-source-app-alpha2.zip.sha256", workflow)
-        self.assertIn("SHA256SUMS-macos-source-app-alpha2.txt", workflow)
-        self.assertIn("ChromaMatter-0.8beta-r32.2-win64.zip", workflow)
-        self.assertIn("327268369", workflow)
-        self.assertIn(
-            "2ceada98661bac5d49b759542151c4c484fff4269d6b5d142ec32fec544f06d0",
-            workflow,
-        )
-        self.assertIn("SOFTWARE_PACKAGE_SHA256.txt", workflow)
-        self.assertIn(
-            "shasum -a 256 -c SOFTWARE_PACKAGE_SHA256.txt",
-            workflow,
-        )
-        self.assertIn("open -W -n", workflow)
-        self.assertIn('--env "CHROMAMATTER_ALPHA_HOME=', workflow)
-        self.assertIn('--env "CHROMAMATTER_PYTHON=', workflow)
-        self.assertIn('"$fresh_app" --args --self-test-only', workflow)
-        self.assertIn(
-            "LaunchServices source-app self-test did not report ok=true",
-            workflow,
-        )
-        self.assertIn("upload_source_app_alpha:", workflow)
-        self.assertIn('"v0.8beta-macos-source-app-alpha*"', workflow)
-        self.assertIn("default: false", workflow)
-        self.assertIn("inputs.upload_source_app_alpha == true", workflow)
-        self.assertIn("no bundled Python/runtime/Mach-O", workflow)
-        self.assertIn("not evidence for the frozen prebuilt", workflow)
-        self.assertNotIn("gh release", workflow.casefold())
+    def test_added_native_payloads_or_demo_fail(self) -> None:
+        for relative, payload in (("native.data", b"\x7fELFfake"),
+                                  ("library.data", b"\xcf\xfa\xed\xfefake"),
+                                  ("runtime.whl", b"wheel"),
+                                  ("DemoData/model.glb", b"glTF")):
+            with self.subTest(relative=relative), tempfile.TemporaryDirectory() as raw:
+                app = self.copied_app(Path(raw))
+                target = app / "Contents/Resources" / relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(payload)
+                with self.assertRaises(app_tool.SourceAppError):
+                    app_tool.audit(app)
 
-    def test_english_guide_matches_the_source_backed_package(self) -> None:
-        guide = TEST_GUIDE.read_text(encoding="utf-8")
-        compact = " ".join(guide.split())
-        self.assertIn("ChromaMatter Source Alpha.app", guide)
-        self.assertIn("ChromaMatter-0.8beta-macos-source-app-alpha2.zip", guide)
-        self.assertIn("README_INSTALL_AND_TEST_EN.md", guide)
-        self.assertIn("SOURCE_COMMIT.txt", guide)
-        self.assertIn("SOFTWARE_PACKAGE_SHA256.txt", guide)
-        self.assertIn("DemoData/", guide)
-        self.assertIn("source-backed", guide.casefold())
-        self.assertIn("does not contain a prebuilt Python runtime", compact)
-        self.assertIn("Control-click", guide)
-        self.assertIn("10-minute quick-fixture test", guide)
-        self.assertIn("Do not disable Gatekeeper", guide)
-        self.assertIn("Do not redistribute", guide)
+    def test_tampering_and_fabricated_native_validation_are_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            app = self.copied_app(Path(raw))
+            target = app / "Contents/Resources" / app_tool.SOURCE_DIRECTORY / "FEATURES_EN.md"
+            target.write_bytes(target.read_bytes() + b"changed")
+            with self.assertRaisesRegex(app_tool.SourceAppError, "manifest mismatch"):
+                app_tool.audit(app)
+        with tempfile.TemporaryDirectory() as raw:
+            app = self.copied_app(Path(raw))
+            target = app / "Contents/Resources" / app_tool.MANIFEST_NAME
+            manifest = json.loads(target.read_text())
+            manifest["native_validation_status"] = "passed"
+            target.write_text(json.dumps(manifest))
+            with self.assertRaisesRegex(app_tool.SourceAppError, "native validation scope"):
+                app_tool.audit(app)
+
+    def test_cross_host_zip_preserves_modes_fresh_audit_and_no_demo(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            archive = Path(raw) / (app_tool.PACKAGE_ROOT + ".zip")
+            report = app_tool.package(self.repository, archive, self.source_commit)
+            self.assertEqual(report["fresh_extract_audit"], "passed")
+            self.assertFalse(report["demo_data_bundled"])
+            self.assertEqual(report["archive_sha256"], app_tool._sha256(archive))
+            with zipfile.ZipFile(archive) as zipped:
+                self.assertIsNone(zipped.testzip())
+                executable_count = 0
+                for entry in zipped.infolist():
+                    self.assertNotIn("demodata", entry.filename.casefold())
+                    self.assertEqual(entry.create_system, 3)
+                    self.assertEqual(stat.S_IFMT(entry.external_attr >> 16), stat.S_IFREG)
+                    if Path(entry.filename).name in {app_tool.EXECUTABLE_NAME, app_tool.SOURCE_LAUNCHER}:
+                        self.assertEqual(stat.S_IMODE(entry.external_attr >> 16), 0o755)
+                        executable_count += 1
+                self.assertEqual(executable_count, 2)
+                self.assertIn(app_tool.PACKAGE_ROOT + "/README_INSTALL_AND_TEST_EN.md", zipped.namelist())
+            with self.assertRaisesRegex(app_tool.SourceAppError, "fixed fresh"):
+                app_tool.package(self.repository, archive, self.source_commit)
+
+    def test_guide_explains_current_ui_and_no_demo_or_native_claim(self) -> None:
+        guide = (REPOSITORY / app_tool.TEST_GUIDE).read_text(encoding="utf-8")
+        for text in ("0.9", "Output Settings", "Solidify", "Flat Four", "High",
+                     "Ignore defects (not", "not bundled", "https://chromamatter.app/download",
+                     "native testing", "Do not disable Gatekeeper", "Slice Preview"):
+            self.assertIn(text, guide)
 
 
 if __name__ == "__main__":
