@@ -10,14 +10,14 @@ CMY color, Core/Shell and hands-on color editing in your Orca workflow. The dedi
 
 | Windows | Mac | Linux |
 | --- | --- | --- |
-| **[⬇ Download for Windows](https://github.com/Ponkichi0718/ChromaMatter/releases/download/cm-orca-trial-20260913/Snapmaker-Orca-CM-SplashFix1-Windows-x64.zip)** | **[⬇ Download for Mac](https://github.com/Ponkichi0718/ChromaMatter/releases/download/cm-orca-trial-20260913/CM-Profile1-Mac1-arm64-app.zip)** | **[⬇ Download for Linux](https://github.com/Ponkichi0718/ChromaMatter/releases/download/cm-orca-trial-20260913/CM-Profile1-Linux-x86_64.tar.gz)** |
-| x64 · ZIP · 280 MB | Apple Silicon · macOS 15+ · ZIP · 226 MB | Ubuntu 22.04 · x86_64 · tar.gz · 382 MB |
+| **[⬇ Download for Windows](https://github.com/Ponkichi0718/ChromaMatter/releases/download/cm-orca-trial-20260913/Snapmaker-Orca-CM-Windows-x64.zip)** | **[⬇ Download for Mac](https://github.com/Ponkichi0718/ChromaMatter/releases/download/cm-orca-trial-20260913/Snapmaker-Orca-CM-Mac-arm64-app.zip)** | **[⬇ Download for Linux](https://github.com/Ponkichi0718/ChromaMatter/releases/download/cm-orca-trial-20260913/Snapmaker-Orca-CM-Linux-x86_64.tar.gz)** |
+| x64 · ZIP | Apple Silicon · macOS 15+ · ZIP | Ubuntu 22.04 · x86_64 · tar.gz |
 
 These are app packages, not source-code downloads.
 
 - **Full Spectrum / CMY / Flat Four** — choose your color workflow.
 - **Core/Shell** — assign inner and outer materials and adjust shell thickness.
-- **Hands-on color editing** — brush-based manual color correction.
+- **Hands-on color editing** — brush-based manual color correction. Wheel-button drag to pan, right-drag to rotate, and scroll to zoom.
 - **Color & shading** — adjust brightness, contrast, saturation, cel shading and light direction.
 - **Black reduction** — control physical black in mixed colors.
 
