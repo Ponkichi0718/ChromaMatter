@@ -1,4 +1,33 @@
-# ChromaMatter — AI Model Print Studio 0.9 (r33)
+# ChromaMatter
+
+## NEW · Snapmaker Orca with CM — Experimental
+
+**Color. Shade. Make it yours.**
+
+CMY color, Core/Shell and hands-on color editing in your Orca workflow. The dedicated color editor comes bundled.
+
+### Download the app
+
+| Windows | Mac | Linux |
+| --- | --- | --- |
+| **[⬇ Download for Windows](https://github.com/Ponkichi0718/ChromaMatter/releases/download/cm-orca-trial-20260913/Snapmaker-Orca-CM-SplashFix1-Windows-x64.zip)** | **[⬇ Download for Mac](https://github.com/Ponkichi0718/ChromaMatter/releases/download/cm-orca-trial-20260913/CM-Profile1-Mac1-arm64-app.zip)** | **[⬇ Download for Linux](https://github.com/Ponkichi0718/ChromaMatter/releases/download/cm-orca-trial-20260913/CM-Profile1-Linux-x86_64.tar.gz)** |
+| x64 · ZIP · 280 MB | Apple Silicon · macOS 15+ · ZIP · 226 MB | Ubuntu 22.04 · x86_64 · tar.gz · 382 MB |
+
+These are app packages, not source-code downloads.
+
+- **Full Spectrum / CMY / Flat Four** — choose your color workflow.
+- **Core/Shell** — assign inner and outer materials and adjust shell thickness.
+- **Hands-on color editing** — brush-based manual color correction.
+- **Color & shading** — adjust brightness, contrast, gamma, saturation and shading.
+- **Black reduction** — control physical black in mixed colors.
+
+> **Experimental / 試験版:** Unexpected behavior is possible, and the UI is a work in progress. Keep original files and check slicing results before printing. This is an unofficial modification of Snapmaker Orca.
+
+**[Official downloads & setup](https://chromamatter.app/download#orca-trial)** · **[GitHub release & source packages](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/cm-orca-trial-20260913)**
+
+---
+
+## ChromaMatter — AI Model Print Studio 0.9 (r33)
 
 <p align="center">
   <img src="source/fixed_app/assets/obj_adjuster_icon.png" width="160" alt="ChromaMatter icon">
