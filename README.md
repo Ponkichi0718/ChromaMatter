@@ -18,7 +18,7 @@ These are app packages, not source-code downloads.
 - **Full Spectrum / CMY / Flat Four** — choose your color workflow.
 - **Core/Shell** — assign inner and outer materials and adjust shell thickness.
 - **Hands-on color editing** — brush-based manual color correction.
-- **Color & shading** — adjust brightness, contrast, gamma, saturation and shading.
+- **Color & shading** — adjust brightness, contrast, saturation, cel shading and light direction.
 - **Black reduction** — control physical black in mixed colors.
 
 > **Experimental / 試験版:** Unexpected behavior is possible, and the UI is a work in progress. Keep original files and check slicing results before printing. This is an unofficial modification of Snapmaker Orca.
