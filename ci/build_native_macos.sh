@@ -147,7 +147,7 @@ PY
       if [[ ! -x "$(brew --prefix gettext)/bin/msgfmt" ]]; then brew install gettext; fi
       msgfmt_tool="$(brew --prefix gettext)/bin/msgfmt"
     fi
-    for po in "$source_dir"/localization/i18n/*/Snapmaker_Orca.po; do
+    for po in "$source_dir"/localization/i18n/*/Snapmaker_Orca*.po; do
       locale_dir=$(basename "$(dirname "$po")")
       mkdir -p "$app/Contents/Resources/i18n/$locale_dir"
       "$msgfmt_tool" --check-format -o "$app/Contents/Resources/i18n/$locale_dir/Snapmaker_Orca.mo" "$po"

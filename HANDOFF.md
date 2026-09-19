@@ -14,10 +14,16 @@ in `CONTOUR_TRIAL_MAC_SOURCE.json` and `CONTOUR_TRIAL_MAC_README_JA.md`.
 The source ZIP is a uniquely named additional asset of the existing Orca trial
 release, not a Git-tracked archive. A fixed URL and SHA-256 protect the input.
 Source-packet privacy/manifest checks and focused Bash/Python/YAML checks passed.
-The actual Mac build and packaged CLI checks are still pending at this checkpoint;
-Mac GUI, real-model interaction, slicing and physical printing are unverified.
+Run 35471250515 completed the native 644-step build and saved the completed app
+and dependency caches. Packaging then failed because the translation input glob
+omitted the language suffix of the actual PO filenames. The one-line correction
+uses the same `Snapmaker_Orca*.po` glob as upstream CMake; output names are unchanged.
+The corrected glob matches all 20 locales, and Bash syntax and Japanese catalog
+format checks pass. Retry packaging with the completed app cache, not a fresh build.
+Packaged CLI checks, Mac GUI, real-model interaction, slicing and physical printing
+remain unverified until separately recorded.
 
-Next: run the new workflow once, retain its outputs and checksums, and record the
+Next: run the corrected workflow once, retain its outputs and checksums, and record the
 actual result. Existing application downloads are not replaced by this change.
 Do not relabel previous platform binaries as this new build. Private user models,
 profiles, local logs and build caches remain outside the public repository.
