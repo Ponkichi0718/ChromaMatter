@@ -29,6 +29,40 @@ install_helpers() {
   done
 }
 
+collect_native_notices() {
+  local app="$1"
+  python - "$source_dir" "$build_dir/deps" "$app/Contents/SharedSupport/NativeNotices" <<'PY'
+from pathlib import Path
+import os
+import shutil
+import sys
+
+native, dependencies, target = map(Path, sys.argv[1:])
+target.mkdir(parents=True, exist_ok=False)
+shutil.copy2(native / 'LICENSE.txt', target / 'LICENSE.txt')
+copied = 0
+for label, root in [('native-source', native), ('downloaded-native-dependencies', dependencies)]:
+    if not root.is_dir():
+        raise RuntimeError('Native dependency sources unavailable for notice collection')
+    for directory, folders, files in os.walk(root):
+        folders[:] = sorted(name for name in folders if name not in {'.git', 'CMakeFiles', '__pycache__'})
+        for name in sorted(files):
+            path = Path(directory) / name
+            if not name.lower().startswith(('license', 'copying', 'notice', 'copyright')):
+                continue
+            if path.is_symlink() or path.suffix.lower() not in {'', '.txt', '.md', '.rst', '.html', '.htm', '.lesser', '.readme'}:
+                continue
+            content = path.read_bytes()
+            if b'\0' in content:
+                continue
+            destination = target / label / path.relative_to(root)
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(path, destination)
+            copied += 1
+print('Retained existing native notices:', copied)
+PY
+}
+
 case "$stage" in
   preflight)
     # Exercise the final nested-helper layout before the expensive native build.
@@ -87,6 +121,10 @@ PY
       -DSLIC3R_PCH=ON -DSLIC3R_SENTRY=OFF -DBUILD_TESTS=OFF \
       -DORCA_TOOLS=OFF -DSLIC3R_DESKTOP_INTEGRATION=OFF -DBBL_RELEASE_TO_PUBLIC=1
     cmake --build "$build_dir/app" --target Snapmaker_Orca --parallel 2
+    source_app="$build_dir/app/src/Snapmaker_Orca.app"
+    if [[ ! -d "$source_app" ]]; then source_app="$build_dir/app/src/Snapmaker Orca.app"; fi
+    # Keep notices in the app before the existing completed-app cache is saved.
+    collect_native_notices "$source_app"
     ;;
   package)
     source_app="$build_dir/app/src/Snapmaker_Orca.app"
@@ -116,6 +154,9 @@ PY
     done
     test -s "$app/Contents/Resources/i18n/ja/Snapmaker_Orca.mo"
     install_helpers "$app"
+    test -s "$app/Contents/SharedSupport/NativeNotices/LICENSE.txt"
+    cp "$root/CONTOUR_TRIAL_MAC_README_JA.md" "$app/Contents/SharedSupport/"
+    cp "$root/CONTOUR_TRIAL_MAC_SOURCE.json" "$app/Contents/SharedSupport/"
     /usr/libexec/PlistBuddy -c 'Set :CFBundleDisplayName Snapmaker Orca with CM Test' "$app/Contents/Info.plist" || \
       /usr/libexec/PlistBuddy -c 'Add :CFBundleDisplayName string Snapmaker Orca with CM Test' "$app/Contents/Info.plist"
     /usr/libexec/PlistBuddy -c 'Set :LSMinimumSystemVersion 15.0' "$app/Contents/Info.plist" || \
