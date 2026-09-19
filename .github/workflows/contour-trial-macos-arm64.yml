@@ -76,6 +76,11 @@ jobs:
           key: ${{ steps.helper-cache.outputs.cache-primary-key }}
       - name: Check helper packaging before native compile
         run: bash ci/build_native_macos.sh preflight
+      - name: Match completed native cache compression
+        run: |
+          # The completed native cache was saved with gzip after zstd was
+          # unlinked. Cache versions include the compression method.
+          if brew list zstd >/dev/null 2>&1; then brew unlink zstd; fi
       - name: Restore completed native app
         id: app-cache
         uses: actions/cache/restore@v4

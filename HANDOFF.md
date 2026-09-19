@@ -20,6 +20,11 @@ omitted the language suffix of the actual PO filenames. The one-line correction
 uses the same `Snapmaker_Orca*.po` glob as upstream CMake; output names are unchanged.
 The corrected glob matches all 20 locales, and Bash syntax and Japanese catalog
 format checks pass. Retry packaging with the completed app cache, not a fresh build.
+The first packaging retry found the same cache key but a different cache version:
+restore ran before zstd was unlinked, whereas the completed app had been saved
+with gzip after unlinking. That retry was canceled to avoid redundant compilation.
+The workflow now aligns native-cache compression before restoring the completed
+app, while leaving the earlier helper cache and all cache keys unchanged.
 Packaged CLI checks, Mac GUI, real-model interaction, slicing and physical printing
 remain unverified until separately recorded.
 
