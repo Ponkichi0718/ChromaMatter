@@ -1,0 +1,25 @@
+{
+  "input_zip": "CM-Contour-Trial-20260920-Mac-BuildInputs-r2.zip",
+  "bytes": 3256161,
+  "sha256": "269058058b836cb4449c9fff36f13dc48ae5a5e99863767162822f3b5419cda9",
+  "native_files": 204,
+  "helper_files": 226,
+  "checked_payload_files": 434,
+  "upstream": "https://github.com/Snapmaker/OrcaSlicer",
+  "upstream_commit": "5417538a1c47d64d57b0401c095f40d1bcd7c9da",
+  "source_snapshot": "Contour-Guide-JA-20260919",
+  "trial_date": "2026-09-20",
+  "macos_build_completed": false,
+  "macos_gui_verified": false,
+  "private_paths_redacted": [
+    "importer-source/CM006_IMPORT_JA.md"
+  ],
+  "privacy_check": "No known personal paths, credential patterns, user models, logs, or runtime binaries in source packet",
+  "source_url": "https://github.com/Ponkichi0718/ChromaMatter/releases/download/cm-orca-trial-20260913/CM-Contour-Trial-20260920-Mac-BuildInputs-r2.zip",
+  "revision": 2,
+  "compatibility_changes": [
+    "Shared Linux/macOS helper launcher",
+    "Explicit empty wxString in eight TD library conditions"
+  ],
+  "translations": "Compile supplied PO files with msgfmt before signing the app"
+}
