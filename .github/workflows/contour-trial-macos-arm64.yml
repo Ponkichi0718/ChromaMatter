@@ -1,0 +1,142 @@
+name: Contour Trial Apple Silicon test build
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: contour-trial-arm64
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 180
+    env:
+      HOMEBREW_NO_AUTO_UPDATE: '1'
+      DEVELOPER_DIR: /Applications/Xcode_16.2.app/Contents/Developer
+      MACOSX_DEPLOYMENT_TARGET: '15.0'
+      CMAKE_BUILD_PARALLEL_LEVEL: '2'
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v5
+        with:
+          repository: Snapmaker/OrcaSlicer
+          ref: 5417538a1c47d64d57b0401c095f40d1bcd7c9da
+          path: native
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.13.14'
+          architecture: arm64
+      - name: Download fixed source input from trial release
+        run: |
+          curl --fail --location --retry 2 --proto '=https' --proto-redir '=https' \
+            'https://github.com/Ponkichi0718/ChromaMatter/releases/download/cm-orca-trial-20260913/CM-Contour-Trial-20260920-Mac-BuildInputs-r2.zip' \
+            --output contour-trial-macos-inputs.zip
+      - name: Extract verified trial source inputs
+        run: |
+          echo '269058058b836cb4449c9fff36f13dc48ae5a5e99863767162822f3b5419cda9  contour-trial-macos-inputs.zip' | shasum -a 256 -c -
+          unzip -q contour-trial-macos-inputs.zip
+          unzip -q native-ci-delta.zip -d native-delta
+          unzip -q helper-inputs-macos.zip -d helper-inputs
+          # ZIP timestamps carry Windows local time without a timezone. Do not
+          # let copied CMake inputs appear to be in the runner's future.
+          find native-delta/source-files -type f -exec touch {} +
+          python native-delta/apply_native_ci_delta.py --checkout native
+          python -c "import platform, tkinter; assert platform.machine() == 'arm64'; print('arm64, Tk', tkinter.TkVersion)"
+      - name: Restore bundled helper cache
+        id: helper-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            helper-build/dist/cm-glb-import.app
+            helper-build/dist/cm-paint-editor.app
+          key: mac1-arm64-python31314-helper-apps-${{ hashFiles('helper-inputs-macos.zip', 'tools/helpers*', 'ci/helpers_bundle_macos.spec') }}
+      - name: Build bundled import and paint helpers
+        if: steps.helper-cache.outputs.cache-hit != 'true'
+        run: |
+          python -m pip install --only-binary=:all: -r tools/helpers-requirements-macos.txt
+          mkdir -p helper-build
+          for pair in importer-source:cm-glb-import editor-source:cm-paint-editor; do
+            folder=${pair%%:*}
+            name=${pair#*:}
+            CM_HELPER_SOURCE="$PWD/helper-inputs/$folder" CM_HELPER_NAME="$name" \
+              python -m PyInstaller --noconfirm --workpath "helper-build/build/$name" \
+              --distpath helper-build/dist ci/helpers_bundle_macos.spec > "helper-build/$name-build.log" 2>&1 || \
+              { tail -n 60 "helper-build/$name-build.log"; exit 1; }
+          done
+      - name: Save bundled helper cache
+        if: steps.helper-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            helper-build/dist/cm-glb-import.app
+            helper-build/dist/cm-paint-editor.app
+          key: ${{ steps.helper-cache.outputs.cache-primary-key }}
+      - name: Check helper packaging before native compile
+        run: bash ci/build_native_macos.sh preflight
+      - name: Restore completed native app
+        id: app-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: cm-build/app/src/Snapmaker_Orca.app
+          # Packaging-only changes deliberately do not invalidate the native app.
+          key: contour-trial-arm64-native12-xcode162-app-v1-${{ hashFiles('contour-trial-macos-inputs.zip', 'native/src/**', 'native/CMakeLists.txt') }}
+      - name: Install native build tools
+        if: steps.app-cache.outputs.cache-hit != 'true'
+        run: |
+          python -m pip install cmake==3.31.10 ninja==1.11.1.4
+          brew install automake texinfo libtool gettext
+          echo "$(brew --prefix gettext)/bin" >> "$GITHUB_PATH"
+          echo "$(brew --prefix texinfo)/bin" >> "$GITHUB_PATH"
+          if brew list zstd >/dev/null 2>&1; then brew unlink zstd; fi
+      - name: Restore native dependencies
+        if: steps.app-cache.outputs.cache-hit != 'true'
+        id: deps-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            cm-build/deps
+            cm-build/deps-install
+            cm-build/downloads
+          key: mac1-arm64-native12-xcode162-deps-${{ hashFiles('native/deps/**') }}-${{ github.run_id }}
+          restore-keys: |
+            mac1-arm64-native12-xcode162-deps-${{ hashFiles('native/deps/**') }}-
+      - name: Build native dependencies
+        if: steps.app-cache.outputs.cache-hit != 'true'
+        run: bash ci/build_native_macos.sh deps
+      - name: Save native dependencies
+        if: always() && steps.deps-cache.outputs.cache-primary-key != '' && steps.deps-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            cm-build/deps
+            cm-build/deps-install
+            cm-build/downloads
+          key: ${{ steps.deps-cache.outputs.cache-primary-key }}
+      - name: Build Orca arm64
+        if: steps.app-cache.outputs.cache-hit != 'true'
+        run: bash ci/build_native_macos.sh app
+      - name: Save completed native app before packaging
+        if: steps.app-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: cm-build/app/src/Snapmaker_Orca.app
+          key: ${{ steps.app-cache.outputs.cache-primary-key }}
+      - name: Package and minimal command-line check
+        run: bash ci/build_native_macos.sh package
+      - name: Collect small diagnostic logs
+        if: always()
+        run: |
+          mkdir -p artifacts
+          cp helper-build/*-build.log helper-build/helpers-build-summary.json artifacts/ 2>/dev/null || true
+      - name: Store test artifact for one day
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CM-Contour-Trial-20260920-arm64
+          path: artifacts/
+          retention-days: 1
+          compression-level: 0
+          if-no-files-found: warn

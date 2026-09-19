@@ -1,5 +1,28 @@
 # ChromaMatter cross-PC handoff
 
+## Orca contour trial build — 2026-09-20
+
+This is a separate Snapmaker Orca with CM experimental build, not a change to
+the standalone ChromaMatter 0.9 application or its published archives.
+The owner authorized publishing the reviewed Orca build inputs and configuration
+here and building Apple Silicon on the standard public GitHub Actions runner.
+Private repositories and billing settings remain unchanged.
+
+The new manual-only workflow is `.github/workflows/contour-trial-macos-arm64.yml`.
+Its two build helpers are under `ci/`; the source identity and limitations are
+in `CONTOUR_TRIAL_MAC_SOURCE.json` and `CONTOUR_TRIAL_MAC_README_JA.md`.
+The source ZIP is a uniquely named additional asset of the existing Orca trial
+release, not a Git-tracked archive. A fixed URL and SHA-256 protect the input.
+Source-packet privacy/manifest checks and focused Bash/Python/YAML checks passed.
+The actual Mac build and packaged CLI checks are still pending at this checkpoint;
+Mac GUI, real-model interaction, slicing and physical printing are unverified.
+
+Next: run the new workflow once, retain its outputs and checksums, and record the
+actual result. Existing application downloads are not replaced by this change.
+Do not relabel previous platform binaries as this new build. Private user models,
+profiles, local logs and build caches remain outside the public repository.
+The older checkpoints below remain scoped to their named standalone versions.
+
 ## Current publication checkpoint — 2026-09-10
 
 The official website already publishes ChromaMatter `0.9` for Windows,
