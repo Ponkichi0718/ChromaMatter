@@ -4,7 +4,7 @@
 
 **Color. Shade. Make it yours.**
 
-CMY color, Core/Shell and hands-on color editing in your Orca workflow. The dedicated color editor comes bundled.
+Full Spectrum and CMY color, shading, Core/Shell and guided contour cuts in your Orca workflow. The dedicated color editor comes bundled.
 
 ### Download the app
 
@@ -15,11 +15,12 @@ CMY color, Core/Shell and hands-on color editing in your Orca workflow. The dedi
 
 These are app packages, not source-code downloads.
 
-- **Full Spectrum / CMY / Flat Four** — choose your color workflow.
-- **Core/Shell** — assign inner and outer materials and adjust shell thickness.
-- **Hands-on color editing** — brush-based manual color correction. Wheel-button drag to pan, right-drag to rotate, and scroll to zoom.
-- **Color & shading** — adjust brightness, contrast, saturation, cel shading and light direction.
-- **Black reduction** — control physical black in mixed colors.
+- **Color workflows & filament library** — Full Spectrum, CMY and Flat Color, with filament selection and black reduction.
+- **Shading & manual color edits** — brightness, contrast, saturation, cel shading, light direction and brush corrections. Wheel-button drag pans the editor.
+- **Core/Shell & thickness** — assign inner and outer materials, vary shell thickness with height, and try experimental TD controls.
+- **Black/white cores** — experiment with virtual CMY-black and white cores.
+- **Guided contour cuts** — select a region, adjust the cut height and split with English/Japanese instructions.
+- **4–8 base-color candidates** — optional in Full Spectrum / Flat Color; 5–8 are for planning only. U1 still uses four physical filaments; automatic grouping to four is not implemented.
 
 > **Experimental / 試験版:** Unexpected behavior is possible, and the UI is a work in progress. Keep original files and check slicing results before printing. This is an unofficial modification of Snapmaker Orca.
 

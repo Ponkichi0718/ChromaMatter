@@ -1,38 +1,34 @@
 # ChromaMatter cross-PC handoff
 
-## Orca contour trial build — 2026-09-20
+## Orca contour trial packages and download copy — 2026-09-20
 
-This is a separate Snapmaker Orca with CM experimental build, not a change to
-the standalone ChromaMatter 0.9 application or its published archives.
-The owner authorized publishing the reviewed Orca build inputs and configuration
-here and building Apple Silicon on the standard public GitHub Actions runner.
-Private repositories and billing settings remain unchanged.
+The cumulative Snapmaker Orca with CM trial now has completed application and
+matching-source packages for Windows x64, Linux x86_64 and Apple Silicon.
+The owner authorized refreshing the existing `cm-orca-trial-20260913` assets
+under their existing names; that publication is being prepared separately.
+This documentation PR updates only the existing Orca introduction in `README.md`
+and this handoff. All download URLs and standalone ChromaMatter 0.9 content stay
+unchanged. The trial notice, unfinished UI and four-physical-filament U1 limit
+remain explicit; 5–8 base-color candidates are for planning, without automatic
+grouping to four.
 
-The new manual-only workflow is `.github/workflows/contour-trial-macos-arm64.yml`.
-Its two build helpers are under `ci/`; the source identity and limitations are
-in `CONTOUR_TRIAL_MAC_SOURCE.json` and `CONTOUR_TRIAL_MAC_README_JA.md`.
-The source ZIP is a uniquely named additional asset of the existing Orca trial
-release, not a Git-tracked archive. A fixed URL and SHA-256 protect the input.
-Source-packet privacy/manifest checks and focused Bash/Python/YAML checks passed.
-Run 35471250515 completed the native 644-step build and saved the completed app
-and dependency caches. Packaging then failed because the translation input glob
-omitted the language suffix of the actual PO filenames. The one-line correction
-uses the same `Snapmaker_Orca*.po` glob as upstream CMake; output names are unchanged.
-The corrected glob matches all 20 locales, and Bash syntax and Japanese catalog
-format checks pass. Retry packaging with the completed app cache, not a fresh build.
-The first packaging retry found the same cache key but a different cache version:
-restore ran before zstd was unlinked, whereas the completed app had been saved
-with gzip after unlinking. That retry was canceled to avoid redundant compilation.
-The workflow now aligns native-cache compression before restoring the completed
-app, while leaving the earlier helper cache and all cache keys unchanged.
-Packaged CLI checks, Mac GUI, real-model interaction, slicing and physical printing
-remain unverified until separately recorded.
+Windows retained its limited synthetic-cube GUI evidence and passed package
+structure plus five runtime hash checks. Linux completed its build and limited
+CLI/headless startup checks. Mac build/packaging completed in
+[run 35477367523](https://github.com/Ponkichi0718/ChromaMatter/actions/runs/35477367523)
+at commit `854bfb42c5264fac21e74c5f2a37e6563089e7d9`; the app archive SHA-256 is
+`d7c6a4acae969da53e1f4b74f73bb133e762de9562a1e1fac27cc4637981ef6e`.
+Mac GUI, complex real-model contour work, physical printing and optical/TD
+calibration remain unverified. These bounded checks do not claim full regression
+or production readiness across all three platforms.
 
-Next: run the corrected workflow once, retain its outputs and checksums, and record the
-actual result. Existing application downloads are not replaced by this change.
-Do not relabel previous platform binaries as this new build. Private user models,
-profiles, local logs and build caches remain outside the public repository.
-The older checkpoints below remain scoped to their named standalone versions.
+Documentation checks: unchanged existing download links and the full standalone
+0.9 section, scoped two-file diff, and `git diff --check`. No application code,
+workflows, binaries or release assets change in this PR. Commit with `[skip ci]`;
+do not dispatch Actions or merge as part of this documentation task. Next: review
+the PR and complete the separately authorized asset replacement. Private models,
+profiles, build caches and local validation records remain outside Git.
+The older checkpoints below retain their original standalone-version scope.
 
 ## Current publication checkpoint — 2026-09-10
 
