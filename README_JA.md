@@ -1,3 +1,43 @@
+# ChromaMatter
+
+## Snapmaker Orca with CM 2.4.0 — 試験版
+
+Full Spectrum・CMY・Flat Color、透明コート、径方向の材料層、Core/Shell、局所カットをOrcaの作業で試せます。
+
+### アプリのダウンロード
+
+| Windows | Mac | Linux |
+| --- | --- | --- |
+| **[⬇ Windows版](https://github.com/Ponkichi0718/ChromaMatter/releases/download/cm-orca-2.4.0-trial-20261002/Snapmaker-Orca-CM-2.4.0-Windows-x64-Window1.zip)** | **[⬇ Mac版](https://github.com/Ponkichi0718/ChromaMatter/releases/download/cm-orca-2.4.0-trial-20261002/CM-240-Window1-arm64-app.zip)** | **[⬇ Linux版](https://github.com/Ponkichi0718/ChromaMatter/releases/download/cm-orca-2.4.0-trial-20261002/Snapmaker-Orca-CM-2.4.0-Linux-x86_64-r2.tar.gz)** |
+| x64・ZIP | Apple Silicon・macOS 15以降・ZIP | Ubuntu 22.04・x86_64・tar.gz |
+
+上記はアプリです。対応ソースは下に別途案内しています。
+
+- **色のワークフロー** — Full Spectrum・CMY・Flat Color、フィラメント選択、黒補正、指定色の再計算。
+- **基本色候補4〜8色** — Full Spectrum / Flat Colorで選択。5〜8色は計画用で、U1の実フィラメントは4本です。4本への自動整理は未実装です。
+- **透明コートと材料層** — 透明窓、径方向の層、中空、局所黒裏打ち、Core/Shellの厚みを調整できます。
+- **局所カットと制御点** — 選択範囲とガイドを調整して切断します。任意形状への対応を保証するものではありません。
+- **陰影と手修正** — Mac・Linux版にはセル／漫画調フィルターとブラシ修正を備えた外部カラーエディターを同梱。Windows Window1版には外部エディターを同梱しておらず、このパッケージでは外部手修正を利用できません。本体のペイント機能と透明窓ペイントは利用できます。
+
+> **試験版:** 想定外の動作が起こる可能性があり、UIは調整中です。元ファイルを保管し、印刷前にスライス結果を確認してください。Snapmaker Orcaの非公式改変版です。
+
+Mac版はApple Silicon／macOS 15以降専用です。Developer ID署名・公証はなく、MacでのGUI操作は未検証です。
+
+### かぼちゃプロジェクト2種類
+
+どちらも動画で使用した150 mmのかぼちゃです。
+
+- **[元の状態・コートなし](https://github.com/Ponkichi0718/ChromaMatter/releases/download/cm-orca-2.4.0-trial-20261002/Pumpkin-Original-NoCoat.3mf)** — 動画開始時の通常混色プロジェクト。透明コート適用前です。
+- **[透明 → Y → M → 局所K・サポート30°](https://github.com/Ponkichi0718/ChromaMatter/releases/download/cm-orca-2.4.0-trial-20261002/Pumpkin-Clear-Y-M-K-AllApplied-Support30.3mf)** — 中空、積層0.20 mm、透明な顔、底穴40 mm。サポートON／30°、自動ツリー／ビルドプレートのみ。黒裏打ちは局所です。サポート変更後の再スライス・実印刷は未実施です。
+
+### 対応ソース
+
+[Windowsソース](https://github.com/Ponkichi0718/ChromaMatter/releases/download/cm-orca-2.4.0-trial-20261002/Snapmaker-Orca-CM-2.4.0-Windows-source-Window1.zip) · [Macビルド入力](https://github.com/Ponkichi0718/ChromaMatter/releases/download/cm-orca-2.4.0-trial-20261002/CM-240-Mac-BuildInputs-20261002-r2.tar.gz)＋[workflow c3df641](https://github.com/Ponkichi0718/ChromaMatter/blob/c3df641078bcd84eb3d701414b91c1ea4d46578f/.github/workflows/cm240-macos-arm64.yml) · [Linuxソース](https://github.com/Ponkichi0718/ChromaMatter/releases/download/cm-orca-2.4.0-trial-20261002/Snapmaker-Orca-CM-2.4.0-Linux-source-r2.tar.gz)
+
+**[公式ダウンロード・導入案内](https://chromamatter.app/download#orca-trial)** · **[かぼちゃプロジェクト案内](https://chromamatter.app/download#pumpkin-projects)** · **[GitHub Release](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/cm-orca-2.4.0-trial-20261002)**
+
+---
+
 # ChromaMatter — AI Model Print Studio 0.9（r33）
 
 <p align="center">
