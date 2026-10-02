@@ -1,30 +1,42 @@
 # ChromaMatter
 
-## NEW · Snapmaker Orca with CM — Experimental
+## Snapmaker Orca with CM 2.4.0 — Experimental
 
 **Color. Shade. Make it yours.**
 
-Full Spectrum and CMY color, shading, Core/Shell and guided contour cuts in your Orca workflow. The dedicated color editor comes bundled.
+Full Spectrum, CMY and Flat Color, transparent coats, radial material layers, Core/Shell and local cuts in your Orca workflow.
 
 ### Download the app
 
 | Windows | Mac | Linux |
 | --- | --- | --- |
-| **[⬇ Download for Windows](https://github.com/Ponkichi0718/ChromaMatter/releases/download/cm-orca-trial-20260913/Snapmaker-Orca-CM-Windows-x64.zip)** | **[⬇ Download for Mac](https://github.com/Ponkichi0718/ChromaMatter/releases/download/cm-orca-trial-20260913/Snapmaker-Orca-CM-Mac-arm64-app.zip)** | **[⬇ Download for Linux](https://github.com/Ponkichi0718/ChromaMatter/releases/download/cm-orca-trial-20260913/Snapmaker-Orca-CM-Linux-x86_64.tar.gz)** |
+| **[⬇ Download for Windows](https://github.com/Ponkichi0718/ChromaMatter/releases/download/cm-orca-2.4.0-trial-20261002/Snapmaker-Orca-CM-2.4.0-Windows-x64-Window1.zip)** | **[⬇ Download for Mac](https://github.com/Ponkichi0718/ChromaMatter/releases/download/cm-orca-2.4.0-trial-20261002/CM-240-Window1-arm64-app.zip)** | **[⬇ Download for Linux](https://github.com/Ponkichi0718/ChromaMatter/releases/download/cm-orca-2.4.0-trial-20261002/Snapmaker-Orca-CM-2.4.0-Linux-x86_64-r2.tar.gz)** |
 | x64 · ZIP | Apple Silicon · macOS 15+ · ZIP | Ubuntu 22.04 · x86_64 · tar.gz |
 
 These are app packages, not source-code downloads.
 
-- **Color workflows & filament library** — Full Spectrum, CMY and Flat Color, with filament selection and black reduction.
-- **Shading & manual color edits** — brightness, contrast, saturation, cel shading, light direction and brush corrections. Wheel-button drag pans the editor.
-- **Core/Shell & thickness** — assign inner and outer materials, vary shell thickness with height, and try experimental TD controls.
-- **Black/white cores** — experiment with virtual CMY-black and white cores.
-- **Guided contour cuts** — select a region, adjust the cut height and split with English/Japanese instructions.
-- **4–8 base-color candidates** — optional in Full Spectrum / Flat Color; 5–8 are for planning only. U1 still uses four physical filaments; automatic grouping to four is not implemented.
+- **Color workflows** — Full Spectrum, CMY and Flat Color, filament selection, black reduction and recalculation for specified target colors.
+- **4–8 base-color candidates** — optional in Full Spectrum / Flat Color; 5–8 are for planning only. U1 uses four physical filaments; automatic grouping to four is not implemented.
+- **Transparent coats & material layers** — explore transparent windows, radial layers, hollow structures, local black backing and Core/Shell thickness.
+- **Local cuts & control points** — adjust selected regions and guided cuts; support for arbitrary shapes is not guaranteed.
+- **Shading & manual edits** — the Mac and Linux packages include the external color editor with cel/manga filters and brush corrections. The Windows Window1 package does not include that editor, so external manual editing is unavailable in this package; native painting, including transparent-window painting, is available.
 
 > **Experimental / 試験版:** Unexpected behavior is possible, and the UI is a work in progress. Keep original files and check slicing results before printing. This is an unofficial modification of Snapmaker Orca.
 
-**[Official downloads & setup](https://chromamatter.app/download#orca-trial)** · **[GitHub release & source packages](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/cm-orca-trial-20260913)**
+Mac requires Apple Silicon and macOS 15 or later. It has no Developer ID signature or notarization; Mac GUI operation has not been verified.
+
+### Pumpkin project examples
+
+Both projects use the 150 mm pumpkin from the video.
+
+- **[Original / no coat](https://github.com/Ponkichi0718/ChromaMatter/releases/download/cm-orca-2.4.0-trial-20261002/Pumpkin-Original-NoCoat.3mf)** — the video's starting project, with regular mixed color before the transparent coat.
+- **[Clear → Y → M → local K / support 30°](https://github.com/Ponkichi0718/ChromaMatter/releases/download/cm-orca-2.4.0-trial-20261002/Pumpkin-Clear-Y-M-K-AllApplied-Support30.3mf)** — hollow, 0.20 mm layers, transparent face, 40 mm bottom opening, and supports enabled at 30° with automatic tree supports on the build plate only. Black backing is local. This support-adjusted project has not been re-sliced or printed.
+
+### Corresponding source
+
+[Windows source](https://github.com/Ponkichi0718/ChromaMatter/releases/download/cm-orca-2.4.0-trial-20261002/Snapmaker-Orca-CM-2.4.0-Windows-source-Window1.zip) · [Mac build inputs](https://github.com/Ponkichi0718/ChromaMatter/releases/download/cm-orca-2.4.0-trial-20261002/CM-240-Mac-BuildInputs-20261002-r2.tar.gz) with [workflow at c3df641](https://github.com/Ponkichi0718/ChromaMatter/blob/c3df641078bcd84eb3d701414b91c1ea4d46578f/.github/workflows/cm240-macos-arm64.yml) · [Linux source](https://github.com/Ponkichi0718/ChromaMatter/releases/download/cm-orca-2.4.0-trial-20261002/Snapmaker-Orca-CM-2.4.0-Linux-source-r2.tar.gz)
+
+**[Official downloads & setup](https://chromamatter.app/download#orca-trial)** · **[Pumpkin project guide](https://chromamatter.app/download#pumpkin-projects)** · **[GitHub release](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/cm-orca-2.4.0-trial-20261002)**
 
 ---
 
