@@ -1,6 +1,6 @@
 # ChromaMatter cross-PC handoff
 
-## Orca with CM dev3-R8 presentation/publication preparation — 2026-10-13
+## Orca with CM dev3-R8 publication — 2026-10-13
 
 The owner requested that the GitHub and official-site front pages focus on
 Orca with CM as the sole current application. ChromaMatter is described briefly
@@ -8,15 +8,16 @@ as the original colour-processing technology. The owner explicitly chose to
 retain historical standalone releases, source and download endpoints; do not
 delete, unpublish or rename them.
 
-This documentation change is staged for release `cm-orca-dev3-r8-20261013`.
-Do not merge or deploy download links until the matching assets are uploaded
-and checked. The new release is experimental/pre-release, not stable.
-Windows publication awaits the owner's review of one embedded build-information
-path; no Windows package is approved for upload yet. This checkpoint does not
-claim that the release or website update is already live.
+The experimental/pre-release [cm-orca-dev3-r8-20261013](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/cm-orca-dev3-r8-20261013) is published. All seven assets were checked against local SHA256 and byte counts. The owner explicitly approved publication of the reviewed embedded Windows build-information path; the binary was not modified. The official Site was deployed from saved version 61, source `67ea8b1700bb1d025cd67fc0ae5266e295ee11e6`, with the existing public audience and URLs retained. Historical release assets and download endpoints remain unchanged.
 
 ### Completed R8 platform builds
 
+- Windows x64: unchanged R8 binary packaged without rebuilding. App archive
+  `Snapmaker-Orca-CM-dev3-R8-Windows-x64.zip`, 281221991 bytes,
+  SHA256 `82013bc06432903d569f632aec4b778307d8bda912b408f67d633554bd193ac1`.
+  Matching `Snapmaker-Orca-CM-dev3-R8-Windows-source.zip`, 114874342 bytes,
+  SHA256 `e5de616d535163021c4654c296f97a84c94c88267794669cc35597c2e4b9291d`.
+  Archive CRC/member hashes, source/runtime preservation and sidecar checks passed.
 - Linux x86_64 / Ubuntu 22.04: existing app archive
   `Snapmaker-Orca-CM-dev3-R8-Linux-x86_64.tar.gz`, 358069665 bytes,
   SHA256 `da8141cf84332ab3d4766a473dd6a822e092440f7f50489054864a8d99b49775`.
@@ -49,7 +50,7 @@ helper spec/version pins and official source URL/hash index:
 `CM-dev3-R8-Linux-Source-Supplement-20261013.zip`, 47949 bytes,
 SHA256 `a8b0ce32af9074e6a67d49450cf0e3de78fb7bd7d5fe3a3cabc4b275985f3024`.
 Static/privacy/CRC/read-back checks passed; it was not rebuilt.
-The Windows matching source package is separate. These are application sources
+The Windows matching source package is attached to the new release. These are application sources
 and dependency recipes, not a complete offline SDK; the supplement documents
 remaining third-party source/relink provenance limits.
 
