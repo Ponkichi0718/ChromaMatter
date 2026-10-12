@@ -1,5 +1,70 @@
 # ChromaMatter cross-PC handoff
 
+## Orca with CM dev3-R8 publication — 2026-10-13
+
+The owner requested that the GitHub and official-site front pages focus on
+Orca with CM as the sole current application. ChromaMatter is described briefly
+as the original colour-processing technology. The owner explicitly chose to
+retain historical standalone releases, source and download endpoints; do not
+delete, unpublish or rename them.
+
+The experimental/pre-release [cm-orca-dev3-r8-20261013](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/cm-orca-dev3-r8-20261013) is published. All seven assets were checked against local SHA256 and byte counts. The owner explicitly approved publication of the reviewed embedded Windows build-information path; the binary was not modified. The official Site was deployed from saved version 61, source `67ea8b1700bb1d025cd67fc0ae5266e295ee11e6`, with the existing public audience and URLs retained. Historical release assets and download endpoints remain unchanged.
+
+### Completed R8 platform builds
+
+- Windows x64: unchanged R8 binary packaged without rebuilding. App archive
+  `Snapmaker-Orca-CM-dev3-R8-Windows-x64.zip`, 281221991 bytes,
+  SHA256 `82013bc06432903d569f632aec4b778307d8bda912b408f67d633554bd193ac1`.
+  Matching `Snapmaker-Orca-CM-dev3-R8-Windows-source.zip`, 114874342 bytes,
+  SHA256 `e5de616d535163021c4654c296f97a84c94c88267794669cc35597c2e4b9291d`.
+  Archive CRC/member hashes, source/runtime preservation and sidecar checks passed.
+- Linux x86_64 / Ubuntu 22.04: existing app archive
+  `Snapmaker-Orca-CM-dev3-R8-Linux-x86_64.tar.gz`, 358069665 bytes,
+  SHA256 `da8141cf84332ab3d4766a473dd6a822e092440f7f50489054864a8d99b49775`.
+  CLI/dependency/locale/archive checks and a short Xvfb startup check passed.
+  Real-model GUI editing, cutting, slicing and printing remain unverified.
+- Apple Silicon / macOS 15+: run
+  [38262621204](https://github.com/Ponkichi0718/ChromaMatter/actions/runs/38262621204),
+  job 114856731647, source `9ac594d8535c20053b76be93fac99b00260baaa2`,
+  completed successfully. Actual signing and CLI steps passed.
+  `CM-dev3-R8-macos-arm64-app.zip`, 234053125 bytes,
+  SHA256 `47b3f68d62d6c86b0802729699631897549ddc1a2a2f43d8560f8f2acd764445`.
+  Preserve the inner archive without recompression. Local receipt checks passed.
+  Ad-hoc signing only; no Developer ID or notarization. Mac GUI, real-model
+  editing/cutting, slicing and printing remain unverified. No Intel package.
+- These builds are not new feature changes and do not establish cross-platform
+  GUI parity. Windows R8 final protection GUI confirmation was waived by the owner.
+  Existing Windows/Mac CM settings may be shared; keep originals and back up
+  settings before use. Linux defaults to its dedicated R8 configuration location
+  unless `XDG_CONFIG_HOME` is explicitly supplied.
+
+### Release-specific source
+
+The public R8 native/helper packet remains at
+[cm-orca-dev3-r8-build-inputs-20261012](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/cm-orca-dev3-r8-build-inputs-20261012).
+Packet SHA256: `0648c70bde833554a6da7279c5426648bee137a8650e0235585f56f30bf4e704`;
+manifest SHA256: `afd31af216725df73c022e4c648e355d6d39c434c80623d7e0062dbd2bc6e094`
+(14472 files). Mac build configuration is pinned to the successful run's source.
+The Linux source supplement adds build instructions, dependency recipe differences,
+helper spec/version pins and official source URL/hash index:
+`CM-dev3-R8-Linux-Source-Supplement-20261013.zip`, 47949 bytes,
+SHA256 `a8b0ce32af9074e6a67d49450cf0e3de78fb7bd7d5fe3a3cabc4b275985f3024`.
+Static/privacy/CRC/read-back checks passed; it was not rebuilt.
+The Windows matching source package is attached to the new release. These are application sources
+and dependency recipes, not a complete offline SDK; the supplement documents
+remaining third-party source/relink provenance limits.
+
+### Scope and preservation
+
+The new front-page copy describes R8 planar cuts, attached plug/socket connectors,
+protection brushes, bridges, eligible Flat Color plate-local material routing and
+compressed-source cache reuse. It does not promise universal geometry handling,
+automatic reduction to four colours, calibrated CMY printing, or print validation.
+Historical standalone `CURRENT_STATE.json`, release evidence and licensing
+are preserved rather than repurposed as proof for Orca R8. No model, private
+settings or user data belongs in this publication. No application rebuild,
+functional patch, old-release deletion or repository rename is part of this task.
+
 ## Orca CM dev3-R8 Mac build preparation — 2026-10-12
 
 The owner authorized rebuilding the cumulative R8 changes with the same Linux
