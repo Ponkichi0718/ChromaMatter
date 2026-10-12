@@ -1,5 +1,39 @@
 # ChromaMatter cross-PC handoff
 
+## Orca CM dev3-R8 Mac build preparation — 2026-10-12
+
+The owner authorized rebuilding the cumulative R8 changes with the same Linux
+and public Mac environments as dev3, including publishing the new reviewed
+build sources and configuration to this repository. Existing applications,
+source packets, releases, website content and download links stay unchanged.
+
+The new manual `cm-dev3-r8-macos-arm64.yml` workflow and separate R8 packet and
+packaging scripts use the `dev3-R8` label. The four established cm240 build and
+helper configuration files are byte-identical to the successful dev3 inputs.
+The runner remains macos-15 arm64 with Xcode 16.2, the same pinned Python and
+build tools, shared concurrency, dependency-patch normalization and early
+helper-cache saving. Application cache hits require the exact packet SHA256.
+
+The native input is the current cumulative R8 source, not the earlier dev3
+snapshot. It retains attached-connector settings and undo, plate-local print
+palette routing, backup compression reuse and connected protection brushing
+with effective/conflicting overlays and area-based side comparison. Only the
+established POSIX/compiler portability adjustments and display label are added.
+The separate color-planning/model experiment is not part of this build.
+
+Configuration syntax, cache contracts and namespace consistency passed local
+checks and independent review. Four synthetic artifact-receipt tests passed.
+At this preparation checkpoint, Linux compilation is pending and no R8 Mac
+application has been built. Next: freeze the compiled source, create and
+read-back-verify its allowlisted packet, publish a new source-only prerelease,
+dispatch once, then validate the resulting artifact. Private build/validation
+records and user data stay local and uncommitted.
+
+The app targets Apple Silicon/macOS 15+, with ad-hoc signing only, no Developer
+ID signature and no notarization. GUI/GPU, real-model cutting, connector use,
+slicing and printing on Mac are not established by build/CLI checks. The prior
+auxiliary external-GLB detailed-diagnostics limitation remains unchanged.
+
 ## Orca CM dev3 Mac build preparation — 2026-10-12
 
 The owner authorized publishing the dev3 build source/configuration and using
