@@ -1,5 +1,38 @@
 # ChromaMatter cross-PC handoff
 
+## Orca CM dev3 Mac build preparation — 2026-10-12
+
+The owner authorized publishing the dev3 build source/configuration and using
+the same public macOS CI route. This is separate from standalone ChromaMatter
+0.9 and does not change its release, the website, or existing download assets.
+
+The new manual `cm-dev3-macos-arm64.yml` workflow accepts the reviewed source
+packet URL plus its full SHA-256. The packet is
+`CM-dev3-Mac-BuildInputs-20261012-r1.tar.gz` (105,909,608 bytes), SHA-256
+`40e4b3cfaeaeb762225de8572dc9eadd970b0d0b3c8fe167781c0562d53d565e`.
+Its 14,468 native/helper source files include the latest cut, bridge, protection
+brush and model-color display changes. Inventory/hash verification, safe
+extraction and source-immutability checks passed. No user models, private
+configuration, local logs or build output are included. Stock model resources
+were checked against the prior source packet and fixed upstream resources.
+
+Added configuration: the workflow, `ci/cm_dev3_packet.py`,
+`ci/cm_dev3_package_macos.sh` and `CM_DEV3_MAC_README.md`. The four existing
+cm240 build/helper files are unchanged. Reuse Xcode 16.2, the shared Mac
+concurrency group, dependency-patch normalization and early helper-cache save.
+The app cache remains bound to the exact source-packet SHA. The app targets
+Apple Silicon/macOS 15+, with ad-hoc signing only and no notarization.
+
+Local configuration syntax/cache contracts and synthetic editor admission
+passed. Linux compilation and bounded startup checks passed from the same
+frozen native/helper source. Those checks do not establish Mac build or GUI
+success. At this preparation commit, the Mac app has not been built. Next:
+publish the new source-only build-input asset, dispatch once, then verify and
+retrieve the completed app artifact. Preserve all existing releases and assets.
+The auxiliary detailed-diagnostics external-GLB re-analysis limitation remains
+as in the prior POSIX builds; ordinary native color display/editing and cuts
+use separate paths. Private validation records remain local and uncommitted.
+
 ## Orca contour trial packages and download copy — 2026-09-20
 
 The cumulative Snapmaker Orca with CM trial now has completed application and
