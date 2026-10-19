@@ -1,5 +1,22 @@
 # ChromaMatter cross-PC handoff
 
+## Innovation Fund Phase 1 award notice — 2026-10-19
+
+The owner requested a bilingual notice of the confirmed 2026 Snapmaker U1
+Innovation Fund Phase 1 Third Prize (US$1,500) for ChromaMatter -AI Model Print
+Studio by Ponkichi0718. The READMEs link the official final results and forum
+announcement, explain the standalone submission's development into Orca with CM,
+and keep the current builds' experimental status distinct from the award.
+
+Changed files: `README.md`, `README_EN.md`, `README_PUBLIC_EN.md`, `README_JA.md`,
+`README_PUBLIC_JA.md`, and this handoff. Same-language README aliases stay identical.
+Verification: official final results, bilingual wording, addition-only README
+changes, existing content/link preservation, alias parity, and `git diff --check`.
+Publication uses a feature branch and reviewed PR; next: merge and read back main.
+No code, release assets, download targets, versions, or prior validation records
+are changed or revalidated. No application rebuild or workflow dispatch is needed.
+Temporary review snapshots and check output stay local; no private assets are added.
+
 ## Orca with CM dev3-R8 publication — 2026-10-13
 
 The owner requested that the GitHub and official-site front pages focus on
