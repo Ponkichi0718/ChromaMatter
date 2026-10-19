@@ -4,6 +4,14 @@
 
 [日本語](README_JA.md) · [Official website](https://chromamatter.app/) · [Downloads and setup](https://chromamatter.app/download)
 
+## Snapmaker U1 Innovation Fund Award
+
+**ChromaMatter -AI Model Print Studio**, by **Ponkichi0718**, received **Third Prize (US$1,500)** in the final results of **Snapmaker U1 Innovation Fund Phase 1 (2026)**.
+
+[Official results](https://www.snapmaker.com/innovation-fund) · [Official announcement](https://forum.snapmaker.com/t/built-by-makers-meet-the-20-snapmaker-u1-innovation-fund-winners/43667/1)
+
+Originally submitted as a standalone app, ChromaMatter is now being developed as **Orca with CM**, an experimental integration into Snapmaker Orca. The award recognizes the submitted project; it does not mean the current experimental builds have been validated or are guaranteed to work.
+
 ## Download — dev3-R8 experimental
 
 An unofficial modification of Snapmaker Orca 2.4.0. **dev3-R8 is a development release**, not a guarantee that every model or printer workflow will work.
