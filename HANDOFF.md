@@ -1,5 +1,37 @@
 # ChromaMatter cross-PC handoff
 
+## Sorca CM r2 public Mac build — 2026-10-22
+
+The owner requested a home-PC handoff and a Mac build using the same public
+GitHub route as the prior R8 build. This change registers a separate manual
+`sorca-cm-macos-arm64.yml` workflow and `ci/sorca_cm_*` scripts. Existing cm240,
+dev3 and R8 build files, release assets, front-page downloads and application
+version records are preserved. The new source-only prerelease does not contain
+private models, settings, local logs or application binaries.
+
+The reviewed cumulative native/helper packet is
+`Sorca-CM-20261022-r2-MacActions-Source.tar.gz`, 106095826 bytes,
+SHA-256 `bdb5ba51d855aa6e95a49b97a3fd4062bf925c1c3a6f72e13f5133f5eacc40d1`.
+Its 14500 payload files passed manifest/hash readback. It includes the new U1
+0.4 mm preference (saved selections remain unchanged), multi-color transparent
+window selection and the current portable native changes. Windows/Linux tests
+do not establish Mac runtime behavior. Source-only archive checks are separate
+from build and physical printing checks.
+
+The runner is macos-15 Apple Silicon with Xcode 16.2 and Python 3.13.14. The
+workflow verifies the packet hash, builds matching helpers/native dependencies,
+checks CLI behavior and ad-hoc signatures, and retains artifacts for 14 days.
+It has read-only repository permissions and cannot publish application releases.
+Sorca-specific helper configuration names preserve existing workflow behavior.
+There is no Developer ID signature, notarization or Intel package. Mac GUI,
+device communication, full-model slicing and printing remain unverified.
+
+Local checks cover Python/spec/YAML/shell syntax, source packet extraction and
+contract tests, repository preservation, and `git diff --check`. Next: merge the
+reviewed configuration PR, publish the named source-only asset, dispatch once,
+and inspect the resulting run. Do not claim a Mac binary before a successful
+package step. Build caches, model files and private validation records stay local.
+
 ## Innovation Fund Phase 1 award notice — 2026-10-19
 
 The owner requested a bilingual notice of the confirmed 2026 Snapmaker U1
