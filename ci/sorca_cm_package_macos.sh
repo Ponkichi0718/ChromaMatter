@@ -54,7 +54,7 @@ PY
 codesign --force --sign - "$app"
 codesign --verify --deep --strict "$app"
 file "$app/Contents/MacOS/Snapmaker_Orca"
-lipo -verify_arch arm64 "$app/Contents/MacOS/Snapmaker_Orca"
+lipo "$app/Contents/MacOS/Snapmaker_Orca" -verify_arch arm64
 "$app/Contents/MacOS/cm-import/cm-glb-import" --help
 "$app/Contents/MacOS/cm-paint-editor/cm-paint-editor" --help
 "$app/Contents/MacOS/Snapmaker_Orca" --help > "$root/artifacts/cli-help.txt" 2>&1
