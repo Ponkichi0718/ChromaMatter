@@ -1,0 +1,159 @@
+name: Sorca CM Apple Silicon
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_label:
+        description: Reviewed source snapshot label, matching SOURCE_MANIFEST.json
+        required: true
+        type: string
+        default: 20261022-r2
+      source_url:
+        description: Public release asset URL (leave empty when using an asset ID)
+        required: false
+        type: string
+      source_asset_id:
+        description: Same-repository release asset ID for authenticated download (alternative to URL)
+        required: false
+        type: string
+      source_sha256:
+        description: SHA-256 of the exact reviewed source tar.gz
+        required: true
+        type: string
+
+# Read access only: this workflow cannot publish a release or push a commit.
+permissions:
+  contents: read
+concurrency:
+  group: sorca-cm-macos-arm64
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.repository == 'Ponkichi0718/ChromaMatter'
+    runs-on: macos-15
+    timeout-minutes: 180
+    env:
+      HOMEBREW_NO_AUTO_UPDATE: '1'
+      DEVELOPER_DIR: /Applications/Xcode_16.2.app/Contents/Developer
+      MACOSX_DEPLOYMENT_TARGET: '12.0'
+      CMAKE_BUILD_PARALLEL_LEVEL: '2'
+      SORCA_RELEASE_LABEL: ${{ inputs.release_label }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          path: build-config
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.13.14'
+          architecture: arm64
+      - name: Fetch and verify reviewed source packet
+        env:
+          SOURCE_URL: ${{ inputs.source_url }}
+          SOURCE_ASSET_ID: ${{ inputs.source_asset_id }}
+          SOURCE_SHA256: ${{ inputs.source_sha256 }}
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = arm64
+          test -d "$DEVELOPER_DIR"
+          python build-config/ci/sorca_cm_fetch_packet.py --output sorca-inputs.tar.gz
+          python build-config/ci/sorca_cm_packet.py extract \
+            --archive sorca-inputs.tar.gz --destination "$GITHUB_WORKSPACE" \
+            --sha256 "$SOURCE_SHA256" --release-label "$SORCA_RELEASE_LABEL"
+          python -c "import platform, tkinter; assert platform.machine() == 'arm64'; print('arm64, Tk', tkinter.TkVersion)"
+          mkdir -p artifacts
+          cp SOURCE_MANIFEST.json artifacts/
+          python build-config/ci/sorca_cm_build_record.py --output artifacts/BUILD_RECORD.json
+      - name: Build tools
+        run: |
+          python -m pip install cmake==3.31.10 ninja==1.11.1.4
+          brew install automake texinfo libtool gettext
+          echo "$(brew --prefix gettext)/bin" >> "$GITHUB_PATH"
+          echo "$(brew --prefix texinfo)/bin" >> "$GITHUB_PATH"
+          if brew list zstd >/dev/null 2>&1; then brew unlink zstd; fi
+      - uses: actions/cache/restore@v4
+        id: helper-cache
+        with:
+          path: helper-build/dist
+          key: sorca-arm64-py31314-helpers-v1-${{ hashFiles('helpers/**', 'build-config/ci/sorca_cm_helpers*') }}
+      - name: Build helpers from this source packet
+        if: steps.helper-cache.outputs.cache-hit != 'true'
+        run: |
+          python -m pip install --only-binary=:all: -r build-config/ci/sorca_cm_helpers_requirements.txt
+          for pair in importer:cm-glb-import editor:cm-paint-editor; do
+            folder=${pair%%:*}
+            name=${pair#*:}
+            CM_HELPER_SOURCE="$PWD/helpers/$folder" CM_HELPER_NAME="$name" \
+              python -m PyInstaller --noconfirm --workpath "helper-build/work/$name" \
+              --distpath helper-build/dist build-config/ci/sorca_cm_helpers.spec
+          done
+      - name: Helper packaging preflight
+        run: bash build-config/ci/sorca_cm_build_macos.sh preflight
+      - uses: actions/cache/save@v4
+        if: success() && steps.helper-cache.outputs.cache-hit != 'true'
+        with:
+          path: helper-build/dist
+          key: ${{ steps.helper-cache.outputs.cache-primary-key }}
+      - uses: actions/cache/restore@v4
+        id: app-cache
+        with:
+          path: cm-build/app/src/Snapmaker_Orca.app
+          key: sorca-arm64-xcode162-app-v1-${{ inputs.source_sha256 }}-${{ hashFiles('build-config/ci/sorca_cm_build_macos.sh') }}
+      - uses: actions/cache/restore@v4
+        if: steps.app-cache.outputs.cache-hit != 'true'
+        id: deps-cache
+        with:
+          path: |
+            cm-build/deps
+            cm-build/deps-install
+            cm-build/downloads
+          key: sorca-arm64-xcode162-deps-v1-${{ hashFiles('native/deps/**', 'build-config/ci/sorca_cm_build_macos.sh') }}-${{ github.run_id }}
+          restore-keys: sorca-arm64-xcode162-deps-v1-${{ hashFiles('native/deps/**', 'build-config/ci/sorca_cm_build_macos.sh') }}-
+      - name: Normalize dependency patch line endings
+        if: steps.app-cache.outputs.cache-hit != 'true'
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib, json
+          rows = []
+          for patch in sorted(Path('native/deps').rglob('*.patch')):
+              before = patch.read_bytes()
+              after = before.replace(b'\r\n', b'\n')
+              if before != after:
+                  patch.write_bytes(after)
+                  rows.append({'path': patch.as_posix(), 'before_sha256': hashlib.sha256(before).hexdigest(), 'after_sha256': hashlib.sha256(after).hexdigest()})
+          Path('artifacts/DEPENDENCY_LINE_ENDINGS.json').write_text(json.dumps(rows, indent=2) + '\n')
+          print('Normalized', len(rows), 'patches; original packet remains unchanged')
+          PY
+      - name: Build native dependencies
+        if: steps.app-cache.outputs.cache-hit != 'true'
+        run: bash build-config/ci/sorca_cm_build_macos.sh deps
+      - uses: actions/cache/save@v4
+        if: always() && steps.deps-cache.outputs.cache-primary-key != '' && steps.deps-cache.outputs.cache-hit != 'true'
+        with:
+          path: |
+            cm-build/deps
+            cm-build/deps-install
+            cm-build/downloads
+          key: ${{ steps.deps-cache.outputs.cache-primary-key }}
+      - name: Build Sorca CM
+        if: steps.app-cache.outputs.cache-hit != 'true'
+        run: bash build-config/ci/sorca_cm_build_macos.sh app
+      - uses: actions/cache/save@v4
+        if: steps.app-cache.outputs.cache-hit != 'true' && success()
+        with:
+          path: cm-build/app/src/Snapmaker_Orca.app
+          key: ${{ steps.app-cache.outputs.cache-primary-key }}
+      - name: Package, check native executables and ad-hoc signatures
+        run: bash build-config/ci/sorca_cm_package_macos.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Sorca-CM-macos-arm64-${{ inputs.release_label }}
+          path: artifacts/
+          retention-days: 14
+          compression-level: 0
+          if-no-files-found: warn
