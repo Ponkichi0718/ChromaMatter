@@ -1,5 +1,40 @@
 # ChromaMatter cross-PC handoff
 
+## Sorca CM r2 front page and print showcase — 2026-10-23
+
+The owner requested a compact, visual GitHub introduction after the official-site
+update. The five README variants now introduce Sorca CM, explain the name, link
+the published Windows/macOS/Linux 20261022-r2 packages and corresponding source,
+and retain the award, previous releases and license/security links.
+
+Three owner-selected print photographs/screenshots link to their Reddit posts.
+Three smaller video thumbnails link to painting/cutting, CMY Core/Shell and
+clear-shell demonstrations. These are historical examples, not r2 print tests.
+The introduction traces the standalone app, Orca with CM integration and Sorca
+CM name. JPEG location/other EXIF
+metadata was removed without changing decoded pixels; original files stay local.
+Only these six named images are allowed through the publication ignore rules.
+No model files, recordings, private handoff archives or personal paths are added.
+
+Features are grouped by task. Transparent coat, colour lithophane, shape-line
+cutting, recess colouring and reflection suppression are marked beta. Specified
+four-filament import remains a regular feature. The manual is deferred at the
+owner's request; this update only says it is in preparation.
+
+Changed files: the five README variants, six files under `publication/images/`,
+the exact image exceptions in `.gitignore`, and this handoff. Checks cover
+same-language alias parity, GitHub Markdown API rendering, image/link targets,
+publication scope, image readback and `git diff --check`. No GUI was opened.
+Current release assets and their published hashes were checked; they were not
+modified or rebuilt. Earlier application/runtime evidence remains unchanged.
+
+Publication uses a reviewed feature-branch PR, followed by a main readback. The
+repository About text should use Sorca CM and the official website. Next content
+task: add the illustrated manual when the owner supplies the final images.
+Do not replace release archives, alter app/version/settings data, delete earlier
+releases or claim fresh GUI/print validation for this documentation update.
+Image-source mappings, render output and verification reports stay local.
+
 ## Sorca CM r2 public Mac build — 2026-10-22
 
 The owner requested a home-PC handoff and a Mac build using the same public
