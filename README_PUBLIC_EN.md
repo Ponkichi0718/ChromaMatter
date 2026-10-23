@@ -6,7 +6,7 @@
 
 ChromaMatter began as a standalone colour-processing app, then brought its tools into Snapmaker Orca as **Orca with CM**. We now call this integration **Sorca CM** to make its Snapmaker Orca — “Sorca” — foundation clearer. ChromaMatter remains the project name; Sorca CM is the independent development edition based on Snapmaker Orca 2.4.0.
 
-## Download — 20261022 r2
+## Download — v1.0
 
 | Windows | macOS | Linux |
 | --- | --- | --- |
@@ -40,7 +40,7 @@ Click a photo to open its Reddit post, video and experiment notes.
   </tr>
 </table>
 
-These are examples from different development stages, not print-validation results for r2. [More demos on the website](https://chromamatter.app/#demos). An illustrated manual is in preparation.
+These are examples from different development stages, not print-validation results for v1.0. [More demos on the website](https://chromamatter.app/#demos). An illustrated manual is in preparation.
 
 ## What you can do
 
@@ -60,9 +60,10 @@ U1 still uses **four physical filaments per plate**. Palette candidates and mixe
 <details>
 <summary><strong>Setup, compatibility and verification</strong></summary>
 
+- **Version labels:** v1.0 is the Sorca CM release name. The app’s About/file information still shows its Snapmaker Orca base, 2.4.0; archive filenames retain their original build identifiers.
 - Keep originals, use a new extraction folder and save edited projects under new names. Existing CM editions may share settings; close other editions before switching and back up your settings.
 - Windows web features require Microsoft Edge WebView2 Runtime. Linux targets Ubuntu 22.04 / glibc 2.35 and requires the documented GTK/WebKit/GStreamer/OpenGL libraries; it is not an AppImage.
-- r2 includes multi-colour-number selection for transparent windows and a 0.4 mm preference for new U1 setups. Saved nozzle selections are preserved.
+- v1.0 includes multi-colour-number selection for transparent windows and a 0.4 mm preference for new U1 setups. Saved nozzle selections are preserved.
 - Build/package and targeted headless checks passed. The Mac build completed on October 23. These checks do not establish GUI, full-model slicing or physical-print correctness for this release.
 - Colour previews and TD-based estimates are not optically calibrated. Cutting and protection depend on geometry and do not understand named body parts; complex models can still fail.
 - CM-specific project settings need a compatible CM build. Stock Orca and older CM versions may not reproduce them.
@@ -81,6 +82,6 @@ The original submission was a standalone app; development now continues as **Sor
 
 [Windows source ZIP](https://github.com/Ponkichi0718/ChromaMatter/releases/download/sorca-cm-r2-20261022/Sorca-CM-20261022-r2-Windows-source.zip) · [Linux source tar.gz](https://github.com/Ponkichi0718/ChromaMatter/releases/download/sorca-cm-r2-20261022/Sorca-CM-20261022-r2-Linux-source.tar.gz) · [macOS source & checksums](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/sorca-cm-r2-mac-inputs-20261022)
 
-Use the **release-specific corresponding source** for Orca builds; the repository’s older standalone source tree and version records remain historical. The [r2 release](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/sorca-cm-r2-20261022) links the build information. Previous [dev3-R8](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/cm-orca-dev3-r8-20261013) and [other releases](https://github.com/Ponkichi0718/ChromaMatter/releases) remain available.
+Use the **release-specific corresponding source** for Orca builds; the repository’s older standalone source tree and version records remain historical. The [v1.0 release](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/sorca-cm-r2-20261022) links the build information. Previous [dev3-R8](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/cm-orca-dev3-r8-20261013) and [other releases](https://github.com/Ponkichi0718/ChromaMatter/releases) remain available.
 
 [License](LICENSE) · [Third-party notices](licenses/) · [Security](SECURITY.md)
