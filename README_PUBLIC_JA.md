@@ -6,7 +6,7 @@
 
 ChromaMatterは、色処理の単体アプリとして始まり、その機能をSnapmaker Orcaへ統合した **Orca with CM** に発展しました。今回、ベースがSnapmaker Orca＝「Sorca」であることを伝えるため、統合版の呼び名を **Sorca CM** に変更しました。プロジェクト名はChromaMatterのまま、Snapmaker Orca 2.4.0を基にした非公式の開発版として進めています。
 
-## ダウンロード — 20261022 r2
+## ダウンロード — v1.0
 
 | Windows | macOS | Linux |
 | --- | --- | --- |
@@ -40,7 +40,7 @@ ChromaMatterは、色処理の単体アプリとして始まり、その機能�
   </tr>
 </table>
 
-各作例はそれぞれの開発時点の記録で、r2の印刷検証結果ではありません。[公式サイトの作例一覧](https://chromamatter.app/#demos)。画像付きマニュアルは準備中です。
+各作例はそれぞれの開発時点の記録で、v1.0の印刷検証結果ではありません。[公式サイトの作例一覧](https://chromamatter.app/#demos)。画像付きマニュアルは準備中です。
 
 ## できること
 
@@ -60,9 +60,10 @@ U1で使う実フィラメントは、**1プレートにつき4本まで**です
 <details>
 <summary><strong>導入・互換性・検証範囲</strong></summary>
 
+- **版名について：** v1.0はSorca CMの公開版名です。アプリのAbout・ファイル情報はベースのSnapmaker Orca 2.4.0、配布ファイル名は元のビルド識別子を保持しています。
 - 原本を残し、新しいフォルダへ展開して別名保存してください。既存CM版と設定先を共有する場合があります。設定をバックアップし、切り替え前に他のCM版を閉じてください。
 - WindowsのWeb機能にはMicrosoft Edge WebView2 Runtimeが必要です。LinuxはUbuntu 22.04／glibc 2.35向けで、GTK・WebKit・GStreamer・OpenGL等が必要です。AppImageではありません。
-- r2では透明窓の色番号を複数選べます。新規U1設定は0.4mmを優先し、保存済みのノズル径は保持します。
+- v1.0では透明窓の色番号を複数選べます。新規U1設定は0.4mmを優先し、保存済みのノズル径は保持します。
 - ビルド・配布物と対象を絞った画面なし検査は確認済み。Mac版は10月23日にビルドが完了しました。今回の版のGUI操作・実モデル全体のスライス・実印刷まで確認したものではありません。
 - 表示色やTDによる推定は、光学的に校正された印刷色ではありません。カットや保護は形状を扱い、部位の意味を理解する機能ではないため、複雑なモデルでは失敗する場合があります。
 - CM専用設定には互換性のあるCM版が必要です。純正Orcaや過去版で同じ結果になるとは限りません。
@@ -81,6 +82,6 @@ U1で使う実フィラメントは、**1プレートにつき4本まで**です
 
 [WindowsソースZIP](https://github.com/Ponkichi0718/ChromaMatter/releases/download/sorca-cm-r2-20261022/Sorca-CM-20261022-r2-Windows-source.zip) · [Linuxソースtar.gz](https://github.com/Ponkichi0718/ChromaMatter/releases/download/sorca-cm-r2-20261022/Sorca-CM-20261022-r2-Linux-source.tar.gz) · [Macソース・チェックサム](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/sorca-cm-r2-mac-inputs-20261022)
 
-Orca版には、**各リリースに対応するソース**を使ってください。リポジトリ内の旧単体版ソース・バージョン記録は履歴として保持しています。ビルド情報は[r2リリース](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/sorca-cm-r2-20261022)から参照できます。旧[dev3-R8](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/cm-orca-dev3-r8-20261013)と[その他のリリース](https://github.com/Ponkichi0718/ChromaMatter/releases)も引き続き利用できます。
+Orca版には、**各リリースに対応するソース**を使ってください。リポジトリ内の旧単体版ソース・バージョン記録は履歴として保持しています。ビルド情報は[v1.0リリース](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/sorca-cm-r2-20261022)から参照できます。旧[dev3-R8](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/cm-orca-dev3-r8-20261013)と[その他のリリース](https://github.com/Ponkichi0718/ChromaMatter/releases)も引き続き利用できます。
 
 [ライセンス](LICENSE) · [第三者ライセンス](licenses/) · [セキュリティ](SECURITY.md)

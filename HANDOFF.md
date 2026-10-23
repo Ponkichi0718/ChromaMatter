@@ -1,5 +1,27 @@
 # ChromaMatter cross-PC handoff
 
+## Sorca CM public version label v1.0 — 2026-10-23
+
+The owner chose **Sorca CM v1.0** instead of a date-based public version name.
+The five README variants now use v1.0. The official site's visible download
+labels and the existing release title/notes use the same name. This is a naming
+update to the existing `20261022-r2` packages, not a new build or validation run.
+
+The application About/file metadata still reports the Snapmaker Orca base,
+2.4.0. Preserve the existing release tag, asset filenames, bytes, checksums,
+source associations, saved settings and historical standalone 0.9 records.
+Development/prerelease status and the five Beta feature labels are unchanged.
+The setup notes state this separation without putting the build ID in the main
+download heading. The illustrated manual remains deferred.
+
+Checks: same-language aliases, unchanged download/source/Reddit URLs and image
+targets, scoped source diffs, GitHub Markdown rendering, website build, and
+`git diff --check`; publication readback follows the reviewed PR. Only the five
+README variants and this handoff change in this repository. Site source and
+release metadata are separate. No GUI, app rebuild or archive modification.
+Next: keep the public version separate from the upstream base when changing
+app metadata in a future build. Local review/verification files stay local.
+
 ## Sorca CM r2 front page and print showcase — 2026-10-23
 
 The owner requested a compact, visual GitHub introduction after the official-site
