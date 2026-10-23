@@ -10,7 +10,8 @@ and retain the award, previous releases and license/security links.
 Three owner-selected print photographs/screenshots link to their Reddit posts.
 Three smaller video thumbnails link to painting/cutting, CMY Core/Shell and
 clear-shell demonstrations. These are historical examples, not r2 print tests.
-The pumpkin caption identifies the attached supports. JPEG location/other EXIF
+The introduction traces the standalone app, Orca with CM integration and Sorca
+CM name. JPEG location/other EXIF
 metadata was removed without changing decoded pixels; original files stay local.
 Only these six named images are allowed through the publication ignore rules.
 No model files, recordings, private handoff archives or personal paths are added.

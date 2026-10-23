@@ -4,7 +4,7 @@
 
 [English](README.md) · **[ダウンロード](https://chromamatter.app/download)** · [公式サイト](https://chromamatter.app/) · [作例・動画](#作例動画)
 
-ChromaMatterのOrca統合版は、**Sorca CM**（旧Orca with CM）に名称を変更しました。Snapmaker Orca＝「Sorca」をベースにしたことが伝わる名前です。Snapmaker Orca 2.4.0を基にした、非公式の開発版です。
+ChromaMatterは、色処理の単体アプリとして始まり、その機能をSnapmaker Orcaへ統合した **Orca with CM** に発展しました。今回、ベースがSnapmaker Orca＝「Sorca」であることを伝えるため、統合版の呼び名を **Sorca CM** に変更しました。プロジェクト名はChromaMatterのまま、Snapmaker Orca 2.4.0を基にした非公式の開発版として進めています。
 
 ## ダウンロード — 20261022 r2
 
@@ -25,7 +25,7 @@ ChromaMatterのOrca統合版は、**Sorca CM**（旧Orca with CM）に名称を�
 <table>
   <tr>
     <td width="33%" valign="top" align="center"><a href="https://www.reddit.com/r/snapmaker/comments/1wsehu7/tanjiro_and_a_few_of_my_earlier_prints/"><img src="publication/images/print-collection.jpg" width="280" alt="炭治郎やメカなど、カラー印刷したフィギュアの作例集" /></a><br /><strong>カラー印刷の作例</strong><br />Full SpectrumとCore/Shellの試み。<br /><a href="https://www.reddit.com/r/snapmaker/comments/1wsehu7/tanjiro_and_a_few_of_my_earlier_prints/">炭治郎と過去のプリント ↗</a></td>
-    <td width="33%" valign="top" align="center"><a href="https://www.reddit.com/r/snapmaker/comments/1ww6efo/a_pumpkin_with_layered_walls_clear_yellow_magenta/"><img src="publication/images/clear-coated-pumpkin.jpg" width="280" alt="ピンク色のサポートが付いた、透明コートのかぼちゃ試作品" /></a><br /><strong>4層のかぼちゃ</strong><br />透明→黄→マゼンタ→黒。写真はサポート付き。<br /><a href="https://www.reddit.com/r/snapmaker/comments/1ww6efo/a_pumpkin_with_layered_walls_clear_yellow_magenta/">層構造の実験 ↗</a></td>
+    <td width="33%" valign="top" align="center"><a href="https://www.reddit.com/r/snapmaker/comments/1ww6efo/a_pumpkin_with_layered_walls_clear_yellow_magenta/"><img src="publication/images/clear-coated-pumpkin.jpg" width="280" alt="透明コートのかぼちゃ試作品" /></a><br /><strong>4層のかぼちゃ</strong><br />透明→黄→マゼンタ→黒。<br /><a href="https://www.reddit.com/r/snapmaker/comments/1ww6efo/a_pumpkin_with_layered_walls_clear_yellow_magenta/">層構造の実験 ↗</a></td>
     <td width="33%" valign="top" align="center"><a href="https://www.reddit.com/r/snapmaker/comments/1xasrxa/an_innovation_fund_thankyou_and_a_zinogremonster/"><img src="publication/images/zinogre-rybw.png" width="280" alt="赤・金・青のSilk PLAと白で印刷したジンオウガ" /></a><br /><strong>Silk PLAでRYBW</strong><br />赤・金・青のSilk PLA＋白で配色。<br /><a href="https://www.reddit.com/r/snapmaker/comments/1xasrxa/an_innovation_fund_thankyou_and_a_zinogremonster/">ジンオウガの実験 ↗</a></td>
   </tr>
 </table>

@@ -4,7 +4,7 @@
 
 [日本語](README_JA.md) · **[Download](https://chromamatter.app/download)** · [Website](https://chromamatter.app/) · [Prints & demos](#prints--demos)
 
-ChromaMatter’s Orca integration is now called **Sorca CM** (formerly Orca with CM), to make its Snapmaker Orca — “Sorca” — foundation clearer. It is an independent development edition based on Snapmaker Orca 2.4.0.
+ChromaMatter began as a standalone colour-processing app, then brought its tools into Snapmaker Orca as **Orca with CM**. We now call this integration **Sorca CM** to make its Snapmaker Orca — “Sorca” — foundation clearer. ChromaMatter remains the project name; Sorca CM is the independent development edition based on Snapmaker Orca 2.4.0.
 
 ## Download — 20261022 r2
 
@@ -25,7 +25,7 @@ Click a photo to open its Reddit post, video and experiment notes.
 <table>
   <tr>
     <td width="33%" valign="top" align="center"><a href="https://www.reddit.com/r/snapmaker/comments/1wsehu7/tanjiro_and_a_few_of_my_earlier_prints/"><img src="publication/images/print-collection.jpg" width="280" alt="A collection of physical colour prints, including Tanjiro and a mech bust" /></a><br /><strong>Colour prints</strong><br />Full Spectrum and Core/Shell experiments.<br /><a href="https://www.reddit.com/r/snapmaker/comments/1wsehu7/tanjiro_and_a_few_of_my_earlier_prints/">Tanjiro &amp; earlier prints ↗</a></td>
-    <td width="33%" valign="top" align="center"><a href="https://www.reddit.com/r/snapmaker/comments/1ww6efo/a_pumpkin_with_layered_walls_clear_yellow_magenta/"><img src="publication/images/clear-coated-pumpkin.jpg" width="280" alt="A clear-coated pumpkin on the printer bed with pink supports still attached" /></a><br /><strong>Layered pumpkin</strong><br />Clear → yellow → magenta → black. Shown with supports.<br /><a href="https://www.reddit.com/r/snapmaker/comments/1ww6efo/a_pumpkin_with_layered_walls_clear_yellow_magenta/">Four-layer experiment ↗</a></td>
+    <td width="33%" valign="top" align="center"><a href="https://www.reddit.com/r/snapmaker/comments/1ww6efo/a_pumpkin_with_layered_walls_clear_yellow_magenta/"><img src="publication/images/clear-coated-pumpkin.jpg" width="280" alt="A clear-coated pumpkin on the printer bed" /></a><br /><strong>Layered pumpkin</strong><br />Clear → yellow → magenta → black.<br /><a href="https://www.reddit.com/r/snapmaker/comments/1ww6efo/a_pumpkin_with_layered_walls_clear_yellow_magenta/">Four-layer experiment ↗</a></td>
     <td width="33%" valign="top" align="center"><a href="https://www.reddit.com/r/snapmaker/comments/1xasrxa/an_innovation_fund_thankyou_and_a_zinogremonster/"><img src="publication/images/zinogre-rybw.png" width="280" alt="A Zinogre print using red, gold and blue silk PLA plus white" /></a><br /><strong>RYBW with silk PLA</strong><br />Red, gold and blue silk PLA + white.<br /><a href="https://www.reddit.com/r/snapmaker/comments/1xasrxa/an_innovation_fund_thankyou_and_a_zinogremonster/">Zinogre experiment ↗</a></td>
   </tr>
 </table>
