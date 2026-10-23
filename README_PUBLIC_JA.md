@@ -1,8 +1,73 @@
-# Snapmaker Orca with CM
+# ChromaMatter · Sorca CM
 
-**色調整・部位カット・材料設定を、Orcaの中で。**
+**色付きモデルを、実際のプリントへ。配色・色編集・混色・スライスをSnapmaker Orcaの中で。**
 
-[English](README.md) · [公式サイト](https://chromamatter.app/) · [ダウンロード・導入案内](https://chromamatter.app/download)
+[English](README.md) · **[ダウンロード](https://chromamatter.app/download)** · [公式サイト](https://chromamatter.app/) · [作例・動画](#作例動画)
+
+ChromaMatterのOrca統合版は、**Sorca CM**（旧Orca with CM）に名称を変更しました。Snapmaker Orca＝「Sorca」をベースにしたことが伝わる名前です。Snapmaker Orca 2.4.0を基にした、非公式の開発版です。
+
+## ダウンロード — 20261022 r2
+
+| Windows | macOS | Linux |
+| --- | --- | --- |
+| **[ZIPをダウンロード](https://github.com/Ponkichi0718/ChromaMatter/releases/download/sorca-cm-r2-20261022/Sorca-CM-20261022-r2-Windows-x64.zip)** | **[アプリZIPをダウンロード](https://github.com/Ponkichi0718/ChromaMatter/releases/download/sorca-cm-r2-20261022/Sorca-CM-20261022-r2-macos-arm64-app.zip)** | **[tar.gzをダウンロード](https://github.com/Ponkichi0718/ChromaMatter/releases/download/sorca-cm-r2-20261022/Sorca-CM-20261022-r2-Linux-x86_64.tar.gz)** |
+| Windows x64 | Apple Silicon・macOS 15以降 | Ubuntu 22.04・x86_64 |
+| `Open-Sorca-CM.cmd` | `Sorca CM.app` | `Start-Sorca-CM.sh` |
+
+[更新内容・チェックサム](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/sorca-cm-r2-20261022) · [対応ソース](#対応ソース) · [過去版](https://chromamatter.app/download#previous-versions)
+
+アーカイブ全体を新しいフォルダへ展開してください。**Mac版はad-hoc署名のみで、Apple公証はありません。Intel Macは非対応です。** Linuxにはリリースノート記載の依存ライブラリが必要です。開発版のため、原本を残し、印刷前にスライス結果を確認してください。
+
+## 作例・動画
+
+画像をクリックすると、Redditの投稿・動画・実験の説明を開けます。
+
+<table>
+  <tr>
+    <td width="33%" valign="top" align="center"><a href="https://www.reddit.com/r/snapmaker/comments/1wsehu7/tanjiro_and_a_few_of_my_earlier_prints/"><img src="publication/images/print-collection.jpg" width="280" alt="炭治郎やメカなど、カラー印刷したフィギュアの作例集" /></a><br /><strong>カラー印刷の作例</strong><br />Full SpectrumとCore/Shellの試み。<br /><a href="https://www.reddit.com/r/snapmaker/comments/1wsehu7/tanjiro_and_a_few_of_my_earlier_prints/">炭治郎と過去のプリント ↗</a></td>
+    <td width="33%" valign="top" align="center"><a href="https://www.reddit.com/r/snapmaker/comments/1ww6efo/a_pumpkin_with_layered_walls_clear_yellow_magenta/"><img src="publication/images/clear-coated-pumpkin.jpg" width="280" alt="ピンク色のサポートが付いた、透明コートのかぼちゃ試作品" /></a><br /><strong>4層のかぼちゃ</strong><br />透明→黄→マゼンタ→黒。写真はサポート付き。<br /><a href="https://www.reddit.com/r/snapmaker/comments/1ww6efo/a_pumpkin_with_layered_walls_clear_yellow_magenta/">層構造の実験 ↗</a></td>
+    <td width="33%" valign="top" align="center"><a href="https://www.reddit.com/r/snapmaker/comments/1xasrxa/an_innovation_fund_thankyou_and_a_zinogremonster/"><img src="publication/images/zinogre-rybw.png" width="280" alt="赤・金・青のSilk PLAと白で印刷したジンオウガ" /></a><br /><strong>Silk PLAでRYBW</strong><br />赤・金・青のSilk PLA＋白で配色。<br /><a href="https://www.reddit.com/r/snapmaker/comments/1xasrxa/an_innovation_fund_thankyou_and_a_zinogremonster/">ジンオウガの実験 ↗</a></td>
+  </tr>
+</table>
+
+### 操作を動画で見る
+
+<table>
+  <tr>
+    <td width="33%" valign="top" align="center"><a href="https://www.reddit.com/r/snapmaker/comments/1x4lkq4/orca_with_cm_flat_color_painting_and_cutting/"><img src="publication/images/painting-cutting-demo.png" width="240" alt="dev3 R8の色編集とカット機能の紹介画面" /><br /><strong>ペイント・カット</strong><br />旧dev3 R8の機能紹介 ↗</a></td>
+    <td width="33%" valign="top" align="center"><a href="https://www.reddit.com/r/snapmaker/comments/1whzk5l/cmy_coreshell_experiment_on_the_u1_using_a_black/"><img src="publication/images/cmy-core-shell-demo.png" width="240" alt="メカモデルにCMYと黒コアの陰影を使う実験画面" /><br /><strong>CMY＋Core/Shell</strong><br />黒コアによる陰影 ↗</a></td>
+    <td width="33%" valign="top" align="center"><a href="https://www.reddit.com/r/snapmaker/comments/1wk7kab/a_little_coreshell_experiment_color_inside_a/"><img src="publication/images/clear-shell-demo.png" width="240" alt="透明シェルの内側に色を配置した縞模様の試験片" /><br /><strong>透明シェル＋色</strong><br />小さな材料実験 ↗</a></td>
+  </tr>
+</table>
+
+各作例はそれぞれの開発時点の記録で、r2の印刷検証結果ではありません。[公式サイトの作例一覧](https://chromamatter.app/#demos)。画像付きマニュアルは準備中です。
+
+## できること
+
+| 作業 | 機能 |
+| --- | --- |
+| **モデルを読み込み、配色する** | 色付きGLB・頂点カラーOBJ、Flat Color・Full Spectrum・CMY。製品や色見本から4本を指定し、RYBWテンプレートも使えます。 |
+| **色・陰影を修正する** | 2D／3Dブラシ、塗りつぶし、範囲内の色置き換え、上塗りの許可・拒否、形状ライン塗り、陰影・漫画調フィルター。 |
+| **材料を選ぶ** | フィラメントライブラリ、分かる範囲でのHEX・TD表示、色差とTOP3候補。Flat Colorは最大16色で塗り分け・分割を検討できます。 |
+| **材料を層に配置する** | Core/Shellと最大4層の構造。同じ層に複数材料を入れ、モデルの色に合わせて混色します。 |
+| **分割・組み立てを準備する** | 色を保つ平面カット、位置・角度調整、保護ブラシ、ダボ、ブリッジ。 |
+| **混色3MFをU1へ持ち込む** | 対応するBambu固定配合3MFを、プレート分け・塗り分け・配合を保って変換。CMで保存したプロジェクトは通常の設定復元で開きます。 |
+
+**ベータ機能：** 透明コート、カラーリトファン、形状ラインカット、凹み着色、白い反射補正。**指定4本の読込は通常機能です。**
+
+U1で使う実フィラメントは、**1プレートにつき4本まで**です。パレット候補や混色の数が増えても、装填本数は増えません。多すぎる材料は調整が必要で、自動で4色のパーツへまとめる機能ではありません。
+
+<details>
+<summary><strong>導入・互換性・検証範囲</strong></summary>
+
+- 原本を残し、新しいフォルダへ展開して別名保存してください。既存CM版と設定先を共有する場合があります。設定をバックアップし、切り替え前に他のCM版を閉じてください。
+- WindowsのWeb機能にはMicrosoft Edge WebView2 Runtimeが必要です。LinuxはUbuntu 22.04／glibc 2.35向けで、GTK・WebKit・GStreamer・OpenGL等が必要です。AppImageではありません。
+- r2では透明窓の色番号を複数選べます。新規U1設定は0.4mmを優先し、保存済みのノズル径は保持します。
+- ビルド・配布物と対象を絞った画面なし検査は確認済み。Mac版は10月23日にビルドが完了しました。今回の版のGUI操作・実モデル全体のスライス・実印刷まで確認したものではありません。
+- 表示色やTDによる推定は、光学的に校正された印刷色ではありません。カットや保護は形状を扱い、部位の意味を理解する機能ではないため、複雑なモデルでは失敗する場合があります。
+- CM専用設定には互換性のあるCM版が必要です。純正Orcaや過去版で同じ結果になるとは限りません。
+
+</details>
 
 ## Snapmaker U1 Innovation Fund 受賞
 
@@ -10,46 +75,12 @@
 
 [公式結果](https://www.snapmaker.com/innovation-fund) · [公式フォーラムの発表](https://forum.snapmaker.com/t/built-by-makers-meet-the-20-snapmaker-u1-innovation-fund-winners/43667/1)
 
-応募時は独立アプリでしたが、現在は Snapmaker Orca に統合した実験版 **Orca with CM** として開発を続けています。受賞は応募したプロジェクトに対するもので、現在の実験版の検証完了や動作保証を意味するものではありません。
+応募時は独立アプリでしたが、現在は **Sorca CM** として開発を続けています。受賞は応募したプロジェクトに対するもので、現在の開発版の検証完了や動作保証を意味するものではありません。
 
-## ダウンロード — dev3-R8 実験版
+## 対応ソース
 
-Snapmaker Orca 2.4.0をベースにした非公式改良版です。**dev3-R8は開発中の実験版**で、すべてのモデルや印刷条件での動作を保証するものではありません。
+[WindowsソースZIP](https://github.com/Ponkichi0718/ChromaMatter/releases/download/sorca-cm-r2-20261022/Sorca-CM-20261022-r2-Windows-source.zip) · [Linuxソースtar.gz](https://github.com/Ponkichi0718/ChromaMatter/releases/download/sorca-cm-r2-20261022/Sorca-CM-20261022-r2-Linux-source.tar.gz) · [Macソース・チェックサム](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/sorca-cm-r2-mac-inputs-20261022)
 
-| Windows | macOS | Linux |
-| --- | --- | --- |
-| [ZIPをダウンロード](https://github.com/Ponkichi0718/ChromaMatter/releases/download/cm-orca-dev3-r8-20261013/Snapmaker-Orca-CM-dev3-R8-Windows-x64.zip) | [アプリZIPをダウンロード](https://github.com/Ponkichi0718/ChromaMatter/releases/download/cm-orca-dev3-r8-20261013/CM-dev3-R8-macos-arm64-app.zip) | [tar.gzをダウンロード](https://github.com/Ponkichi0718/ChromaMatter/releases/download/cm-orca-dev3-r8-20261013/Snapmaker-Orca-CM-dev3-R8-Linux-x86_64.tar.gz) |
-| x64 | Apple Silicon・macOS 15以降 | x86_64・Ubuntu 22.04 |
-
-[更新内容・チェックサム・対応ソース](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/cm-orca-dev3-r8-20261013)
-
-- **原本を残してください。** コピーで作業し、プロジェクトは別名保存してください。印刷前にスライス結果を確認してください。
-- **Windows版は既存のCM版と設定保存先を共有します。** 別フォルダーに展開しても設定は分離されません。試す前に設定をバックアップしてください。
-- **Mac版:** ad-hoc署名のみです。Developer ID署名・Apple公証はありません。Intel Macには対応していません。
-- CM専用のプロジェクト情報には互換性のあるCM版が必要です。通常のOrcaや古いCM版で同じように扱えるとは限りません。
-
-## 主な機能
-
-- **色調整:** Full Spectrum・CMY・Flat Color、ブラシ編集、色の置き換え、陰影調整。
-- **カット:** 平面の移動・回転、任意のX/Y範囲制限、切断面と一体型の凸・穴コネクター。
-- **保護・ブリッジ:** つながった表面を選ぶ保護ブラシ、保護範囲表示、2点を結ぶ円柱・四角のブリッジ。
-- **プレート別の材料処理（対応するFlat Colorプロジェクト）:** プロジェクト全体の色候補が多くても、そのプレートで実際に使う物理材料が4種類以内ならスライスできます。実際に5種類以上を使うプレートは手動調整が必要です。自動的な色の統合は行いません。
-- **編集時の待ち時間対策:** 検証済みの元データ圧縮結果を再利用し、繰り返しのバックアップ処理を軽くします。初回など、キャッシュがない場合は圧縮処理が必要です。
-
-保護補助は形状を扱うもので、部位の意味を自動判定する機能ではありません。適用前に保護範囲と切断する側を確認してください。複雑な形状では処理に失敗する場合があります。
-
-## 検証範囲と注意
-
-ビルド・起動確認や個別の回帰試験と、実モデルの操作・印刷は別です。**今回のMac・Linux版では、GUI操作、実モデルの編集・カット、スライス、印刷は未検証です。** Windowsでの結果は、他OSで同じ動作を保証しません。R8のGUI・印刷動作を網羅的に検証したものでもありません。
-
-表示色は予測であり、校正済みの印刷色を保証するものではありません。モデル・フィラメント・プリンター・設定によって結果が変わります。実験版として、実際の出力を確認してご利用ください。
-
-## 対応ソースと技術の背景
-
-[Windows対応ソースZIP](https://github.com/Ponkichi0718/ChromaMatter/releases/download/cm-orca-dev3-r8-20261013/Snapmaker-Orca-CM-dev3-R8-Windows-source.zip) · [Linuxビルド補足](https://github.com/Ponkichi0718/ChromaMatter/releases/download/cm-orca-dev3-r8-20261013/CM-dev3-R8-Linux-Source-Supplement-20261013.zip)
-
-この版の対応ソース・ビルド情報は[dev3-R8リリース](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/cm-orca-dev3-r8-20261013)で案内します。[R8のnative/helperビルド入力](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/cm-orca-dev3-r8-build-inputs-20261012)はソース資料で、アプリやオフラインSDKではありません。Orca版の再現には版ごとの対応ソースを使用してください。リポジトリ内の旧単体版ソースは過去の記録です。
-
-**ChromaMatterは、このOrca統合版の基礎となった色処理技術です。** 以前の単体アプリは開発の経緯として残し、ここでは別製品のダウンロードとして案内しません。過去のソース・記録・ライセンスは保持し、今回のOrca版の検証結果とは区別します。
+Orca版には、**各リリースに対応するソース**を使ってください。リポジトリ内の旧単体版ソース・バージョン記録は履歴として保持しています。ビルド情報は[r2リリース](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/sorca-cm-r2-20261022)から参照できます。旧[dev3-R8](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/cm-orca-dev3-r8-20261013)と[その他のリリース](https://github.com/Ponkichi0718/ChromaMatter/releases)も引き続き利用できます。
 
 [ライセンス](LICENSE) · [第三者ライセンス](licenses/) · [セキュリティ](SECURITY.md)

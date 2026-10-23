@@ -76,6 +76,16 @@ publication/*
 !publication/MACOS_ALPHA_TEST_MODEL_EXPECTED.svg
 !publication/MACOS_SOURCE_APP_TESTING_EN.md
 
+# Owner-selected public showcase images; all other local media stay ignored.
+!publication/images/
+publication/images/*
+!publication/images/print-collection.jpg
+!publication/images/clear-coated-pumpkin.jpg
+!publication/images/zinogre-rybw.png
+!publication/images/painting-cutting-demo.png
+!publication/images/cmy-core-shell-demo.png
+!publication/images/clear-shell-demo.png
+
 # Historical local probes and recovery utilities stay in the private workspace.
 tooling/*
 !tooling/run_generic_radial_model.py
