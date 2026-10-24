@@ -35,11 +35,14 @@ new release asset URLs, two manual ZIP URLs, preserved historical/demo links
 and `git diff --check`. No source, binary, model, settings or historical
 validation-state edits are included in this documentation change.
 
-Current state: local preparation only; publish/verify the new release and
-manual downloads before merging these links through a reviewed PR. Then read
-back the public pages and all six asset links. Do not claim new GUI, CLI,
-slicing, physical-print or optical tests, and do not reuse obsolete artifact
-checksums for repackaged archives. Keep local QA and private inputs out of Git.
+Current state: the `sorca-cm-v1.0` prerelease is published. All eight app,
+source and manual archives match the reviewed sizes and GitHub SHA-256 digests;
+their public download endpoints respond successfully. The official Site v67
+is deployed with the current manual names and permanent redirects from the
+old manual ZIP URLs. Site source: ce52162766feb282ea0cf8f6afbeb2a82f7beaa5.
+PR #43 carries this documentation update. No new GUI, CLI, slicing,
+physical-print or optical tests are claimed. Use the new release checksums
+for repackaged archives; local QA and private inputs remain outside Git.
 
 ## Manual parity and display-name correction — 2026-10-24
 
