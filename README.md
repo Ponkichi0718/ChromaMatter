@@ -50,7 +50,7 @@ Offline download: **[English ZIP](https://chromamatter.app/manual/download/Sonca
 
 Real screenshots and short **button → result** steps across nine [feature categories](docs/sonca-cm/README.md), including painting, filters, cuts, protection, bridges and Core/Shell. The English guide uses English UI. Each ZIP contains one language and its images. Extract it and open `index.html` to read offline; links to the other language open online.
 
-The manual title **Sonca CM ver1.0** refers to the same released **Sorca CM v1.0** app; package names are unchanged. Older demonstrations and unverified beta outcomes are labelled. This documentation does not establish new print or optical validation.
+This manual covers **Sorca CM v1.0**. Existing download URLs and package names are unchanged. Older demonstrations and unverified beta outcomes are labelled. This documentation does not establish new print or optical validation.
 
 ## What you can do
 
