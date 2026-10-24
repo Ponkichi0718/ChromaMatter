@@ -2,7 +2,7 @@
 
 **From coloured models to real prints — colour editing, mixing and slicing inside Snapmaker Orca.**
 
-[日本語](README_JA.md) · **[Download](https://chromamatter.app/download)** · [Website](https://chromamatter.app/) · [Prints & demos](#prints--demos)
+[日本語](README_JA.md) · **[Download](https://chromamatter.app/download)** · **[Manual](docs/sonca-cm/README.md)** · [Website](https://chromamatter.app/) · [Prints & demos](#prints--demos)
 
 ChromaMatter began as a standalone colour-processing app, then brought its tools into Snapmaker Orca as **Orca with CM**. We now call this integration **Sorca CM** to make its Snapmaker Orca — “Sorca” — foundation clearer. ChromaMatter remains the project name; Sorca CM is the independent development edition based on Snapmaker Orca 2.4.0.
 
@@ -40,7 +40,17 @@ Click a photo to open its Reddit post, video and experiment notes.
   </tr>
 </table>
 
-These are examples from different development stages, not print-validation results for v1.0. [More demos on the website](https://chromamatter.app/#demos). An illustrated manual is in preparation.
+These are examples from different development stages, not print-validation results for v1.0. [More demos on the website](https://chromamatter.app/#demos).
+
+## Illustrated manual — Japanese / English
+
+**[Read in English](https://chromamatter.app/manual/guide/manual-en.html)** · **[日本語で読む](https://chromamatter.app/manual/guide/manual-ja.html)**
+
+Offline download: **[English ZIP](https://chromamatter.app/manual/download/Sonca-CM-v1.0-Manual-EN-20261024.zip)** · **[日本語ZIP](https://chromamatter.app/manual/download/Sonca-CM-v1.0-Manual-JA-20261024.zip)**
+
+Real screenshots and short **button → result** steps across nine [feature categories](docs/sonca-cm/README.md), including painting, filters, cuts, protection, bridges and Core/Shell. The English guide uses English UI. Each ZIP contains one language and its images. Extract it and open `index.html` to read offline; links to the other language open online.
+
+The manual title **Sonca CM ver1.0** refers to the same released **Sorca CM v1.0** app; package names are unchanged. Older demonstrations and unverified beta outcomes are labelled. This documentation does not establish new print or optical validation.
 
 ## What you can do
 

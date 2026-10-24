@@ -2,7 +2,7 @@
 
 **色付きモデルを、実際のプリントへ。配色・色編集・混色・スライスをSnapmaker Orcaの中で。**
 
-[English](README.md) · **[ダウンロード](https://chromamatter.app/download)** · [公式サイト](https://chromamatter.app/) · [作例・動画](#作例動画)
+[English](README.md) · **[ダウンロード](https://chromamatter.app/download)** · **[マニュアル](docs/sonca-cm/README.md)** · [公式サイト](https://chromamatter.app/) · [作例・動画](#作例動画)
 
 ChromaMatterは、色処理の単体アプリとして始まり、その機能をSnapmaker Orcaへ統合した **Orca with CM** に発展しました。今回、ベースがSnapmaker Orca＝「Sorca」であることを伝えるため、統合版の呼び名を **Sorca CM** に変更しました。プロジェクト名はChromaMatterのまま、Snapmaker Orca 2.4.0を基にした非公式の開発版として進めています。
 
@@ -40,7 +40,17 @@ ChromaMatterは、色処理の単体アプリとして始まり、その機能�
   </tr>
 </table>
 
-各作例はそれぞれの開発時点の記録で、v1.0の印刷検証結果ではありません。[公式サイトの作例一覧](https://chromamatter.app/#demos)。画像付きマニュアルは準備中です。
+各作例はそれぞれの開発時点の記録で、v1.0の印刷検証結果ではありません。[公式サイトの作例一覧](https://chromamatter.app/#demos)。
+
+## 画像付きマニュアル — 日本語・英語
+
+**[日本語で読む](https://chromamatter.app/manual/guide/manual-ja.html)** · **[Read in English](https://chromamatter.app/manual/guide/manual-en.html)**
+
+オフライン保存：**[日本語ZIP](https://chromamatter.app/manual/download/Sonca-CM-v1.0-Manual-JA-20261024.zip)** · **[English ZIP](https://chromamatter.app/manual/download/Sonca-CM-v1.0-Manual-EN-20261024.zip)**
+
+実画面と短い **ボタン → 結果** で、色調整・フィルター・カット・保護・ブリッジ・Core/Shellなどを[9カテゴリ](docs/sonca-cm/README.md)から探せます。英語版は英語UIです。各ZIPは1言語とその画像入りです。全体を展開して `index.html` を開くとオフラインで読めます。他言語のリンクはオンラインで開きます。
+
+マニュアル名 **Sonca CM ver1.0** は、公開中の **Sorca CM v1.0** と同じアプリを指します。配布名は変更していません。旧デモ・ベータ機能の未確認結果は本文で区別し、新しい実印刷・光学検証を保証するものではありません。
 
 ## できること
 
