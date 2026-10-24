@@ -1,12 +1,33 @@
 # ChromaMatter cross-PC handoff
 
+## Manual parity and display-name correction — 2026-10-24
+
+The owner requested the Japanese manual to follow the English presentation
+and confirmed the product name is **Sorca CM**, not a separate manual brand.
+This docs-only follow-up removes the obsolete split-name explanation from
+the five README variants and manual hub. The illustrated guide revision is
+published separately on the official website.
+
+Keep `docs/sonca-cm/`, all existing guide links and the Sonca-named offline
+ZIP URLs unchanged for compatibility. No application/source archive, release
+tag, checksum, saved setting or historical validation state changes here.
+Pending or failed gates remain authoritative; this is not new GUI, slicing,
+printing or optical evidence.
+
+Changed files: the five README variants, `docs/sonca-cm/README.md` and this
+handoff. Checks: same-language README parity, unchanged links, preserved
+historical handoff content and `git diff --check`. The official-site revision
+is published as version 65. This update uses a reviewed feature-branch PR;
+verify the published guide/ZIP links and retain their existing URLs.
+Keep local snapshots and QA output outside the repository.
+
 ## Bilingual illustrated manual — 2026-10-24
 
 The owner requested the completed Japanese and English manuals on GitHub and
 the official website, with immediate reading links and an offline download.
 The five README variants now link the manual, replacing the preparation notice.
 `docs/sonca-cm/README.md` provides the nine category pairs and ZIP instructions.
-The manual title Sonca CM ver1.0 refers to the existing Sorca CM v1.0 release;
+The manual covers the existing Sorca CM v1.0 release;
 this documentation does not rename, rebuild or revalidate the application.
 
 The website publication targets illustrated pages and images under
