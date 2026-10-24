@@ -1,5 +1,49 @@
 # ChromaMatter cross-PC handoff
 
+## Sorca CM v1.0 distribution and manual links — 2026-10-24
+
+The owner requested consistent v1.0 distribution names and a direct Windows
+application entry. The current download target is `sorca-cm-v1.0`; the
+20261022-r2 release remains history. ChromaMatter remains the website/project
+name, while the application and manual are **Sorca CM v1.0**.
+
+This is a packaging-only continuation of the 20261022-r2 application, not a
+new implementation or rebuild. Windows runtime files move to the package
+root and the main executable becomes `Sorca CM.exe`, with its bytes unchanged.
+The Mac app archive is copied unchanged, Linux changes only its outer archive
+directory, and the corresponding source archives retain their original bytes.
+Embedded build records remain provenance, not a new build-validation result.
+Development/prerelease status and existing verification limits are retained.
+
+The current release uses these binary and corresponding-source filenames:
+
+- `Sorca-CM-v1.0-Windows-x64.zip`
+- `Sorca-CM-v1.0-macos-arm64-app.zip`
+- `Sorca-CM-v1.0-Linux-x86_64.tar.gz`
+- `Sorca-CM-v1.0-Windows-source.zip`
+- `Sorca-CM-v1.0-Linux-source.tar.gz`
+- `Sorca-CM-v1.0-MacActions-Source.tar.gz`
+
+The manual downloads use `/manual/download/Sorca-CM-v1.0-Manual-JA.zip`
+and `/manual/download/Sorca-CM-v1.0-Manual-EN.zip`. Existing guide paths,
+`docs/sonca-cm/` and previous download URLs remain compatibility routes.
+Front-page text no longer explains obsolete filename/name differences.
+
+Changed GitHub files: the five README variants, `docs/sonca-cm/README.md`
+and this handoff. Checks are limited to same-language parity, the six exact
+new release asset URLs, two manual ZIP URLs, preserved historical/demo links
+and `git diff --check`. No source, binary, model, settings or historical
+validation-state edits are included in this documentation change.
+
+Current state: the `sorca-cm-v1.0` prerelease is published. All eight app,
+source and manual archives match the reviewed sizes and GitHub SHA-256 digests;
+their public download endpoints respond successfully. The official Site v67
+is deployed with the current manual names and permanent redirects from the
+old manual ZIP URLs. Site source: ce52162766feb282ea0cf8f6afbeb2a82f7beaa5.
+PR #43 carries this documentation update. No new GUI, CLI, slicing,
+physical-print or optical tests are claimed. Use the new release checksums
+for repackaged archives; local QA and private inputs remain outside Git.
+
 ## Manual parity and display-name correction — 2026-10-24
 
 The owner requested the Japanese manual to follow the English presentation
