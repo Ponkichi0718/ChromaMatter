@@ -1,4 +1,4 @@
-# ChromaMatter · Sorca CM
+# Sorca CM v1.0
 
 **色付きモデルを、実際のプリントへ。配色・色編集・混色・スライスをSnapmaker Orcaの中で。**
 
@@ -10,13 +10,15 @@ ChromaMatterは、色処理の単体アプリとして始まり、その機能�
 
 | Windows | macOS | Linux |
 | --- | --- | --- |
-| **[ZIPをダウンロード](https://github.com/Ponkichi0718/ChromaMatter/releases/download/sorca-cm-r2-20261022/Sorca-CM-20261022-r2-Windows-x64.zip)** | **[アプリZIPをダウンロード](https://github.com/Ponkichi0718/ChromaMatter/releases/download/sorca-cm-r2-20261022/Sorca-CM-20261022-r2-macos-arm64-app.zip)** | **[tar.gzをダウンロード](https://github.com/Ponkichi0718/ChromaMatter/releases/download/sorca-cm-r2-20261022/Sorca-CM-20261022-r2-Linux-x86_64.tar.gz)** |
+| **[ZIPをダウンロード](https://github.com/Ponkichi0718/ChromaMatter/releases/download/sorca-cm-v1.0/Sorca-CM-v1.0-Windows-x64.zip)** | **[アプリZIPをダウンロード](https://github.com/Ponkichi0718/ChromaMatter/releases/download/sorca-cm-v1.0/Sorca-CM-v1.0-macos-arm64-app.zip)** | **[tar.gzをダウンロード](https://github.com/Ponkichi0718/ChromaMatter/releases/download/sorca-cm-v1.0/Sorca-CM-v1.0-Linux-x86_64.tar.gz)** |
 | Windows x64 | Apple Silicon・macOS 15以降 | Ubuntu 22.04・x86_64 |
-| `Open-Sorca-CM.cmd` | `Sorca CM.app` | `Start-Sorca-CM.sh` |
+| `Sorca CM.exe` | `Sorca CM.app` | `Start-Sorca-CM.sh` |
 
-[更新内容・チェックサム](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/sorca-cm-r2-20261022) · [対応ソース](#対応ソース) · [過去版](https://chromamatter.app/download#previous-versions)
+[更新内容・チェックサム](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/sorca-cm-v1.0) · [対応ソース](#対応ソース) · [過去版](https://chromamatter.app/download#previous-versions)
 
 アーカイブ全体を新しいフォルダへ展開してください。**Mac版はad-hoc署名のみで、Apple公証はありません。Intel Macは非対応です。** Linuxにはリリースノート記載の依存ライブラリが必要です。開発版のため、原本を残し、印刷前にスライス結果を確認してください。
+
+v1.0の配布物は20261022-r2の梱包を整理したもので、アプリの実装・実行バイナリは同一です。機能追加や再ビルド、GUI・スライス・実印刷の新たな検証ではありません。
 
 ## 作例・動画
 
@@ -46,11 +48,11 @@ ChromaMatterは、色処理の単体アプリとして始まり、その機能�
 
 **[日本語で読む](https://chromamatter.app/manual/guide/manual-ja.html)** · **[Read in English](https://chromamatter.app/manual/guide/manual-en.html)**
 
-オフライン保存：**[日本語ZIP](https://chromamatter.app/manual/download/Sonca-CM-v1.0-Manual-JA-20261024.zip)** · **[English ZIP](https://chromamatter.app/manual/download/Sonca-CM-v1.0-Manual-EN-20261024.zip)**
+オフライン保存：**[日本語ZIP](https://chromamatter.app/manual/download/Sorca-CM-v1.0-Manual-JA.zip)** · **[English ZIP](https://chromamatter.app/manual/download/Sorca-CM-v1.0-Manual-EN.zip)**
 
 実画面と短い **ボタン → 結果** で、色調整・フィルター・カット・保護・ブリッジ・Core/Shellなどを[9カテゴリ](docs/sonca-cm/README.md)から探せます。英語版は英語UIです。各ZIPは1言語とその画像入りです。全体を展開して `index.html` を開くとオフラインで読めます。他言語のリンクはオンラインで開きます。
 
-このマニュアルは **Sorca CM v1.0** が対象です。既存のダウンロードURLと配布ファイル名は変更していません。旧デモ・ベータ機能の未確認結果は本文で区別し、新しい実印刷・光学検証を保証するものではありません。
+このマニュアルは **Sorca CM v1.0** が対象です。旧デモ・ベータ機能の未確認結果は本文で区別し、新しい実印刷・光学検証を保証するものではありません。
 
 ## できること
 
@@ -70,7 +72,7 @@ U1で使う実フィラメントは、**1プレートにつき4本まで**です
 <details>
 <summary><strong>導入・互換性・検証範囲</strong></summary>
 
-- **版名について：** v1.0はSorca CMの公開版名です。アプリのAbout・ファイル情報はベースのSnapmaker Orca 2.4.0、配布ファイル名は元のビルド識別子を保持しています。
+- **バージョン：** Sorca CM v1.0はSnapmaker Orca 2.4.0がベースです。About・ファイル情報にはこのベース版が表示される場合があります。
 - 原本を残し、新しいフォルダへ展開して別名保存してください。既存CM版と設定先を共有する場合があります。設定をバックアップし、切り替え前に他のCM版を閉じてください。
 - WindowsのWeb機能にはMicrosoft Edge WebView2 Runtimeが必要です。LinuxはUbuntu 22.04／glibc 2.35向けで、GTK・WebKit・GStreamer・OpenGL等が必要です。AppImageではありません。
 - v1.0では透明窓の色番号を複数選べます。新規U1設定は0.4mmを優先し、保存済みのノズル径は保持します。
@@ -90,8 +92,8 @@ U1で使う実フィラメントは、**1プレートにつき4本まで**です
 
 ## 対応ソース
 
-[WindowsソースZIP](https://github.com/Ponkichi0718/ChromaMatter/releases/download/sorca-cm-r2-20261022/Sorca-CM-20261022-r2-Windows-source.zip) · [Linuxソースtar.gz](https://github.com/Ponkichi0718/ChromaMatter/releases/download/sorca-cm-r2-20261022/Sorca-CM-20261022-r2-Linux-source.tar.gz) · [Macソース・チェックサム](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/sorca-cm-r2-mac-inputs-20261022)
+[WindowsソースZIP](https://github.com/Ponkichi0718/ChromaMatter/releases/download/sorca-cm-v1.0/Sorca-CM-v1.0-Windows-source.zip) · [Linuxソースtar.gz](https://github.com/Ponkichi0718/ChromaMatter/releases/download/sorca-cm-v1.0/Sorca-CM-v1.0-Linux-source.tar.gz) · [Macソースtar.gz](https://github.com/Ponkichi0718/ChromaMatter/releases/download/sorca-cm-v1.0/Sorca-CM-v1.0-MacActions-Source.tar.gz)
 
-Orca版には、**各リリースに対応するソース**を使ってください。リポジトリ内の旧単体版ソース・バージョン記録は履歴として保持しています。ビルド情報は[v1.0リリース](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/sorca-cm-r2-20261022)から参照できます。旧[dev3-R8](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/cm-orca-dev3-r8-20261013)と[その他のリリース](https://github.com/Ponkichi0718/ChromaMatter/releases)も引き続き利用できます。
+Orca版には、**各リリースに対応するソース**を使ってください。リポジトリ内の旧単体版ソース・バージョン記録は履歴として保持しています。ビルド情報は[v1.0リリース](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/sorca-cm-v1.0)から参照できます。旧[20261022-r2](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/sorca-cm-r2-20261022)・[dev3-R8](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/cm-orca-dev3-r8-20261013)と[その他のリリース](https://github.com/Ponkichi0718/ChromaMatter/releases)も引き続き利用できます。
 
 [ライセンス](LICENSE) · [第三者ライセンス](licenses/) · [セキュリティ](SECURITY.md)

@@ -1,5 +1,46 @@
 # ChromaMatter cross-PC handoff
 
+## Sorca CM v1.0 distribution and manual links — 2026-10-24
+
+The owner requested consistent v1.0 distribution names and a direct Windows
+application entry. The current download target is `sorca-cm-v1.0`; the
+20261022-r2 release remains history. ChromaMatter remains the website/project
+name, while the application and manual are **Sorca CM v1.0**.
+
+This is a packaging-only continuation of the 20261022-r2 application, not a
+new implementation or rebuild. Windows runtime files move to the package
+root and the main executable becomes `Sorca CM.exe`, with its bytes unchanged.
+The Mac app archive is copied unchanged, Linux changes only its outer archive
+directory, and the corresponding source archives retain their original bytes.
+Embedded build records remain provenance, not a new build-validation result.
+Development/prerelease status and existing verification limits are retained.
+
+The current release uses these binary and corresponding-source filenames:
+
+- `Sorca-CM-v1.0-Windows-x64.zip`
+- `Sorca-CM-v1.0-macos-arm64-app.zip`
+- `Sorca-CM-v1.0-Linux-x86_64.tar.gz`
+- `Sorca-CM-v1.0-Windows-source.zip`
+- `Sorca-CM-v1.0-Linux-source.tar.gz`
+- `Sorca-CM-v1.0-MacActions-Source.tar.gz`
+
+The manual downloads use `/manual/download/Sorca-CM-v1.0-Manual-JA.zip`
+and `/manual/download/Sorca-CM-v1.0-Manual-EN.zip`. Existing guide paths,
+`docs/sonca-cm/` and previous download URLs remain compatibility routes.
+Front-page text no longer explains obsolete filename/name differences.
+
+Changed GitHub files: the five README variants, `docs/sonca-cm/README.md`
+and this handoff. Checks are limited to same-language parity, the six exact
+new release asset URLs, two manual ZIP URLs, preserved historical/demo links
+and `git diff --check`. No source, binary, model, settings or historical
+validation-state edits are included in this documentation change.
+
+Current state: local preparation only; publish/verify the new release and
+manual downloads before merging these links through a reviewed PR. Then read
+back the public pages and all six asset links. Do not claim new GUI, CLI,
+slicing, physical-print or optical tests, and do not reuse obsolete artifact
+checksums for repackaged archives. Keep local QA and private inputs out of Git.
+
 ## Manual parity and display-name correction — 2026-10-24
 
 The owner requested the Japanese manual to follow the English presentation

@@ -1,8 +1,8 @@
-# Sorca CM ver1.0 — Illustrated manual / 画像付きマニュアル
+# Sorca CM v1.0 — Illustrated manual / 画像付きマニュアル
 
 **[日本語で読む](https://chromamatter.app/manual/guide/manual-ja.html)** · **[Read in English](https://chromamatter.app/manual/guide/manual-en.html)**
 
-**[日本語ZIP](https://chromamatter.app/manual/download/Sonca-CM-v1.0-Manual-JA-20261024.zip)** · **[English ZIP](https://chromamatter.app/manual/download/Sonca-CM-v1.0-Manual-EN-20261024.zip)**
+**[日本語ZIP](https://chromamatter.app/manual/download/Sorca-CM-v1.0-Manual-JA.zip)** · **[English ZIP](https://chromamatter.app/manual/download/Sorca-CM-v1.0-Manual-EN.zip)**
 
 使いたい機能を選び、実画面の **ボタン → 結果** で確認します。英語版は英語UIです。
 
@@ -34,9 +34,9 @@ Each ZIP contains one language and its images, not the application or printable 
 
 ## Version and scope / 対象と検証範囲
 
-This manual covers **Sorca CM v1.0**. Existing download URLs, package names and the [release](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/sorca-cm-r2-20261022) are unchanged. About may show the Snapmaker Orca base version, 2.4.0.
+This manual covers [Sorca CM v1.0](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/sorca-cm-v1.0). About may show the Snapmaker Orca base version, 2.4.0.
 
-このマニュアルは **Sorca CM v1.0** が対象です。既存のダウンロードURLと配布ファイル名は変更していません。Aboutの2.4.0はベースのSnapmaker Orcaの版です。
+このマニュアルは **Sorca CM v1.0** が対象です。Aboutの2.4.0はベースのSnapmaker Orcaの版です。
 
 Older demonstrations, beta features and unverified results are identified in the guide. Screenshots do not guarantee geometry, fit, physical printing or calibrated colour/optical results. Keep original projects and check the sliced result.
 
