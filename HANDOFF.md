@@ -1,5 +1,37 @@
 # ChromaMatter cross-PC handoff
 
+## Bilingual illustrated manual — 2026-10-24
+
+The owner requested the completed Japanese and English manuals on GitHub and
+the official website, with immediate reading links and an offline download.
+The five README variants now link the manual, replacing the preparation notice.
+`docs/sonca-cm/README.md` provides the nine category pairs and ZIP instructions.
+The manual title Sonca CM ver1.0 refers to the existing Sorca CM v1.0 release;
+this documentation does not rename, rebuild or revalidate the application.
+
+The website publication targets illustrated pages and images under
+`/manual/guide/` and two documentation ZIPs under `/manual/download/`:
+`Sonca-CM-v1.0-Manual-JA-20261024.zip` and
+`Sonca-CM-v1.0-Manual-EN-20261024.zip`. Each contains one language and its
+images, opens with `index.html`, and sends other-language links to the online
+guide. The ZIPs are official-site downloads, not GitHub release assets or Git
+blobs. Existing application/source assets, tags, checksums, settings,
+historical 0.9 state and validation records stay unchanged.
+Do not add application binaries, model files, private paths or local QA output
+to this documentation commit. Do not add the ZIPs to this repository.
+
+The guide uses concise button-to-result steps and real screenshots, with
+English controls in the English edition. It identifies historical examples,
+beta limits and unverified outcomes; no new physical-print or optical result
+is asserted. Checks cover same-language README parity, nine bilingual category
+links, two official-site ZIP targets, preservation of existing release/image
+links and `git diff --check`.
+Changed files are the five README variants, the manual hub and this handoff.
+Publication follows a reviewed feature-branch PR and separate website/download
+readback. Next: verify both language ZIPs and guide destinations after
+deployment. Local screenshots, intermediate models and verification records
+remain outside Git.
+
 ## Sorca CM public version label v1.0 — 2026-10-23
 
 The owner chose **Sorca CM v1.0** instead of a date-based public version name.
