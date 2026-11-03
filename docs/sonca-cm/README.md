@@ -8,6 +8,10 @@
 
 Choose a feature and follow short **button → result** steps with real screenshots. The English guide uses English UI.
 
+**v1.1 users:** screenshots are from v1.0. See the [v1.1 update](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/sorca-cm-v1.1) for changed cut and paint controls.
+
+**v1.1をお使いの方へ：** 画像はv1.0です。変更されたカット・ペイント操作は[更新内容](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/sorca-cm-v1.1)をご覧ください。
+
 ## Categories / カテゴリ
 
 | 日本語 | English |

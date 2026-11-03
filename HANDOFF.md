@@ -1,5 +1,33 @@
 # ChromaMatter cross-PC handoff
 
+## Sorca CM v1.1 publication — 2026-11-03
+
+The owner requested publishing the verified v1.1 apps and a short feature
+summary on GitHub and the official website. Public names remain Sorca CM v1.1.
+This publication reuses the frozen application archives without rebuilding
+or recompressing them. See publication/SORCA_CM_V1.1.json and the release assets
+for exact package identities and OS-specific corresponding source archives.
+
+Windows includes the later crease-slider and whole-surface-fill additions.
+Mac/Linux use the preceding common cut/slicing snapshot; do not describe them
+as containing the two later Windows painting changes. Windows GUI and native
+checks are not Mac/Linux GUI or physical-print evidence. Mac targets Apple
+Silicon/macOS 15+, with ad-hoc signing only, no Developer ID or notarization.
+
+The release-specific full source packets each contain 14,541 native/helper
+inputs. Their payload difference is exactly the two Windows paint product
+files. No private models, presets, credentials or local QA records are added.
+This repository's old standalone source and CURRENT_STATE remain history.
+The illustrated manual remains v1.0, with a link to v1.1 control changes.
+
+Changed: five README variants, manual index, this handoff, and the v1.1 release
+description/identity record. Validation: original archive SHA checks, full
+source-payload readback and delta comparison, README language parity, link
+inventory, JSON parse and git diff --check. Site checks/build and release
+asset digest verification are recorded separately after publication.
+No model edits, preset changes, app builds, printing, CI redispatch or old
+release replacement are part of this publication. Use a reviewed feature PR.
+
 ## Sorca CM v1.0 distribution and manual links — 2026-10-24
 
 The owner requested consistent v1.0 distribution names and a direct Windows
