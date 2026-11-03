@@ -12,36 +12,22 @@
     },
     {
       "name": "Sorca-CM-v1.1-Linux-x86_64.tar.gz",
-      "bytes": 355838909,
-      "sha256": "8e5a0cabb1dee45e43316a3b63be8f176a529f7cce4e25f9af95b4248a0aa289"
+      "bytes": 355835394,
+      "sha256": "7c7c8b9d96fb90fd20fcd669a29b18a378f710ba86c4e4b6338d85375a3ae3fc"
     },
     {
       "name": "Sorca-CM-v1.1-macos-arm64-app.zip",
-      "bytes": 235057673,
-      "sha256": "62670af6f37caddf5d1ec4f86bd7488e58d952d04fce06a463dd739681b1fdfa"
-    },
-    {
-      "name": "Sorca-CM-v1.1-Windows-source.tar.gz",
-      "bytes": 106303974,
-      "sha256": "e02c8a2444ea9cff0792678553bb43b3b9de24b9d3d582166a0f189b05c8e727"
+      "bytes": 235056056,
+      "sha256": "ef89c3ffdd58bfa7d32ece1e82141d6fcd89b416e64bfa86f5ab58fde803b40f"
     },
     {
       "name": "Sorca-CM-v1.1-source.tar.gz",
-      "bytes": 106304038,
-      "sha256": "29eb4da69454c82ed2f64c3459677978998308f40c7cff4473c789bb3e8c5014"
+      "bytes": 106303974,
+      "sha256": "e02c8a2444ea9cff0792678553bb43b3b9de24b9d3d582166a0f189b05c8e727"
     }
   ],
-  "windows_additions": [
-    "always-visible crease angle slider",
-    "angle-limited whole-surface fill"
-  ],
-  "linux_macos_include_windows_additions": false,
-  "windows_source_delta_from_common": [
-    "native/src/libslic3r/ChromaMatterPaintFill.hpp",
-    "native/src/slic3r/GUI/Gizmos/GLGizmoCMNativePaint.cpp"
-  ],
-  "mac_ci_run": 41574074009,
-  "mac_workflow_commit": "78da8739ef0ce8d88ef27ccba5870e69d53521de",
+  "mac_ci_run": 41600930676,
+  "mac_workflow_commit": "6f65c7361605f0e7478f29070102907c15a07233",
   "mac_minimum": "Apple Silicon / macOS 15",
   "mac_signing": "ad-hoc only; no Developer ID or notarization",
   "verification": {
@@ -53,6 +39,18 @@
     "Mac and Linux GUI and real-model slicing",
     "physical printing and connector fit on all platforms"
   ],
-  "binaries_rebuilt_for_publication": false,
-  "manual": "v1.0 guide retained; v1.1 cut and paint controls differ"
+  "binaries_rebuilt_for_publication": [
+    "Linux",
+    "Mac"
+  ],
+  "manual": "v1.0 guide retained; v1.1 cut and paint controls differ",
+  "common_features": [
+    "always-visible crease angle slider",
+    "angle-limited whole-surface fill"
+  ],
+  "all_platforms_same_application_source": true,
+  "common_source_sha256": "e02c8a2444ea9cff0792678553bb43b3b9de24b9d3d582166a0f189b05c8e727",
+  "common_source_manifest_sha256": "0e0d22ef85ce6a573d8e9076c8214d5babe2172ae9fabaf81a628081cac2cae4",
+  "common_source_files": 14541,
+  "windows_archive_reused_unchanged": true
 }

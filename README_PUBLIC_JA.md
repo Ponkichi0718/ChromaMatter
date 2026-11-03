@@ -22,9 +22,9 @@ ChromaMatterは、色処理の単体アプリとして始まり、その機能�
 
 - **カット・ふた・ダボ：** 操作パネルを整理。中央が平らなふたの幅・高さを調整し、一体ダボを付ける側も選べます。
 - **切断後も扱いやすく：** 再切断・接地・対応する切断済みパーツへのFull Spectrum配色貼付を改善。実際は4本なのに5色と判定されてスライスできない不具合を修正しました。
-- **ペイント（Windows）：** 折り目スライダーを常時表示。**「面全体（塗り残しも）」**で同じ色の上から連続する面を塗り直せます。角度で範囲を制限し、従来の「同じ色」にも戻せます。
+- **ペイント：** 折り目スライダーを常時表示。**「面全体（塗り残しも）」**で同じ色の上から連続する面を塗り直せます。角度で範囲を制限し、従来の「同じ色」にも戻せます。
 
-**最後のペイント改善2点はWindows版のみです。** Mac／Linux版は共通のカット・スライス改善までを含みます。「面全体」は範囲内の意図した模様も塗り替えるため、必要ならUndoで戻してください。
+**Windows・Mac・Linuxの3OSで、同じv1.1の機能を使えます。** 「面全体」は範囲内の意図した模様も塗り替えるため、必要ならUndoで戻してください。
 
 
 ## 作例・動画
@@ -98,7 +98,7 @@ U1で使う実フィラメントは、**1プレートにつき4本まで**です
 
 ## 対応ソース
 
-[Windowsソースtar.gz](https://github.com/Ponkichi0718/ChromaMatter/releases/download/sorca-cm-v1.1/Sorca-CM-v1.1-Windows-source.tar.gz) · [Linuxソースtar.gz](https://github.com/Ponkichi0718/ChromaMatter/releases/download/sorca-cm-v1.1/Sorca-CM-v1.1-source.tar.gz) · [Macソースtar.gz](https://github.com/Ponkichi0718/ChromaMatter/releases/download/sorca-cm-v1.1/Sorca-CM-v1.1-source.tar.gz)
+[3OS共通ソースtar.gz](https://github.com/Ponkichi0718/ChromaMatter/releases/download/sorca-cm-v1.1/Sorca-CM-v1.1-source.tar.gz)
 
 Orca版には、**各リリースに対応するソース**を使ってください。リポジトリ内の旧単体版ソース・バージョン記録は履歴として保持しています。ビルド情報は[v1.1リリース](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/sorca-cm-v1.1)から参照できます。旧[v1.0](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/sorca-cm-v1.0)・[20261022-r2](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/sorca-cm-r2-20261022)・[dev3-R8](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/cm-orca-dev3-r8-20261013)と[その他のリリース](https://github.com/Ponkichi0718/ChromaMatter/releases)も引き続き利用できます。
 
