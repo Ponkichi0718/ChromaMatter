@@ -9,24 +9,24 @@ Colour editing, mixing and cutting inside Snapmaker Orca. / Snapmaker Orcaで配
 - **カット・ふた・ダボ**：操作パネルを整理。中央が平らなふたの幅・高さを調整でき、一体ダボを付ける側も選べます。
 - **切断後の扱いやすさ**：再切断、接地、底面候補を改善。実際は4本なのに5色と判定され、スライスできない不具合を修正しました。
 - **Full Spectrum配色**：元データとの対応が確認できる切断済みパーツへ、配色を貼り直せます。
-- **ペイント（Windows版）**：折り目スライダーを常時表示。「面全体（塗り残しも）」で、同じ色の上から連続する面をまとめて塗り直せます。角度で範囲を制限でき、従来の「同じ色」も使えます。
+- **ペイント**：折り目スライダーを常時表示。「面全体（塗り残しも）」で、同じ色の上から連続する面をまとめて塗り直せます。角度で範囲を制限でき、従来の「同じ色」も使えます。
 
-**Windows版には最後のペイント改善を含みます。Mac／Linux版には、この2点（折り目スライダー常時表示・面全体塗りつぶし）は含まれません。**
+**Windows・Mac・Linuxの3OSで、同じv1.1の機能を使えます。**
 
 ## What’s improved
 
 - **Cuts, caps and attached pegs:** clearer controls, adjustable flat-centre cap width/height, and a choice of which side receives the attached peg.
 - **After cutting:** improved repeated cuts, bed placement and base-face candidates; fixed a false five-material error that blocked slicing parts using four materials.
 - **Full Spectrum transfer:** reapply colours to cut parts whose correspondence with the retained source can be verified.
-- **Painting — Windows:** an always-visible crease-angle slider and a whole-surface fill option that repaints missed islands even when clicking the selected colour. An angle threshold limits the connected area; same-colour fill remains available.
+- **Painting:** an always-visible crease-angle slider and a whole-surface fill option that repaints missed islands even when clicking the selected colour. An angle threshold limits the connected area; same-colour fill remains available.
 
-**The last two painting improvements are Windows-only in this release.** Whole-surface fill also replaces intentional patterns within the selected area; use Undo when needed.
+**Windows, Mac and Linux include the same v1.1 features.** Whole-surface fill also replaces intentional patterns within the selected area; use Undo when needed.
 
 ## Choose your download / ダウンロード
 
 | OS | Application | Corresponding source |
 | --- | --- | --- |
-| Windows x64 | `Sorca-CM-v1.1-Windows-x64.zip` | `Sorca-CM-v1.1-Windows-source.tar.gz` |
+| Windows x64 | `Sorca-CM-v1.1-Windows-x64.zip` | `Sorca-CM-v1.1-source.tar.gz` |
 | Apple Silicon, macOS 15+ | `Sorca-CM-v1.1-macos-arm64-app.zip` | `Sorca-CM-v1.1-source.tar.gz` |
 | Ubuntu 22.04 x86_64, glibc 2.35 | `Sorca-CM-v1.1-Linux-x86_64.tar.gz` | `Sorca-CM-v1.1-source.tar.gz` |
 

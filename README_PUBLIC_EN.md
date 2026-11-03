@@ -22,9 +22,9 @@ Extract the complete archive into a new folder. **Mac is ad-hoc signed, without 
 
 - **Cut, cap and attach:** clearer controls, adjustable flat-centre caps and a choice of which side receives the attached peg.
 - **Keep working after a cut:** improved repeated cuts, bed placement and Full Spectrum colour transfer to compatible cut parts. Fixed false five-material slicing errors when only four materials are used.
-- **Painting — Windows:** an always-visible crease-angle slider and **whole-surface fill** to repaint missed islands, including when the clicked face already has the selected colour. The angle threshold limits the area; same-colour fill is still available.
+- **Painting:** an always-visible crease-angle slider and **whole-surface fill** to repaint missed islands, including when the clicked face already has the selected colour. The angle threshold limits the area; same-colour fill is still available.
 
-**The last two painting improvements are Windows-only.** Mac/Linux include the common cutting and slicing improvements. Whole-surface fill also replaces intentional patterns within its area; use Undo when needed.
+**Windows, macOS and Linux include the same v1.1 features.** Whole-surface fill also replaces intentional patterns within its area; use Undo when needed.
 
 
 ## Prints & demos
@@ -98,7 +98,7 @@ The original submission was a standalone app; development now continues as **Sor
 
 ## Source
 
-[Windows source tar.gz](https://github.com/Ponkichi0718/ChromaMatter/releases/download/sorca-cm-v1.1/Sorca-CM-v1.1-Windows-source.tar.gz) · [Linux source tar.gz](https://github.com/Ponkichi0718/ChromaMatter/releases/download/sorca-cm-v1.1/Sorca-CM-v1.1-source.tar.gz) · [macOS source tar.gz](https://github.com/Ponkichi0718/ChromaMatter/releases/download/sorca-cm-v1.1/Sorca-CM-v1.1-source.tar.gz)
+[Common source for Windows, macOS and Linux (tar.gz)](https://github.com/Ponkichi0718/ChromaMatter/releases/download/sorca-cm-v1.1/Sorca-CM-v1.1-source.tar.gz)
 
 Use the **release-specific corresponding source** for Orca builds; the repository’s older standalone source tree and version records remain historical. The [v1.1 release](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/sorca-cm-v1.1) links the build information. Previous [v1.0](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/sorca-cm-v1.0), [20261022-r2](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/sorca-cm-r2-20261022), [dev3-R8](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/cm-orca-dev3-r8-20261013) and [other releases](https://github.com/Ponkichi0718/ChromaMatter/releases) remain available.
 

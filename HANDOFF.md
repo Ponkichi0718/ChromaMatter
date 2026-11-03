@@ -1,5 +1,35 @@
 # ChromaMatter cross-PC handoff
 
+## Sorca CM v1.1 — common Windows, macOS and Linux features (2026-11-03)
+
+This section supersedes the earlier Windows-only feature note below.
+The owner requested the same v1.1 feature set on all three operating systems,
+including the always-visible crease-angle slider and angle-limited
+whole-surface fill. The verified Windows archive is unchanged. Linux and
+macOS were rebuilt from the matching 14,541-file application source packet.
+The public product name remains Sorca CM v1.1.
+
+See publication/SORCA_CM_V1.1.json for the exact application/source hashes,
+common source manifest, Mac CI run and verification scope. The common source
+archive is Sorca-CM-v1.1-source.tar.gz; the Windows-source filename remains a
+byte-identical compatibility alias. The macOS app ZIP is not recompressed.
+
+Changed: five README variants, the v1.1 publication JSON/notes and this
+handoff. Validation: language parity, common-source links, metadata identity,
+JSON parse and git diff --check. Publish through a reviewed feature PR after
+the corresponding release assets are verified; the saved official-site update
+then removes the OS-specific note. No private models, presets, personal paths,
+credentials or local validation output belong in this repository.
+
+Mac/Linux GUI and real-model slicing, and physical printing/connector fit
+on all platforms, remain unverified. Mac is Apple Silicon/macOS 15+ with
+ad-hoc signing only, no Developer ID or notarization. The illustrated manual
+still covers v1.0; v1.1 control differences are documented in the release notes.
+Historical standalone source, CURRENT_STATE and older release records remain
+unchanged. Do not rerun builds or change unrelated application source for this
+publication-only task. Remaining work is live release/site verification and
+recording completion outside this public repository.
+
 ## Sorca CM v1.1 publication — 2026-11-03
 
 The owner requested publishing the verified v1.1 apps and a short feature
