@@ -36,7 +36,7 @@ def sha256(data):
 
 
 def selected(root, kind):
-    for path in sorted(root.rglob("*")):
+    for path in sorted(root.rglob("*"), key=lambda p: p.relative_to(root).as_posix()):
         relative = path.relative_to(root)
         name = relative.as_posix()
         if any(part in EXCLUDE_DIRS for part in relative.parts):
@@ -190,3 +190,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
