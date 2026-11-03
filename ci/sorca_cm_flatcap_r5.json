@@ -1,0 +1,71 @@
+{
+  "schema": "sorca.reviewed-source-overlay.v1",
+  "base_packet_sha256": "ab21bc0dcf87c4778e67e5dd4a0ea8badf5187415338459222792e42c007c6d1",
+  "result_packet_sha256": "fd3f814ff470d4c6e782f9b2f33fa99c95fb911d9fd1501a64d6587e1e4dcd59",
+  "changes": [
+    {
+      "path": "native/src/libslic3r/ChromaMatterContourCut.cpp",
+      "before": "02928cad90550bb1e46424c96fdd73300c3a717caf57c6fe7bfe6b2f1f66b184",
+      "after": "1bd485a41970b2a3eabbe70693f20bd9372f55cf677bf38a6c99a7acce5ce36e",
+      "changes": [
+        [
+          232396,
+          232427,
+          "ICAgICAgICAvLyBLZWVwIHRoZSBvcmlnaW5hbCB2YWxpZGF0ZWQgM0Qgc2VwYXJhdG9yL2FuY2hvciBhaGVhZCBvZiBuZXcNCiAgICAgICAgLy8gYWx0ZXJuYXRpdmVzLCBzbyBhZGRpbmcgc3VwcG9ydCBmb3IgZm9sZGVkIHJpbXMgY2Fubm90IHJlcGxhY2UgYQ0KICAgICAgICAvLyBwcmV2aW91c2x5IHN1Y2Nlc3NmdWwgZmxhdCBjZW50cmUgd2l0aCBhIGRpZmZlcmVudCBoZWlnaHQuDQogICAgICAgIGNhbmRpZGF0ZV9vcmRlcj17MjIsMjN9Ow0K"
+        ],
+        [
+          232531,
+          232601,
+          "ICAgICAgICBjYW5kaWRhdGVfb3JkZXIucHVzaF9iYWNrKDU3KTtjYW5kaWRhdGVfb3JkZXIucHVzaF9iYWNrKDI0KTsNCg=="
+        ],
+        [
+          232608,
+          232608,
+          "ICAgIHN0ZDo6dW5pcXVlX3B0cjxSZXN1bHQ+IGZsYXRfbGVnYWN5X2NhcDsNCg=="
+        ],
+        [
+          236194,
+          236389,
+          "ICAgICAgICAgICAgfSBlbHNlIGlmKGNhbmRpZGF0ZT09MjMgfHwgY2FuZGlkYXRlPT0yNCB8fCBjYW5kaWRhdGU9PTU3KXsNCiAgICAgICAgICAgICAgICBkaWFnbm9zdGljLnRyaWFuZ3VsYXRpb25fbWV0aG9kPWNhbmRpZGF0ZT09MjMgPyAic2hhcmVkLWZsYXQtY2VudHJlLXZhbGlkYXRlZC0zZC1yaW0iIDoNCiAgICAgICAgICAgICAgICAgICAgY2FuZGlkYXRlPT01NyA/ICJzaGFyZWQtZmxhdC1jZW50cmUtcmVmaW5lZC1hbmNob3IiIDogInNoYXJlZC1mbGF0LWNlbnRyZS1sb2NhbC1wYXRjaCI7DQo="
+        ],
+        [
+          236747,
+          236848,
+          "ICAgICAgICAgICAgICAgIGlmKCFmbGF0X2xlZ2FjeV9jYXApDQogICAgICAgICAgICAgICAgICAgIGZsYXRfbGVnYWN5X2NhcD1zdGQ6Om1ha2VfdW5pcXVlPFJlc3VsdD4oc3BsaXRfc3VyZmFjZV9yZWdpb24obWVzaCxzZWxlY3RlZF9mYWNlcyxudWxscHRyLGxlZ2FjeV9vcHRpb25zKSk7DQogICAgICAgICAgICAgICAgY29uc3QgYXV0byYgbGVnYWN5PSpmbGF0X2xlZ2FjeV9jYXA7DQo="
+        ],
+        [
+          237933,
+          238072,
+          "ICAgICAgICAgICAgICAgICAgICBzdGQ6Om1vdmUoY2FwX3BvaW50cyksc3RkOjptb3ZlKHRyaWFuZ2xlcyksb3B0aW9ucy5mbGF0X2NlbnRyZV93aWR0aF9tbSxvcHRpb25zLmZsYXRfY2VudHJlX29mZnNldF9tbSwNCiAgICAgICAgICAgICAgICAgICAgY2FuZGlkYXRlPT0yNCxjYW5kaWRhdGUhPTIzKTsNCg=="
+        ]
+      ]
+    },
+    {
+      "path": "native/src/libslic3r/ChromaMatterFlatCentreCap.hpp",
+      "before": "1aee51ce2e7bd78703474dac5b4442ddedb56b9bed590135b30ce7e28e676dca",
+      "after": "2d0ad962c21dbdebd9d61b3a2fb271be212ccf6c96f63a6004a770713a3fae0f",
+      "changes": [
+        [
+          10904,
+          10997,
+          "ICAgIHN0ZDo6dmVjdG9yPFZlYzNpMzI+IGZhY2VzLCBkb3VibGUgd2lkdGhfbW0sIGRvdWJsZSBvZmZzZXRfbW0sIGJvb2wgbG9jYWxfY2VudHJlPWZhbHNlLA0KICAgIGJvb2wgcmVmaW5lZF9hbmNob3I9ZmFsc2UpDQo="
+        ],
+        [
+          12054,
+          12054,
+          "ICAgIC8vIFByZXNlcnZlIHRoZSBvcmlnaW5hbCBzZXBhcmF0b3IncyBhbmNob3IgYXMgdGhlIGZpcnN0IGNvbnN0cnVjdGlvbi4NCiAgICAvLyBSZWZpbmVtZW50IGFkZHMgcG9pbnRzIGF0IG90aGVyIGhlaWdodHM6IGNob29zaW5nIG9uZSBvZiB0aGVtIGNhbiBtb3ZlDQogICAgLy8gYSBmb3JtZXJseSB2YWxpZCBjZW50cmUgcGxhbmUgb3V0c2lkZSBhIG5hcnJvdyBzb2xpZC4gVGhlIHJlZmluZWQNCiAgICAvLyBhbmNob3IgcmVtYWlucyBhbiBleHBsaWNpdCwgaW5kZXBlbmRlbnRseSB2YWxpZGF0ZWQgZmFsbGJhY2suDQogICAgY29uc3Qgc2l6ZV90IG9yaWdpbmFsX3BvaW50X2NvdW50PXBvaW50cy5zaXplKCk7DQo="
+        ],
+        [
+          14214,
+          14270,
+          "ICAgIGNvbnN0IHNpemVfdCBhbmNob3JfcG9pbnRzPXJlZmluZWRfYW5jaG9yP3BvaW50cy5zaXplKCk6b3JpZ2luYWxfcG9pbnRfY291bnQ7DQogICAgZm9yKHNpemVfdCBpPWJvdW5kYXJ5LnNpemUoKTtpPGFuY2hvcl9wb2ludHM7KytpKXsNCg=="
+        ],
+        [
+          14844,
+          14994,
+          "ICAgIC8vIEEgbG9jYWwgcGF0Y2ggdXNlcyB0aGUgc2FtZSBleHBsaWNpdGx5IGNob3NlbiBhbmNob3IgYW5kIHByZXNlcnZlcw0KICAgIC8vIHRoZSBzdXJyb3VuZGluZyB2YWxpZGF0ZWQgY29sbGFyLg0K"
+        ]
+      ]
+    }
+  ]
+}
