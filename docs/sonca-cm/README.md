@@ -1,16 +1,16 @@
-# Sorca CM v1.0 — Illustrated manual / 画像付きマニュアル
+# Sorca CM v1.1 — Illustrated manual / 画像付きマニュアル
 
 **[日本語で読む](https://chromamatter.app/manual/guide/manual-ja.html)** · **[Read in English](https://chromamatter.app/manual/guide/manual-en.html)**
 
-**[日本語ZIP](https://chromamatter.app/manual/download/Sorca-CM-v1.0-Manual-JA.zip)** · **[English ZIP](https://chromamatter.app/manual/download/Sorca-CM-v1.0-Manual-EN.zip)**
+**[日本語ZIP](https://chromamatter.app/manual/download/Sorca-CM-v1.1-Manual-JA.zip)** · **[English ZIP](https://chromamatter.app/manual/download/Sorca-CM-v1.1-Manual-EN.zip)**
 
 使いたい機能を選び、実画面の **ボタン → 結果** で確認します。英語版は英語UIです。
 
 Choose a feature and follow short **button → result** steps with real screenshots. The English guide uses English UI.
 
-**v1.1 users:** screenshots are from v1.0. See the [v1.1 update](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/sorca-cm-v1.1) for changed cut and paint controls.
+**Updated 2026-11-05:** nine matching categories in Japanese and English, with current v1.1 cut, cap and peg controls, whole-surface fill, crease slider and layer tools.
 
-**v1.1をお使いの方へ：** 画像はv1.0です。変更されたカット・ペイント操作は[更新内容](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/sorca-cm-v1.1)をご覧ください。
+**2026-11-05更新：** 日英同じ9カテゴリに、v1.1のカット・ふた・ダボ、面全体の塗りつぶし、折り目スライダー、層の操作を反映しました。
 
 ## Categories / カテゴリ
 
@@ -22,7 +22,7 @@ Choose a feature and follow short **button → result** steps with real screensh
 | [材料・パレット](https://chromamatter.app/manual/guide/manual-materials-ja.html) | [Materials & palettes](https://chromamatter.app/manual/guide/manual-materials-en.html) |
 | [Core / Shell・層構造](https://chromamatter.app/manual/guide/manual-structure-ja.html) | [Core / Shell & layers](https://chromamatter.app/manual/guide/manual-structure-en.html) |
 | [カット・保護・ブリッジ](https://chromamatter.app/manual/guide/manual-cut-ja.html) | [Cut, protect & bridge](https://chromamatter.app/manual/guide/manual-cut-en.html) |
-| [透明・リトファン](https://chromamatter.app/manual/guide/manual-lamp-ja.html) | [Transparent & lithophane](https://chromamatter.app/manual/guide/manual-lamp-en.html) |
+| [層を使う応用](https://chromamatter.app/manual/guide/manual-lamp-ja.html) | [Layer applications](https://chromamatter.app/manual/guide/manual-lamp-en.html) |
 | [CMYお絵描き](https://chromamatter.app/manual/guide/manual-cmy-ja.html) | [CMY painting](https://chromamatter.app/manual/guide/manual-cmy-en.html) |
 | [保存・困ったとき](https://chromamatter.app/manual/guide/manual-help-ja.html) | [Save & troubleshoot](https://chromamatter.app/manual/guide/manual-help-en.html) |
 
@@ -38,12 +38,9 @@ Each ZIP contains one language and its images, not the application or printable 
 
 ## Version and scope / 対象と検証範囲
 
-This manual covers [Sorca CM v1.0](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/sorca-cm-v1.0). About may show the Snapmaker Orca base version, 2.4.0.
+This manual covers [Sorca CM v1.1](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/sorca-cm-v1.1). Older UI examples, beta features and unverified results are labelled. This update does not establish new print, connector-fit or optical validation.
 
-このマニュアルは **Sorca CM v1.0** が対象です。Aboutの2.4.0はベースのSnapmaker Orcaの版です。
-
-Older demonstrations, beta features and unverified results are identified in the guide. Screenshots do not guarantee geometry, fit, physical printing or calibrated colour/optical results. Keep original projects and check the sliced result.
-
-旧デモ・ベータ機能・未確認結果は本文で区別しています。画像は形状・嵌合・実印刷・色や光学特性の保証ではありません。原本を残し、印刷前にスライス結果を確認してください。
+このマニュアルは **Sorca CM v1.1** が対象です。旧UIの作例・ベータ機能・未確認結果は本文で区別しています。今回の更新は新たな実印刷・ダボ嵌合・光学検証を示すものではありません。
 
 [Official manual hub / 公式マニュアル入口](https://chromamatter.app/manual) · [App downloads / アプリ](https://chromamatter.app/download) · [Repository / リポジトリ](../../README.md)
+
