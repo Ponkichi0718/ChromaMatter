@@ -55,11 +55,11 @@ These are examples from different development stages, not print-validation resul
 
 **[Read in English](https://chromamatter.app/manual/guide/manual-en.html)** · **[日本語で読む](https://chromamatter.app/manual/guide/manual-ja.html)**
 
-Offline download: **[English ZIP](https://chromamatter.app/manual/download/Sorca-CM-v1.0-Manual-EN.zip)** · **[日本語ZIP](https://chromamatter.app/manual/download/Sorca-CM-v1.0-Manual-JA.zip)**
+Offline download: **[English ZIP](https://chromamatter.app/manual/download/Sorca-CM-v1.1-Manual-EN.zip)** · **[日本語ZIP](https://chromamatter.app/manual/download/Sorca-CM-v1.1-Manual-JA.zip)**
 
-Real screenshots and short **button → result** steps across nine [feature categories](docs/sonca-cm/README.md), including painting, filters, cuts, protection, bridges and Core/Shell. The English guide uses English UI. Each ZIP contains one language and its images. Extract it and open `index.html` to read offline; links to the other language open online.
+Updated **2026-11-05** for **Sorca CM v1.1**. Find a feature in [nine categories](docs/sonca-cm/README.md), then follow real screenshots and short **button → result** steps. Includes the current cut, cap and peg controls, whole-surface fill, crease slider and layer tools. The English guide uses English UI.
 
-This manual covers **Sorca CM v1.0**; cut and paint controls have changed in v1.1. See the [v1.1 release notes](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/sorca-cm-v1.1). Older demonstrations and unverified beta outcomes are labelled. This documentation does not establish new print or optical validation.
+Extract a language ZIP and open `index.html` to read offline. Older UI examples and unverified results are labelled; this manual does not establish new print or optical validation.
 
 ## What you can do
 
@@ -103,3 +103,4 @@ The original submission was a standalone app; development now continues as **Sor
 Use the **release-specific corresponding source** for Orca builds; the repository’s older standalone source tree and version records remain historical. The [v1.1 release](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/sorca-cm-v1.1) links the build information. Previous [v1.0](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/sorca-cm-v1.0), [20261022-r2](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/sorca-cm-r2-20261022), [dev3-R8](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/cm-orca-dev3-r8-20261013) and [other releases](https://github.com/Ponkichi0718/ChromaMatter/releases) remain available.
 
 [License](LICENSE) · [Third-party notices](licenses/) · [Security](SECURITY.md)
+

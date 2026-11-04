@@ -55,11 +55,11 @@ ChromaMatterは、色処理の単体アプリとして始まり、その機能�
 
 **[日本語で読む](https://chromamatter.app/manual/guide/manual-ja.html)** · **[Read in English](https://chromamatter.app/manual/guide/manual-en.html)**
 
-オフライン保存：**[日本語ZIP](https://chromamatter.app/manual/download/Sorca-CM-v1.0-Manual-JA.zip)** · **[English ZIP](https://chromamatter.app/manual/download/Sorca-CM-v1.0-Manual-EN.zip)**
+オフライン保存：**[日本語ZIP](https://chromamatter.app/manual/download/Sorca-CM-v1.1-Manual-JA.zip)** · **[English ZIP](https://chromamatter.app/manual/download/Sorca-CM-v1.1-Manual-EN.zip)**
 
-実画面と短い **ボタン → 結果** で、色調整・フィルター・カット・保護・ブリッジ・Core/Shellなどを[9カテゴリ](docs/sonca-cm/README.md)から探せます。英語版は英語UIです。各ZIPは1言語とその画像入りです。全体を展開して `index.html` を開くとオフラインで読めます。他言語のリンクはオンラインで開きます。
+**2026-11-05更新・Sorca CM v1.1対応。** [9カテゴリ](docs/sonca-cm/README.md)から機能を選び、実画面と短い **ボタン → 結果** で確認できます。現行のカット・ふた・ダボ、面全体の塗りつぶし、折り目スライダー、層の操作を反映。英語版は英語UIです。
 
-このマニュアルは **Sorca CM v1.0** が対象です。v1.1で変わったカット・ペイント操作は[更新内容](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/sorca-cm-v1.1)をご覧ください。旧デモ・ベータ機能の未確認結果は本文で区別し、新しい実印刷・光学検証を保証するものではありません。
+言語別ZIPを展開し、`index.html` を開くとオフラインで読めます。旧UIの作例や未確認結果は本文で区別しています。今回の更新は新たな実印刷・光学検証を示すものではありません。
 
 ## できること
 
@@ -103,3 +103,4 @@ U1で使う実フィラメントは、**1プレートにつき4本まで**です
 Orca版には、**各リリースに対応するソース**を使ってください。リポジトリ内の旧単体版ソース・バージョン記録は履歴として保持しています。ビルド情報は[v1.1リリース](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/sorca-cm-v1.1)から参照できます。旧[v1.0](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/sorca-cm-v1.0)・[20261022-r2](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/sorca-cm-r2-20261022)・[dev3-R8](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/cm-orca-dev3-r8-20261013)と[その他のリリース](https://github.com/Ponkichi0718/ChromaMatter/releases)も引き続き利用できます。
 
 [ライセンス](LICENSE) · [第三者ライセンス](licenses/) · [セキュリティ](SECURITY.md)
+
