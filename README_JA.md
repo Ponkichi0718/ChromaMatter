@@ -1,12 +1,28 @@
-# Sorca CM v1.1
+# Sorca CM v1.1 — 開発版
 
-**色付きモデルを、実際のプリントへ。配色・色編集・混色・スライスをSnapmaker Orcaの中で。**
+**配色・色編集・混色・スライスをSnapmaker Orcaの中で。**
 
 [English](README.md) · **[ダウンロード](https://chromamatter.app/download)** · **[マニュアル](docs/sonca-cm/README.md)** · [公式サイト](https://chromamatter.app/) · [作例・動画](#作例動画)
 
-ChromaMatterは、色処理の単体アプリとして始まり、その機能をSnapmaker Orcaへ統合した **Orca with CM** に発展しました。今回、ベースがSnapmaker Orca＝「Sorca」であることを伝えるため、統合版の呼び名を **Sorca CM** に変更しました。プロジェクト名はChromaMatterのまま、Snapmaker Orca 2.4.0を基にした非公式の開発版として進めています。
+ChromaMatterはプロジェクト名、Sorca CMはアプリ名です。色処理の単体アプリとして始まったChromaMatterの機能をSnapmaker Orcaへ統合し、Orca with CMを経て、現在はSorca CMとして開発しています。Snapmaker Orca 2.4.0を基にした非公式の開発版です。
 
-## ダウンロード — v1.1
+## 現行の統合開発版をダウンロード — v1.1
+
+**現行の統合開発版は[Sorca CM v1.1](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/sorca-cm-v1.1)です。** 旧単体版ChromaMatterを別にインストールする必要はありません。
+
+GitHubの「Latest」と `/releases/latest` APIは、旧単体版ChromaMatter v0.9を示しています。v1.1はPre-releaseとして公開しているため、Latestの対象に含まれません。v1.1を試す方は、下のOS別リンクを使用してください。
+
+**開発版・検証範囲**
+
+- Windowsでは対象GUI・回帰テスト・保存／再読込を確認しています。実モデルスライスは先行の共通カットビルドで確認し、最終ペイント変更はGUI・Undo／Redo・保存／再読込を確認しています。
+- Mac／Linuxはビルド・CLI・配布物を検査済みですが、GUI操作と実モデルスライスは未検証です。
+- **全OSの実印刷・ダボ嵌合は未検証です。**
+
+原本と旧版を残し、アーカイブ全体を新しいフォルダーへ展開してください。印刷前にスライス結果を確認してください。
+
+[旧単体版ChromaMatter v0.9の配布物・対応ソース・チェックサム](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.9)
+
+### お使いのOSのアプリを選んでください
 
 | Windows | macOS | Linux |
 | --- | --- | --- |
@@ -24,7 +40,7 @@ ChromaMatterは、色処理の単体アプリとして始まり、その機能�
 - **切断後も扱いやすく：** 再切断・接地・対応する切断済みパーツへのFull Spectrum配色貼付を改善。実際は4本なのに5色と判定されてスライスできない不具合を修正しました。
 - **ペイント：** 折り目スライダーを常時表示。**「面全体（塗り残しも）」**で同じ色の上から連続する面を塗り直せます。角度で範囲を制限し、従来の「同じ色」にも戻せます。
 
-**Windows・Mac・Linuxの3OSで、同じv1.1の機能を使えます。** 「面全体」は範囲内の意図した模様も塗り替えるため、必要ならUndoで戻してください。
+Windows・macOS・Linux向けのv1.1配布物があります。検証範囲はOSごとに異なります。 「面全体」は範囲内の意図した模様も塗り替えるため、必要ならUndoで戻してください。
 
 
 ## 作例・動画
