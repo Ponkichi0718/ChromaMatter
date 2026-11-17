@@ -1,5 +1,40 @@
 # ChromaMatter cross-PC handoff
 
+## Current development download guidance — 2026-11-17
+
+The owner requested applying the reviewed Japanese/English distribution copy
+to the GitHub README, the v0.9/v1.1 release descriptions and the official
+download page. This checkout prepares the repository documentation only;
+live release metadata and Site publication are separate steps and are not
+claimed complete here.
+
+The five README variants now identify Sorca CM v1.1 as the current integrated
+development pre-release, explain why GitHub Latest and its API still select
+the legacy standalone v0.9, and show the existing verification limits before
+the unchanged OS-specific download table. The v1.1 publication notes use
+linked application downloads, retain previous packages/source guidance and
+update the online-manual description to its 2026-11-05 v1.1 revision.
+The feature lists, platform prerequisites and detailed limitations remain.
+
+Validation: same-language README aliases are identical; fixed v1.1 application,
+corresponding-source and legacy v0.9 links, preserved README tails/features,
+unverified Mac/Linux GUI/slicing and all-platform printing/connector fit,
+manual wording and git diff --check are checked for this documentation change.
+No application, GUI, slicing, print or optical tests are newly claimed.
+
+Changed: README.md, README_EN.md, README_PUBLIC_EN.md, README_JA.md,
+README_PUBLIC_JA.md, publication/SORCA_CM_V1.1.md and this handoff.
+Historical standalone source, CURRENT_STATE, version/identity JSON, release
+tags, pre-release classification, checksums and all application/source archives
+remain unchanged. Do not rebuild, recompress, replace or delete release assets.
+
+Current state: prepared on a documentation feature branch for PR review.
+Next: review/merge this exact documentation change, update only the approved
+live release titles/bodies and Site copy, then read back the published content
+and verify unchanged asset identities and v1.1 pre-release classification.
+Local-only scripts, backup snapshots, QA records and the delivery ZIP remain
+outside this repository and must not be committed.
+
 ## Sorca CM v1.1 — common Windows, macOS and Linux features (2026-11-03)
 
 This section supersedes the earlier Windows-only feature note below.

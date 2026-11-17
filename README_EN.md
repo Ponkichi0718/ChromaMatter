@@ -1,12 +1,28 @@
-# Sorca CM v1.1
+# Sorca CM v1.1 — Development pre-release
 
-**From coloured models to real prints — colour editing, mixing and slicing inside Snapmaker Orca.**
+**Colour editing, mixing and slicing inside Snapmaker Orca.**
 
 [日本語](README_JA.md) · **[Download](https://chromamatter.app/download)** · **[Manual](docs/sonca-cm/README.md)** · [Website](https://chromamatter.app/) · [Prints & demos](#prints--demos)
 
-ChromaMatter began as a standalone colour-processing app, then brought its tools into Snapmaker Orca as **Orca with CM**. We now call this integration **Sorca CM** to make its Snapmaker Orca — “Sorca” — foundation clearer. ChromaMatter remains the project name; Sorca CM is the independent development edition based on Snapmaker Orca 2.4.0.
+ChromaMatter is the project name; Sorca CM is the application. ChromaMatter began as a standalone colour-processing app. Its workflows were integrated into Snapmaker Orca as Orca with CM, and development now continues as Sorca CM. This is an unofficial development edition based on Snapmaker Orca 2.4.0.
 
-## Download — v1.1
+## Download the current integrated development release — v1.1
+
+**The current integrated development release is [Sorca CM v1.1](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/sorca-cm-v1.1).** A separate installation of the legacy standalone ChromaMatter app is not required.
+
+GitHub’s “Latest” label and `/releases/latest` API point to the legacy standalone ChromaMatter v0.9. As a pre-release, v1.1 is excluded from Latest. To try v1.1, use the OS-specific links below.
+
+**Development pre-release — validation scope**
+
+- Windows has targeted GUI, regression and save/reload checks. Real-model slicing was checked on the preceding common cut build; the final painting changes passed GUI, Undo/Redo and save/reload checks.
+- Mac/Linux have build, CLI and archive checks, but GUI operation and real-model slicing remain unverified.
+- **Physical printing and connector fit remain unverified on every platform.**
+
+Keep original projects and older versions, and extract the complete archive into a new folder. Inspect the sliced result before printing.
+
+[Legacy standalone ChromaMatter v0.9: application packages, corresponding source and checksums](https://github.com/Ponkichi0718/ChromaMatter/releases/tag/v0.9)
+
+### Choose the application package for your OS
 
 | Windows | macOS | Linux |
 | --- | --- | --- |
@@ -24,7 +40,7 @@ Extract the complete archive into a new folder. **Mac is ad-hoc signed, without 
 - **Keep working after a cut:** improved repeated cuts, bed placement and Full Spectrum colour transfer to compatible cut parts. Fixed false five-material slicing errors when only four materials are used.
 - **Painting:** an always-visible crease-angle slider and **whole-surface fill** to repaint missed islands, including when the clicked face already has the selected colour. The angle threshold limits the area; same-colour fill is still available.
 
-**Windows, macOS and Linux include the same v1.1 features.** Whole-surface fill also replaces intentional patterns within its area; use Undo when needed.
+v1.1 packages are available for Windows, macOS and Linux. Validation coverage differs by platform. Whole-surface fill also replaces intentional patterns within its area; use Undo when needed.
 
 
 ## Prints & demos
